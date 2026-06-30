@@ -1,0 +1,43 @@
+Round 51 pixel mix-ratio sweep:
+  NC90_rep10: {'norm_clip': 0.9, 'reputation': 0.1}
+  NC70_rep30: {'norm_clip': 0.7, 'reputation': 0.3}
+  NC50_rep50: {'norm_clip': 0.5, 'reputation': 0.5}
+  NC30_rep70: {'norm_clip': 0.3, 'reputation': 0.7}
+  NC10_rep90: {'norm_clip': 0.1, 'reputation': 0.9}
+  Attack: backdoor_pixel, Seeds: [42, 43, 44, 45, 46]
+  Expected runs: 25
+
+  seed 42 NC90_rep10: acc=0.790 ASR=0.831 (nc=42/rep=8) (652s, total 10.9min, 1 runs)
+  seed 43 NC90_rep10: acc=0.800 ASR=0.682 (nc=46/rep=4) (644s, total 21.6min, 2 runs)
+  seed 44 NC90_rep10: acc=0.796 ASR=0.781 (nc=46/rep=4) (643s, total 32.3min, 3 runs)
+  seed 45 NC90_rep10: acc=0.771 ASR=0.911 (nc=42/rep=8) (647s, total 43.1min, 4 runs)
+  seed 46 NC90_rep10: acc=0.780 ASR=0.814 (nc=45/rep=5) (636s, total 53.7min, 5 runs)
+  seed 42 NC70_rep30: acc=0.780 ASR=0.824 (nc=36/rep=14) (656s, total 64.6min, 6 runs)
+  seed 43 NC70_rep30: acc=0.797 ASR=0.702 (nc=31/rep=19) (667s, total 75.7min, 7 runs)
+  seed 44 NC70_rep30: acc=0.786 ASR=0.798 (nc=37/rep=13) (659s, total 86.7min, 8 runs)
+  seed 45 NC70_rep30: acc=0.771 ASR=0.905 (nc=34/rep=16) (662s, total 97.7min, 9 runs)
+  seed 46 NC70_rep30: acc=0.773 ASR=0.820 (nc=39/rep=11) (647s, total 108.5min, 10 runs)
+  seed 42 NC50_rep50: acc=0.782 ASR=0.844 (nc=24/rep=26) (676s, total 119.8min, 11 runs)
+  seed 43 NC50_rep50: acc=0.787 ASR=0.748 (nc=23/rep=27) (680s, total 131.1min, 12 runs)
+  seed 44 NC50_rep50: acc=0.787 ASR=0.799 (nc=24/rep=26) (679s, total 142.4min, 13 runs)
+  seed 45 NC50_rep50: acc=0.773 ASR=0.913 (nc=24/rep=26) (676s, total 153.7min, 14 runs)
+  seed 46 NC50_rep50: acc=0.772 ASR=0.807 (nc=29/rep=21) (662s, total 164.7min, 15 runs)
+  seed 42 NC30_rep70: acc=0.778 ASR=0.841 (nc=17/rep=33) (687s, total 176.2min, 16 runs)
+  seed 43 NC30_rep70: acc=0.778 ASR=0.781 (nc=10/rep=40) (701s, total 187.9min, 17 runs)
+  seed 44 NC30_rep70: acc=0.784 ASR=0.814 (nc=13/rep=37) (697s, total 199.5min, 18 runs)
+  seed 45 NC30_rep70: acc=0.773 ASR=0.913 (nc=16/rep=34) (691s, total 211.0min, 19 runs)
+  seed 46 NC30_rep70: acc=0.769 ASR=0.824 (nc=12/rep=38) (692s, total 222.5min, 20 runs)
+  seed 42 NC10_rep90: acc=0.781 ASR=0.848 (nc=6/rep=44) (707s, total 234.3min, 21 runs)
+  seed 43 NC10_rep90: acc=0.777 ASR=0.782 (nc=1/rep=49) (719s, total 246.3min, 22 runs)
+  seed 44 NC10_rep90: acc=0.780 ASR=0.803 (nc=5/rep=45) (712s, total 258.2min, 23 runs)
+  seed 45 NC10_rep90: acc=0.772 ASR=0.925 (nc=4/rep=46) (711s, total 270.0min, 24 runs)
+  seed 46 NC10_rep90: acc=0.771 ASR=0.818 (nc=4/rep=46) (703s, total 281.8min, 25 runs)
+
+=== PIXEL MIX-RATIO SWEEP COMPLETE ===
+  NC90_rep10: pixel ASR = 0.804 +/- 0.074  per-seed: [0.831, 0.682, 0.781, 0.911, 0.814]
+  NC70_rep30: pixel ASR = 0.810 +/- 0.065  per-seed: [0.824, 0.702, 0.798, 0.905, 0.82]
+  NC50_rep50: pixel ASR = 0.822 +/- 0.055  per-seed: [0.844, 0.748, 0.799, 0.913, 0.807]
+  NC30_rep70: pixel ASR = 0.835 +/- 0.044  per-seed: [0.841, 0.781, 0.814, 0.913, 0.824]
+  NC10_rep90: pixel ASR = 0.835 +/- 0.050  per-seed: [0.848, 0.782, 0.803, 0.925, 0.818]
+
+Wall time: 281.8 min

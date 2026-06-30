@@ -1,0 +1,629 @@
+{
+  "domain": "adversarial_spam_evasion",
+  "dataset": "UCI Spambase (4601 emails, 57 features)",
+  "attacks": [
+    "no_attack",
+    "word_zero",
+    "char_zero",
+    "noise_inject"
+  ],
+  "defenses": [
+    "word_lr",
+    "char_lr",
+    "all_lr",
+    "all_rf"
+  ],
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "lambda_a": 0.1,
+  "lambda_c": 0.05,
+  "attack_costs": {
+    "no_attack": 0.0,
+    "word_zero": 0.05,
+    "char_zero": 0.05,
+    "noise_inject": 0.1
+  },
+  "defense_costs": {
+    "word_lr": 0.0,
+    "char_lr": 0.0,
+    "all_lr": 0.02,
+    "all_rf": 0.05
+  },
+  "adversary_payoffs": [
+    [
+      0.13161764705882353,
+      0.40147058823529413,
+      0.12463235294117647,
+      0.07352941176470588
+    ],
+    [
+      0.3049264705882353,
+      0.39647058823529413,
+      0.24242647058823527,
+      0.13323529411764706
+    ],
+    [
+      0.12661764705882353,
+      0.995,
+      0.15676470588235294,
+      0.17551470588235293
+    ],
+    [
+      0.5076470588235295,
+      0.4083823529411764,
+      0.4594852941176471,
+      0.5278676470588235
+    ]
+  ],
+  "server_payoffs": [
+    [
+      0.91151339608979,
+      0.8098479362780593,
+      0.9197820419985516,
+      0.9489844315713252
+    ],
+    [
+      0.8412744388124548,
+      0.8098479362780593,
+      0.8714112961622014,
+      0.9234956553222303
+    ],
+    [
+      0.91151339608979,
+      0.5740767559739319,
+      0.9051549601737872,
+      0.9068410572049241
+    ],
+    [
+      0.7594496741491673,
+      0.8031860970311367,
+      0.783938450398262,
+      0.7660734974656046
+    ]
+  ],
+  "nash_equilibria": [
+    {
+      "adv_support": [
+        "char_zero",
+        "noise_inject"
+      ],
+      "srv_support": [
+        "char_lr",
+        "all_lr"
+      ],
+      "vopd": 0.1997,
+      "mixed": true,
+      "adv_utility": 0.4421
+    }
+  ],
+  "best_vopd": 0.1997,
+  "complementarity_check": {
+    "argmax_per_defense": {
+      "word_lr": "noise_inject",
+      "char_lr": "char_zero",
+      "all_lr": "noise_inject",
+      "all_rf": "noise_inject"
+    },
+    "complementarity": true,
+    "theorem1_correct": true
+  },
+  "per_cell_results": {
+    "no_attack_word_lr": [
+      {
+        "seed": 42,
+        "accuracy": 0.9160028964518465,
+        "attack_success_rate": 0.12316176470588236,
+        "baseline_accuracy": 0.9160028964518465
+      },
+      {
+        "seed": 43,
+        "accuracy": 0.9094858797972484,
+        "attack_success_rate": 0.13051470588235295,
+        "baseline_accuracy": 0.9094858797972484
+      },
+      {
+        "seed": 44,
+        "accuracy": 0.9196234612599565,
+        "attack_success_rate": 0.12683823529411764,
+        "baseline_accuracy": 0.9196234612599565
+      },
+      {
+        "seed": 45,
+        "accuracy": 0.9036929761042722,
+        "attack_success_rate": 0.15441176470588236,
+        "baseline_accuracy": 0.9036929761042722
+      },
+      {
+        "seed": 46,
+        "accuracy": 0.9087617668356264,
+        "attack_success_rate": 0.12316176470588236,
+        "baseline_accuracy": 0.9087617668356264
+      }
+    ],
+    "no_attack_char_lr": [
+      {
+        "seed": 42,
+        "accuracy": 0.8131788559015206,
+        "attack_success_rate": 0.39338235294117646,
+        "baseline_accuracy": 0.8131788559015206
+      },
+      {
+        "seed": 43,
+        "accuracy": 0.8059377262853005,
+        "attack_success_rate": 0.39889705882352944,
+        "baseline_accuracy": 0.8059377262853005
+      },
+      {
+        "seed": 44,
+        "accuracy": 0.8218682114409848,
+        "attack_success_rate": 0.3639705882352941,
+        "baseline_accuracy": 0.8218682114409848
+      },
+      {
+        "seed": 45,
+        "accuracy": 0.8052136133236785,
+        "attack_success_rate": 0.41911764705882354,
+        "baseline_accuracy": 0.8052136133236785
+      },
+      {
+        "seed": 46,
+        "accuracy": 0.8030412744388125,
+        "attack_success_rate": 0.4319852941176471,
+        "baseline_accuracy": 0.8030412744388125
+      }
+    ],
+    "no_attack_all_lr": [
+      {
+        "seed": 42,
+        "accuracy": 0.9283128167994207,
+        "attack_success_rate": 0.10661764705882353,
+        "baseline_accuracy": 0.9283128167994207
+      },
+      {
+        "seed": 43,
+        "accuracy": 0.9203475742215785,
+        "attack_success_rate": 0.12316176470588236,
+        "baseline_accuracy": 0.9203475742215785
+      },
+      {
+        "seed": 44,
+        "accuracy": 0.9203475742215785,
+        "attack_success_rate": 0.13602941176470587,
+        "baseline_accuracy": 0.9203475742215785
+      },
+      {
+        "seed": 45,
+        "accuracy": 0.9167270094134685,
+        "attack_success_rate": 0.1323529411764706,
+        "baseline_accuracy": 0.9167270094134685
+      },
+      {
+        "seed": 46,
+        "accuracy": 0.9181752353367125,
+        "attack_success_rate": 0.125,
+        "baseline_accuracy": 0.9181752353367125
+      }
+    ],
+    "no_attack_all_rf": [
+      {
+        "seed": 42,
+        "accuracy": 0.9536567704561911,
+        "attack_success_rate": 0.07352941176470588,
+        "baseline_accuracy": 0.9536567704561911
+      },
+      {
+        "seed": 43,
+        "accuracy": 0.9500362056480811,
+        "attack_success_rate": 0.06801470588235294,
+        "baseline_accuracy": 0.9500362056480811
+      },
+      {
+        "seed": 44,
+        "accuracy": 0.9623461259956553,
+        "attack_success_rate": 0.0625,
+        "baseline_accuracy": 0.9623461259956553
+      },
+      {
+        "seed": 45,
+        "accuracy": 0.9500362056480811,
+        "attack_success_rate": 0.06985294117647059,
+        "baseline_accuracy": 0.9500362056480811
+      },
+      {
+        "seed": 46,
+        "accuracy": 0.941346850108617,
+        "attack_success_rate": 0.09375,
+        "baseline_accuracy": 0.941346850108617
+      }
+    ],
+    "word_zero_word_lr": [
+      {
+        "seed": 42,
+        "accuracy": 0.834902244750181,
+        "attack_success_rate": 0.3290441176470588,
+        "baseline_accuracy": 0.9160028964518465
+      },
+      {
+        "seed": 43,
+        "accuracy": 0.8406951484431572,
+        "attack_success_rate": 0.30514705882352944,
+        "baseline_accuracy": 0.9094858797972484
+      },
+      {
+        "seed": 44,
+        "accuracy": 0.8493845039826213,
+        "attack_success_rate": 0.30514705882352944,
+        "baseline_accuracy": 0.9196234612599565
+      },
+      {
+        "seed": 45,
+        "accuracy": 0.8385228095582911,
+        "attack_success_rate": 0.31985294117647056,
+        "baseline_accuracy": 0.9036929761042722
+      },
+      {
+        "seed": 46,
+        "accuracy": 0.8428674873280232,
+        "attack_success_rate": 0.29044117647058826,
+        "baseline_accuracy": 0.9087617668356264
+      }
+    ],
+    "word_zero_char_lr": [
+      {
+        "seed": 42,
+        "accuracy": 0.8131788559015206,
+        "attack_success_rate": 0.39338235294117646,
+        "baseline_accuracy": 0.8131788559015206
+      },
+      {
+        "seed": 43,
+        "accuracy": 0.8059377262853005,
+        "attack_success_rate": 0.39889705882352944,
+        "baseline_accuracy": 0.8059377262853005
+      },
+      {
+        "seed": 44,
+        "accuracy": 0.8218682114409848,
+        "attack_success_rate": 0.3639705882352941,
+        "baseline_accuracy": 0.8218682114409848
+      },
+      {
+        "seed": 45,
+        "accuracy": 0.8052136133236785,
+        "attack_success_rate": 0.41911764705882354,
+        "baseline_accuracy": 0.8052136133236785
+      },
+      {
+        "seed": 46,
+        "accuracy": 0.8030412744388125,
+        "attack_success_rate": 0.4319852941176471,
+        "baseline_accuracy": 0.8030412744388125
+      }
+    ],
+    "word_zero_all_lr": [
+      {
+        "seed": 42,
+        "accuracy": 0.8740043446777698,
+        "attack_success_rate": 0.24448529411764705,
+        "baseline_accuracy": 0.9283128167994207
+      },
+      {
+        "seed": 43,
+        "accuracy": 0.8754525706010138,
+        "attack_success_rate": 0.23713235294117646,
+        "baseline_accuracy": 0.9203475742215785
+      },
+      {
+        "seed": 44,
+        "accuracy": 0.8732802317161478,
+        "attack_success_rate": 0.2555147058823529,
+        "baseline_accuracy": 0.9203475742215785
+      },
+      {
+        "seed": 45,
+        "accuracy": 0.8732802317161478,
+        "attack_success_rate": 0.2426470588235294,
+        "baseline_accuracy": 0.9167270094134685
+      },
+      {
+        "seed": 46,
+        "accuracy": 0.8660391020999276,
+        "attack_success_rate": 0.25735294117647056,
+        "baseline_accuracy": 0.9181752353367125
+      }
+    ],
+    "word_zero_all_rf": [
+      {
+        "seed": 42,
+        "accuracy": 0.9275887038377987,
+        "attack_success_rate": 0.13970588235294118,
+        "baseline_accuracy": 0.9536567704561911
+      },
+      {
+        "seed": 43,
+        "accuracy": 0.9232440260680667,
+        "attack_success_rate": 0.13602941176470587,
+        "baseline_accuracy": 0.9500362056480811
+      },
+      {
+        "seed": 44,
+        "accuracy": 0.9370021723388848,
+        "attack_success_rate": 0.12683823529411764,
+        "baseline_accuracy": 0.9623461259956553
+      },
+      {
+        "seed": 45,
+        "accuracy": 0.9246922519913107,
+        "attack_success_rate": 0.13419117647058823,
+        "baseline_accuracy": 0.9500362056480811
+      },
+      {
+        "seed": 46,
+        "accuracy": 0.9174511223750905,
+        "attack_success_rate": 0.15441176470588236,
+        "baseline_accuracy": 0.941346850108617
+      }
+    ],
+    "char_zero_word_lr": [
+      {
+        "seed": 42,
+        "accuracy": 0.9160028964518465,
+        "attack_success_rate": 0.12316176470588236,
+        "baseline_accuracy": 0.9160028964518465
+      },
+      {
+        "seed": 43,
+        "accuracy": 0.9094858797972484,
+        "attack_success_rate": 0.13051470588235295,
+        "baseline_accuracy": 0.9094858797972484
+      },
+      {
+        "seed": 44,
+        "accuracy": 0.9196234612599565,
+        "attack_success_rate": 0.12683823529411764,
+        "baseline_accuracy": 0.9196234612599565
+      },
+      {
+        "seed": 45,
+        "accuracy": 0.9036929761042722,
+        "attack_success_rate": 0.15441176470588236,
+        "baseline_accuracy": 0.9036929761042722
+      },
+      {
+        "seed": 46,
+        "accuracy": 0.9087617668356264,
+        "attack_success_rate": 0.12316176470588236,
+        "baseline_accuracy": 0.9087617668356264
+      }
+    ],
+    "char_zero_char_lr": [
+      {
+        "seed": 42,
+        "accuracy": 0.5742215785662563,
+        "attack_success_rate": 1.0,
+        "baseline_accuracy": 0.8131788559015206
+      },
+      {
+        "seed": 43,
+        "accuracy": 0.5691527878349022,
+        "attack_success_rate": 1.0,
+        "baseline_accuracy": 0.8059377262853005
+      },
+      {
+        "seed": 44,
+        "accuracy": 0.5713251267197683,
+        "attack_success_rate": 1.0,
+        "baseline_accuracy": 0.8218682114409848
+      },
+      {
+        "seed": 45,
+        "accuracy": 0.5763939174511223,
+        "attack_success_rate": 1.0,
+        "baseline_accuracy": 0.8052136133236785
+      },
+      {
+        "seed": 46,
+        "accuracy": 0.5792903692976105,
+        "attack_success_rate": 1.0,
+        "baseline_accuracy": 0.8030412744388125
+      }
+    ],
+    "char_zero_all_lr": [
+      {
+        "seed": 42,
+        "accuracy": 0.9167270094134685,
+        "attack_success_rate": 0.13602941176470587,
+        "baseline_accuracy": 0.9283128167994207
+      },
+      {
+        "seed": 43,
+        "accuracy": 0.9080376538740044,
+        "attack_success_rate": 0.15441176470588236,
+        "baseline_accuracy": 0.9203475742215785
+      },
+      {
+        "seed": 44,
+        "accuracy": 0.9007965242577842,
+        "attack_success_rate": 0.18566176470588236,
+        "baseline_accuracy": 0.9203475742215785
+      },
+      {
+        "seed": 45,
+        "accuracy": 0.8986241853729182,
+        "attack_success_rate": 0.17830882352941177,
+        "baseline_accuracy": 0.9167270094134685
+      },
+      {
+        "seed": 46,
+        "accuracy": 0.9065894279507604,
+        "attack_success_rate": 0.15441176470588236,
+        "baseline_accuracy": 0.9181752353367125
+      }
+    ],
+    "char_zero_all_rf": [
+      {
+        "seed": 42,
+        "accuracy": 0.9131064446053584,
+        "attack_success_rate": 0.17647058823529413,
+        "baseline_accuracy": 0.9536567704561911
+      },
+      {
+        "seed": 43,
+        "accuracy": 0.8986241853729182,
+        "attack_success_rate": 0.19852941176470587,
+        "baseline_accuracy": 0.9500362056480811
+      },
+      {
+        "seed": 44,
+        "accuracy": 0.9246922519913107,
+        "attack_success_rate": 0.15808823529411764,
+        "baseline_accuracy": 0.9623461259956553
+      },
+      {
+        "seed": 45,
+        "accuracy": 0.9065894279507604,
+        "attack_success_rate": 0.1801470588235294,
+        "baseline_accuracy": 0.9500362056480811
+      },
+      {
+        "seed": 46,
+        "accuracy": 0.9036929761042722,
+        "attack_success_rate": 0.18933823529411764,
+        "baseline_accuracy": 0.941346850108617
+      }
+    ],
+    "noise_inject_word_lr": [
+      {
+        "seed": 42,
+        "accuracy": 0.7320782041998551,
+        "attack_success_rate": 0.5900735294117647,
+        "baseline_accuracy": 0.9160028964518465
+      },
+      {
+        "seed": 43,
+        "accuracy": 0.7494569152787834,
+        "attack_success_rate": 0.5367647058823529,
+        "baseline_accuracy": 0.9094858797972484
+      },
+      {
+        "seed": 44,
+        "accuracy": 0.7429398986241854,
+        "attack_success_rate": 0.5753676470588235,
+        "baseline_accuracy": 0.9196234612599565
+      },
+      {
+        "seed": 45,
+        "accuracy": 0.8044895003620565,
+        "attack_success_rate": 0.40625,
+        "baseline_accuracy": 0.9036929761042722
+      },
+      {
+        "seed": 46,
+        "accuracy": 0.7682838522809559,
+        "attack_success_rate": 0.4797794117647059,
+        "baseline_accuracy": 0.9087617668356264
+      }
+    ],
+    "noise_inject_char_lr": [
+      {
+        "seed": 42,
+        "accuracy": 0.8175235336712527,
+        "attack_success_rate": 0.38235294117647056,
+        "baseline_accuracy": 0.8131788559015206
+      },
+      {
+        "seed": 43,
+        "accuracy": 0.7892831281679942,
+        "attack_success_rate": 0.4411764705882353,
+        "baseline_accuracy": 0.8059377262853005
+      },
+      {
+        "seed": 44,
+        "accuracy": 0.8139029688631426,
+        "attack_success_rate": 0.38419117647058826,
+        "baseline_accuracy": 0.8218682114409848
+      },
+      {
+        "seed": 45,
+        "accuracy": 0.8059377262853005,
+        "attack_success_rate": 0.4172794117647059,
+        "baseline_accuracy": 0.8052136133236785
+      },
+      {
+        "seed": 46,
+        "accuracy": 0.7892831281679942,
+        "attack_success_rate": 0.46691176470588236,
+        "baseline_accuracy": 0.8030412744388125
+      }
+    ],
+    "noise_inject_all_lr": [
+      {
+        "seed": 42,
+        "accuracy": 0.7726285300506879,
+        "attack_success_rate": 0.5018382352941176,
+        "baseline_accuracy": 0.9283128167994207
+      },
+      {
+        "seed": 43,
+        "accuracy": 0.7661115133960897,
+        "attack_success_rate": 0.5147058823529411,
+        "baseline_accuracy": 0.9203475742215785
+      },
+      {
+        "seed": 44,
+        "accuracy": 0.7943519188993483,
+        "attack_success_rate": 0.45588235294117646,
+        "baseline_accuracy": 0.9203475742215785
+      },
+      {
+        "seed": 45,
+        "accuracy": 0.8146270818247646,
+        "attack_success_rate": 0.3915441176470588,
+        "baseline_accuracy": 0.9167270094134685
+      },
+      {
+        "seed": 46,
+        "accuracy": 0.77697320782042,
+        "attack_success_rate": 0.4834558823529412,
+        "baseline_accuracy": 0.9181752353367125
+      }
+    ],
+    "noise_inject_all_rf": [
+      {
+        "seed": 42,
+        "accuracy": 0.781317885590152,
+        "attack_success_rate": 0.5110294117647058,
+        "baseline_accuracy": 0.9536567704561911
+      },
+      {
+        "seed": 43,
+        "accuracy": 0.7429398986241854,
+        "attack_success_rate": 0.59375,
+        "baseline_accuracy": 0.9500362056480811
+      },
+      {
+        "seed": 44,
+        "accuracy": 0.7921795800144823,
+        "attack_success_rate": 0.4944852941176471,
+        "baseline_accuracy": 0.9623461259956553
+      },
+      {
+        "seed": 45,
+        "accuracy": 0.778421433743664,
+        "attack_success_rate": 0.5055147058823529,
+        "baseline_accuracy": 0.9500362056480811
+      },
+      {
+        "seed": 46,
+        "accuracy": 0.7480086893555394,
+        "attack_success_rate": 0.5845588235294118,
+        "baseline_accuracy": 0.941346850108617
+      }
+    ]
+  }
+}

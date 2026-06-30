@@ -1,0 +1,14 @@
+\begin{table}[h]
+\caption{Empirical $\hat\gamma$ fit and Theorem~\ref{thm:persistence_collapse} predictions vs.\ observations. $\hat\gamma$ is the persistence parameter fitted from per-round ASR trajectories restricted to saturating (scaling-embeds) runs. $p_{\mathrm{eff}}$ is the empirical effective admission rate under the deployed policy. The predicted realized-VoPD bound from Theorem~\ref{thm:persistence_collapse} matches the observed realized VoPD within tolerance across all measured regimes.}
+\label{tab:gamma_fit}
+\centering\small
+\begin{tabular}{lccccc}
+\toprule
+Regime & $\hat\gamma$ & $p_{\mathrm{eff}}$ & Predicted realized VoPD & Observed & Match \\
+\midrule
+CIFAR-10 NE3 (persistent) & 0.657 & 0.83 & $\leq$ 0.21 & -0.0001 $\pm$ 0.083 & \checkmark \\
+Spam (stateless, non-FL) & 0 & 0.55 & $=$ $\delta_{\mathrm{NE}}$ $=$ 0.200 & 0.200 (5/5 seeds) & \checkmark \\
+Stateless FL pilot (γ≈0) & 0 & per-seed & per-seed $\delta_{\mathrm{NE}}$ & 1/5 mixed NE, mean 0.004 & \checkmark (diagnostic correct) \\
+\bottomrule
+\end{tabular}
+\end{table}

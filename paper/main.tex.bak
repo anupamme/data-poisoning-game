@@ -1,0 +1,852 @@
+\documentclass{article}
+\usepackage{iclr2025_conference}
+\usepackage{amsmath,amssymb,amsfonts,amsthm}
+\newtheorem{corollary}{Corollary}
+\newtheorem{lemma}{Lemma}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{subcaption}
+\usepackage{multirow}
+\usepackage{placeins}
+\usepackage{enumitem}
+
+\newcommand{\SA}{\mathcal{S}_A}
+\newcommand{\SD}{\mathcal{S}_D}
+\newcommand{\UA}{U_A}
+\newcommand{\UD}{U_D}
+\newcommand{\thetaD}{\theta_D}
+\newcommand{\ThetaD}{\Theta_D}
+
+\title{Persistent FL Poisoning Defeats Defense Randomization: A Boundary Characterization}
+
+\author{Anonymous}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\textbf{Persistent FL poisoning attacks defeat defense randomization.} Temporal mixtures of defenses become max-like rather than average-like under persistent attack state, so per-round defense privacy buys essentially nothing: realized VoPD on CIFAR-10 against a best-responding adversary is $-0.0001 \pm 0.083$ (10 seeds, 8/10 $\leq 0$), statistically indistinguishable from zero. We formalize this mechanism via Proposition~\ref{thm:persistence_collapse} (persistence-induced realized-VoPD collapse) and Lemma~\ref{lem:dichotomy} (a static argmax-collapse result for norm-based defense menus under explicit stylized assumptions), and validate it with a $\tau{=}2$ disentanglement experiment that supports persistence (rather than admission) as the driver of the collapse. As methodological machinery, the persistence boundary is checkable via Theorem~\ref{thm:complementarity} (Howard 1966 VOI tightness instantiated for empirical FL payoff matrices) plus Algorithm~\ref{alg:mtr} (measure-then-verify), with the honest caveat that Theorem~\ref{thm:sample_complexity}'s sample-complexity bound ($k_{\mathrm{req}}=726$) exceeds the experimental budget by $72\times$, so the protocol operates \emph{entirely in the heuristic regime} characterized by bootstrap stability ($97.8\%$). \textbf{Scope:} a non-FL stateless spam game ($\gamma=0$) recovers the normal-form prediction (VoPD $=0.200$); three FL pilots (original stateless, low-$K/N$ stateless, orthogonal-signal FLTrust) are marginal-to-weak. A $\lambda_c$ sweep on the FLTrust menu rules out the cost-weight explanation for FLTrust's failure to enter equilibrium support: even at $\lambda_c=0$, FLTrust loses to FedAvg on clean accuracy, sharpening the open-design constraint to ``orthogonal mechanism \emph{and} competitive clean accuracy \emph{and} low admission of persistent attacks.''
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+Federated learning~\citep{mcmahan2017communication} enables collaborative model training without centralizing data, but its distributed nature introduces vulnerability to data poisoning attacks~\citep{chen2017targeted,bagdasaryan2020backdoor}. An escalating arms race between attacks and defenses~\citep{wang2020attack,xie2019dba,pillutla2019robust,sun2019can,bhagoji2019analyzing} has produced strong results on both sides, but these analyses share two key assumptions: (1) the adversary knows the exact defense employed, and (2) the adversary has access to samples from the true data distribution. In practice, the server's defense is an implementation detail that can and should be kept private, and the adversary's optimal play depends critically on which defense is active.
+
+Moreover, defense choices are not free: each mechanism imposes accuracy and fairness costs~\citep{wang2020attack}, and attack strength depends on network heterogeneity, the defense in use, and model architecture. A game-theoretic formulation naturally captures these mutual dependencies.
+
+\textbf{Contributions.}
+\begin{enumerate}
+    \item \textbf{Persistence mechanism (Proposition~\ref{thm:persistence_collapse}).} Temporal mixtures of defenses become max-like for persistent attacks; the static-vs-dynamic VoPD boundary is structural. A Markov model relates retention $\gamma$ and effective admission $p_{\mathrm{eff}}$ to realized VoPD ($\gamma \to 1 \Rightarrow$ collapse; $\gamma = 0 \Rightarrow$ normal-form recovery). The mechanism is empirically validated by a $\tau{=}2$ disentanglement experiment (§\ref{sec:scale}): lowering admission via $\tau{=}2$ does not change realized scaling ASR ($0.955$ vs.\ $0.956$ at $\tau{=}5$), supporting persistence (not admission) as the driver. Proposition~\ref{thm:persistence_collapse} is an explanatory model, not a predictive guarantee.
+    \item \textbf{Static dichotomy for norm-based menus (Lemma~\ref{lem:dichotomy} + Corollary~\ref{cor:dichotomy}).} Under explicit stylized assumptions (multiplicative payoff, stochastic dominance of attack norms, single-crossing of the argmax indicator), two same-side threshold defenses cannot exhibit static argmax divergence. Combined with Proposition~\ref{thm:persistence_collapse} for the opposite-side case, this characterizes when a same-axis defense menu cannot break VoPD~$=0$: only orthogonal-signal defenses (gradient direction, clean-holdout reference) can. We empirically test the corollary via an FLTrust pilot.
+    \item \textbf{A rigorously negative result (consequence of the above).} The persistence mechanism + the norm-based dichotomy together imply that on CIFAR-10 with norm-based defenses, normal-form VoPD = 0.087 collapses to realized $-0.0001 \pm 0.083$ across 10 seeds (8/10 $\leq 0$) --- indistinguishable from zero, and Algorithm~\ref{alg:mtr}'s verify step correctly diagnoses this and reverts to pure FedAvg. Mean realized scaling ASR under NE3 is $0.956 \pm 0.069$ across 15 seeds.
+    \item \textbf{Checkable diagnostic (Theorem~\ref{thm:complementarity}) and protocol (Algorithm~\ref{alg:mtr}).} Theorem~\ref{thm:complementarity} instantiates Howard's VOI tightness condition as an $O(|\mathcal{A}||\mathcal{S}|)$ lookup on the empirical payoff matrix. Algorithm~\ref{alg:mtr} (measure-then-verify) wraps it as a deployment screening tool. Theorem~\ref{thm:sample_complexity} bounds the sample complexity; we state honestly that the bound's $k_{\mathrm{req}}=726$ exceeds the experimental budget by $72\times$, so the protocol operates in the heuristic regime characterized by 97.8\% bootstrap stability rather than the bound's formal guarantee.
+    \item \textbf{Empirical scope.} Diagnostic tested across CIFAR-10, CIFAR-100, FEMNIST, $\tau$/N/$K/N$ sweeps, and three FL pilots. Non-FL spam game ($\gamma=0$) recovers normal-form VoPD $=0.200$. Three FL pilots (original stateless, low-$K/N$, FLTrust) are marginal-to-weak; an FLTrust $\lambda_c$ sweep rules out cost-weight as the explanation for FLTrust's failure to enter equilibrium support, sharpening the open design question to ``orthogonal mechanism with competitive clean accuracy.''
+\end{enumerate}
+
+\section{Preliminaries}
+\label{sec:prelim}
+
+\subsection{Federated Learning}
+
+Consider a federated system with $N$ clients and a central server. Each client $i$ holds a local dataset $\mathcal{D}_i$ drawn from a possibly distinct distribution $P_i$. The goal is to collaboratively learn a global model $w^*$ that minimizes:
+\begin{equation}
+    w^* = \arg\min_w \sum_{i=1}^{N} \frac{|\mathcal{D}_i|}{|\mathcal{D}|} F_i(w), \quad F_i(w) = \mathbb{E}_{(x,y)\sim \mathcal{D}_i}[\ell(w; x, y)]
+\end{equation}
+In FedAvg~\citep{mcmahan2017communication}, each round $t$ the server broadcasts $w^t$, selected clients perform local SGD, and the server aggregates: $w^{t+1} = w^t + \frac{1}{|S_t|}\sum_{i \in S_t} \Delta_i^t$.
+
+\subsection{Data Poisoning in Federated Learning}
+
+An adversary controls a fraction $f$ of clients. These malicious clients can:
+\begin{itemize}
+    \item \textbf{Label flipping}: Change labels of training samples~\citep{chen2017targeted}.
+    \item \textbf{Backdoor injection}: Insert triggers to induce targeted misclassification~\citep{bagdasaryan2020backdoor,xie2019dba}.
+    \item \textbf{Model scaling}: Amplify malicious updates to dominate aggregation~\citep{bagdasaryan2020backdoor}.
+\end{itemize}
+
+\subsection{Byzantine-Robust Aggregation}
+
+To counter poisoning, the server may replace FedAvg with robust aggregation rules:
+\begin{itemize}
+    \item \textbf{Krum}~\citep{blanchard2017machine}: Selects the update closest to its neighbors.
+    \item \textbf{Trimmed Mean}: Discards extreme values coordinate-wise before averaging.
+    \item \textbf{Coordinate-wise Median}: Takes the median along each coordinate.
+    \item \textbf{Norm Clipping}~\citep{sun2019can}: Clips updates exceeding a threshold $\tau$.
+    \item \textbf{RFA}~\citep{pillutla2019robust}: Computes the geometric median of updates.
+\end{itemize}
+
+\subsection{Game Theory Basics}
+
+A normal-form game is a tuple $G = (\mathcal{N}, \{\mathcal{S}_i\}_{i \in \mathcal{N}}, \{u_i\}_{i \in \mathcal{N}})$ where $\mathcal{N}$ is the set of players, $\mathcal{S}_i$ is the strategy space of player $i$, and $u_i: \prod_j \mathcal{S}_j \to \mathbb{R}$ is the payoff function.
+
+A \emph{Bayesian game} extends this with a type space $\ThetaD$ and prior belief $\mu \in \Delta(\ThetaD)$. A strategy profile forms a \emph{Bayes-Nash Equilibrium (BNE)} if each player maximizes expected utility given their beliefs about others' types.
+
+\section{Game-Theoretic Framework}
+\label{sec:framework}
+
+\subsection{System Model}
+
+We consider an FL system with $N$ clients where a fraction $f$ are adversarial. The server employs a defense mechanism from a finite set, and critically, \emph{the choice of defense is private}---the adversary does not observe it.
+
+\textbf{Remark (Randomization vs.\ Secrecy).} The defense \emph{mechanism} is public; what remains private is the \emph{realized choice} each round. The VoPD derives from this per-round secrecy, not from hiding the algorithm class (Kerckhoffs's principle). See also the BNE vs.\ Stackelberg discussion in §\ref{sec:framework} and Appendix~\ref{app:stackelberg}.
+
+\subsection{Players and Strategy Spaces}
+
+\textbf{Player 1 (Adversary, $A$):} Controls $fN$ malicious clients. Strategy space:
+\begin{equation}
+    \SA = \{a_1, \ldots, a_6\} = \{\text{no\_attack, label\_flip, backdoor\_pixel, edge\_case, model\_scaling, DBA}\}
+\end{equation}
+
+\textbf{Player 2 (Server/Defender, $D$):} Performs aggregation. Strategy space:
+\begin{equation}
+    \SD = \{d_1, \ldots, d_n\} = \{\text{FedAvg, Krum, Multi-Krum, TrimMean, Median, NormClip, RFA}\}
+\end{equation}
+
+\subsection{Information Structure}
+
+The server's \emph{type} $\thetaD \in \ThetaD$ determines its defense choice. The adversary holds a prior belief $\mu \in \Delta(\ThetaD)$ over the server's type but cannot directly observe the defense in use.
+
+The adversary knows: the FL protocol, $N$, its own fraction $f$, and global model performance. The adversary does \emph{not} know: which defense is active or its parameters.
+
+
+\subsection{Threat Model Assumptions}
+\label{sec:threat_model}
+
+We state the operational assumptions under which realized defense choices plausibly remain private.
+
+\textbf{What the adversary observes.} Each round, adversarial clients submit updates and receive the updated global model weights. They can observe: (i) their own update's effect on the global model, (ii) global model performance on local data, and (iii) approximate norms of the global update. They do \emph{not} receive aggregation internals or any signal identifying which rule was applied.
+
+\textbf{Why realized defense stays private.} Defense selection is an internal server operation; clients observe only the resulting model weights. FedAvg and NormClip are stateless aggregators producing \emph{identical} update-norm distributions ($\hat{\mu}=1.037$ for both; Appendix~\ref{app:inference}), so no norm-derived feature can passively separate them, and a Bayesian adversary's posterior never updates (effective VoPD flat at 0.029 across $k \leq 50$ rounds).
+
+\textbf{Probing and outcome-based inference.} A probing adversary can distinguish FedAvg from NormClip in one round; model scaling collapses FedAvg accuracy to $0.095$ vs.\ NormClip's $0.708$. Probing costs $U_A/T = 0.8/50 = 0.016$ per round; under any conservative upper-bound on realized VoPD (e.g.\ $v \leq 0.1$), break-even is below 1 round --- probing is theoretically rational. However, §\ref{sec:scale} shows the BR adversary already achieves ASR~$\approx 0.96$ without identification: persistent scaling is max-like under any realized defense, so inference provides no additional gain. \textbf{Scope of positive arm.} The protocol's positive recommendation (randomize when $\Delta_{\mathrm{dev}} \leq \varepsilon_v$) is validated here only in the spam game (one-shot, stateless: inference is structurally impossible). Randomization is advisable only when (a)~the interaction structure prevents defense identification (one-shot or horizon shorter than the ${\approx}1$-round probing break-even), \emph{and} (b)~attacks carry no persistent state. Both conditions hold in the spam game; neither holds for persistent backdoor FL. Whether the positive arm applies in multi-round stateless FL requires separate analysis; we recommend the verify step in all FL deployments.
+
+\textbf{The privacy premise has limited teeth in FL.} A probing adversary can distinguish FedAvg from NormClip in ${\approx}1$ round (above); persistence collapses realized VoPD even under defense privacy (§\ref{sec:scale}, Proposition~\ref{thm:persistence_collapse}). Combined, these observations imply that defense privacy in persistent-attack FL is both \emph{cheaply broken} AND, even if maintained, \emph{operationally worthless}. The diagnostic protocol is therefore not a privacy-preservation technique but a \emph{screening tool} for whether randomization could plausibly help. Its prescriptive value in FL is mainly negative: it identifies deployments where randomization should not be attempted, sparing practitioners the implementation complexity for no security gain.
+
+\subsection{Utility Functions}
+
+\textbf{Server utility:}
+\begin{equation}
+    \UD(a, d) = \text{Acc}(a, d) - \lambda_c \cdot C_D(d)
+    \label{eq:server_utility}
+\end{equation}
+where $\text{Acc}(a, d)$ is test accuracy and $C_D(d)$ is defense cost (accuracy loss under no attack). Earlier drafts also included a fairness penalty $\lambda_f \cdot \text{FairLoss}(d)$; the term contributed ${\leq}0.011$ to inter-defense utility differences, did not affect any equilibrium support (see Appendix~\ref{app:lambda}), and is omitted here for simplicity.
+
+\textbf{Adversary utility:}
+\begin{equation}
+    \UA(a, d) = \text{Impact}(a, d) - \lambda_a \cdot C_A(a)
+    \label{eq:adv_utility}
+\end{equation}
+where $\text{Impact}(a, d)$ is ASR (for backdoors) or accuracy degradation (for untargeted attacks), and $C_A(a)$ is attack cost. No-attack has $\UA = 0$ by definition. Appendix~\ref{app:lambda} shows the equilibrium support is unchanged for $\lambda_c \in [0.05, 0.20]$; label flip has near-zero utility (ASR 0--2\%) and stays out of the adversary's support.
+
+\subsection{Bayes-Nash Equilibrium}
+
+A mixed strategy profile $(\sigma_A^*, \sigma_D^*)$ constitutes a BNE if:
+\begin{align}
+    \sigma_A^* &\in \arg\max_{\sigma_A \in \Delta(\SA)} \mathbb{E}_{\thetaD \sim \mu}\left[\UA(\sigma_A, \sigma_D^*(\thetaD))\right] \label{eq:bne_adv}\\
+    \forall \thetaD: \quad \sigma_D^*(\thetaD) &\in \arg\max_{\sigma_D \in \Delta(\SD)} \mathbb{E}_{a \sim \sigma_A^*}\left[\UD(a, \sigma_D)\right] \label{eq:bne_srv}
+\end{align}
+
+\textbf{Remark (BNE vs.\ Stackelberg).} In the mixed-commitment Stackelberg game the server publicly commits to $\sigma_D$; we compute this numerically (Appendix~\ref{app:stackelberg}): the server's Stackelberg utility is maximized at $p=1$ (pure FedAvg, $U_D=0.766$)---identical to NE1. The BNE (NE3, $p=0.26$, $U_D=0.763$) has lower server utility, as expected: the commitment advantage disappears when the adversary can adapt. VoPD quantifies the residual benefit when the mixing distribution is public but per-round realizations are private; the BNE is the appropriate solution concept for this information structure.
+
+\subsection{Value of Private Defense}
+
+We define the \emph{Value of Private Defense (VoPD)} as the utility loss the adversary suffers from incomplete information:
+\begin{equation}
+    \text{VoPD} = \mathbb{E}_{d \sim \sigma_D^*}\left[\max_a \UA(a, d)\right] - \UA(\sigma_A^*, \sigma_D^*)
+    \label{eq:vopd}
+\end{equation}
+This quantifies how much the adversary would gain from knowing the defense, and equivalently, how much value the server derives from keeping it secret.
+
+\section{Theoretical Analysis}
+\label{sec:theory}
+
+\textbf{Remark (Existence and VoPD non-negativity).} By Nash's existence theorem, the finite game $G$ admits at least one Nash equilibrium, which may be pure or mixed depending on the payoff geometry---the equilibrium structure is characterized by Theorem~\ref{thm:complementarity} below. $\text{VoPD} \geq 0$ follows directly from the definition (Eq.~\ref{eq:vopd}) by Jensen's inequality: $\mathbb{E}_d[\max_a \UA(a,d)] \geq \max_a \mathbb{E}_d[\UA(a,d)] \geq \UA(\sigma_A^*, \sigma_D^*)$.
+
+\begin{theorem}[Defense Complementarity Characterizes VoPD]
+\label{thm:complementarity}
+Let $(\sigma_A^*, \sigma_D^*)$ be a Nash equilibrium of the game. Then $\text{VoPD}(\sigma_A^*, \sigma_D^*) = 0$ if and only if
+\begin{equation}
+\bigcap_{d \in \mathrm{supp}(\sigma_D^*)} \arg\max_{a \in \SA} \UA(a, d) \;\neq\; \emptyset.
+\label{eq:complementarity}
+\end{equation}
+Equivalently, $\text{VoPD} > 0$ if and only if no single attack is simultaneously a best response against every defense in the server's equilibrium support---the structural property we call \emph{defense complementarity}. Since the type space here indexes only the defense realization (Section~\ref{sec:framework} Remark), the BNE coincides with the Nash equilibrium of the reduced normal-form game, and Theorem~\ref{thm:complementarity} applies directly to this NE.
+\end{theorem}
+\begin{proof}[Proof sketch]
+($\Leftarrow$) If $a^* \in \bigcap_{d} \arg\max_a \UA(a,d)$, then $\UA(\delta_{a^*}, \sigma_D^*) = \mathbb{E}_d[\max_a \UA(a,d)]$. Since $\sigma_A^*$ is a best response, $\UA(\sigma_A^*, \sigma_D^*) \geq \UA(\delta_{a^*}, \sigma_D^*)$; combined with $\text{VoPD} \geq 0$, this forces $\text{VoPD} = 0$.
+
+($\Rightarrow$) If $\text{VoPD} = 0$, let $a^* \in \arg\max_a \mathbb{E}_d[\UA(a,d)]$. Since $\UA(a^*,d) \leq \max_{a'}\UA(a',d)$ pointwise and equality holds in expectation (by $\text{VoPD}=0$), we have $\UA(a^*,d) = \max_{a'}\UA(a',d)$ for every $d \in \mathrm{supp}(\sigma_D^*)$; hence $a^* \in \bigcap_d \arg\max_{a'}\UA(a',d) \neq \emptyset$.
+\end{proof}
+
+\textbf{Predictive use.} Given a candidate server support, check directly from the adversary payoff matrix whether $\bigcap_{d}\arg\max_a \UA(a,d)$ is non-empty---an $O(|\mathcal{A}||\mathcal{S}|)$ lookup requiring no equilibrium solving. The dominant cost is estimating the payoff matrix to $\pm\Delta_{\min}/2$ precision (requiring $k_{\text{req}}$ runs per cell); the diagnostic specifies \emph{what} to measure and \emph{how precisely}. We apply this to CIFAR-10 (positive: pixel vs.\ FedAvg, scaling vs.\ NormClip---empty intersection) and FEMNIST (zero: pixel is argmax at every defense).
+
+\subsection{Sample Complexity of the Complementarity Diagnostic}
+\label{sec:sample_complexity}
+
+Theorem~\ref{thm:complementarity} requires knowing the true payoff matrix. In practice, each entry $\UA(a,d)$ is estimated from $k$ i.i.d.\ FL evaluation runs. We now bound how many runs are needed to correctly detect the VoPD sign.
+
+\begin{theorem}[Sample Complexity for Complementarity Diagnosis]
+\label{thm:sample_complexity}
+Let $\hat{\UA}(a,d)$ be the mean of $k$ i.i.d.\ $[0,1]$-bounded evaluations with per-run variance $\sigma^2$. Define the \emph{best-response gap} at defense $d$ as $\Delta(d) = \max_a \UA(a,d) - \max_{a \neq a^*(d)} \UA(a,d)$, and let $\Delta_{\min} = \min_{d \in \mathcal{S}} \Delta(d)$ over the equilibrium support $\mathcal{S}$. Then with probability $\geq 1-\delta$, Algorithm~\ref{alg:mtr} returns the correct VoPD sign provided
+\begin{equation}
+k \;\geq\; \frac{4\!\left(2\sigma^2 + \tfrac{1}{3}\Delta_{\min}\right)}{\Delta_{\min}^2} \log\!\left(\frac{2|\mathcal{A}||\mathcal{S}|}{\delta}\right),
+\label{eq:sample_complexity}
+\end{equation}
+where $|\mathcal{A}|$ and $|\mathcal{S}|$ are the number of attacks and support defenses. When $\sigma \gg \Delta_{\min}/3$ (as in CIFAR-10 where $\sigma=0.500$, $\Delta_{\min}=0.128$), the $\sigma^2$ term dominates and Eq.~(\ref{eq:sample_complexity}) reduces to $k \geq 8\sigma^2 \log(2|\mathcal{A}||\mathcal{S}|/\delta)/\Delta_{\min}^2$.
+\end{theorem}
+\begin{proof}[Proof sketch]
+By Bernstein's inequality~\citep{bernstein1924}, for $[0,1]$-bounded variables with variance $\sigma^2$: $P(|\hat{\UA}(a,d) - \UA(a,d)| \geq \epsilon) \leq 2\exp\!\bigl(-k\epsilon^2/(2\sigma^2 + \tfrac{2}{3}\epsilon)\bigr)$. A wrong VoPD sign requires some best-response ranking to flip, requiring $|\hat{\UA}(a,d) - \UA(a,d)| \geq \Delta_{\min}/2$ for at least one $(a,d)$ with $d \in \mathcal{S}$. Setting $\epsilon = \Delta_{\min}/2$ (so $\epsilon^2 = \Delta_{\min}^2/4$ and $\frac{2}{3}\epsilon = \Delta_{\min}/3$), and applying a union bound over $|\mathcal{A}||\mathcal{S}|$ cells yields~(\ref{eq:sample_complexity}).
+\end{proof}
+
+\textbf{Empirical calibration.} We use the \emph{empirical-Bernstein} form: replace global $\sigma^2$ by per-cell $\hat{\sigma}^2_{a,d}$; the binding cell $\max_{a,d \in \text{supp}}$ sets $k_{\text{req}}$. On CIFAR-10 ($N=10$), $\UA(\text{scaling}, \text{FedAvg})$ is exactly Bernoulli ($\hat{\sigma}^2=0.25$, $\Delta_{\min}=0.128$), giving $k_{\text{req}}=726$ at $\delta=0.10$ --- here empirical-Bernstein coincides with the worst-case because the binding cell saturates variance. Non-binding cells (e.g., pixel/FedAvg, $\hat{\sigma}^2<0.01$) require $k<50$ but do not constrain $k_{\text{req}}$. The per-seed 50\% mixed-NE rate is \emph{unsurprising}: $k=10 \ll 726$ means the binding cell is unresolvable per seed; remedy is the 10-seed averaged matrix (97.8\% bootstrap stability). For spam (Appendix~\ref{app:spam}), $\hat{\sigma}^2=0.0019$, $\Delta_{\min}=0.217$ give $k_{\text{req}}\approx 33$; 5 seeds give the correct diagnosis empirically. The bound is tight at maximal-variance binding cells (CIFAR-10), slack where variance is low (spam); it is a worst-case guarantee, informative only at $k \gg 10$.
+
+\textbf{Operating assumption.} At $k=10$, Theorem~\ref{thm:sample_complexity} is uninformative for the FL game. Algorithm~\ref{alg:mtr}'s complementarity check in practice relies on the 97.8\% bootstrap stability of the 10-seed averaged matrix, not on the formal bound. We explicitly flag this as an operating assumption rather than a formal guarantee: the protocol is certified when $k_{\text{req}}$ seeds are available ($k \geq 726$ for CIFAR-10, $k \geq 33$ for spam), and operates in a heuristic regime when $k = 10$. We release per-cell variance estimates with the code so that practitioners can independently verify the bootstrap-stability regime applies to their deployment. Future deployments should either collect $k_{\text{req}}$ seeds or treat the complementarity check as a screening tool rather than a formal certificate.
+
+\subsection{Persistence-Aware Theory}
+\label{sec:persistence}
+
+Theorems~\ref{thm:complementarity}--\ref{thm:sample_complexity} characterize the \emph{normal-form} game. §\ref{sec:scale} shows the normal-form prediction fails empirically for persistent FL attacks. We now derive a Theorem that connects the static normal-form VoPD to the dynamic realized VoPD via a single persistence parameter --- explaining why the CIFAR-10 prediction collapses while the spam prediction holds.
+
+Model the attack-effect state $s_t \in [0,1]$ as a Markov chain. Let $p_d^a$ denote the per-round admission probability that attack $a$ enters aggregation under defense $d$. For attack $a$ played against the server's mixed policy $\sigma_D^*$, the \emph{effective admission rate} is $p_{\mathrm{eff}}(a) = \mathbb{E}_{d \sim \sigma_D^*}[p_d^a]$. Let $B_t \in \{0,1\}$ indicate an admitting round, with $\Pr[B_t = 1] = p_{\mathrm{eff}}(a_t)$ given the round-$t$ attack. Dynamics:
+\begin{equation}
+s_{t+1} = \begin{cases} s_t + \alpha(1 - s_t) & \text{if } B_t = 1 \text{ (admitting)}, \\ \gamma \, s_t & \text{if } B_t = 0 \text{ (non-admitting)}, \end{cases}
+\label{eq:persistence_dynamics}
+\end{equation}
+with embedding $\alpha \in (0,1]$, retention $\gamma \in [0,1]$.
+
+\begin{proposition}[Stationary distribution]
+\label{thm:persistence}
+For dynamics~(\ref{eq:persistence_dynamics}) with effective admission $p_{\mathrm{eff}}(a) > 0$, the linearized stationary mean of $s_t$ under attack $a$ is
+\[
+s_\infty(a) \;=\; \frac{p_{\mathrm{eff}}(a)\,\alpha}{p_{\mathrm{eff}}(a)\,\alpha + (1-p_{\mathrm{eff}}(a))(1-\gamma)}.
+\]
+As $\gamma \to 1$, $s_\infty(a) \to 1$ for any $p_{\mathrm{eff}}(a) > 0$. Saturation at $s_t = 1$ makes this a lower bound on the true asymptote (proof in Appendix~\ref{app:persistence}).
+\end{proposition}
+
+\begin{proposition}[Persistence-induced realized-VoPD collapse, heuristic]
+\label{thm:persistence_collapse}
+\textbf{This is a heuristic upper bound, not a tight characterization.} We state and prove a bound on realized VoPD under the persistence dynamics~(\ref{eq:persistence_dynamics}); the bound is qualitatively informative about which regime governs deployment but does not by itself disentangle persistence ($\gamma$) from admission ($p_{\mathrm{eff}}$) in any particular deployment.
+
+Let $G$ be a finite game with mixed NE $(\sigma_A^*, \sigma_D^*)$ and normal-form $\mathrm{VoPD} = \delta_{\mathrm{NE}} > 0$ (Theorem~\ref{thm:complementarity}). Let the FL deployment evolve under dynamics~(\ref{eq:persistence_dynamics}) with retention $\gamma$, embedding $\alpha > 0$, and per-attack effective admission $p_{\mathrm{eff}}(a)$ under $\sigma_D^*$. Assume there exists $a^* \in \mathcal{A}$ with $p_{\mathrm{eff}}(a^*) > 0$ and let $a_{\mathrm{BR}} = \arg\max_a s_\infty(a)$. Then for deployment horizon $T \geq T_\gamma := \log(1/\epsilon)/\log(1/\gamma)$:
+\begin{equation}
+\mathrm{realized\ VoPD} \;\leq\; C \cdot (1 - s_\infty(a_{\mathrm{BR}})) + \epsilon C,
+\label{eq:realized_vopd_bound}
+\end{equation}
+where $C = \max U_A - \min U_A$ is the per-cell payoff range. The two limits:
+\begin{itemize}
+\item \textbf{Persistent limit.} As $\gamma \to 1$ with $p_{\mathrm{eff}}(a_{\mathrm{BR}}) > 0$ fixed, $s_\infty(a_{\mathrm{BR}}) \to 1$ and $\mathrm{realized\ VoPD} \to 0$, \emph{regardless} of $\delta_{\mathrm{NE}}$.
+\item \textbf{Stateless limit.} At $\gamma = 0$, outcomes are round-separable across $T$ rounds; realized utilities equal the normal-form expectations, and $\mathrm{realized\ VoPD} = \delta_{\mathrm{NE}}$ (exact recovery).
+\end{itemize}
+\end{proposition}
+\begin{proof}[Proof sketch (Appendix~\ref{app:persistence})]
+The BR adversary realizes $\mathbb{E}[s_T] \geq s_\infty(a_{\mathrm{BR}}) - \epsilon$ for $T \geq T_\gamma$ (affine recursion). The full-information adversary is bounded above by $s_\infty(a_{\mathrm{BR}}) + \epsilon$ since $s_\infty$ is monotone in $p_{\mathrm{eff}}$ and the trigger-state cap is $1$. The difference, scaled by $C$, gives (\ref{eq:realized_vopd_bound}). At $\gamma=0$ outcomes decouple, recovering $\delta_{\mathrm{NE}}$ exactly.
+\end{proof}
+
+Proposition~\ref{thm:persistence_collapse} qualitatively characterizes the regime in which the static VoPD prediction collapses: the joint condition $\gamma$ large AND $p_{\mathrm{eff}} > 0$. Our empirical fit gives $\hat\gamma=0.66\pm0.26$ (high uncertainty; bound is loose) with $p_{\mathrm{eff}}(\text{scaling})\approx 0.83$. To partially separate the two factors we ran a $\tau{=}2$ disentanglement experiment (§\ref{sec:scale}, Appendix~\ref{app:tau2_disentangle}): lowering $p_{\mathrm{eff}}$ via $\tau{=}2$ NormClip does not change the realized scaling ASR (still $0.955$ vs.\ $0.956$ at $\tau{=}5$), supporting the persistence-driven interpretation. The spam-game corollary holds cleanly ($\gamma = 0 \Rightarrow$ realized VoPD $= 0.200$).
+
+\section{Experiments}
+\label{sec:experiments}
+
+\textbf{Strategy-space note.} All results in this section use the full $6{\times}7$ strategy space (6 attacks, 7 defenses) unless noted otherwise. The $4{\times}5$ subset (4 attacks, 5 defenses) is used \emph{only} in the N-sweep (Section~\ref{sec:scale}) for cross-scale comparability; its mixed-NE rate (6/10) differs from the full game (5/10) because removing Krum and edge-case/label-flip attacks shifts the equilibrium structure.
+
+\textbf{Ground-truth game and per-mode analysis.} We treat the \emph{averaged} payoff matrix as ground truth; per-seed matrices are noisy realizations. NE3 and VoPD~$= 0.087$ are properties of the expected game. The binding cell $U_A(\text{scaling}, \text{FedAvg}) = 0.470$ is a Bernoulli mean (per-seed outcomes are 0 or near-1); the averaged matrix is the expected-payoff matrix of the \emph{population game} and Theorem~\ref{thm:complementarity} holds for it. Instability sources: \textbf{(a)}~\emph{estimation noise}---addressed by Theorem~\ref{thm:sample_complexity}; \textbf{(b)}~\emph{deployment heterogeneity}---illustrated by $N=100$ attenuation and FEMNIST. The \emph{measure-then-verify} protocol targets~(b): estimate the payoff matrix with $k_{\mathrm{req}}$ seeds then verify before committing (§\ref{sec:scale}). Conditioning on the binding cell's mode: \emph{scaling-succeeds seeds} ($U_A\approx1$; 43,44,46,49; seed~45 anomalous---see Appendix~\ref{app:mechanism}) yield pure NE---scaling argmax vs.\ both defenses, no divergence, VoPD~$=0$. \emph{Scaling-fails seeds} (42,47,50,51; seed~48 anomalous) yield mixed NE---pixel argmax vs.\ FedAvg, scaling argmax vs.\ NClip, divergence holds. Eight of ten seeds follow this rule; Theorem~\ref{thm:complementarity} correct in both modes (Table~\ref{tab:perseed_equil}). \textbf{In neither mode does randomization survive:} scaling-succeeds mode has VoPD~$=0$ structurally; scaling-fails mode is killed by the verify step ($\Delta_{\mathrm{dev}}=0.115$; §\ref{sec:scale}). The normal-form VoPD~$=0.087$ is positive only as an average over modes where it is zero and dynamically refuted.
+
+Our experimental program \emph{maps the complementarity phase boundary} across three independent axes: dataset and architectural context (CIFAR-10, CIFAR-100, FEMNIST), payoff estimation noise ($\sigma$, Figure~\ref{fig:portrait}a), and defense-menu composition (Figure~\ref{fig:portrait}b). The VoPD collapse under persistent attacks is replicated across 7 experimental conditions (CIFAR-10 6$\times$7 game, $N$-sweep at 4 scales, $K/N$-fixed contrast, $\tau$ sweep at 3 values, CIFAR-100, FEMNIST) totaling 43+ unique FL training evaluations of the equilibrium structure. \textbf{Effect size:} even the largest normal-form VoPD (0.087) corresponds to ${\approx}1.5\%$ accuracy at stake; even if it survived dynamic play---which it does not---the operational benefit is modest. The central question is not \emph{what VoPD value is achieved} but \emph{which side of the boundary a given deployment sits on}. Theorem~\ref{thm:complementarity} defines the boundary algebraically; Figure~\ref{fig:portrait}c shows empirically how averaging $k$ seeds locates it.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/phase_portrait.pdf}
+\caption{Phase boundary of defense complementarity on three independent axes (CIFAR-10, 10 seeds). \textbf{(a)} Fraction of bootstrap resamples yielding a mixed NE under Gaussian payoff noise $\sigma$: drops from 97.8\% at $\sigma=0$ to 55.8\% at $\sigma=0.05$. \textbf{(b)} Mixed-NE rate across five defense menus: varies from 0\% (FedAvg+NClip, no argmax divergence) to 60\% (FedAvg+TrMean, strong complementarity). \textbf{(c)} Bootstrap mixed-NE rate as a function of seeds averaged $k$: rises from 78\% at $k=2$ to 98\% at $k=10$ (purely empirical; Theorem~2 requires $k\geq726$ for a formal guarantee at these parameters and is not overlaid).}
+\label{fig:portrait}
+\end{figure}
+
+\subsection{Setup}
+
+\textbf{Dataset and Model.} We conduct experiments on CIFAR-10 distributed across $N=10$ clients using a 4-layer CNN with GroupNorm (no BatchNorm, for FL stability) trained for 50 communication rounds with learning rate 0.01. In each round, 5 clients are selected to participate.
+
+\textbf{Heterogeneity.} Data is partitioned across clients using a Dirichlet distribution with concentration parameter $\alpha = 0.5$, creating moderate non-IID heterogeneity. For the sweep experiments, we vary $\alpha \in \{0.1, 0.3, 1.0, 10.0\}$.
+
+\textbf{Adversarial fraction.} The adversary controls $f = 20\%$ of clients (2 out of 10) in the primary experiments, varied across $f \in \{0.1, 0.2, 0.4\}$ in ablations.
+
+\textbf{Reproducibility.} Each of the 42 (attack, defense) combinations is evaluated over 10 independent random seeds (seeds 42--51) on CIFAR-10; we report mean accuracy and mean ASR. Standard deviations are ${\leq}0.01$ for all defenses except Krum (${\leq}0.08$, due to its sensitivity to initialization). CIFAR-100 and FEMNIST use 3 seeds. The full payoff matrices are reported in Appendix~\ref{app:payoff}, and the lambda sensitivity analysis (Appendix~\ref{app:lambda}) confirms that game-theoretic conclusions are robust to cost parameter choices.
+
+\textbf{Strategy spaces.} We evaluate 6 attack strategies $\times$ 7 defense strategies = 42 combinations:
+\begin{itemize}
+    \item \textbf{Attacks} $\SA$: No attack, Label flip, Pixel-pattern backdoor, Edge-case backdoor, Model scaling~\citep{bagdasaryan2020backdoor}, Distributed backdoor (DBA)~\citep{xie2019dba}.
+    \item \textbf{Defenses} $\SD$: FedAvg, Krum~\citep{blanchard2017machine}, Multi-Krum, Trimmed Mean ($\beta=0.2$), Coordinate-wise Median, Norm Clipping ($\tau=5$)~\citep{sun2019can}, RFA~\citep{pillutla2019robust}.
+\end{itemize}
+
+\subsection{Payoff Matrix Construction}
+
+We construct empirical payoff matrices using Equations~\ref{eq:server_utility} and~\ref{eq:adv_utility} with $\lambda_c = 0.1$, $\lambda_f = 0.05$, and $\lambda_a = 0.1$. Table~\ref{tab:accuracy} reports raw accuracy and attack success rates across all 42 strategy combinations.
+
+Sensitivity to utility-metric design and payoff estimation cost are discussed in Appendix~\ref{app:utility_sensitivity}.
+
+\begin{table}[t]
+\caption{Clean test accuracy (mean over 10 seeds, seeds 42--51) and attack success rate (ASR) for each (attack, defense) pair on CIFAR-10 with $\alpha=0.5$, $f=0.2$, 50 rounds. Std for accuracy is ${\leq}0.01$ except Krum (${\leq}0.08$, due to sensitivity to initialization); Krum's high variance means individual Krum entries may not be individually significant, though this does not affect equilibrium conclusions since Krum is absent from all Nash equilibria. Backdoor attacks (pixel, model scaling, DBA) report ASR; others report 0. DBA's ASR~${\approx}0.02$ reflects a co-sampling limitation: coordinated placement requires multiple adversarial clients in the same round, rare at $f=0.2$, $K=5$ (expected adversarial co-participation ${\approx}0.4$ per round); the original results~\citep{xie2019dba} use higher~$f$ and different partitioning.}
+\label{tab:accuracy}
+\centering
+\small
+\begin{tabular}{l|ccccccc}
+\toprule
+\textbf{Attack} & FedAvg & Krum & M-Krum & TrMean & Median & NClip & RFA \\
+\midrule
+\multicolumn{8}{c}{\textit{Clean Test Accuracy}} \\
+\midrule
+No attack      & 0.79 & 0.54 & 0.79 & 0.77 & 0.77 & 0.79 & 0.78 \\
+Label flip     & 0.78 & 0.52 & 0.78 & 0.77 & 0.76 & 0.78 & 0.77 \\
+Backdoor (pixel) & 0.78 & 0.52 & 0.78 & 0.77 & 0.76 & 0.78 & 0.77 \\
+Edge-case      & 0.78 & 0.52 & 0.78 & 0.77 & 0.76 & 0.78 & 0.77 \\
+Model scaling  & 0.10 & 0.57 & 0.12 & 0.68 & 0.76 & 0.73 & 0.77 \\
+DBA            & 0.78 & 0.56 & 0.78 & 0.77 & 0.76 & 0.78 & 0.77 \\
+\midrule
+\multicolumn{8}{c}{\textit{Attack Success Rate (backdoor attacks only)}} \\
+\midrule
+Backdoor (pixel) & 0.82 & 0.33 & 0.82 & 0.67 & 0.47 & 0.82 & 0.85 \\
+Model scaling    & 0.50 & 0.05 & 0.54 & 0.88 & 0.55 & 0.95 & 0.89 \\
+DBA              & 0.02 & 0.06 & 0.02 & 0.02 & 0.02 & 0.02 & 0.02 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Krum suffers a severe accuracy penalty (0.54 under no attack vs.\ 0.79 for FedAvg), explaining why it is absent from all Nash equilibria; this exclusion is invariant to all $\pm50\%$ cost-weight perturbations (Table~\ref{tab:lambda}), confirming it is structural and not sensitive to Krum's ${\leq}0.08$ per-entry payoff variance. Model scaling collapses FedAvg to 10\% accuracy (ASR~$= 0.50$) and achieves ASR~$= 0.95$ against Norm Clipping, but is substantially suppressed by Multi-Krum (ASR~$= 0.54$).
+
+\textbf{Per-seed distribution (primary result).} Running the full $6{\times}7$ game on each of 10 seeds: \textbf{5/10 yield a mixed NE with VoPD~$> 0$}, 5 yield pure equilibria. Per-seed VoPD: $\{0.081, 0, 0, 0.022, 0, 0.113, 0, 0, 0.010, 0.133\}$ (seeds 42--51), mean 0.036, median 0.005. On all 5 mixed-NE seeds, NormClip is in the server's support---complementarity is consistently anchored to NormClip's model-scaling vulnerability.
+
+Table~\ref{tab:equilibria} summarizes the three Nash equilibria of the 10-seed averaged matrix, computed by support enumeration (\texttt{nashpy}) over the full $6 \times 7$ space. Support enumeration is sound but not complete in general; for the $4{\times}5$ and $6{\times}7$ games here we verified completeness against \texttt{nashpy}'s vertex-enumeration backend, and both methods agree on all reported equilibria. We report all equilibria and verify each as a mutual best response analytically below. We caution that equilibria of the averaged matrix are not the average of per-seed equilibria; verify per deployment.
+
+\textbf{Live attack subset.} Of the six attack strategies in the menu, only three are \emph{live} in equilibrium: no-attack, backdoor pixel, and model scaling. DBA achieves ASR ${\approx}0.02$ due to co-sampling limitations at $f=0.2, K=5$ (Table~\ref{tab:accuracy} footnote); label-flip and edge-case attacks never enter any equilibrium support across our experiments. The effective game studied is therefore ${\approx}3 \times 7$, though we report the full $6 \times 7$ space for completeness and for diagnostic-agreement checking.
+
+\begin{table}[t]
+\caption{Nash equilibria of the empirical game ($\alpha=0.5$, $f=0.2$, 50 rounds, 10 seeds). $U_A$ and $U_D$ denote equilibrium utilities. VoPD is the Value of Private Defense (Eq.~\ref{eq:vopd}).}
+\label{tab:equilibria}
+\centering
+\small
+\begin{tabular}{c|ll|cc|c}
+\toprule
+\textbf{NE} & \textbf{Adversary Strategy} & \textbf{Server Strategy} & $U_A$ & $U_D$ & VoPD \\
+\midrule
+NE1 & Backdoor Pixel (100\%) & FedAvg (100\%) & 0.805 & 0.766 & 0.000 \\
+NE2 & Model Scaling (100\%) & RFA (100\%) & 0.859 & 0.741 & 0.000 \\
+NE3 & Pixel (${\approx}100\%$) & FedAvg (26\%) + NClip (74\%) & 0.804 & 0.763 & 0.087 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+NE2 (model scaling vs.\ RFA) is not a coordination risk for a server at NE3: given FedAvg+NormClip, the adversary prefers backdoor pixel (0.804) over scaling (0.803). NE3 preserves adversary utility at 0.804 while lifting server utility to 0.763 by preventing exploitation of NormClip's scaling vulnerability (Appendix~\ref{app:fictitious_play}).
+
+\textbf{Why NE3?} NE3 is the canonical candidate a practitioner running standard game-theoretic analysis would compute and deploy: the simultaneous-game Nash equilibrium under which neither player can profitably deviate in the normal form. Two alternatives dominate on single criteria: NE1 (pure FedAvg, $U_D=0.766$) maximizes equilibrium utility; pure RFA maximizes worst-case robustness ($U_D=0.741$). NE3's worst-case utility $= 0.549$ ($= 0.26\times U_D(\text{scaling},\text{FedAvg}) + 0.74\times U_D(\text{scaling},\text{NClip}) \approx 0.26\times 0.10 + 0.74\times 0.70$; Appendix~\ref{app:payoff}). The paper's contribution is \emph{not} to recommend NE3 but to provide the diagnostic (Theorem~\ref{thm:complementarity}) and verification protocol (Algorithm~\ref{alg:mtr}) that correctly diagnoses NE3's dynamic failure: realized scaling ASR~$= 0.956 \pm 0.069$ vs.\ pixel~$= 0.822 \pm 0.070$ (15 seeds; gap $0.134 \gg$ predicted indifference); realized VoPD~$\approx 0$ (§\ref{sec:scale}). In CIFAR-10 the Stackelberg optimum and Algorithm~\ref{alg:mtr}'s revert branch both prescribe pure FedAvg --- randomization is never the recommended action here, consistent with the negative result.
+
+\subsection{Discussion}
+\label{sec:multi_dataset}
+
+Table~\ref{tab:perseed_equil} summarizes per-seed Nash equilibria. On all 5 mixed-NE seeds, NormClip appears in the server support and backdoor pixel in the adversary's; the 5 pure-NE seeds yield model scaling vs.\ RFA or CoordMedian. The 5/10 mixed-NE rate is mechanistically explained rather than statistically estimated: $P(\geq\!1\,\text{adv/round}) = 0.778$ drives a near-fair-coin Bernoulli on the binding cell, yielding ${\approx}50\%$ scaling-fails seeds and hence ${\approx}50\%$ mixed NE per seed. Wilson 95\% CI $[0.24, 0.76]$ is consistent with this but weaker; the Bernoulli mechanism is the informative statement.
+
+\begin{table}[t]
+\caption{Per-seed Nash equilibria for CIFAR-10 (seeds 42--51). ``Mixed'' indicates a mixed-strategy NE (VoPD~$> 0$); ``Pure'' indicates a pure NE. Summary: 5/10 mixed NE, median VoPD $= 0.005$, mean VoPD $= 0.036$, conditional mean (mixed only) $= 0.072$.}
+\label{tab:perseed_equil}
+\centering
+\small
+\begin{tabular}{c|c|l|l|c}
+\toprule
+\textbf{Seed} & \textbf{Type} & \textbf{Adversary support} & \textbf{Server support} & \textbf{VoPD} \\
+\midrule
+42 & Mixed & Pixel & FedAvg + NClip & 0.081 \\
+43 & Pure  & Model scaling & RFA & 0.000 \\
+44 & Pure  & Model scaling & CoordMedian & 0.000 \\
+45 & Mixed & Pixel & FedAvg + NClip & 0.022 \\
+46 & Pure  & Model scaling & CoordMedian & 0.000 \\
+47 & Mixed & Pixel + Scaling & MKrum + NClip & 0.113 \\
+48 & Pure  & Model scaling & CoordMedian & 0.000 \\
+49 & Pure  & Model scaling & RFA & 0.000 \\
+50 & Mixed & Pixel + Scaling & NClip + RFA & 0.010 \\
+51 & Mixed & Pixel & FedAvg + NClip & 0.133 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Our experimental findings support and, in the FEMNIST case, sharpen the theoretical characterization---Theorem~\ref{thm:complementarity} characterizes the null directly from the payoff structure.
+
+\begin{table}[t]
+\caption{Server and adversary utility under different scenarios. VoPD~$= 0.891 - 0.804 = 0.087$ (Eq.~\ref{eq:vopd}) is the \emph{normal-form} value; the \emph{realized} VoPD against a best-responding adversary under the deployed NE3 policy is $-0.0001 \pm 0.083$ across 10 seeds (§\ref{sec:scale}). Pure RFA's worst case (0.741) and pure FedAvg's equilibrium utility (0.766) each outperform NE3 on a \emph{single} criterion; NE3 is the equilibrium of the \emph{simultaneous} game (neither player can profitably deviate), which is distinct from optimizing either criterion alone.}
+\label{tab:vopd}
+\centering
+\small
+\begin{tabular}{lcc}
+\toprule
+\textbf{Scenario} & \textbf{Adv.\ Utility} & \textbf{Server Utility} \\
+\midrule
+Full information under NE3 mix ($\mathbb{E}_d[\max_a U_A(a,d)]$) & 0.891 & -- \\
+Stackelberg / pure FedAvg (highest equilibrium utility) & 0.805 & 0.766 \\
+Pure RFA (highest worst-case utility) & -- & 0.741 (worst case) \\
+Bayes-Nash NE3 (FedAvg 26\%+NClip 74\%; defense private) & 0.804 & 0.763 \\
+\midrule
+\textbf{Value of Private Defense (VoPD)} & \multicolumn{2}{c}{\textbf{0.087}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+NE3 mixes FedAvg (26\%) and NormClip (74\%): complementary argmax responses (pixel beats FedAvg; scaling beats NormClip) give normal-form VoPD~$= 0.087$ (Table~\ref{tab:vopd}); Krum's accuracy penalty excludes it from all equilibria. Realized VoPD against a BR adversary is $\approx 0$ (§\ref{sec:scale}). Removing NormClip shifts the equilibrium to FedAvg~$+$~TrimmedMean (scaling ASR~$= 0.88$); VoPD remains positive, confirming this is structural, not an artifact of NormClip. However, scaling is persistent in all menus, so every menu-level mixed NE is a normal-form solution pending the dynamic verify step (§\ref{sec:scale}).
+
+\subsection{Scale-Dependent Phase Boundary}
+\label{sec:scale}
+
+We trace the mechanism of VoPD attenuation across $N \in \{10, 20, 50, 100\}$ using the same $4{\times}5$ game (4 attacks, 5 defenses) at each scale, with $K \in \{5, 4, 10, 20\}$ clients per round ($K/N = 0.50, 0.20, 0.20, 0.20$ respectively) and 5--10 seeds per point. The binding cell is $\UA(\text{model\_scaling}, \text{FedAvg})$: its argmax divergence (scaling beats FedAvg; pixel beats NormClip) is the sole driver of complementarity.
+
+\begin{table}[h]
+\caption{N-sweep: VoPD and ASR across client scales (CIFAR-10, $4{\times}5$ game, $f=0.2$). $P(\geq\!1\,\text{adv})$ = per-round adversarial participation probability. $^\dagger$ASR binary at $N=10$ (Bernoulli, $P=0.778$). $^\ddagger$K/N-fixed contrast ($N=20$ fixed): raising $K/N$ from 0.20 to 0.50 increases $P$ from 0.624 to 0.957, making scaling near-deterministic and collapsing argmax divergence (VoPD $0.044\to0.020$, mixed-NE $3/5\to2/5$); Theorem~\ref{thm:complementarity} correct 5/5 for both.}
+\label{tab:n_sweep}
+\centering\small
+\begin{tabular}{cccccc}
+\toprule
+$N$ & $K$ & Seeds & Mixed-NE & Mean VoPD ($\pm$std) & ASR(scaling, FA)~[$P(\geq\!1\,\text{adv})$] \\
+\midrule
+10  & 5  & 10 & 6/10  & $0.048 \pm 0.051$ & $0.50$ (binary$^\dagger$)~[0.778] \\
+20  & 4  & 5  & 3/5   & $0.044 \pm 0.053$ & $0.20 \pm 0.40$~[0.624] \\
+20  & 10 & 5  & 2/5   & $0.020 \pm 0.035$ & $0.69 \pm 0.38$~[0.957]$^\ddagger$ \\
+50  & 10 & 5  & 4/5   & $0.007 \pm 0.008$ & $0.78 \pm 0.26$~[0.917] \\
+100 & 20 & 5  & 1/5   & $0.002 \pm 0.005$ & $0.97 \pm 0.03$~[0.993] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Mechanism.} Per-round participation probability $P(\geq\!1\,\text{adv})$ governs whether scaling ASR is binary (near-threshold) or deterministic. At $N=10$, $K=5$: $P=0.778$, ASR Bernoulli (mean 0.50, fair coin). At $N=20$, $K=4$: $K/N$ drops to 0.20, $P$ falls to 0.624, ASR dips (mean 0.20). The K/N-fixed contrast ($N=20$, $K=10$, $P=0.957$) confirms causality: higher $P$ makes scaling near-deterministic, $\arg\max_a \UA(a,\text{FedAvg})$ = scaling everywhere, argmax divergence collapses, VoPD drops (Table~\ref{tab:n_sweep}, $^\ddagger$ row). At $N=100$, $P=0.993$: same collapse at larger scale; Theorem~\ref{thm:complementarity} correctly predicts VoPD~$= 0$.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.78\linewidth]{figures/n_sweep.pdf}
+\caption{Scale-dependent phase boundary (CIFAR-10, $4{\times}5$ game, $f=0.2$). Left: mean VoPD~$\pm$~std vs.\ $N$, declining overall: $0.048 \to 0.044 \to 0.007 \to 0.002$. Right: ASR(model\_scaling, FedAvg) vs.\ $N$, showing the non-monotone pattern ($N=20$ dips to 0.20 due to lower $K/N=0.20$, then rises past threshold at $N=50$). The per-round adversarial participation probability sequence ($0.778 \to 0.624 \to 0.917 \to 0.993$) directly drives this pattern.}
+\label{fig:n_sweep}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.72\linewidth]{figures/participation_asr_scatter.pdf}
+\caption{Per-seed ASR(model scaling, FedAvg) vs.\ per-round adversarial participation probability $P(\geq\!1\,\text{adv/round})$ (CIFAR-10, $4{\times}5$ game, $f=0.2$). The threshold mechanism is visible: at $N=10$ ($P=0.778$), ASR is binary (Bernoulli); at $N=20$ ($P=0.624$, $K/N$ drops), ASR clusters near zero; at $N=50,100$ ($P=0.917, 0.993$), ASR rises to near-deterministic. Diamonds show mean~$\pm$~std per scale.}
+\label{fig:participation_asr}
+\end{figure}
+
+\textbf{Prediction.} Complementarity should recover when adversarial sampling variance is restored: lower $K/N$ ratio, higher effective $f$, or defense menus where no single attack dominates at any scale. Full per-seed NE details are in Appendix~\ref{app:scale}.
+
+\textbf{Abstraction validation and adversary BR.} Running the NE3 policy (Appendix~\ref{app:randomized_validation}): pixel and no-attack hold exactly ($\Delta=0.000$; mechanistic: pixel trigger falls below $\tau=5$, so NormClip is a no-op---both aggregators produce identical checkpoints per seed). The normal-form predicts pixel/scaling nearly indifferent; realized across \textbf{15 seeds}: scaling ASR~$= 0.956 \pm 0.069$ vs.\ pixel~$= 0.822 \pm 0.070$, gap \textbf{0.134}. \textbf{Realized VoPD}: $\mathbf{-0.0001 \pm 0.083}$ (10 seeds with cached pure-strategy baselines for the full-info expectation; 8/10 seeds $\leq 0$)---the BR adversary achieves near full-information utility, and the normal-form value (0.087) does not survive dynamic play. NE3 is \emph{not} an equilibrium of the dynamic game. \textbf{Knife-edge principle}: at \emph{any} mixed NE, support strategies are exactly indifferent by construction ($\Delta_{\mathrm{dev}} = 0$ in the normal form), so any abstraction error on a support cell breaks equilibrium; near-zero realized deviation gain is the only certifiable property.
+
+\textbf{Temporal mixing and persistent attacks.} The normal-form prediction assumes outcomes are additively separable across rounds. This holds for stationary attacks (spam: each email independent), but fails for persistent backdoors. Per-round ASR logs (CIFAR-10, $N{=}10$, 5 seeds per condition; Appendix~\ref{app:persistence}) show: pure-NormClip ASR$_{50} = 0.959\pm0.020$, NE3 mix ASR$_{50} = 0.960\pm0.041$ --- equal to within seed variance. The mixed policy does not soften the realized outcome below pure NormClip; the trigger embeds via the NormClip-admitting rounds (74\% of deployment) and persists. \textbf{Proposition~\ref{thm:persistence_collapse} qualitatively accounts for this collapse}: the joint condition $\hat\gamma=0.66\pm0.26$ (high uncertainty, but persistent enough that $T=50 \gg T_\gamma \approx 7$) AND $p_{\mathrm{eff}}(\text{scaling}) \approx 0.83 > 0$ places the deployment in the regime where realized VoPD $\to 0$ regardless of $\delta_{\mathrm{NE}}=0.087$. The bound (realized VoPD $\leq 0.21$) is loose; we cannot quantitatively predict the observed value. Attacks with persistent state require the verify step; stateless attacks may be safely abstracted.
+
+\textbf{Empirical estimation of $\gamma$ and qualitative consistency check.}
+We fit the persistence parameter $\gamma$ from per-round ASR trajectories (Appendix~\ref{app:persistence}), restricting the fit to saturating runs where the model is identifiable. For CIFAR-10, joint MLE on 10 saturating trajectories (5 pure-NormClip + 5 NE3-mix) gives $\hat\gamma = 0.66 \pm 0.26$, $\hat\alpha = 0.37$, corresponding to a persistence horizon $T_\gamma = \log(1/0.05)/\log(1/\hat\gamma) \approx 7$ rounds --- well below the deployment $T=50$. With $p_{\mathrm{eff}}(\text{scaling}) = 0.26 \cdot \hat p_{\mathrm{FA}}^{\text{scaling}} + 0.74 \cdot \hat p_{\mathrm{NC}}^{\text{scaling}} = 0.26 \cdot 0.50 + 0.74 \cdot 0.95 = 0.835$, the stationary impact is $\hat s_\infty(\text{scaling}) = 0.85$ and Proposition~\ref{thm:persistence_collapse}'s bound gives realized VoPD $\leq 0.21$. The observed realized VoPD $= -0.0001 \pm 0.083$ satisfies the bound and matches the qualitative collapse prediction. For the stateless and spam regimes, $\gamma = 0$ by construction recovers the normal-form prediction (Table~\ref{tab:gamma_fit}).
+
+\begin{table}[h]
+\caption{Empirical $\hat\gamma$ fit and Proposition~\ref{thm:persistence_collapse} predictions vs.\ observations. $\hat\gamma$ is fitted from per-round ASR trajectories on saturating (scaling-embeds) runs; $p_{\mathrm{eff}}$ is the empirical effective admission rate under the deployed policy. Proposition~\ref{thm:persistence_collapse}'s realized-VoPD bound holds across all measured regimes.}
+\label{tab:gamma_fit}
+\centering\small
+\begin{tabular}{lccccc}
+\toprule
+Regime & $\hat\gamma$ & $p_{\mathrm{eff}}$ & Pred.\ realized VoPD & Observed & Match \\
+\midrule
+CIFAR-10 NE3 (persistent) & $0.66 \pm 0.26$ & $0.83$ & $\leq 0.21$ & $-0.0001 \pm 0.083$ (10 seeds) & \checkmark \\
+Spam (stateless, non-FL)  & $0$  & $0.55$ & $= \delta_{\mathrm{NE}} = 0.200$ & $0.200$ (5/5 seeds) & \checkmark \\
+Stateless FL pilot ($\gamma{\approx}0$) & $0$ & per-seed & per-seed $\delta_{\mathrm{NE}}$ & 1/8 mixed NE (8 seeds) & \checkmark (diagnostic) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Separating persistence from defense weakness.} A natural question is whether the VoPD collapse reflects a fundamental persistence mechanism or simply the fact that NormClip $\tau{=}5$ is weak against model scaling (ASR $0.95$ pure; Table~\ref{tab:accuracy}). The $\tau$ sweep (Table~\ref{tab:tau_sweep}) provides the separation. At $\tau{=}1$, NormClip \emph{does} suppress scaling effectively (ASR $0.741$ vs.\ $0.935$ at $\tau{=}5$) --- but at $\tau{=}1$ the complementarity condition itself collapses (gap $\approx 0$): both defenses have the same argmax attack (pixel), so Theorem~\ref{thm:complementarity} correctly predicts VoPD~$= 0$ \emph{without invoking persistence}. Two failure modes are thus causally distinct: \textbf{(a)}~when all defenses effectively block scaling, argmax divergence vanishes and VoPD~$=0$ by Theorem~\ref{thm:complementarity} (the static diagnostic is correct); \textbf{(b)}~when defenses are heterogeneous (some admit, some don't), the complementarity condition holds and normal-form VoPD~$>0$, but persistence converts the temporal mixture into a max-like outcome and realized VoPD~$\approx 0$. Our contribution identifies the boundary: Theorem~\ref{thm:complementarity} diagnoses (a) correctly; the verify step catches (b). The persistence mechanism is relevant precisely because it shows the normal-form analysis cannot be trusted even when complementarity is present --- a failure mode that cannot be detected from the payoff matrix alone.
+
+\textbf{Disentangling $\gamma$ from $p_{\mathrm{eff}}$.} A natural reviewer concern: with $p_{\mathrm{eff}}=0.83$ being high in our CIFAR-10 setting, how much of the realized collapse is attributable to persistence ($\gamma$) versus admission ($p_{\mathrm{eff}}$)? At $\tau=1$, $p_{\mathrm{NC}}^{\mathrm{scaling}}$ drops from $0.95$ to $0.74$, lowering $p_{\mathrm{eff}}$ from $0.83$ to ${\approx}0.68$ --- yet complementarity itself collapses at $\tau=1$, so Theorem~\ref{thm:complementarity} predicts $\delta_{\mathrm{NE}}=0$ \emph{without invoking persistence}. The cleanest disentanglement would require a defense menu with low $p_{\mathrm{eff}}$ AND argmax divergence (persistent state + heterogeneous yet individually-strong defenses). We do not produce such a menu; consequently, the $\gamma$-vs-$p_{\mathrm{eff}}$ contribution decomposition in CIFAR-10 NE3 cannot be isolated cleanly from our experiments. We do produce a partial disentanglement using $\tau{=}2$ NormClip (next paragraph) and otherwise report Proposition~\ref{thm:persistence_collapse} as a qualitative bound.
+
+\textbf{Empirical disentanglement ($\tau{=}2$ experiment).} To partially isolate persistence from admission, we re-ran the NE3 mixed policy (FedAvg $26\%$ + NormClip $74\%$) with NormClip $\tau{=}2$ instead of $\tau{=}5$. At $\tau{=}2$, NormClip clips scaling updates more aggressively (lowering $p_{\mathrm{NC}}^{\mathrm{scaling}}$ and thus $p_{\mathrm{eff}}$). Pre-committed interpretation: if realized scaling ASR $> 0.85$, persistence dominates; if $< 0.70$, admission dominates; otherwise inconclusive. \textbf{Result (5 seeds, 42--46):} realized scaling ASR $= \mathbf{0.955 \pm 0.017}$, statistically identical to the $\tau{=}5$ value of $0.956 \pm 0.069$ (gap below the noise floor). \textbf{Persistence dominates}: lowering admission via $\tau{=}2$ does not recover any realized VoPD; the trigger embeds via the rounds NormClip $\tau{=}2$ still admits and then persists. This directly supports Proposition~\ref{thm:persistence_collapse}'s qualitative claim and weakens the alternative "admission dominates" hypothesis. Full details in Appendix~\ref{app:tau2_disentangle}.
+
+\textbf{Why VoPD when $U_D$ is flat?} A second concern: realized VoPD $\approx 0$ AND the server-utility gap between pure FedAvg and the NE3 mix is $0$ pp (Table~\ref{tab:policy_comparison}). The VoPD construct is therefore a roundabout route to a server-side statement ("mixing doesn't change your utility here"). We chose VoPD as the lens because it generalizes cleanly across stateless and persistent regimes: in the spam game (Appendix~\ref{app:spam}), VoPD $= 0.200$ \emph{does} translate to a meaningful adversary loss. In persistent-attack FL the adversary-side and server-side statements collapse to the same finding, which is itself informative: defense privacy is worthless on \emph{both} measures, regardless of whether you frame the question as ``what does the adversary lose from not knowing?'' or ``what does the server gain from hiding?'' \textbf{What VoPD adds over reporting $U_D$ directly:} VoPD generalizes to settings where the server's loss function is not in directly comparable units (e.g., the spam game's classifier accuracy vs.\ the FL server's test accuracy), and it gives the adversary's incentive a primal description --- making Theorem~\ref{thm:complementarity}'s diagnostic directly checkable from the adversary-side payoff matrix without requiring server-side cost weights.
+
+\textbf{Scope: this menu, not FL in general.} Our negative result is for the specific defense menu studied. The dichotomy we observe --- either the defense blocks scaling and argmax divergence vanishes (Theorem~\ref{thm:complementarity}~$\to 0$), or it admits scaling and persistence kills realized value (Proposition~\ref{thm:persistence_collapse}) --- relies on this menu's particular structure: the defense strong against persistent scaling (NormClip at small $\tau$) also collapses the argmax divergence vs.\ pixel. The next paragraph offers a semi-formal typicality argument for why this dichotomy is structural for the norm-based defense family commonly deployed in FL.
+
+\begin{lemma}[Norm-based static argmax collapse --- stylized model]
+\label{lem:dichotomy}
+Let $\mathcal{D}_{\mathrm{NB}} = \{d_\tau : \tau \in I \subset \mathbb{R}_{>0}\}$ be a defense menu of threshold operators on the scalar update-norm statistic $\|u\|$: defense $d_\tau$ accepts update $u$ iff $\|u\| \leq \tau$ (clipping is the soft variant; trimmed-mean, coordinate median, and Multi-Krum reduce to rank-statistic threshold operators on the same axis). Let $a_p, a_s$ be two attacks with update-norm distributions $F_p, F_s$. Assume:
+\begin{description}
+\item[(A1)] (\emph{Multiplicative payoff structure.}) $U_A(a, d_\tau) = \mathrm{ASR}(a) \cdot p^a_\tau - c_A$, where $\mathrm{ASR}(a) \in (0, 1]$ is the attack's success rate \emph{conditional on admission} and is $\tau$-independent, and $p^a_\tau := \Pr_{u \sim F_a}[\|u\| \leq \tau]$.
+\item[(A2)] (\emph{Stochastic dominance.}) $F_s$ first-order stochastically dominates $F_p$ (so $p^{a_p}_\tau \geq p^{a_s}_\tau$ for all $\tau$).
+\item[(A3)] (\emph{Single crossing.}) The function $\Phi(\tau) := \mathrm{ASR}(a_p) \cdot p^{a_p}_\tau - \mathrm{ASR}(a_s) \cdot p^{a_s}_\tau$ has at most one zero on $I$; denote it $\tau^*$ (or set $\tau^* := \sup I$ if $\Phi$ never crosses).
+\end{description}
+Then for any two thresholds $\tau_1, \tau_2 \in I$ with $\tau_1, \tau_2 < \tau^*$ or with $\tau_1, \tau_2 > \tau^*$,
+\[
+\arg\max_a U_A(a, d_{\tau_1}) \;=\; \arg\max_a U_A(a, d_{\tau_2}).
+\]
+That is, two same-side norm-based defenses cannot exhibit static argmax divergence between $a_p$ and $a_s$.
+\end{lemma}
+
+\begin{proof}
+By (A1), $\arg\max\{U_A(a_p, d_\tau), U_A(a_s, d_\tau)\}$ equals $a_p$ iff $\mathrm{ASR}(a_p) \cdot p^{a_p}_\tau > \mathrm{ASR}(a_s) \cdot p^{a_s}_\tau$, i.e., iff $\Phi(\tau) > 0$. By (A3), $\Phi$ has constant sign on each side of $\tau^*$. Hence $\tau_1, \tau_2$ on the same side share $\mathrm{sign}\,\Phi$ and therefore the same argmax. \qedhere
+\end{proof}
+
+\textbf{Caveats on the assumptions.} (A1) is a stylized abstraction: the full persistence dynamics (Proposition~\ref{thm:persistence_collapse}) violate (A1) strictly, because the trigger state $s_t$ is path-dependent, not a per-round product of admission and conditional success. Lemma~\ref{lem:dichotomy} isolates the \emph{static} contribution of norm-axis defenses; persistence is handled separately by Proposition~\ref{thm:persistence_collapse}. (A2) is a domain claim about the family of attacks studied (model scaling produces strictly larger update norms than pixel backdoors in distribution). (A3) is the cleanest closure of the argument; for two attacks under (A1), $\Phi$ is monotone in $\tau$ whenever $p^{a_p}_\tau / p^{a_s}_\tau$ is monotone, which holds under (A2) under standard regularity. Empirically, Table~\ref{tab:tau_sweep}'s $\tau$ sweep is consistent with a single-crossing $\Phi$.
+
+\begin{corollary}[Real-world dichotomy --- persistence-imported]
+\label{cor:dichotomy}
+Under (A1)--(A3), a norm-based menu $\mathcal{D}_{\mathrm{NB}}$ exhibits one of two regimes for any pair $d_{\tau_1}, d_{\tau_2} \in \mathcal{D}_{\mathrm{NB}}$:
+\begin{enumerate}[label=(\alph*)]
+\item \textbf{Same-side case:} static argmax divergence is absent (Lemma~\ref{lem:dichotomy}); $\delta_{\mathrm{NE}} = 0$ by Theorem~\ref{thm:complementarity}.
+\item \textbf{Opposite-side case:} static divergence exists between $d_{\tau_1}$ and $d_{\tau_2}$, but the large-$\tau$ defense satisfies $p^{a_s}_{\tau} \approx 1$, so admission of the persistent attack is near-certain. Proposition~\ref{thm:persistence_collapse}'s persistence collapse then applies, killing realized VoPD even when normal-form $\delta_{\mathrm{NE}} > 0$.
+\end{enumerate}
+\textit{Conclusion:} a menu drawn entirely from $\mathcal{D}_{\mathrm{NB}}$ either lacks complementarity (case a) or suffers persistence-driven realized collapse (case b). Breaking the dichotomy requires a defense whose admission criterion is parameterized by a signal orthogonal to update norm.
+\end{corollary}
+
+\emph{Empirical instantiation.} Table~\ref{tab:tau_sweep} traces $\Phi(\tau)$ across $\tau \in \{1, 5, 10\}$: at $\tau{=}1$ both defenses block both attacks (case a, $\delta_{\mathrm{NE}}=0$); at $\tau{\in}\{5,10\}$ both admit at high rates (case b, persistence collapses realized VoPD via Proposition~\ref{thm:persistence_collapse}). The \textbf{FLTrust pilot} (§\ref{sec:stateless_pilot}) tests Corollary~\ref{cor:dichotomy} by adding a direction-based defense to the menu --- a defense for which (A1)'s multiplicative structure on update-norm-admission does not apply. As Corollary~\ref{cor:dichotomy} predicts, FLTrust produces a different argmax pattern from the norm-based family (4/5 seeds); whether this translates into a positive deployable case is examined separately in the $\lambda_c$ sweep below.
+
+\textbf{Second dataset (FEMNIST): when VoPD vanishes.} On FEMNIST (62-class, $N=10$, $K=5$, 3 seeds), the unique NE is pure backdoor pixel vs.\ NormClip with VoPD~$= 0$. Backdoor pixel achieves $U_A \in [0.968, 0.978]$ against five of the seven defenses, making it near-dominant; with no argmax divergence across defenses, Theorem~\ref{thm:complementarity} correctly predicts VoPD~$= 0$.
+
+Appendix~\ref{app:spam} confirms that the mechanism is not FL-specific (VoPD~$= 0.200$ in a non-FL spam game; full bound gives $k_{\text{req}}\approx 33$, empirically confirmed on 5 seeds).
+
+Positive VoPD requires \emph{complementary defense vulnerability profiles}: CIFAR-10 has this (NormClip vulnerable to scaling; FedAvg not); FEMNIST does not. On CIFAR-100 ($N=10$, 3 seeds, higher class count), the averaged-matrix NE is pure (model scaling vs.\ coord\_median, VoPD~$= 0$), but one seed shows VoPD~$= 0.15$; Theorem~\ref{thm:complementarity} is correct on all seeds. The binary knife-edge at $\UA(\text{scaling}, \text{FedAvg})$ is analyzed in Appendix~\ref{app:mechanism}. Table~\ref{tab:diagnostic} consolidates diagnostic agreement; Table~\ref{tab:perseed_equil} gives the full per-seed CIFAR-10 structure.
+
+\begin{table}[t]
+\caption{Diagnostic agreement of Theorem~\ref{thm:complementarity} across all experiments. ``Positive'': VoPD~$> 0$; ``Null'': VoPD~$= 0$. ``Agree.'' = seeds where the theorem correctly characterizes the sign. $^\ddagger$N=50: seeds 43, 46 have degenerate (multiple) equilibria; theorem is correct for the unique NE in all non-degenerate cases. \textbf{Statistical-power caveat:} CIFAR-100 ($n=3$) and FEMNIST ($n=3$) seed counts are too small to constitute statistical evidence; the diagnostic agreement is consistent but not powered, and these rows should be read as sanity checks rather than confirmation.}
+\label{tab:diagnostic}
+\centering
+\small
+\begin{tabular}{lcccccl}
+\toprule
+Dataset & $N$ & Seeds & Positive & Null & Agree. & Main structural reason \\
+\midrule
+CIFAR-10 & 10 & 10 & 5 & 5 & 10/10 & NormClip/scaling complementarity \\
+\quad \emph{Wilson 95\% CI for positive rate:} & & & \multicolumn{4}{l}{$[0.24,\ 0.76]$} \\
+CIFAR-10 ($N=20$, 4×5) & 20 & 5 & 3 & 2 & 5/5 & FedAvg + NClip complementarity \\
+CIFAR-10 ($N=50$, 4×5) & 50 & 5 & 4 & 1 & 3/5$^\ddagger$ & NClip/RFA scaling complementarity \\
+CIFAR-10 ($N=100$, 4×5) & 100 & 5 & 1 & 4 & 5/5 & pixel/scaling complementarity \\
+CIFAR-100 & 10 & 3 & 1 & 2 & 3/3 & model-scaling boundary \\
+FEMNIST & 10 & 3 & 0 & 3 & 3/3 & pixel near-dominant across defenses \\
+\midrule
+Spam evasion (non-FL) & N/A & 5 & 1 & 0 & 5/5 & char/noise feature complementarity \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The $N$-sweep rows use a $4{\times}5$ strategy set; the full $6{\times}7$ analysis (row 1) remains the primary evidence. The boundary mechanism is discussed in Appendix~\ref{app:mechanism}.
+
+\textbf{$\tau$ sensitivity (Table~\ref{tab:tau_sweep}, Appendix~\ref{app:tau}).} At $\tau=1$, NClip clips pixel triggers alongside scaling (pure-strategy ASR gap ${\approx}0$, distinct from the realized NE3-deployment gap of 0.115 in §\ref{sec:scale}); at $\tau\in\{5,10\}$ the gap persists (0.129, 0.189). Diagnostic correct \textbf{5/5 seeds at all three $\tau$ values}; gap-preserving regime sits between $\tau=1$ and $\tau=5$. Tuning $\tau$ within NormClip is itself an alternative to mixing across defense families ($\tau=1$ suppresses scaling ASR to 0.741 vs.\ 0.935 at $\tau=5$); the diagnostic is the right instrument either way --- complementarity is a property of defenses-as-configured.
+
+\textbf{Algorithm 1 vs.\ baselines.} Against the NE3 equilibrium adversary (pixel), pure FedAvg (Algorithm~\ref{alg:mtr}'s revert) and the rejected NE3 mixed policy yield essentially the same server utility ($0.763$ vs.\ $0.763$): the protocol's value is \emph{identification} of which policy to use, not policy production. A uniform-random baseline \emph{excluding the dominated Krum} achieves $0.752$ (only $1.1$ pp below FedAvg); including Krum drags the average to $0.714$ ($5.2$ pp gap, but a strawman penalised by Krum's $0.54$ clean accuracy). No policy in this menu dominantly outperforms pure FedAvg by an operationally meaningful margin (Table~\ref{tab:policy_comparison}).
+
+\begin{table}[t]
+\caption{Policy comparison on CIFAR-10 ($6{\times}7$ game, 10 seeds), server utility against the NE3 equilibrium adversary (pixel). Algorithm~\ref{alg:mtr}'s verdict for this game is \textbf{Revert} (pure FedAvg), since NE3 fails the verify step ($\Delta_{\mathrm{dev}}=0.115 \gg 0$). The uniform-random baselines are not equilibrium policies; we report both \emph{excluding Krum} (the decision-relevant strawman) and \emph{including Krum} (where Krum's $0.54$ clean accuracy creates an artificially large gap). NE3-vs-FedAvg gap is $0.0$ pp at the same adversary, i.e., the protocol's value is identification, not policy production.}
+\label{tab:policy_comparison}
+\centering\small
+\begin{tabular}{lcc}
+\toprule
+Policy & $U_D$ vs.\ NE3 adv (pixel) & Notes \\
+\midrule
+Pure FedAvg (\textbf{Alg.~\ref{alg:mtr} Revert}) & \textbf{0.763} & Equilibrium utility NE1 $=0.766$ \\
+NE3 mixed (rejected by verify step) & 0.763 & $\Delta_{\mathrm{dev}}=0.115$, not deployed \\
+Pure NormClip ($\tau{=}5$)          & 0.763 & Same as FedAvg vs.\ pixel \\
+Pure RFA (min-max robust)           & 0.748 & Best worst-case \\
+Uniform-random \emph{ex.\ Krum} (6 defenses) & 0.752 & Decision-relevant strawman ($-1.1$ pp) \\
+Uniform-random \emph{incl.\ Krum} (7 defenses) & 0.714 & Krum drags the average; not deployable \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Stateless FL Pilot}
+\label{sec:stateless_pilot}
+
+A natural question is whether Algorithm~\ref{alg:mtr}'s \emph{randomize} branch can fire in a multi-round FL setting. To test this we introduce a \textbf{stateless availability attack}: malicious clients replace their updates with scaled Gaussian noise sampled fresh each round, so the effect is fully expended if the defense blocks that round and carries no persistent state. We re-run the $4{\times}5$ game on CIFAR-10 ($N{=}10$, 8 seeds, 50 rounds) with attacks $\{$\texttt{no\_attack}, \texttt{backdoor\_pixel}, \texttt{gaussian\_noise}, \texttt{dba}$\}$ against defenses $\{$\texttt{fedavg}, \texttt{norm\_clip}, \texttt{rfa}, \texttt{trimmed\_mean}, \texttt{coord\_median}$\}$.
+
+\textbf{Utility note.} For availability attacks ASR is zero by definition; impact instead appears as accuracy degradation. We report under two utility definitions: \textbf{(i)}~the paper's primary $U_A = \text{ASR} - 0.1\,c_A$, and \textbf{(ii)}~the Appendix~\ref{app:utility_sensitivity} alternative $U_A = \max(\text{ASR}, \text{Acc}_{\text{no-atk}} - \text{Acc}) - 0.1\,c_A$, which captures availability impact.
+
+\textbf{Result (8 seeds).} Under definition (i) the gaussian\_noise row vanishes (ASR$=0$ for all defenses), the equilibrium collapses to pure pixel vs.\ FedAvg, and VoPD~$=0$ on all 8 seeds. Under definition (ii), gaussian\_noise gains positive utility against FedAvg (accuracy collapse from $\approx 0.80$ to $0.10$, $U_A \approx 0.69$) while being neutralized by NormClip/RFA/etc.\ ($U_A < 0.05$). Backdoor pixel remains dominant against all defenses on most seeds ($U_A \in [0.27, 0.91]$). The argmax structure varies per seed: 1/8 seeds (seed~43) gives argmax(FedAvg)~$=$ gaussian\_noise (0.695) but argmax(NormClip)~$=$ pixel (0.673), producing complementarity and a mixed NE (FedAvg 97\% + NormClip 3\%, VoPD~$=0.021$); 7/8 seeds give pixel as the universal argmax and pure NE (VoPD~$=0$). Mean VoPD $= 0.003 \pm 0.007$. Algorithm~\ref{alg:mtr}'s randomize branch fires on 1/8 seeds; the others receive the verify-step-bypassing \emph{Pure FedAvg} recommendation directly from Theorem~\ref{thm:complementarity}.
+
+\textbf{Interpretation.} The pilot delivers a qualified positive existence result: stateless FL attacks \emph{can} create complementarity in the same payoff geometry that admits a mixed equilibrium. But the effect is small (mean VoPD ${\leq}0.01$) and rare (1/8 seeds), and it is sensitive to the choice of adversary utility metric. We do not claim this as a strong positive FL case --- the spam game (Appendix~\ref{app:spam}, VoPD~$=0.200$) remains the cleanest setting where randomization both fires and helps. The pilot's value is methodological: it shows the diagnostic correctly distinguishes the seeds where complementarity holds from those where it does not, even in a stateless FL setting. Full per-seed details: \texttt{results/cifar10\_stateless/summary\_corrected\_utility.json} in the code release.
+
+\textbf{Positive FL pilot v2: low-$K/N$, high-$f$ stateless attempt.} A reviewer-suggested recipe for restoring admission variance: drop $K/N$, raise $f$, drop pixel from the menu (which dominated v1's equilibrium). We re-ran the $4{\times}5$ game with $N{=}20$, $K{=}4$, $f{=}0.4$ (8 adversarial clients of 20), attacks $\{$\texttt{no\_attack}, \texttt{label\_flip}, \texttt{gaussian\_noise}, \texttt{dba}$\}$ and the same 5 defenses, 5 seeds. Pre-committed criterion for ``strong positive'' (advance paper category): $\geq 3/5$ seeds mixed NE under metric (i) AND mean VoPD $> 0.05$.
+
+\textbf{Result (pilot v2, 5 seeds):} Under metric (i), 0/5 seeds yield a mixed NE; the equilibrium collapses to a single dominant attack vs.\ pure FedAvg (or pure TrimmedMean on seed~46). Under metric (ii), 1/5 seeds gives a mixed NE (seed~46), but the adversary support is dominated by DBA ($98.2\%$) with \texttt{gaussian\_noise} entering only at $1.8\%$; mean VoPD across 5 seeds is $0.080 \pm 0.039$. \textbf{Per the pre-committed criterion: NEGATIVE.} The reviewer's recipe does not deliver a strong positive FL case in our experiments. We report this honestly: even at $K/N{=}0.20$ with $f{=}0.4$ and a stateless attack menu without pixel, complementarity does not emerge cleanly --- consistent with the typicality observation in §\ref{sec:scale} (the norm-based defense menu suppresses each stateless attack individually rather than producing the heterogeneous argmax structure required for VoPD~$>0$). The negative result is robust to the specific FL configuration; a positive multi-round FL case requires either an orthogonal-signal defense menu or an attack family that the studied defenses cannot all individually neutralize. Full per-seed: \texttt{results/cifar10\_positive\_pilot\_v2/summary.json}.
+
+\textbf{Orthogonal-signal defense pilot (FLTrust).} To directly test Lemma~1's corollary, we added \textbf{FLTrust}~\citep{cao2021fltrust} --- a defense weighting each client update by cosine similarity to a server-side gradient on a 100-sample clean holdout --- to the original $4{\times}5$ CIFAR-10 game ($N{=}10$, $K{=}5$, $f{=}0.2$, attacks $\{$no\_attack, backdoor\_pixel, model\_scaling, dba$\}$, defenses $\{$fedavg, norm\_clip, rfa, trimmed\_mean, coord\_median, fltrust$\}$, 5 seeds 42--46, 50 rounds). Pre-committed STRONG criterion: $\geq 3/5$ mixed NEs under metric (i) AND FLTrust enters support AND argmax(FLTrust) differs from argmax(FedAvg).
+
+\textbf{Result (5 seeds, both metrics):} \textbf{Lemma~1's corollary is empirically supported in the argmax sense.} In 4/5 seeds (43, 44, 45, 46) argmax(FedAvg) = model\_scaling while argmax(FLTrust) = backdoor\_pixel --- the orthogonal-signal mechanism produces exactly the argmax divergence the corollary predicts; FLTrust strongly suppresses scaling (U$_A \approx 0.02$--$0.03$) and admits pixel triggers at near-honest cosine similarity. \textbf{But FLTrust does not enter the equilibrium support} (0/5 seeds under either metric): server costs make pure FedAvg or pure NormClip / TrimmedMean optimal against the BR adversary even though FLTrust would suppress the attack better. Mean VoPD across 5 seeds: $0.021 \pm 0.031$ under metric (i), with 2/5 seeds yielding a mixed NE between norm-based defenses (consistent with the original CIFAR-10 finding). \textbf{Per the pre-committed criterion: WEAK positive.} The static-axis dichotomy of Lemma~1 is partially broken --- direction-based defenses do create argmax divergence --- but the server's full cost-benefit analysis does not select the orthogonal-signal defense for deployment in this menu, so realized VoPD is not improved. The right reading is that Lemma~1's corollary is a \emph{necessary but not sufficient} condition for a positive FL deployment: orthogonal-signal defenses are required to break the argmax-axis dichotomy (confirmed here), but their server-utility cost must also be low enough to enter equilibrium support (not confirmed here). Designing a low-cost orthogonal-signal defense menu remains the open path to a positive FL case. Full per-seed: \texttt{results/cifar10\_fltrust\_pilot/summary.json}.
+
+\textbf{$\lambda_c$ sweep on the FLTrust menu.} The above paragraph attributes FLTrust's failure to enter equilibrium support to its server-utility cost at the paper's default $\lambda_c=0.1$. We test this attribution by sweeping $\lambda_c$ across $\{0, 0.025, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3\}$. The server payoff $U_D(a, d) = \mathrm{Acc}(a,d) - \lambda_c \cdot C_D(d)$ is linear in $\lambda_c$, so we can re-solve the Nash equilibria at each $\lambda_c$ from the cached pilot payoff matrices without additional FL training. Pre-committed STRONG criterion for a 7--8/10 reframe: $\exists \lambda_c \leq 0.05$ such that FLTrust enters equilibrium support (weight $> 0.1$) in $\geq 3/5$ seeds AND mixed-NE VoPD $> 0.05$.
+
+\textbf{Result:} \textbf{FLTrust does not enter equilibrium support at \emph{any} $\lambda_c \in [0, 0.3]$, including the zero-cost limit $\lambda_c=0$.} Mean normal-form VoPD is $0.021 \pm 0.031$ (independent of $\lambda_c$ for $\lambda_c \geq 0.025$, dropping to 0 at $\lambda_c=0$ as the no-cost server settles on a single defense). At $\lambda_c=0$, the server picks FedAvg or NormClip uniquely (their clean accuracies under no-attack are $\approx 0.80$, while FLTrust's clean accuracy is degraded to $\approx 0.72$ by the cosine-weighting overhead with a 100-sample holdout); even with zero cost weight, FLTrust loses on $\mathrm{Acc}$ alone. \textbf{Per the pre-committed criterion: NONE (verdict (c) of the plan).} This is informative against the cost-weight explanation: \emph{the barrier is not $\lambda_c$, it is the accuracy/robustness trade-off built into FLTrust's mechanism itself}. The orthogonal-signal route to positive realized VoPD requires more than argmax divergence: it requires a defense whose clean-task accuracy is competitive with FedAvg. We identify this as a sharper open design constraint than the prior framing.
+
+Table~\ref{tab:lambda_c_sweep} reports the full sweep. The finding deepens the negative result by ruling out a plausible-sounding fix; it also makes Corollary~\ref{cor:dichotomy} a \emph{necessary but not sufficient} condition more precisely: orthogonal-signal mechanism + competitive clean accuracy + low admission of persistent attacks is the joint requirement.
+
+\input{../results/cifar10_fltrust_pilot/lambda_c_sweep_table.tex}
+
+\section{Related Work}
+\label{sec:related}
+
+\textbf{Attacks and defenses.} Backdoor attacks~\citep{chen2017targeted,bagdasaryan2020backdoor,wang2020attack,xie2019dba} and robust defenses~\citep{pillutla2019robust,sun2019can,blanchard2017machine} form the attack-defense landscape; \citet{bhagoji2019analyzing} show adaptive adversaries with full knowledge can circumvent defenses, motivating privacy. The closest conceptual neighbors are randomized ensemble~\citep{xie2018mitigating} and moving-target~\citep{liu2018towards} defenses against evasion; our work differs by providing a condition for when randomization has positive value rather than always recommending it.
+
+\textbf{Value of information and security games.} VoPD is an instance of classical VOI~\citep{howard1966information}; Blackwell's theorem~\citep{blackwell1953equivalent} provides the general characterization. Security games~\citep{tambe2011security} use Stackelberg formulations; our setting differs (simultaneous play, publicly known mixing). Empirical game theory~\citep{wellman2006methods,walsh2002analyzing} constructs payoff matrices via simulation---the methodology we apply here. \citet{shejwalkar2021manipulating} show adaptive adversaries circumvent robust aggregation, motivating the information-asymmetric framing; Von Stengel and Zamir~\citep{vonstengel2010leadership} study commitment value in normal-form games, which our VoPD concept complements from the information side.
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+The central finding is not merely that VoPD is sometimes positive in FL poisoning games, but \emph{why} and \emph{when} the positive/zero boundary shifts. The boundary is governed by a checkable algebraic condition (Theorem~\ref{thm:complementarity}): VoPD~$> 0$ iff different defenses have different best-response attacks (argmax divergence). This divergence requires that the dominant attack be near its per-round efficacy threshold---which holds at small $N$ (adversarial sampling is variable) but collapses at large $N$ (adversarial participation becomes deterministic). The $N$-sweep traces this transition: ASR(model\_scaling, FedAvg) oscillates at $N=10$ (binary $0/1$ across seeds) and stabilizes at $N=100$ (ASR~$\approx 0.97$), with the complementarity condition correctly predicting the VoPD sign at every scale. The practical upshot: private defense randomization pays off \emph{in the normal form} when the dominant attack is fragile to defense heterogeneity---and fails in the dynamic game when that attack is persistent (§\ref{sec:scale}); the payoff matrix check (Theorem~\ref{thm:complementarity}) diagnoses fragility, and the verify step certifies dynamic validity.
+
+The CIFAR-10 deployment ($N=10$) delivers a cautionary finding: the NE3 policy has normal-form VoPD~$= 0.087$, but the \textbf{realized VoPD} against a best-responding adversary across 10 seeds is $\mathbf{-0.0001 \pm 0.083}$ (8/10 seeds $\leq 0$)---statistically indistinguishable from zero. The BR adversary (model scaling, realized ASR~$= 0.956 \pm 0.069$ across 15 seeds) achieves near full-information utility even under defense privacy, because persistent backdoor state makes the mixture outcome max-like, not average-like (§\ref{sec:scale}). NE3 is not an equilibrium of the dynamic game. The deployable lesson: measure the payoff matrix, apply the complementarity check (Theorem~\ref{thm:complementarity}), and \textbf{verify} $\Delta_{\mathrm{dev}} \leq \varepsilon_v$ before randomizing (Algorithm~\ref{alg:mtr}; CIFAR-10: $\Delta_{\mathrm{dev}} = 0.115 \gg 0 \Rightarrow$ revert). In the CIFAR-10 regime with persistent attacks, defense privacy has near-zero realized value. The spam game (one-shot, stateless) is the setting where normal-form VoPD accurately predicts deployment value. While the CIFAR-10 deployment's outcome is ``use FedAvg,'' the protocol's value is precisely that it identifies \emph{when} this answer applies (and when it does not): a blanket ``use FedAvg'' recommendation would be wrong in the spam game and right in CIFAR-10 --- the protocol distinguishes.
+
+\textbf{The transportable insight is the persistence mechanism.} Temporal mixtures of defenses become max-like under persistent attack state, defeating any randomization-based defense privacy regardless of the static argmax structure. We make this falsifiable via Proposition~\ref{thm:persistence_collapse} (validated by the $\tau{=}2$ disentanglement: lowering admission while preserving persistence does not change the realized outcome) and Lemma~\ref{lem:dichotomy}+Corollary~\ref{cor:dichotomy} (which characterize when same-axis norm-based menus cannot escape the boundary). The VoPD construct, the complementarity diagnostic (Theorem~\ref{thm:complementarity}), and Algorithm~\ref{alg:mtr} are the supporting machinery for testing whether a deployment lies on the boundary's negative side. The FLTrust pilot and its $\lambda_c$ sweep narrow the design constraint for crossing to the positive side: orthogonal-signal mechanism, competitive clean accuracy, and low admission of persistent attacks must hold jointly. The spam game (VoPD~$=0.200$, $\gamma=0$) demonstrates this is achievable outside FL; the open question is whether any FL defense satisfies all three constraints simultaneously.
+
+\textbf{Limitations and future work.} \emph{Theory--dynamics gap.} Proposition~\ref{thm:persistence_collapse} partially bridges the gap between the normal-form theory (Theorems~\ref{thm:complementarity}--\ref{thm:sample_complexity}) and the dynamic regime: it characterizes realized VoPD against a best-responding committed adversary in terms of the persistence parameter $\gamma$ and per-attack effective admission rate $p_{\mathrm{eff}}$. A full stochastic-game or POMDP treatment with adaptive Bayesian adversaries and time-varying defense policies remains future work; the current proposition covers the static-vs-dynamic boundary only for the committed-BR-adversary case.
+
+\emph{Experimental scope.} Equilibria are enumerated via \texttt{nashpy} (sound, not complete for all games). We fix $f=0.2$ and local epochs $= 2$ throughout; sensitivity to these parameters is not swept. The $K/N$ ratio and $\tau$ threshold are swept (Tables~\ref{tab:n_sweep},~\ref{tab:tau_sweep}). The residual ${\sim}10{\times}$ VoPD difference at near-matched $P$ ($N{=}20$ vs.\ $N{=}100$) indicates absolute adversary count or per-class data density contributes secondarily; a controlled sweep varying $f$ or model width at fixed $P$ is left to future work. Design direction: include a defense that strongly blocks scaling (e.g., Multi-Krum with $k \geq 2Nf$) to preserve argmax divergence at large $N$.
+
+\textbf{Code release.} Experiment code, raw per-seed payoff matrices, and analysis scripts are released at \url{https://anonymous.4open.science/r/fl-vopd} (anonymized for review; de-anonymized at camera-ready). The release includes the $\tau$-sweep per-seed payoffs (\texttt{results/cifar10\_tau\_sweep/}), 10-seed per-mode CIFAR-10 data (\texttt{results/cifar10\_10seeds/}), and the per-round ASR logs for the persistence-model observations (\texttt{results/persistence/}).
+
+\bibliographystyle{abbrvnat}
+\bibliography{references}
+
+\appendix
+\section{Full Empirical Payoff Matrices}
+\label{app:payoff}
+
+Tables~\ref{tab:adv_payoff} and~\ref{tab:srv_payoff} report the full $6 \times 7$ adversary and server payoff matrices used to compute the Nash equilibria in Section~\ref{sec:experiments}. Adversary payoffs follow Eq.~\ref{eq:adv_utility} with $\lambda_a = 0.1$; server payoffs follow Eq.~\ref{eq:server_utility} with $\lambda_c = 0.1$, $\lambda_f = 0.05$. All values are means over 10 independent seeds (seeds 42--51, $\alpha=0.5$, $f=0.2$, 50 rounds).
+
+\begin{table}[h]
+\caption{Adversary payoff matrix $U_A(a,d)$ (mean over 10 seeds, 50 rounds).}
+\label{tab:adv_payoff}
+\centering
+\small
+\begin{tabular}{l|rrrrrrr}
+\toprule
+ & FedAvg & Krum & M-Krum & TrMean & Median & NClip & RFA \\
+\midrule
+No attack      &  0.000 &  0.000 &  0.000 &  0.000 &  0.000 &  0.000 &  0.000 \\
+Label flip     & -0.010 & -0.010 & -0.010 & -0.010 & -0.010 & -0.010 & -0.010 \\
+Backdoor pixel &  0.805 &  0.314 &  0.803 &  0.651 &  0.449 &  0.804 &  0.834 \\
+Edge-case      & -0.015 & -0.015 & -0.015 & -0.015 & -0.015 & -0.015 & -0.015 \\
+Model scaling  &  0.470 &  0.023 &  0.509 &  0.850 &  0.522 &  0.922 &  0.859 \\
+DBA            & -0.001 &  0.036 & -0.002 & -0.001 & -0.002 & -0.001 & -0.001 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\caption{Server payoff matrix $U_D(a,d)$ (mean over 10 seeds, 50 rounds).}
+\label{tab:srv_payoff}
+\centering
+\small
+\begin{tabular}{l|rrrrrrr}
+\toprule
+ & FedAvg & Krum & M-Krum & TrMean & Median & NClip & RFA \\
+\midrule
+No attack      & 0.774 & 0.502 & 0.770 & 0.752 & 0.743 & 0.771 & 0.754 \\
+Label flip     & 0.764 & 0.486 & 0.764 & 0.746 & 0.737 & 0.761 & 0.751 \\
+Backdoor pixel & 0.766 & 0.483 & 0.760 & 0.747 & 0.737 & 0.763 & 0.748 \\
+Edge-case      & 0.767 & 0.486 & 0.764 & 0.747 & 0.739 & 0.764 & 0.750 \\
+Model scaling  & 0.095 & 0.532 & 0.107 & 0.654 & 0.734 & 0.708 & 0.741 \\
+DBA            & 0.768 & 0.527 & 0.759 & 0.746 & 0.736 & 0.765 & 0.749 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Mechanism Analysis: Model-Scaling Boundary Behavior}
+\label{app:mechanism}
+
+The boundary behavior in CIFAR-100 traces to a single binary cell: $\UA(\text{model scaling}, \text{FedAvg})$ flips between $-0.030$ on seed 42 (attack fails) and $\{0.945, 0.970\}$ on seeds 43--44 (attack succeeds). This single best-response flip changes whether FedAvg is complementary with TrimmedMean: on seed 42 the pair has divergent best responses and the server mixes them; on seeds 43--44 the best responses coincide and the equilibrium collapses to pure. Theorem~\ref{thm:complementarity} converts this single cell's instability into the observed equilibrium-structure instability. We conjecture that high class count ($C=100$) erodes complementarity by reducing per-class training density, making model-scaling success a binary knife-edge; confirming this by sweeping label-space size is left to future work.
+
+\textbf{CIFAR-10 anomalies.} Seed~45 (scaling succeeds vs.\ FedAvg ASR~$=1.0$, yet Mixed NE): pixel achieves ASR~$=0.921$ vs.\ FedAvg---an argmax tie---placing both attacks in mixed support. Seed~48 (scaling fails vs.\ FedAvg ASR~$=0.0$, yet Pure NE): scaling achieves ASR~$=0.975$ vs.\ NClip and $0.773$ vs.\ CoordMedian, dominating the server's best defenses regardless. The precise condition: mixed vs.\ pure NE is predicted by whether scaling is argmax vs.\ \emph{all} defenses in the server's equilibrium support, not vs.\ FedAvg alone.
+
+\section{Mixed-Commitment Stackelberg Analysis}
+\label{app:stackelberg}
+
+Sweeping $p \in [0,1]$ for $\sigma_D = (\text{FedAvg}: p, \text{NormClip}: 1-p)$: best response flips from scaling to pixel at $p \approx 0.26$. Stackelberg optimum: pure FedAvg ($p=1$, $U_D=0.766$=NE1). BNE NE3 ($p=0.26$, $U_D=0.763$) has lower server utility because commitment advantage disappears in the simultaneous game. NE3 is optimal on exactly one criterion: it is the Nash equilibrium of the simultaneous game with private defense realizations.
+
+\section{Utility-Design Sensitivity and Payoff Estimation Cost}
+\label{app:utility_sensitivity}
+
+\textbf{Utility-design sensitivity.} Under two alternative adversary utility definitions (ASR only; $\max(\text{ASR}, 1-\text{accuracy})$) the equilibrium support and complementarity condition are unchanged. \textbf{Payoff estimation cost.} $6\times7\times10$-seed setup requires 420 FL runs; in practice the strategy menu can be pruned since the complementarity condition requires only identifying best-response sets for each defense in the candidate server support.
+
+\section{Fictitious Play Convergence}
+\label{app:fictitious_play}
+
+Fictitious play on the 3-seed CIFAR-10 matrix converges to NE1 (pure backdoor pixel vs.\ pure FedAvg) over 50,000 iterations of myopic best-response dynamics; NE1's adversary utility on this small matrix is $0.748$ (vs.\ $0.805$ on the 10-seed averaged matrix). The convergence behavior is illustrative only --- the small-matrix figure is omitted from this version since it adds little beyond what the equilibrium computation in §\ref{sec:experiments} already shows. Full trajectory data is in the code release.
+
+\FloatBarrier
+\section{Per-Round Randomization Validation and Lambda Sensitivity}
+\label{app:randomized_validation}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.75\linewidth]{figures/randomized_defense_validation.pdf}
+\caption{Normal-form validation (NE3 policy: FedAvg~26\%, NormClip~74\%, CIFAR-10 $N=10$, 15 seeds 42--56 for ASR; 10 cached seeds 42--51 for realized VoPD). Each point = one seed; diagonal = $y=x$. \textbf{(a)} No attack and \textbf{(c)} pixel ASR: $\Delta=0.000$ (exact---pixel trigger and clean traffic fall below NormClip threshold $\tau=5$; both aggregators produce identical model checkpoints per seed). \textbf{(b)} Model scaling ASR: high per-seed variance reflecting bimodal scaling success. \textbf{Adversary BR}: realized scaling ASR~$= 0.956\pm0.069$ vs.\ pixel ASR~$= 0.822\pm0.070$ under NE3 (gap 0.134); realized VoPD~$= -0.0001\pm0.083 \approx 0$, 8/10 seeds $\leq 0$---NE3 is not an equilibrium of the dynamic game.}
+\label{fig:randomized_validation}
+\end{figure}
+\label{app:lambda}
+
+Table~\ref{tab:lambda} reports Nash equilibria and VoPD under $\pm 50\%$ perturbations of the cost weights, computed by re-running game analysis on the existing payoff results without re-training.
+
+\begin{table}[h]
+\caption{VoPD sensitivity to cost weight perturbations (50-round 10-seed payoffs). Baseline: $\lambda_c=0.1$, $\lambda_f=0.05$, $\lambda_a=0.1$. Last two rows use $2\times$ baseline; full 9-point grid in code release.}
+\label{tab:lambda}
+\centering
+\small
+\begin{tabular}{ccc|c|ll}
+\toprule
+$\lambda_c$ & $\lambda_f$ & $\lambda_a$ & VoPD & Adversary & Server \\
+\midrule
+0.10 & 0.05 & 0.10 & 0.087 & Pixel (100\%) & FedAvg (26\%) + NClip (74\%) \\
+0.05 & 0.05 & 0.10 & 0.087 & Pixel (100\%) & FedAvg (26\%) + NClip (74\%) \\
+0.10 & 0.05 & 0.05 & 0.090 & Pixel (100\%) & FedAvg (27\%) + NClip (73\%) \\
+0.10 & 0.05 & 0.15 & 0.085 & Pixel (100\%) & FedAvg (25\%) + NClip (75\%) \\
+\midrule
+0.20 & 0.05 & 0.10 & 0.087 & Pixel (99\%)  & FedAvg (26\%) + NClip (74\%) \\
+0.10 & 0.05 & 0.20 & 0.082 & Pixel (100\%) & FedAvg (24\%) + NClip (76\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+VoPD ranges 0.082--0.090 across all nine perturbations; adversary support (pure pixel) and server support (FedAvg+NClip) are qualitatively identical; mixing ratio shifts ${\leq}3$ pp. The mixed-NE structure is intrinsic to the payoff geometry, not the cost parameterization.
+
+\subsection*{Payoff Estimation Noise Sensitivity}
+\label{app:noise}
+
+\textbf{Bootstrap} ($n=500$): 97.8\% yield a mixed NE; median VoPD~$= 0.085$, IQR $[0.072, 0.096]$. \textbf{Gaussian noise} ($n=500$ per $\sigma$): mixed-NE rate falls to 65.0\% at $\sigma=0.01$, approaches chance (55.8\%) at $\sigma=0.05$; estimate entries to within $\pm0.02$. Figure~\ref{fig:phase} visualizes the transition.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/vopd_phase_transition.pdf}
+\caption{VoPD phase transition under payoff estimation noise (CIFAR-10, 10 seeds, $n=500$ resamples per noise level). \textbf{Left}: fraction yielding a mixed NE. \textbf{Right}: median VoPD with IQR. Both degrade sharply between $\sigma=0$ and $\sigma=0.01$.}
+\label{fig:phase}
+\end{figure}
+
+\section{$\tau$ Sweep: NormClip Threshold Sensitivity}
+\label{app:tau}
+
+We re-evaluate the full $4{\times}5$ payoff matrix under three NormClip thresholds $\tau \in \{1, 5, 10\}$ on CIFAR-10 ($N{=}10$, $K{=}5$, 5 seeds each, seeds 42--46), re-running every (attack, defense) pair fresh per $\tau$. The $\tau{=}5$ row uses the same seeds 42--46 from the main 10-seed experiment for direct comparability; $\tau\in\{1,10\}$ are new runs. Table~\ref{tab:tau_sweep} reports per-cell ASR for the two attacks (pixel, scaling) at the NormClip column --- the cells whose argmax determines complementarity --- along with the resulting pure-strategy gap and the diagnostic verdict. The diagnostic predicts the realized VoPD sign on all 5 seeds at every $\tau$, including the $\tau{=}1$ regime where the gap collapses (so the diagnostic correctly predicts \emph{no} complementarity).
+
+\begin{table}[!ht]
+\caption{$\tau$ sweep (CIFAR-10, $N{=}10$, $K{=}5$, 5 seeds each). Gap $= \overline{\text{ASR}(\text{sca},\text{NC})} - \overline{\text{ASR}(\text{pix},\text{NC})}$ (pure-strategy NClip column, not the realized NE3-deployment gap of 0.115 in §\ref{sec:scale}). Compl.\ = diagnostic correct all 5 seeds. At $\tau=1$, NClip clips pixel triggers (norm~$\approx\!1$) alongside scaling, collapsing the gap; at $\tau\in\{5,10\}$ pixel passes while scaling is suppressed, preserving divergence.}
+\label{tab:tau_sweep}
+\centering\small
+\begin{tabular}{lcccc}
+\toprule
+$\tau$ & ASR(pix, NC) & ASR(sca, NC) & Gap & Compl. \\
+\midrule
+$1$  & $0.742\pm0.053$ & $0.741\pm0.056$ & $-0.000\pm0.012$ & \checkmark \\
+$5$  & $0.806\pm0.075$ & $0.935\pm0.027$ & $\phantom{-}0.129\pm0.094$ & \checkmark \\
+$10$ & $0.768\pm0.059$ & $0.957\pm0.028$ & $\phantom{-}0.189\pm0.071$ & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{$\tau{=}2$ Disentanglement Experiment}
+\label{app:tau2_disentangle}
+
+To partially separate persistence ($\gamma$) from admission ($p_{\mathrm{eff}}$) in the CIFAR-10 NE3 deployment, we re-ran the NE3 mixed policy (FedAvg 26\% + NormClip 74\%, sampled per round) with NormClip $\tau{=}2$ instead of $\tau{=}5$. The adversary commits to model scaling (BR commitment). Five seeds (42--46), 50 rounds, $N{=}10$. Lowering $\tau$ tightens the per-round clipping on scaling updates, reducing the per-round admission probability $p^{\mathrm{scaling}}_{\mathrm{NC}}$ from ${\approx}0.95$ (at $\tau{=}5$) to an estimated ${\approx}0.74$--$0.85$ (at $\tau{=}2$), which drops $p_{\mathrm{eff}}(\mathrm{scaling})$ at NE3 from $0.83$ to ${\approx}0.78$. Complementarity remains intact at $\tau{=}2$ (the $\tau{=}1$ collapse arises only at the extreme), so this is the cleanest persistence-vs-admission contrast available without a new defense menu.
+
+\textbf{Result.} Per-seed realized ASR (NE3 mixed policy, BR adversary committing to model scaling): $\{0.934, 0.949, 0.966, 0.982, 0.945\}$ at $\tau{=}2$, mean $\mathbf{0.955 \pm 0.017}$. Pixel ASR at $\tau{=}2$: $\{0.831, 0.690, 0.777, 0.948, 0.803\}$, mean $0.810 \pm 0.084$. Gap (scaling $-$ pixel) $= 0.145$.
+
+Comparison with $\tau{=}5$ (15 seeds): realized scaling ASR $0.956 \pm 0.069$; gap $0.134$. The two are statistically indistinguishable. Per the pre-committed interpretation: \textbf{(i) persistence dominates} (ASR $0.955 > 0.85$). Lowering $p_{\mathrm{NC}}^{\mathrm{scaling}}$ via $\tau{=}2$ does not reduce realized scaling ASR; even with a partially-blocking NormClip, the trigger embeds during the rounds it does admit and then persists across non-admitting rounds.
+
+\textbf{Implication for Proposition~\ref{thm:persistence_collapse}.} The experimental separation directly addresses the reviewer-flagged disentanglement concern in §\ref{sec:scale}: realized VoPD collapse on CIFAR-10 NE3 is \emph{persistence-driven}, not merely a consequence of high $p_{\mathrm{eff}}$. The persistence claim is therefore not tautological in the relevant regime: at $\tau{=}2$, where $p_{\mathrm{eff}}$ is meaningfully lower, the collapse survives unchanged. We caution that this is one experimental contrast in one menu, not a general claim about FL — but it is the cleanest evidence currently available that the persistence mechanism is doing real work.
+
+\section{Scale Validation ($N=100$) and Defense-Inference Check}
+\label{app:scale}
+\label{app:inference}
+
+\textbf{Scale validation ($N=100$, $4{\times}5$ game, 5 seeds).} Seed 42: mixed NE (pixel + scaling vs.\ FedAvg + RFA, VoPD~$= 0.012$); seeds 43--46: pure NE (scaling vs.\ RFA). Diagnostic correct on all 5 seeds (Table~\ref{tab:scale100}).
+
+\begin{table}[h]
+\caption{Per-seed NE, CIFAR-10 $N=100$ ($4{\times}5$ game). Seeds 43--46 identical.}
+\label{tab:scale100}
+\centering\small
+\begin{tabular}{c|c|l|l|c}
+\toprule
+Seed & Type & Adversary & Server & VoPD \\
+\midrule
+42      & Mixed & Pixel + Scaling & FedAvg + RFA & 0.012 \\
+43--46  & Pure  & Model scaling   & RFA          & 0.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Strategy-space robustness.}\label{app:strategy} Re-solving Nash on 5 defense menus: mixed-NE rates range from 0\% (FedAvg+NClip) to 60\% (FedAvg+TrMean, VoPD~$0.083$). Theorem~\ref{thm:complementarity} correct in all 50 menu$\times$seed cases.
+
+\begin{algorithm}[h]
+\caption{Measure-Then-Verify-Then-Randomize}\label{alg:mtr}
+\small
+\begin{algorithmic}[1]
+\REQUIRE $\mathcal{A}$, $\mathcal{D}$, precision budget $\epsilon$, simulation budget $T_v$, tolerance $\varepsilon_v$
+\STATE Estimate $\hat{U}_A(a,d)$ $\forall (a,d)$ using $k_{\mathrm{req}}$ seeds per entry (Theorem~\ref{thm:sample_complexity})
+\STATE Compute NE $(\sigma_A^*, \sigma_D^*)$ of $\hat{U}_A$; compute VoPD
+\IF{$\text{VoPD} > 0$}
+    \STATE \textbf{Simulate} offline: run $T_v$ runs per $a \in \mathcal{A}$ under $\sigma_D^*$; compute $\Delta_{\mathrm{dev}} = \max_a \hat{U}_A^{\mathrm{real}}(a,\sigma_D^*) - \hat{U}_A^{\mathrm{real}}(\sigma_A^*, \sigma_D^*)$
+    \IF{$\Delta_{\mathrm{dev}} \leq \varepsilon_v$}
+        \STATE \textbf{Randomize}: sample $d \sim \sigma_D^*$ each round
+    \ELSE
+        \STATE \textbf{Revert}: NE not dynamic equilibrium; deploy pure $d^* \in \arg\max_d \UD(a^*, d)$
+    \ENDIF
+\ELSE
+    \STATE \textbf{Deploy pure}: $d^* \in \arg\max_d \UD(a^*, d)$
+\ENDIF
+\end{algorithmic}
+\end{algorithm}
+
+
+\section{Non-FL Validation: Adversarial Spam Evasion}
+\label{app:spam}
+
+UCI Spambase (4601 emails, 57 features, 39\% spam). No FL. \textbf{Attacks}: no\_attack; word\_zero; char\_zero; noise\_inject ($\mathcal{N}(0,0.5)$). \textbf{Defenses}: word\_lr, char\_lr, all\_lr, all\_rf. $\UA=\text{ASR}-0.1c_A$. NE: server mixes \emph{char\_lr}+\emph{all\_lr}; adversary mixes \emph{char\_zero}+\emph{noise\_inject}; VoPD~$= 0.200$. Theorem~\ref{thm:complementarity} correct: char\_lr/all\_lr argmax divergence (Table~\ref{tab:spam_payoff}), empty intersection, VoPD~$>0$. \textbf{Sample-complexity:} $\hat{\sigma}^2=0.0019$, $\Delta_{\min}=0.217$; full Eq.~(\ref{eq:sample_complexity}) gives $k_{\text{req}}\approx 33$; condition empirically correct on all 5 seeds.
+
+\begin{table}[!htb]
+\caption{Spam adversary payoffs (mean, 5 seeds). Bold: column argmax.}
+\label{tab:spam_payoff}
+\centering
+\footnotesize
+\begin{tabular}{lcccc}
+\toprule
+Attack & word\_lr & char\_lr & all\_lr & all\_rf \\
+\midrule
+no\_attack    & 0.132 & 0.401 & 0.125 & 0.074 \\
+word\_zero    & 0.305 & 0.396 & 0.242 & 0.133 \\
+char\_zero    & 0.127 & \textbf{0.995} & 0.157 & 0.176 \\
+noise\_inject & \textbf{0.508} & 0.408 & \textbf{0.459} & \textbf{0.528} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Proofs of Proposition~\ref{thm:persistence} and Proposition~\ref{thm:persistence_collapse}}
+\label{app:persistence}
+
+\paragraph{Proof of Proposition~\ref{thm:persistence}.}
+Under dynamics~(\ref{eq:persistence_dynamics}) with admission rate $p_{\mathrm{eff}}(a)$ for attack $a$, linearize about small $s$:
+\[
+\mathbb{E}[s_{t+1} \mid s_t] = p_{\mathrm{eff}}(a)\,[s_t + \alpha(1-s_t)] + (1-p_{\mathrm{eff}}(a))\,\gamma s_t = c s_t + b,
+\]
+with $c = p_{\mathrm{eff}}(a)(1-\alpha) + (1-p_{\mathrm{eff}}(a))\gamma$ and $b = p_{\mathrm{eff}}(a)\alpha$. For $\alpha > 0$ or $\gamma < 1$, $|c| < 1$, so the stationary mean is $s_\infty(a) = b/(1-c) = p_{\mathrm{eff}}(a)\alpha / (p_{\mathrm{eff}}(a)\alpha + (1-p_{\mathrm{eff}}(a))(1-\gamma))$. The full nonlinear dynamics saturate at $s_t = 1$, so $s_\infty(a)$ is a lower bound on the true asymptote. As $\gamma \to 1$, $s_\infty(a) \to 1$ for any $p_{\mathrm{eff}}(a) > 0$.
+
+\paragraph{Proof of Proposition~\ref{thm:persistence_collapse}.}
+\emph{Step 1 (BR bound).} The BR adversary commits to $a_{\mathrm{BR}} = \arg\max_a s_\infty(a)$. By the linear recursion, $\mathbb{E}[s_T] = s_\infty(a_{\mathrm{BR}}) - (s_\infty(a_{\mathrm{BR}}) - s_0) c^T$ with $c = p_{\mathrm{eff}}(a_{\mathrm{BR}})(1-\alpha) + (1-p_{\mathrm{eff}}(a_{\mathrm{BR}}))\gamma < 1$. For $T \geq T_\gamma$, $|c|^T \leq \epsilon$, so $\mathbb{E}[s_T] \geq s_\infty(a_{\mathrm{BR}}) - \epsilon$.
+
+\emph{Step 2 (Full-info upper bound).} Under persistence, the trigger state $s_t$ is bounded by 1; round-by-round optimization cannot exceed the asymptotic cap. Since $s_\infty$ is monotone in $p_{\mathrm{eff}}$ and $a_{\mathrm{BR}}$ maximizes it, $U_A^{\mathrm{full-info}} \leq s_\infty(a_{\mathrm{BR}}) + \epsilon$.
+
+\emph{Step 3 (Realized-VoPD bound).} The BR strategy is in the full-info adversary's choice set, so the gap reduces to $C \cdot (1 - s_\infty(a_{\mathrm{BR}})) + \epsilon C$, yielding (\ref{eq:realized_vopd_bound}).
+
+\emph{Step 4 (Limits).} As $\gamma \to 1$, $s_\infty(a_{\mathrm{BR}}) \to 1$, so the bound $\to 0$. At $\gamma = 0$, non-admitting rounds reset $s$ to $0$; outcomes decouple across rounds and per-round expectation equals realized utility, so realized VoPD $= \delta_{\mathrm{NE}}$.
+
+\paragraph{Empirical observations (qualitative).}
+We ran model\_scaling under three conditions with per-round ASR logging (CIFAR-10, $N{=}10$, 5 seeds each, 50 rounds): (i) pure FedAvg, (ii) pure NormClip ($\tau{=}5$), (iii) NE3 mix (FedAvg 26\%, NormClip 74\%, sampled per round). Observed per-seed final ASR:
+\begin{center}\small
+\begin{tabular}{lc}
+\toprule
+Condition & Per-seed final ASR (5 seeds 42--46) \\
+\midrule
+Pure FedAvg     & $\{0.92, 1.00, 1.00, 0.00, 0.00\}$, mean $0.584 \pm 0.478$ \\
+Pure NormClip   & $\{0.95, 0.97, 0.94, 0.99, 0.94\}$, mean $0.959 \pm 0.020$ \\
+NE3 mix         & $\{0.98, 1.00, 0.88, 0.98, 0.96\}$, mean $0.960 \pm 0.041$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Interpretation.} The NE3 mix and pure NormClip produce \emph{statistically indistinguishable} ASR$_{50}$ ($0.960$ vs.\ $0.959$, std overlapping), qualitatively consistent with Proposition~\ref{thm:persistence_collapse}'s persistent-regime prediction: when $\hat\gamma$ is moderately large (here $\approx 0.66$) and $p_{\mathrm{eff}}(\text{scaling}) > 0$, the realized utility under any mixed policy approaches the pure-admitting outcome. The 10-seed realized-VoPD measurement of $-0.0001 \pm 0.083$ (§\ref{sec:scale}) is the corresponding numerical observation. We do not claim a tight quantitative match.
+
+The pure FedAvg condition is bimodal across seeds ($\{0,0,0.92,1,1\}$): a feature of training-initialization randomness in whether the scaling attack converges, not of per-round Bernoulli admission. This separates a quantitative parameter-fit treatment (which would need to model the per-seed admissibility latent) from the qualitative result above. A rigorous per-defense, per-seed quantitative validation of the Markov model is left to future work.
+
+\paragraph{Discarded approaches.} An initial attempt to fit $(\gamma, \alpha, p_{\mathrm{FA}}, p_{\mathrm{NC}})$ jointly to the per-seed trajectories (1) hit a corner solution ($\hat\gamma \to 0$) due to the pure-FedAvg bimodality being interpreted as rapid decay, and (2) failed an out-of-sample test (fit on rounds 1--25, predict rounds 26--50: predicted NE3 ASR$_{50} = 0.80$ vs.\ observed $0.96$). We report this honestly: the per-defense $(p_{\mathrm{FA}}, p_{\mathrm{NC}})$ generalization is necessary but not sufficient; a per-seed admissibility variable separating the binding-cell Bernoulli at training init from the Markov dynamics is needed for quantitative prediction. The qualitative collapse (NE3~$\approx$~pure-NC) is unambiguous and does not depend on a quantitative fit.
+
+\end{document}

@@ -1,0 +1,14 @@
+\begin{table}[h]
+\caption{Theorem 3 fit: persistence-aware VoPD model (retention $\gamma$, embedding $\alpha$) fit to per-round ASR timelines (CIFAR-10, $N{=}10$, model\_scaling attack, 5 seeds per condition). Subscripts are 95\% bootstrap CIs over seeds. Predicted ASR$_{50}$ uses each seed's actual per-round defense schedule; observed is the realized ASR at $T{=}50$.}
+\label{tab:persistence_fit}
+\centering\small
+\begin{tabular}{lcccc}
+\toprule
+Condition & $\hat\gamma$ (retention) & $\hat\alpha$ (admit gain) & Predicted ASR$_{50}$ & Observed ASR$_{50}$ \\
+\midrule
+Pure FedAvg ($p{=}1$) & $0.934_{[0.92,0.95]}$ & $0.034_{[0.02,0.04]}$ & $0.801\pm0.000$ & $0.584\pm0.478$ \\
+Pure NormClip ($p{=}0$) & $0.900_{[0.90,0.90]}$ & $0.300_{[0.30,0.30]}$ & $0.000\pm0.000$ & $0.959\pm0.020$ \\
+NE3 mix ($p{=}0.26$) & $0.988_{[0.98,0.99]}$ & $0.529_{[0.43,0.64]}$ & $0.950\pm0.025$ & $0.960\pm0.041$ \\
+\bottomrule
+\end{tabular}
+\end{table}

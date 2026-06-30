@@ -1,0 +1,153 @@
+{
+  "policy": {
+    "norm_clip": 0.83,
+    "reputation": 0.17
+  },
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51
+  ],
+  "attacks": {
+    "model_scaling": {
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7785,
+          "attack_success_rate": 0.9227777777777778,
+          "fedavg_rounds": 41
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7265,
+          "attack_success_rate": 0.9812222222222222,
+          "fedavg_rounds": 43
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7948,
+          "attack_success_rate": 0.8646666666666667,
+          "fedavg_rounds": 39
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7017,
+          "attack_success_rate": 0.8847777777777778,
+          "fedavg_rounds": 45
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.783,
+          "attack_success_rate": 0.9486666666666667,
+          "fedavg_rounds": 42
+        },
+        {
+          "seed": 47,
+          "accuracy": 0.5594,
+          "attack_success_rate": 0.975,
+          "fedavg_rounds": 45
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.7745,
+          "attack_success_rate": 0.9794444444444445,
+          "fedavg_rounds": 38
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.769,
+          "attack_success_rate": 0.9512222222222222,
+          "fedavg_rounds": 44
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.7421,
+          "attack_success_rate": 0.937,
+          "fedavg_rounds": 43
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.7752,
+          "attack_success_rate": 0.9415555555555556,
+          "fedavg_rounds": 40
+        }
+      ]
+    },
+    "backdoor_pixel": {
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7868,
+          "attack_success_rate": 0.832,
+          "fedavg_rounds": 41
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7986,
+          "attack_success_rate": 0.7531111111111111,
+          "fedavg_rounds": 43
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7945,
+          "attack_success_rate": 0.8244444444444444,
+          "fedavg_rounds": 39
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7748,
+          "attack_success_rate": 0.9254444444444444,
+          "fedavg_rounds": 45
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7815,
+          "attack_success_rate": 0.7674444444444445,
+          "fedavg_rounds": 42
+        },
+        {
+          "seed": 47,
+          "accuracy": 0.7796,
+          "attack_success_rate": 0.8233333333333334,
+          "fedavg_rounds": 45
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.7883,
+          "attack_success_rate": 0.923,
+          "fedavg_rounds": 38
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.7632,
+          "attack_success_rate": 0.8104444444444444,
+          "fedavg_rounds": 44
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.771,
+          "attack_success_rate": 0.8661111111111112,
+          "fedavg_rounds": 43
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.7746,
+          "attack_success_rate": 0.796,
+          "fedavg_rounds": 40
+        }
+      ]
+    }
+  },
+  "pre_committed": {
+    "COLLAPSES": "realized scaling ASR > 0.85 AND realized VoPD <= 0.05",
+    "SURVIVES": "realized scaling ASR < 0.5 OR realized VoPD > 0.10",
+    "MIXED": "in between"
+  }
+}

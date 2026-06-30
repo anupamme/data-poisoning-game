@@ -1,0 +1,45 @@
+Round 52 edge_case survivor pilot:
+  Policy: {'reputation': 0.3, 'trimmed_mean': 0.7}
+  Oracle attack table: {'reputation': 'backdoor_pixel', 'trimmed_mean': 'model_scaling', 'norm_clip': 'model_scaling', 'fedavg': 'model_scaling', 'foolsgold': 'backdoor_pixel', 'rfa': 'model_scaling', 'coord_median': 'model_scaling'}
+  Adversary policies: ['committed_scaling', 'committed_pixel', 'committed_edge_case', 'oracle'], Seeds: [42, 43, 44, 45, 46]
+  Expected runs: 20
+
+  seed 42 committed_scaling: acc=0.752 realized_asr=0.851 (asr_pixel=0.851 asr_edge=0.011) (reputation=12 trimmed_mean=38) (model_scaling=50 backdoor_pixel=0 backdoor_edge_case=0) (656s, total 10.9min, 1 runs)
+  seed 43 committed_scaling: acc=0.749 realized_asr=0.733 (asr_pixel=0.733 asr_edge=0.018) (reputation=12 trimmed_mean=38) (model_scaling=50 backdoor_pixel=0 backdoor_edge_case=0) (659s, total 21.9min, 2 runs)
+  seed 44 committed_scaling: acc=0.767 realized_asr=0.753 (asr_pixel=0.753 asr_edge=0.016) (reputation=15 trimmed_mean=35) (model_scaling=50 backdoor_pixel=0 backdoor_edge_case=0) (663s, total 33.0min, 3 runs)
+  seed 45 committed_scaling: acc=0.718 realized_asr=0.861 (asr_pixel=0.861 asr_edge=0.036) (reputation=15 trimmed_mean=35) (model_scaling=50 backdoor_pixel=0 backdoor_edge_case=0) (661s, total 44.0min, 4 runs)
+  seed 46 committed_scaling: acc=0.752 realized_asr=0.864 (asr_pixel=0.864 asr_edge=0.022) (reputation=12 trimmed_mean=38) (model_scaling=50 backdoor_pixel=0 backdoor_edge_case=0) (649s, total 54.8min, 5 runs)
+  seed 42 committed_pixel: acc=0.777 realized_asr=0.722 (asr_pixel=0.722 asr_edge=0.013) (reputation=12 trimmed_mean=38) (model_scaling=0 backdoor_pixel=50 backdoor_edge_case=0) (655s, total 65.7min, 6 runs)
+  seed 43 committed_pixel: acc=0.782 realized_asr=0.519 (asr_pixel=0.519 asr_edge=0.019) (reputation=12 trimmed_mean=38) (model_scaling=0 backdoor_pixel=50 backdoor_edge_case=0) (657s, total 76.7min, 7 runs)
+  seed 44 committed_pixel: acc=0.773 realized_asr=0.667 (asr_pixel=0.667 asr_edge=0.027) (reputation=15 trimmed_mean=35) (model_scaling=0 backdoor_pixel=50 backdoor_edge_case=0) (663s, total 87.7min, 8 runs)
+  seed 45 committed_pixel: acc=0.774 realized_asr=0.901 (asr_pixel=0.901 asr_edge=0.022) (reputation=15 trimmed_mean=35) (model_scaling=0 backdoor_pixel=50 backdoor_edge_case=0) (660s, total 98.7min, 9 runs)
+  seed 46 committed_pixel: acc=0.773 realized_asr=0.735 (asr_pixel=0.735 asr_edge=0.020) (reputation=12 trimmed_mean=38) (model_scaling=0 backdoor_pixel=50 backdoor_edge_case=0) (649s, total 109.5min, 10 runs)
+  seed 42 committed_edge_case: acc=0.778 realized_asr=0.387 (asr_pixel=0.011 asr_edge=0.387) (reputation=12 trimmed_mean=38) (model_scaling=0 backdoor_pixel=0 backdoor_edge_case=50) (655s, total 120.4min, 11 runs)
+  seed 43 committed_edge_case: acc=0.785 realized_asr=0.285 (asr_pixel=0.023 asr_edge=0.285) (reputation=12 trimmed_mean=38) (model_scaling=0 backdoor_pixel=0 backdoor_edge_case=50) (657s, total 131.4min, 12 runs)
+  seed 44 committed_edge_case: acc=0.768 realized_asr=0.413 (asr_pixel=0.029 asr_edge=0.413) (reputation=15 trimmed_mean=35) (model_scaling=0 backdoor_pixel=0 backdoor_edge_case=50) (663s, total 142.4min, 13 runs)
+  seed 45 committed_edge_case: acc=0.772 realized_asr=0.798 (asr_pixel=0.020 asr_edge=0.798) (reputation=15 trimmed_mean=35) (model_scaling=0 backdoor_pixel=0 backdoor_edge_case=50) (660s, total 153.4min, 14 runs)
+  seed 46 committed_edge_case: acc=0.764 realized_asr=0.498 (asr_pixel=0.024 asr_edge=0.498) (reputation=12 trimmed_mean=38) (model_scaling=0 backdoor_pixel=0 backdoor_edge_case=50) (649s, total 164.3min, 15 runs)
+  seed 42 oracle: acc=0.749 realized_asr=0.905 (asr_pixel=0.905 asr_edge=0.011) (reputation=12 trimmed_mean=38) (model_scaling=38 backdoor_pixel=12 backdoor_edge_case=0) (654s, total 175.2min, 16 runs)
+  seed 43 oracle: acc=0.751 realized_asr=0.813 (asr_pixel=0.813 asr_edge=0.020) (reputation=12 trimmed_mean=38) (model_scaling=38 backdoor_pixel=12 backdoor_edge_case=0) (658s, total 186.1min, 17 runs)
+  seed 44 oracle: acc=0.776 realized_asr=0.804 (asr_pixel=0.804 asr_edge=0.018) (reputation=15 trimmed_mean=35) (model_scaling=35 backdoor_pixel=15 backdoor_edge_case=0) (663s, total 197.2min, 18 runs)
+  seed 45 oracle: acc=0.768 realized_asr=0.968 (asr_pixel=0.968 asr_edge=0.019) (reputation=15 trimmed_mean=35) (model_scaling=35 backdoor_pixel=15 backdoor_edge_case=0) (660s, total 208.2min, 19 runs)
+  seed 46 oracle: acc=0.745 realized_asr=0.912 (asr_pixel=0.912 asr_edge=0.021) (reputation=12 trimmed_mean=38) (model_scaling=38 backdoor_pixel=12 backdoor_edge_case=0) (649s, total 219.0min, 20 runs)
+
+=== EDGE_CASE SURVIVOR PILOT COMPLETE ===
+  committed_scaling: realized ASR = 0.812 +/- 0.057  acc = 0.747
+    per-seed: [0.851, 0.733, 0.753, 0.861, 0.864]
+  committed_pixel: realized ASR = 0.709 +/- 0.123  acc = 0.776
+    per-seed: [0.722, 0.519, 0.667, 0.901, 0.735]
+  committed_edge_case: realized ASR = 0.476 +/- 0.175  acc = 0.773
+    per-seed: [0.387, 0.285, 0.413, 0.798, 0.498]
+  oracle: realized ASR = 0.880 +/- 0.063  acc = 0.758
+    per-seed: [0.905, 0.813, 0.804, 0.968, 0.912]
+
+  realized full-info (oracle): 0.880
+  realized committed-max:      0.812
+  REALIZED VoPD = 0.068
+
+=== Pre-committed verdict ===
+  STRONG: realized VoPD = 0.068 >= 0.05
+
+Wall time: 219.0 min

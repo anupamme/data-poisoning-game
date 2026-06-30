@@ -1,0 +1,37 @@
+Round 49 dynamic BR on reputation equilibrium:
+  Policy: {'norm_clip': 0.83, 'reputation': 0.17}
+  Attacks: ['model_scaling', 'backdoor_pixel'], Seeds: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51]
+  Output: /Users/mediratta/code/paper_writing/AI-Researcher/code/data_poisoning_game/results/cifar10_reputation_eq_br/summary.json
+  Pre-committed interpretation in summary.json
+
+  seed 42 model_scaling: acc=0.778 ASR=0.923 (nc=41/rep=9) (682s, total 11.4min, 1 runs)
+  seed 42 backdoor_pixel: acc=0.787 ASR=0.832 (nc=41/rep=9) (669s, total 22.5min, 2 runs)
+  seed 43 model_scaling: acc=0.727 ASR=0.981 (nc=43/rep=7) (653s, total 33.4min, 3 runs)
+  seed 43 backdoor_pixel: acc=0.799 ASR=0.753 (nc=43/rep=7) (674s, total 44.6min, 4 runs)
+  seed 44 model_scaling: acc=0.795 ASR=0.865 (nc=39/rep=11) (671s, total 55.8min, 5 runs)
+  seed 44 backdoor_pixel: acc=0.794 ASR=0.824 (nc=39/rep=11) (688s, total 67.3min, 6 runs)
+  seed 45 model_scaling: acc=0.702 ASR=0.885 (nc=45/rep=5) (671s, total 78.5min, 7 runs)
+  seed 45 backdoor_pixel: acc=0.775 ASR=0.925 (nc=45/rep=5) (666s, total 89.6min, 8 runs)
+  seed 46 model_scaling: acc=0.783 ASR=0.949 (nc=42/rep=8) (664s, total 100.6min, 9 runs)
+  seed 46 backdoor_pixel: acc=0.781 ASR=0.767 (nc=42/rep=8) (660s, total 111.6min, 10 runs)
+  seed 47 model_scaling: acc=0.559 ASR=0.975 (nc=45/rep=5) (657s, total 122.6min, 11 runs)
+  seed 47 backdoor_pixel: acc=0.780 ASR=0.823 (nc=45/rep=5) (666s, total 133.7min, 12 runs)
+  seed 48 model_scaling: acc=0.774 ASR=0.979 (nc=38/rep=12) (696s, total 145.3min, 13 runs)
+  seed 48 backdoor_pixel: acc=0.788 ASR=0.923 (nc=38/rep=12) (663s, total 156.3min, 14 runs)
+  seed 49 model_scaling: acc=0.769 ASR=0.951 (nc=44/rep=6) (637s, total 167.0min, 15 runs)
+  seed 49 backdoor_pixel: acc=0.763 ASR=0.810 (nc=44/rep=6) (637s, total 177.6min, 16 runs)
+  seed 50 model_scaling: acc=0.742 ASR=0.937 (nc=43/rep=7) (633s, total 188.1min, 17 runs)
+  seed 50 backdoor_pixel: acc=0.771 ASR=0.866 (nc=43/rep=7) (634s, total 198.7min, 18 runs)
+  seed 51 model_scaling: acc=0.775 ASR=0.942 (nc=40/rep=10) (644s, total 209.4min, 19 runs)
+  seed 51 backdoor_pixel: acc=0.775 ASR=0.796 (nc=40/rep=10) (644s, total 220.2min, 20 runs)
+
+=== DYNAMIC BR ON REPUTATION EQUILIBRIUM COMPLETE ===
+  model_scaling: ASR=0.939+/-0.037  acc=0.740+/-0.066
+    per-seed ASRs: [0.923, 0.981, 0.865, 0.885, 0.949, 0.975, 0.979, 0.951, 0.937, 0.942]
+  backdoor_pixel: ASR=0.832+/-0.055  acc=0.781+/-0.010
+    per-seed ASRs: [0.832, 0.753, 0.824, 0.925, 0.767, 0.823, 0.923, 0.81, 0.866, 0.796]
+
+Wall time: 220.2 min
+
+=== Pre-committed interpretation ===
+  Scaling ASR = 0.939 > 0.85 -> COLLAPSES likely

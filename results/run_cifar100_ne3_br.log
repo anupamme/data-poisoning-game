@@ -1,0 +1,28 @@
+CIFAR-100 NE3 BR experiment (Round 47 second-dataset replication):
+  Policy: {'fedavg': 0.26, 'norm_clip': 0.74}
+  Attacks: ['model_scaling', 'backdoor_pixel'], Seeds: [42, 43, 44, 45, 46]
+  Dataset: cifar100, N=10, K=5, T=50
+  Output: /Users/mediratta/code/paper_writing/AI-Researcher/code/data_poisoning_game/results/cifar100_ne3_br/summary.json
+
+  seed 42 model_scaling: acc=0.376 ASR=0.955 (672s, total 11.2min, 1 runs)
+  seed 42 backdoor_pixel: acc=0.386 ASR=0.853 (658s, total 22.2min, 2 runs)
+  seed 43 model_scaling: acc=0.349 ASR=0.978 (674s, total 33.4min, 3 runs)
+  seed 43 backdoor_pixel: acc=0.394 ASR=0.824 (661s, total 44.4min, 4 runs)
+  seed 44 model_scaling: acc=0.338 ASR=0.941 (666s, total 55.5min, 5 runs)
+  seed 44 backdoor_pixel: acc=0.387 ASR=0.902 (661s, total 66.5min, 6 runs)
+  seed 45 model_scaling: acc=0.083 ASR=0.000 (649s, total 77.3min, 7 runs)
+  seed 45 backdoor_pixel: acc=0.389 ASR=0.934 (639s, total 88.0min, 8 runs)
+  seed 46 model_scaling: acc=0.361 ASR=0.943 (646s, total 98.8min, 9 runs)
+  seed 46 backdoor_pixel: acc=0.389 ASR=0.814 (644s, total 109.5min, 10 runs)
+
+=== CIFAR-100 NE3 BR SUMMARY (n=5 seeds) ===
+  model_scaling: ASR=0.764+/-0.382  acc=0.301+/-0.110
+    per-seed ASRs: [0.955, 0.978, 0.941, 0.0, 0.943]
+  backdoor_pixel: ASR=0.865+/-0.046  acc=0.389+/-0.003
+    per-seed ASRs: [0.853, 0.824, 0.902, 0.934, 0.814]
+
+Wall time: 109.5 min
+Saved: /Users/mediratta/code/paper_writing/AI-Researcher/code/data_poisoning_game/results/cifar100_ne3_br/summary.json
+
+=== Pre-committed interpretation ===
+  Realized scaling ASR = 0.764 in [0.6, 0.85] -> PARTIAL replication.

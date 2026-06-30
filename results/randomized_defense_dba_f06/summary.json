@@ -1,0 +1,104 @@
+{
+  "attack": "dba",
+  "adversarial_fraction": 0.6,
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "policies": {
+    "ne3_mix": {
+      "policy": {
+        "fedavg": 0.26,
+        "norm_clip": 0.74
+      },
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7664,
+          "attack_success_rate": 0.3601111111111111,
+          "fedavg_rounds": 15,
+          "norm_clip_rounds": 35
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7891,
+          "attack_success_rate": 0.2952222222222222,
+          "fedavg_rounds": 14,
+          "norm_clip_rounds": 36
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7696,
+          "attack_success_rate": 0.3863333333333333,
+          "fedavg_rounds": 11,
+          "norm_clip_rounds": 39
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7585,
+          "attack_success_rate": 0.7338888888888889,
+          "fedavg_rounds": 16,
+          "norm_clip_rounds": 34
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.762,
+          "attack_success_rate": 0.15388888888888888,
+          "fedavg_rounds": 11,
+          "norm_clip_rounds": 39
+        }
+      ]
+    },
+    "reputation_eq": {
+      "policy": {
+        "norm_clip": 0.83,
+        "reputation": 0.17
+      },
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7639,
+          "attack_success_rate": 0.3391111111111111,
+          "norm_clip_rounds": 46,
+          "reputation_rounds": 4
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7884,
+          "attack_success_rate": 0.2778888888888889,
+          "norm_clip_rounds": 46,
+          "reputation_rounds": 4
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7789,
+          "attack_success_rate": 0.4146666666666667,
+          "norm_clip_rounds": 41,
+          "reputation_rounds": 9
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7592,
+          "attack_success_rate": 0.7047777777777777,
+          "norm_clip_rounds": 41,
+          "reputation_rounds": 9
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7642,
+          "attack_success_rate": 0.1298888888888889,
+          "norm_clip_rounds": 40,
+          "reputation_rounds": 10
+        }
+      ]
+    }
+  },
+  "pre_committed": {
+    "STRONG": "DBA ASR > 0.7 in >=4/5 seeds AND > 0.5 on at least one mix",
+    "PARTIAL": "DBA ASR mean > 0.5 but per-seed bimodal",
+    "NEGATIVE": "DBA ASR < 0.3"
+  }
+}

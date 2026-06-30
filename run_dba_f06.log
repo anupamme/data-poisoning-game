@@ -1,0 +1,28 @@
+Round 50 DBA at f=0.6 pilot (reviewer C3):
+  ne3_mix: {'fedavg': 0.26, 'norm_clip': 0.74}
+  reputation_eq: {'norm_clip': 0.83, 'reputation': 0.17}
+  Attack: dba, Seeds: [42, 43, 44, 45, 46]
+  f=0.6, N=10, K=5
+  Expected runs: 10
+
+  seed 42 ne3_mix: acc=0.766 ASR=0.360 (fedavg=15 norm_clip=35) (662s, total 11.0min, 1 runs)
+  seed 43 ne3_mix: acc=0.789 ASR=0.295 (fedavg=14 norm_clip=36) (667s, total 22.1min, 2 runs)
+  seed 44 ne3_mix: acc=0.770 ASR=0.386 (fedavg=11 norm_clip=39) (650s, total 33.0min, 3 runs)
+  seed 45 ne3_mix: acc=0.758 ASR=0.734 (fedavg=16 norm_clip=34) (644s, total 43.7min, 4 runs)
+  seed 46 ne3_mix: acc=0.762 ASR=0.154 (fedavg=11 norm_clip=39) (644s, total 54.4min, 5 runs)
+  seed 42 reputation_eq: acc=0.764 ASR=0.339 (norm_clip=46 reputation=4) (653s, total 65.3min, 6 runs)
+  seed 43 reputation_eq: acc=0.788 ASR=0.278 (norm_clip=46 reputation=4) (679s, total 76.6min, 7 runs)
+  seed 44 reputation_eq: acc=0.779 ASR=0.415 (norm_clip=41 reputation=9) (673s, total 87.9min, 8 runs)
+  seed 45 reputation_eq: acc=0.759 ASR=0.705 (norm_clip=41 reputation=9) (784s, total 100.9min, 9 runs)
+  seed 46 reputation_eq: acc=0.764 ASR=0.130 (norm_clip=40 reputation=10) (680s, total 112.3min, 10 runs)
+
+=== DBA f=0.6 PILOT COMPLETE ===
+  ne3_mix: DBA ASR = 0.386 +/- 0.192  acc = 0.769 +/- 0.011
+    per-seed ASRs: [0.36, 0.295, 0.386, 0.734, 0.154]
+  reputation_eq: DBA ASR = 0.373 +/- 0.190  acc = 0.771 +/- 0.011
+    per-seed ASRs: [0.339, 0.278, 0.415, 0.705, 0.13]
+
+Wall time: 112.3 min
+
+=== Pre-committed verdict ===
+  INTERMEDIATE: overall mean ASR = 0.380 in [0.3, 0.5]

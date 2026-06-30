@@ -1,0 +1,365 @@
+{
+  "policy": {
+    "reputation": 0.3,
+    "trimmed_mean": 0.7
+  },
+  "oracle_best_attack_per_defense": {
+    "reputation": "backdoor_pixel",
+    "trimmed_mean": "model_scaling",
+    "norm_clip": "model_scaling",
+    "fedavg": "model_scaling",
+    "foolsgold": "backdoor_pixel",
+    "rfa": "model_scaling",
+    "coord_median": "model_scaling"
+  },
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "adversary_policies": {
+    "committed_scaling": {
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7523,
+          "asr_pixel_final": 0.8505555555555555,
+          "asr_edge_case_final": 0.010666666666666666,
+          "realized_asr": 0.8505555555555555,
+          "defense_counts": {
+            "reputation": 12,
+            "trimmed_mean": 38
+          },
+          "attack_counts": {
+            "model_scaling": 50,
+            "backdoor_pixel": 0,
+            "backdoor_edge_case": 0
+          }
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7485,
+          "asr_pixel_final": 0.7326666666666667,
+          "asr_edge_case_final": 0.017555555555555557,
+          "realized_asr": 0.7326666666666667,
+          "defense_counts": {
+            "reputation": 12,
+            "trimmed_mean": 38
+          },
+          "attack_counts": {
+            "model_scaling": 50,
+            "backdoor_pixel": 0,
+            "backdoor_edge_case": 0
+          }
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7668,
+          "asr_pixel_final": 0.7533333333333333,
+          "asr_edge_case_final": 0.01611111111111111,
+          "realized_asr": 0.7533333333333333,
+          "defense_counts": {
+            "reputation": 15,
+            "trimmed_mean": 35
+          },
+          "attack_counts": {
+            "model_scaling": 50,
+            "backdoor_pixel": 0,
+            "backdoor_edge_case": 0
+          }
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7179,
+          "asr_pixel_final": 0.8606666666666667,
+          "asr_edge_case_final": 0.036444444444444446,
+          "realized_asr": 0.8606666666666667,
+          "defense_counts": {
+            "reputation": 15,
+            "trimmed_mean": 35
+          },
+          "attack_counts": {
+            "model_scaling": 50,
+            "backdoor_pixel": 0,
+            "backdoor_edge_case": 0
+          }
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.752,
+          "asr_pixel_final": 0.8644444444444445,
+          "asr_edge_case_final": 0.021777777777777778,
+          "realized_asr": 0.8644444444444445,
+          "defense_counts": {
+            "reputation": 12,
+            "trimmed_mean": 38
+          },
+          "attack_counts": {
+            "model_scaling": 50,
+            "backdoor_pixel": 0,
+            "backdoor_edge_case": 0
+          }
+        }
+      ]
+    },
+    "committed_pixel": {
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7771,
+          "asr_pixel_final": 0.722,
+          "asr_edge_case_final": 0.013111111111111112,
+          "realized_asr": 0.722,
+          "defense_counts": {
+            "reputation": 12,
+            "trimmed_mean": 38
+          },
+          "attack_counts": {
+            "model_scaling": 0,
+            "backdoor_pixel": 50,
+            "backdoor_edge_case": 0
+          }
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7824,
+          "asr_pixel_final": 0.5191111111111111,
+          "asr_edge_case_final": 0.01911111111111111,
+          "realized_asr": 0.5191111111111111,
+          "defense_counts": {
+            "reputation": 12,
+            "trimmed_mean": 38
+          },
+          "attack_counts": {
+            "model_scaling": 0,
+            "backdoor_pixel": 50,
+            "backdoor_edge_case": 0
+          }
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7728,
+          "asr_pixel_final": 0.6668888888888889,
+          "asr_edge_case_final": 0.02666666666666667,
+          "realized_asr": 0.6668888888888889,
+          "defense_counts": {
+            "reputation": 15,
+            "trimmed_mean": 35
+          },
+          "attack_counts": {
+            "model_scaling": 0,
+            "backdoor_pixel": 50,
+            "backdoor_edge_case": 0
+          }
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.774,
+          "asr_pixel_final": 0.9007777777777778,
+          "asr_edge_case_final": 0.021666666666666667,
+          "realized_asr": 0.9007777777777778,
+          "defense_counts": {
+            "reputation": 15,
+            "trimmed_mean": 35
+          },
+          "attack_counts": {
+            "model_scaling": 0,
+            "backdoor_pixel": 50,
+            "backdoor_edge_case": 0
+          }
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7735,
+          "asr_pixel_final": 0.7348888888888889,
+          "asr_edge_case_final": 0.019555555555555555,
+          "realized_asr": 0.7348888888888889,
+          "defense_counts": {
+            "reputation": 12,
+            "trimmed_mean": 38
+          },
+          "attack_counts": {
+            "model_scaling": 0,
+            "backdoor_pixel": 50,
+            "backdoor_edge_case": 0
+          }
+        }
+      ]
+    },
+    "committed_edge_case": {
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.778,
+          "asr_pixel_final": 0.011222222222222222,
+          "asr_edge_case_final": 0.38666666666666666,
+          "realized_asr": 0.38666666666666666,
+          "defense_counts": {
+            "reputation": 12,
+            "trimmed_mean": 38
+          },
+          "attack_counts": {
+            "model_scaling": 0,
+            "backdoor_pixel": 0,
+            "backdoor_edge_case": 50
+          }
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7847,
+          "asr_pixel_final": 0.022555555555555554,
+          "asr_edge_case_final": 0.2853333333333333,
+          "realized_asr": 0.2853333333333333,
+          "defense_counts": {
+            "reputation": 12,
+            "trimmed_mean": 38
+          },
+          "attack_counts": {
+            "model_scaling": 0,
+            "backdoor_pixel": 0,
+            "backdoor_edge_case": 50
+          }
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7685,
+          "asr_pixel_final": 0.029333333333333333,
+          "asr_edge_case_final": 0.4126666666666667,
+          "realized_asr": 0.4126666666666667,
+          "defense_counts": {
+            "reputation": 15,
+            "trimmed_mean": 35
+          },
+          "attack_counts": {
+            "model_scaling": 0,
+            "backdoor_pixel": 0,
+            "backdoor_edge_case": 50
+          }
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7717,
+          "asr_pixel_final": 0.02022222222222222,
+          "asr_edge_case_final": 0.7977777777777778,
+          "realized_asr": 0.7977777777777778,
+          "defense_counts": {
+            "reputation": 15,
+            "trimmed_mean": 35
+          },
+          "attack_counts": {
+            "model_scaling": 0,
+            "backdoor_pixel": 0,
+            "backdoor_edge_case": 50
+          }
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.764,
+          "asr_pixel_final": 0.023777777777777776,
+          "asr_edge_case_final": 0.4981111111111111,
+          "realized_asr": 0.4981111111111111,
+          "defense_counts": {
+            "reputation": 12,
+            "trimmed_mean": 38
+          },
+          "attack_counts": {
+            "model_scaling": 0,
+            "backdoor_pixel": 0,
+            "backdoor_edge_case": 50
+          }
+        }
+      ]
+    },
+    "oracle": {
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7489,
+          "asr_pixel_final": 0.9047777777777778,
+          "asr_edge_case_final": 0.011444444444444445,
+          "realized_asr": 0.9047777777777778,
+          "defense_counts": {
+            "reputation": 12,
+            "trimmed_mean": 38
+          },
+          "attack_counts": {
+            "model_scaling": 38,
+            "backdoor_pixel": 12,
+            "backdoor_edge_case": 0
+          }
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7515,
+          "asr_pixel_final": 0.8131111111111111,
+          "asr_edge_case_final": 0.02022222222222222,
+          "realized_asr": 0.8131111111111111,
+          "defense_counts": {
+            "reputation": 12,
+            "trimmed_mean": 38
+          },
+          "attack_counts": {
+            "model_scaling": 38,
+            "backdoor_pixel": 12,
+            "backdoor_edge_case": 0
+          }
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7758,
+          "asr_pixel_final": 0.8035555555555556,
+          "asr_edge_case_final": 0.018,
+          "realized_asr": 0.8035555555555556,
+          "defense_counts": {
+            "reputation": 15,
+            "trimmed_mean": 35
+          },
+          "attack_counts": {
+            "model_scaling": 35,
+            "backdoor_pixel": 15,
+            "backdoor_edge_case": 0
+          }
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7682,
+          "asr_pixel_final": 0.9676666666666667,
+          "asr_edge_case_final": 0.019333333333333334,
+          "realized_asr": 0.9676666666666667,
+          "defense_counts": {
+            "reputation": 15,
+            "trimmed_mean": 35
+          },
+          "attack_counts": {
+            "model_scaling": 35,
+            "backdoor_pixel": 15,
+            "backdoor_edge_case": 0
+          }
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7449,
+          "asr_pixel_final": 0.9116666666666666,
+          "asr_edge_case_final": 0.021444444444444443,
+          "realized_asr": 0.9116666666666666,
+          "defense_counts": {
+            "reputation": 12,
+            "trimmed_mean": 38
+          },
+          "attack_counts": {
+            "model_scaling": 38,
+            "backdoor_pixel": 12,
+            "backdoor_edge_case": 0
+          }
+        }
+      ]
+    }
+  },
+  "pre_committed": {
+    "STRONG": "realized VoPD >= 0.05 AND edge_case oracle-contributes",
+    "MEDIUM": "realized VoPD in [0.02, 0.05] OR edge_case in NE but not oracle",
+    "NEGATIVE": "realized VoPD < 0.02 OR edge_case not contributing"
+  }
+}

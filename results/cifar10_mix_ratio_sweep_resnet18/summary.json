@@ -1,0 +1,162 @@
+{
+  "model": "resnet18",
+  "attack": "model_scaling",
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "mix_ratios": {
+    "NC90_rep10": {
+      "policy": {
+        "norm_clip": 0.9,
+        "reputation": 0.1
+      },
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7545,
+          "attack_success_rate": 0.9258888888888889,
+          "norm_clip_rounds": 47,
+          "reputation_rounds": 3,
+          "wall_time_s": 5883.6776378154755
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6622,
+          "attack_success_rate": 0.9292222222222222,
+          "norm_clip_rounds": 47,
+          "reputation_rounds": 3,
+          "wall_time_s": 5905.63090801239
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.698,
+          "attack_success_rate": 0.9653333333333334,
+          "norm_clip_rounds": 43,
+          "reputation_rounds": 7,
+          "wall_time_s": 5922.099565029144
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7,
+          "attack_success_rate": 0.9735555555555555,
+          "norm_clip_rounds": 46,
+          "reputation_rounds": 4,
+          "wall_time_s": 5886.78827214241
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7508,
+          "attack_success_rate": 0.9616666666666667,
+          "norm_clip_rounds": 46,
+          "reputation_rounds": 4,
+          "wall_time_s": 5903.545356750488
+        }
+      ]
+    },
+    "NC50_rep50": {
+      "policy": {
+        "norm_clip": 0.5,
+        "reputation": 0.5
+      },
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.746,
+          "attack_success_rate": 0.924,
+          "norm_clip_rounds": 32,
+          "reputation_rounds": 18,
+          "wall_time_s": 6002.782930135727
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6846,
+          "attack_success_rate": 0.9711111111111111,
+          "norm_clip_rounds": 22,
+          "reputation_rounds": 28,
+          "wall_time_s": 6111.348672866821
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7567,
+          "attack_success_rate": 0.8132222222222222,
+          "norm_clip_rounds": 23,
+          "reputation_rounds": 27,
+          "wall_time_s": 6133.555809020996
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.667,
+          "attack_success_rate": 0.9203333333333333,
+          "norm_clip_rounds": 26,
+          "reputation_rounds": 24,
+          "wall_time_s": 6048.788506031036
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7522,
+          "attack_success_rate": 0.9025555555555556,
+          "norm_clip_rounds": 28,
+          "reputation_rounds": 22,
+          "wall_time_s": 6044.648514032364
+        }
+      ]
+    },
+    "NC10_rep90": {
+      "policy": {
+        "norm_clip": 0.1,
+        "reputation": 0.9
+      },
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6743,
+          "attack_success_rate": 0.9174444444444444,
+          "norm_clip_rounds": 6,
+          "reputation_rounds": 44,
+          "wall_time_s": 6114.944694042206
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.766,
+          "attack_success_rate": 0.7327777777777778,
+          "norm_clip_rounds": 5,
+          "reputation_rounds": 45,
+          "wall_time_s": 6204.76753616333
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6668,
+          "attack_success_rate": 0.7833333333333333,
+          "norm_clip_rounds": 6,
+          "reputation_rounds": 44,
+          "wall_time_s": 6170.6602301597595
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.1533,
+          "attack_success_rate": 0.9748888888888889,
+          "norm_clip_rounds": 7,
+          "reputation_rounds": 43,
+          "wall_time_s": 6151.665880918503
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7157,
+          "attack_success_rate": 0.9147777777777778,
+          "norm_clip_rounds": 5,
+          "reputation_rounds": 45,
+          "wall_time_s": 6105.019405126572
+        }
+      ]
+    }
+  },
+  "pre_committed": {
+    "PASS": "ASR > 0.85 at NC90/rep10 AND ASR < 0.4 at NC10/rep90 AND monotonic",
+    "MEDIUM": "monotonic but one endpoint criterion fails",
+    "FAIL": "NC90/rep10 ASR < 0.5 (scaling doesn't persist on ResNet18)"
+  }
+}

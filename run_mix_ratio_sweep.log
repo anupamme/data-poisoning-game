@@ -1,0 +1,46 @@
+Round 50 mix-ratio sweep:
+  NC90_rep10: {'norm_clip': 0.9, 'reputation': 0.1}
+  NC70_rep30: {'norm_clip': 0.7, 'reputation': 0.3}
+  NC50_rep50: {'norm_clip': 0.5, 'reputation': 0.5}
+  NC30_rep70: {'norm_clip': 0.3, 'reputation': 0.7}
+  NC10_rep90: {'norm_clip': 0.1, 'reputation': 0.9}
+  Attack: model_scaling, Seeds: [42, 43, 44, 45, 46]
+  Expected runs: 25
+
+  [skip] NC90_rep10 seed 42 cached
+  [skip] NC90_rep10 seed 43 cached
+  [skip] NC90_rep10 seed 44 cached
+  [skip] NC90_rep10 seed 45 cached
+  [skip] NC90_rep10 seed 46 cached
+  [skip] NC70_rep30 seed 42 cached
+  [skip] NC70_rep30 seed 43 cached
+  [skip] NC70_rep30 seed 44 cached
+  [skip] NC70_rep30 seed 45 cached
+  [skip] NC70_rep30 seed 46 cached
+  [skip] NC50_rep50 seed 42 cached
+  [skip] NC50_rep50 seed 43 cached
+  [skip] NC50_rep50 seed 44 cached
+  [skip] NC50_rep50 seed 45 cached
+  [skip] NC50_rep50 seed 46 cached
+  [skip] NC30_rep70 seed 42 cached
+  seed 43 NC30_rep70: acc=0.787 ASR=0.343 (nc=10/rep=40) (750s, total 12.5min, 1 runs)
+  seed 44 NC30_rep70: acc=0.794 ASR=0.693 (nc=13/rep=37) (734s, total 24.7min, 2 runs)
+  seed 45 NC30_rep70: acc=0.750 ASR=0.392 (nc=16/rep=34) (720s, total 36.7min, 3 runs)
+  seed 46 NC30_rep70: acc=0.774 ASR=0.345 (nc=12/rep=38) (729s, total 48.9min, 4 runs)
+  seed 42 NC10_rep90: acc=0.781 ASR=0.246 (nc=6/rep=44) (724s, total 60.9min, 5 runs)
+  seed 43 NC10_rep90: acc=0.787 ASR=0.012 (nc=1/rep=49) (729s, total 73.1min, 6 runs)
+  seed 44 NC10_rep90: acc=0.795 ASR=0.154 (nc=5/rep=45) (726s, total 85.2min, 7 runs)
+  seed 45 NC10_rep90: acc=0.751 ASR=0.024 (nc=4/rep=46) (736s, total 97.4min, 8 runs)
+  seed 46 NC10_rep90: acc=0.778 ASR=0.051 (nc=4/rep=46) (715s, total 109.4min, 9 runs)
+
+=== MIX-RATIO SWEEP COMPLETE ===
+  NC90_rep10: scaling ASR = 0.945 +/- 0.021  per-seed: [0.932, 0.975, 0.918, 0.937, 0.966]
+  NC70_rep30: scaling ASR = 0.908 +/- 0.043  per-seed: [0.915, 0.965, 0.852, 0.866, 0.941]
+  NC50_rep50: scaling ASR = 0.815 +/- 0.104  per-seed: [0.838, 0.613, 0.847, 0.903, 0.874]
+  NC30_rep70: scaling ASR = 0.510 +/- 0.187  per-seed: [0.778, 0.343, 0.693, 0.392, 0.345]
+  NC10_rep90: scaling ASR = 0.097 +/- 0.090  per-seed: [0.246, 0.012, 0.154, 0.024, 0.051]
+
+Wall time: 109.4 min
+
+=== Pre-committed verdict ===
+  MEDIUM: scaling ASR < 0.5 at reputation-heavy mixes -> reputation crosses persistence boundary at high weight

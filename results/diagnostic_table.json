@@ -1,0 +1,93 @@
+{
+  "rows": [
+    {
+      "dataset": "CIFAR-10",
+      "N": 10,
+      "n_seeds": 10,
+      "positive": 5,
+      "null": 5,
+      "agreement": 10,
+      "agreement_n": 10,
+      "reason": "NormClip/scaling complementarity",
+      "ci": "[0.24, 0.76]",
+      "vopds": [
+        0.08081429644565685,
+        0.0,
+        0.0,
+        0.021946695874406674,
+        0.0,
+        0.11347884288145216,
+        0.0,
+        0.0,
+        0.009504170261719791,
+        0.13330846939823382
+      ]
+    },
+    {
+      "dataset": "CIFAR-10 (N=100)",
+      "N": 100,
+      "n_seeds": "?",
+      "positive": "?",
+      "null": "?",
+      "agreement": "?",
+      "agreement_n": "?",
+      "reason": "pending",
+      "ci": "N/A",
+      "vopds": []
+    },
+    {
+      "dataset": "CIFAR-100",
+      "N": 10,
+      "n_seeds": 3,
+      "positive": 2,
+      "null": 1,
+      "agreement": 3,
+      "agreement_n": 3,
+      "reason": "model-scaling boundary",
+      "ci": "N/A (n=3)",
+      "vopds": [
+        0.14987301866682312,
+        0.0,
+        0.0012643578643578568
+      ]
+    },
+    {
+      "dataset": "FEMNIST",
+      "N": 10,
+      "n_seeds": "3 (1 in data)",
+      "positive": 0,
+      "null": 3,
+      "agreement": 3,
+      "agreement_n": 3,
+      "reason": "pixel near-dominant across all defenses",
+      "ci": "N/A (n=1 data)",
+      "vopds": [
+        0.0
+      ]
+    },
+    {
+      "dataset": "CIFAR-10 (N=20)",
+      "N": 20,
+      "n_seeds": "3 (1 in data)",
+      "positive": 1,
+      "null": 0,
+      "agreement": 3,
+      "agreement_n": 3,
+      "reason": "same FedAvg+NormClip structure",
+      "ci": "N/A",
+      "vopds": [
+        0.08383490810923044
+      ]
+    }
+  ],
+  "cifar10_wilson_ci_95": [
+    0.23658959361548731,
+    0.7634104063845126
+  ],
+  "cifar10_stats": {
+    "mean_vopd": 0.03590524748614693,
+    "median_vopd": 0.0047520851308598955,
+    "cond_mean_vopd": 0.07181049497229386,
+    "proportion_positive": 0.5
+  }
+}

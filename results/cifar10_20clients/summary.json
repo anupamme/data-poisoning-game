@@ -1,0 +1,244 @@
+{
+  "num_clients": 20,
+  "clients_per_round": 4,
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "attacks": [
+    "no_attack",
+    "backdoor_pixel",
+    "model_scaling",
+    "dba"
+  ],
+  "defenses": [
+    "fedavg",
+    "norm_clip",
+    "rfa",
+    "trimmed_mean",
+    "coord_median"
+  ],
+  "vopds": [
+    0.0766679888932964,
+    0.0,
+    0.13220514661879101,
+    0.0,
+    0.010319249512670492
+  ],
+  "mixed_count": 3,
+  "n_seeds": 5,
+  "pct_mixed": 60.0,
+  "mean_vopd": 0.04383847700495158,
+  "std_vopd": 0.0526376441216266,
+  "median_vopd": 0.010319249512670492,
+  "diagnostic_correct": 5,
+  "asr_binding_cell": {
+    "cell": "model_scaling_fedavg",
+    "per_seed": [
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.012888888888888889
+    ],
+    "mean": 0.2025777777777778,
+    "std": 0.39874235872550007
+  },
+  "per_seed": [
+    {
+      "seed": 42,
+      "best_vopd": 0.0766679888932964,
+      "mixed": true,
+      "complementarity_all_correct": true,
+      "asr_model_scaling_fedavg": 0.0,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.725,
+          "server_utility": 0.676765,
+          "vopd": 0.0,
+          "adversary_support": [
+            "backdoor_pixel"
+          ],
+          "server_support": [
+            "fedavg"
+          ],
+          "complementarity_correct": true
+        },
+        {
+          "ne_idx": 2,
+          "adversary_utility": 0.8315555555555555,
+          "server_utility": 0.5978100000000001,
+          "vopd": 0.0,
+          "adversary_support": [
+            "model_scaling"
+          ],
+          "server_support": [
+            "rfa"
+          ],
+          "complementarity_correct": true
+        },
+        {
+          "ne_idx": 3,
+          "adversary_utility": 0.725,
+          "server_utility": 0.6696171317115124,
+          "vopd": 0.0766679888932964,
+          "adversary_support": [
+            "backdoor_pixel",
+            "model_scaling"
+          ],
+          "server_support": [
+            "fedavg",
+            "norm_clip"
+          ],
+          "complementarity_correct": true
+        }
+      ]
+    },
+    {
+      "seed": 43,
+      "best_vopd": 0.0,
+      "mixed": false,
+      "complementarity_all_correct": true,
+      "asr_model_scaling_fedavg": 1.0,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.9654444444444444,
+          "server_utility": 0.496285,
+          "vopd": 0.0,
+          "adversary_support": [
+            "model_scaling"
+          ],
+          "server_support": [
+            "norm_clip"
+          ],
+          "complementarity_correct": true
+        }
+      ]
+    },
+    {
+      "seed": 44,
+      "best_vopd": 0.13220514661879101,
+      "mixed": true,
+      "complementarity_all_correct": true,
+      "asr_model_scaling_fedavg": 0.0,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.7386666666666667,
+          "server_utility": 0.70556,
+          "vopd": 0.0,
+          "adversary_support": [
+            "backdoor_pixel"
+          ],
+          "server_support": [
+            "fedavg"
+          ],
+          "complementarity_correct": true
+        },
+        {
+          "ne_idx": 2,
+          "adversary_utility": 0.8983333333333333,
+          "server_utility": 0.64881,
+          "vopd": 0.0,
+          "adversary_support": [
+            "model_scaling"
+          ],
+          "server_support": [
+            "norm_clip"
+          ],
+          "complementarity_correct": true
+        },
+        {
+          "ne_idx": 3,
+          "adversary_utility": 0.7386666666666668,
+          "server_utility": 0.7022704039079757,
+          "vopd": 0.13220514661879101,
+          "adversary_support": [
+            "backdoor_pixel"
+          ],
+          "server_support": [
+            "fedavg",
+            "norm_clip"
+          ],
+          "complementarity_correct": true
+        }
+      ]
+    },
+    {
+      "seed": 45,
+      "best_vopd": 0.0,
+      "mixed": false,
+      "complementarity_all_correct": true,
+      "asr_model_scaling_fedavg": 0.0,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.9242222222222222,
+          "server_utility": 0.6378149999999999,
+          "vopd": 0.0,
+          "adversary_support": [
+            "backdoor_pixel"
+          ],
+          "server_support": [
+            "fedavg"
+          ],
+          "complementarity_correct": true
+        }
+      ]
+    },
+    {
+      "seed": 46,
+      "best_vopd": 0.010319249512670492,
+      "mixed": true,
+      "complementarity_all_correct": true,
+      "asr_model_scaling_fedavg": 0.012888888888888889,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.8382222222222222,
+          "server_utility": 0.68247,
+          "vopd": 0.0,
+          "adversary_support": [
+            "backdoor_pixel"
+          ],
+          "server_support": [
+            "trimmed_mean"
+          ],
+          "complementarity_correct": true
+        },
+        {
+          "ne_idx": 2,
+          "adversary_utility": 0.9238888888888889,
+          "server_utility": 0.6445649999999999,
+          "vopd": 0.0,
+          "adversary_support": [
+            "model_scaling"
+          ],
+          "server_support": [
+            "norm_clip"
+          ],
+          "complementarity_correct": true
+        },
+        {
+          "ne_idx": 3,
+          "adversary_utility": 0.8409882066276805,
+          "server_utility": 0.6793301813555492,
+          "vopd": 0.010319249512670492,
+          "adversary_support": [
+            "backdoor_pixel"
+          ],
+          "server_support": [
+            "rfa",
+            "trimmed_mean"
+          ],
+          "complementarity_correct": true
+        }
+      ]
+    }
+  ]
+}

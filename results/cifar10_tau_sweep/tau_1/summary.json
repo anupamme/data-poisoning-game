@@ -1,0 +1,200 @@
+{
+  "tau": 1.0,
+  "num_clients": 10,
+  "clients_per_round": 5,
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "attacks": [
+    "no_attack",
+    "backdoor_pixel",
+    "model_scaling",
+    "dba"
+  ],
+  "defenses": [
+    "fedavg",
+    "norm_clip",
+    "rfa",
+    "trimmed_mean",
+    "coord_median"
+  ],
+  "vopds": [
+    0.056323419012647924,
+    0.0,
+    0.0,
+    0.001093585699263877,
+    0.0
+  ],
+  "mixed_count": 2,
+  "n_seeds": 5,
+  "mean_vopd": 0.011483400942382361,
+  "std_vopd": 0.022424009333472925,
+  "diagnostic_correct": 5,
+  "mean_gap_scaling_minus_pixel_nclip": -0.00035555555555557563,
+  "per_seed": [
+    {
+      "seed": 42,
+      "tau": 1.0,
+      "best_vopd": 0.056323419012647924,
+      "mixed": true,
+      "complementarity_all_correct": true,
+      "asr_model_scaling_fedavg": 0.0,
+      "asr_model_scaling_nclip": 0.7563333333333333,
+      "asr_pixel_nclip": 0.7445555555555555,
+      "gap_scaling_minus_pixel_nclip": 0.011777777777777776,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.8174444444444444,
+          "server_utility": 0.770925,
+          "vopd": 0.0,
+          "adversary_support": [
+            "backdoor_pixel"
+          ],
+          "server_support": [
+            "fedavg"
+          ],
+          "complementarity_correct": true
+        },
+        {
+          "ne_idx": 2,
+          "adversary_utility": 0.8723333333333333,
+          "server_utility": 0.76477,
+          "vopd": 0.0,
+          "adversary_support": [
+            "model_scaling"
+          ],
+          "server_support": [
+            "rfa"
+          ],
+          "complementarity_correct": true
+        },
+        {
+          "ne_idx": 3,
+          "adversary_utility": 0.8123618523051814,
+          "server_utility": 0.762203547769058,
+          "vopd": 0.056323419012647924,
+          "adversary_support": [
+            "backdoor_pixel",
+            "model_scaling"
+          ],
+          "server_support": [
+            "fedavg",
+            "rfa"
+          ],
+          "complementarity_correct": true
+        }
+      ]
+    },
+    {
+      "seed": 43,
+      "tau": 1.0,
+      "best_vopd": 0.0,
+      "mixed": false,
+      "complementarity_all_correct": true,
+      "asr_model_scaling_fedavg": 1.0,
+      "asr_model_scaling_nclip": 0.6838888888888889,
+      "asr_pixel_nclip": 0.6845555555555556,
+      "gap_scaling_minus_pixel_nclip": -0.0006666666666667043,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.8194444444444444,
+          "server_utility": 0.7551950000000001,
+          "vopd": 0.0,
+          "adversary_support": [
+            "model_scaling"
+          ],
+          "server_support": [
+            "rfa"
+          ],
+          "complementarity_correct": true
+        }
+      ]
+    },
+    {
+      "seed": 44,
+      "tau": 1.0,
+      "best_vopd": 0.0,
+      "mixed": false,
+      "complementarity_all_correct": true,
+      "asr_model_scaling_fedavg": 1.0,
+      "asr_model_scaling_nclip": 0.7167777777777777,
+      "asr_pixel_nclip": 0.7405555555555555,
+      "gap_scaling_minus_pixel_nclip": -0.023777777777777787,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.43000000000000005,
+          "server_utility": 0.76615,
+          "vopd": 0.0,
+          "adversary_support": [
+            "model_scaling"
+          ],
+          "server_support": [
+            "coord_median"
+          ],
+          "complementarity_correct": true
+        }
+      ]
+    },
+    {
+      "seed": 45,
+      "tau": 1.0,
+      "best_vopd": 0.001093585699263877,
+      "mixed": true,
+      "complementarity_all_correct": true,
+      "asr_model_scaling_fedavg": 1.0,
+      "asr_model_scaling_nclip": 0.8431111111111111,
+      "asr_pixel_nclip": 0.8373333333333334,
+      "gap_scaling_minus_pixel_nclip": 0.005777777777777771,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.913024185068349,
+          "server_utility": 0.7537322993871963,
+          "vopd": 0.001093585699263877,
+          "adversary_support": [
+            "backdoor_pixel",
+            "model_scaling"
+          ],
+          "server_support": [
+            "fedavg",
+            "rfa"
+          ],
+          "complementarity_correct": true
+        }
+      ]
+    },
+    {
+      "seed": 46,
+      "tau": 1.0,
+      "best_vopd": 0.0,
+      "mixed": false,
+      "complementarity_all_correct": true,
+      "asr_model_scaling_fedavg": 1.0,
+      "asr_model_scaling_nclip": 0.7072222222222222,
+      "asr_pixel_nclip": 0.7021111111111111,
+      "gap_scaling_minus_pixel_nclip": 0.005111111111111066,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.843,
+          "server_utility": 0.758425,
+          "vopd": 0.0,
+          "adversary_support": [
+            "model_scaling"
+          ],
+          "server_support": [
+            "rfa"
+          ],
+          "complementarity_correct": true
+        }
+      ]
+    }
+  ]
+}

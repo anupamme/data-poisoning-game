@@ -1,0 +1,75 @@
+{
+  "dataset": "cifar100",
+  "model": "cifar_cnn",
+  "policy": {
+    "fedavg": 0.26,
+    "norm_clip": 0.74
+  },
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "attacks": {
+    "model_scaling": {
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.3755,
+          "attack_success_rate": 0.9552525252525252
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.3494,
+          "attack_success_rate": 0.9784848484848485
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.3377,
+          "attack_success_rate": 0.9411111111111111
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.0834,
+          "attack_success_rate": 0.00010101010101010101
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.3608,
+          "attack_success_rate": 0.9428282828282828
+        }
+      ]
+    },
+    "backdoor_pixel": {
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.3859,
+          "attack_success_rate": 0.8525252525252526
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.3942,
+          "attack_success_rate": 0.824040404040404
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.3869,
+          "attack_success_rate": 0.9022222222222223
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.3892,
+          "attack_success_rate": 0.934040404040404
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.3888,
+          "attack_success_rate": 0.813939393939394
+        }
+      ]
+    }
+  }
+}

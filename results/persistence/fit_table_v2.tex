@@ -1,0 +1,18 @@
+\begin{table}[h]
+\caption{Theorem~\ref{thm:persistence} per-defense fit and \textbf{out-of-sample validation}. Joint MLE of $(\hat\gamma, \hat\alpha, \hat p_{\mathrm{FA}}, \hat p_{\mathrm{NC}})$ on \emph{rounds 1--25} only, across all 3 conditions $\times$ 5 seeds. Predicted ASR$_{50}$ uses the fitted parameters and each held-out trajectory's per-round defense schedule to simulate rounds 26--50; observed is the actual realized ASR. Held-out RMSE is computed on rounds 26--50 (never seen by the fit).}
+\label{tab:persistence_fit}
+\centering\small
+\begin{tabular}{lccc}
+\toprule
+Condition & Pred ASR$_{50}$ (out-of-sample) & Obs ASR$_{50}$ & Held-out RMSE \\
+\midrule
+Pure FedAvg & $0.596\pm0.000$ & $0.584\pm0.478$ & $0.449$ \\
+Pure NormClip & $0.893\pm0.000$ & $0.959\pm0.020$ & $0.067$ \\
+NE3 mix & $0.797\pm0.047$ & $0.960\pm0.041$ & $0.186$ \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3em}
+\small
+Joint fit on rounds 1--25: $\hat\gamma = 0.000_{[0.000,0.000]}$, $\hat\alpha = 0.254_{[0.173,0.455]}$, $\hat p_{\mathrm{FA}} = 0.853_{[0.748,0.906]}$, $\hat p_{\mathrm{NC}} = 0.970_{[0.918,0.990]}$ (95\% bootstrap CIs over seeds).
+\end{table}

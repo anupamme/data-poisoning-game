@@ -1,0 +1,29 @@
+τ=2 disentanglement: NE3 BR on CIFAR-10 (5 seeds, NormClip τ=2.0)
+Attacks: ['no_attack', 'model_scaling', 'backdoor_pixel'], Seeds: [42, 43, 44, 45, 46], Policy: {'fedavg': 0.26, 'norm_clip': 0.74}
+
+  Seed 42, attack=no_attack... acc=0.792, ASR=0.000
+  Seed 42, attack=model_scaling... acc=0.750, ASR=0.934
+  Seed 42, attack=backdoor_pixel... acc=0.784, ASR=0.831
+  Seed 43, attack=no_attack... acc=0.795, ASR=0.000
+  Seed 43, attack=model_scaling... acc=0.745, ASR=0.949
+  Seed 43, attack=backdoor_pixel... acc=0.792, ASR=0.690
+  Seed 44, attack=no_attack... acc=0.789, ASR=0.000
+  Seed 44, attack=model_scaling... acc=0.673, ASR=0.966
+  Seed 44, attack=backdoor_pixel... acc=0.795, ASR=0.777
+  Seed 45, attack=no_attack... acc=0.792, ASR=0.000
+  Seed 45, attack=model_scaling... acc=0.750, ASR=0.982
+  Seed 45, attack=backdoor_pixel... acc=0.772, ASR=0.948
+  Seed 46, attack=no_attack... acc=0.781, ASR=0.000
+  Seed 46, attack=model_scaling... acc=0.765, ASR=0.945
+  Seed 46, attack=backdoor_pixel... acc=0.777, ASR=0.803
+
+=== τ=2 Disentanglement Summary ===
+Model scaling realized ASR: mean=0.955, std=0.017, per-seed=[0.934, 0.949, 0.966, 0.982, 0.945]
+Backdoor pixel realized ASR: mean=0.810, std=0.084, per-seed=[0.831, 0.69, 0.777, 0.948, 0.803]
+
+Gap (scaling - pixel): +0.145
+
+=== Pre-committed interpretation ===
+  Persistence DOMINATES (ms_ASR=0.955 > 0.85): Theorem 4 strengthens.
+
+Saved: /Users/mediratta/code/paper_writing/AI-Researcher/code/data_poisoning_game/results/randomized_defense_tau2/summary.json

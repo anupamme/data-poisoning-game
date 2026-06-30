@@ -1,0 +1,16 @@
+Round 53 ResNet18 SMOKE sweep:
+  Model: resnet18
+  NC90_rep10: {'norm_clip': 0.9, 'reputation': 0.1}
+  NC50_rep50: {'norm_clip': 0.5, 'reputation': 0.5}
+  NC10_rep90: {'norm_clip': 0.1, 'reputation': 0.9}
+  Attack: model_scaling, Seeds: [42, 43, 44, 45, 46]
+  Planned runs: 1
+
+  seed 42 NC90_rep10: acc=0.754 ASR=0.926 (nc=47/rep=3) (5884s, total 98.1min, 1 runs)
+
+=== ResNet18 SMOKE COMPLETE ===
+  NC90_rep10: scaling ASR = 0.926 +/- 0.000  per-seed: [0.926]
+
+Wall time: 98.1 min
+
+SMOKE PASS: ASR=0.926 > 0.1 on ResNet18; safe to launch full sweep

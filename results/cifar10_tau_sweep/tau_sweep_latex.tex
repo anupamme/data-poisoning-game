@@ -1,0 +1,18 @@
+\begin{table}[t]
+\centering
+\caption{$\tau$ sweep: NormClip threshold sensitivity (CIFAR-10, $N{=}10$, $K{=}5$, 5 seeds each).
+``Compl.'' = complementarity condition satisfied for all seeds;
+``Gap'' = $\overline{\text{ASR}(\text{scaling},\text{NClip})} - \overline{\text{ASR}(\text{pixel},\text{NClip})}$;
+``Mixed NE'' = seeds with mixed-strategy equilibrium.
+$\tau{=}5$ row uses seeds 42--46 from the main experiment.}
+\label{tab:tau_sweep}
+\begin{tabular}{lccccc}
+\toprule
+$\tau$ & ASR(pixel, NClip) & ASR(scaling, NClip) & Gap & Compl.\ & Mixed NE \\
+\midrule
+$\tau=1$ & 0.742$\pm$0.053 & 0.741$\pm$0.056 & -0.000$\pm$0.012 & \checkmark & 2/5 \\
+$\tau=5$ & 0.806$\pm$0.075 & 0.935$\pm$0.027 & 0.129$\pm$0.094 & \checkmark & 2/5 \\
+$\tau=10$ & 0.768$\pm$0.059 & 0.957$\pm$0.028 & 0.189$\pm$0.071 & \checkmark & 1/5 \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,38 @@
+Round 51 rep+tm survivor pilot:
+  Policy: {'reputation': 0.3, 'trimmed_mean': 0.7}
+  Oracle attack table: {'reputation': 'backdoor_pixel', 'trimmed_mean': 'model_scaling'}
+  Adversary policies: ['committed_scaling', 'committed_pixel', 'oracle'], Seeds: [42, 43, 44, 45, 46]
+  Expected runs: 15
+
+  seed 42 committed_scaling: acc=0.752 ASR=0.843  (reputation=10 trimmed_mean=40) (model_scaling=50 backdoor_pixel=0) (662s, total 11.0min, 1 runs)
+  seed 43 committed_scaling: acc=0.748 ASR=0.756  (reputation=16 trimmed_mean=34) (model_scaling=50 backdoor_pixel=0) (667s, total 22.1min, 2 runs)
+  seed 44 committed_scaling: acc=0.766 ASR=0.856  (reputation=15 trimmed_mean=35) (model_scaling=50 backdoor_pixel=0) (668s, total 33.3min, 3 runs)
+  seed 45 committed_scaling: acc=0.735 ASR=0.847  (reputation=18 trimmed_mean=32) (model_scaling=50 backdoor_pixel=0) (680s, total 44.6min, 4 runs)
+  seed 46 committed_scaling: acc=0.767 ASR=0.887  (reputation=20 trimmed_mean=30) (model_scaling=50 backdoor_pixel=0) (682s, total 56.0min, 5 runs)
+  seed 42 committed_pixel: acc=0.771 ASR=0.734  (reputation=10 trimmed_mean=40) (model_scaling=0 backdoor_pixel=50) (669s, total 67.1min, 6 runs)
+  seed 43 committed_pixel: acc=0.780 ASR=0.489  (reputation=16 trimmed_mean=34) (model_scaling=0 backdoor_pixel=50) (680s, total 78.5min, 7 runs)
+  seed 44 committed_pixel: acc=0.771 ASR=0.711  (reputation=15 trimmed_mean=35) (model_scaling=0 backdoor_pixel=50) (672s, total 89.7min, 8 runs)
+  seed 45 committed_pixel: acc=0.771 ASR=0.909  (reputation=18 trimmed_mean=32) (model_scaling=0 backdoor_pixel=50) (669s, total 100.8min, 9 runs)
+  seed 46 committed_pixel: acc=0.765 ASR=0.693  (reputation=20 trimmed_mean=30) (model_scaling=0 backdoor_pixel=50) (664s, total 111.9min, 10 runs)
+  seed 42 oracle: acc=0.775 ASR=0.912  (reputation=10 trimmed_mean=40) (model_scaling=40 backdoor_pixel=10) (653s, total 122.8min, 11 runs)
+  seed 43 oracle: acc=0.758 ASR=0.824  (reputation=16 trimmed_mean=34) (model_scaling=34 backdoor_pixel=16) (665s, total 133.8min, 12 runs)
+  seed 44 oracle: acc=0.771 ASR=0.937  (reputation=15 trimmed_mean=35) (model_scaling=35 backdoor_pixel=15) (664s, total 144.9min, 13 runs)
+  seed 45 oracle: acc=0.757 ASR=0.957  (reputation=18 trimmed_mean=32) (model_scaling=32 backdoor_pixel=18) (666s, total 156.0min, 14 runs)
+  seed 46 oracle: acc=0.779 ASR=0.905  (reputation=20 trimmed_mean=30) (model_scaling=30 backdoor_pixel=20) (663s, total 167.1min, 15 runs)
+
+=== REP+TM SURVIVOR PILOT COMPLETE ===
+  committed_scaling: realized ASR = 0.838 +/- 0.044  acc = 0.754 +/- 0.012
+    per-seed ASRs: [0.843, 0.756, 0.856, 0.847, 0.887]
+  committed_pixel: realized ASR = 0.707 +/- 0.134  acc = 0.772 +/- 0.005
+    per-seed ASRs: [0.734, 0.489, 0.711, 0.909, 0.693]
+  oracle: realized ASR = 0.907 +/- 0.045  acc = 0.768 +/- 0.009
+    per-seed ASRs: [0.912, 0.824, 0.937, 0.957, 0.905]
+
+  realized full-info (oracle): 0.907
+  realized committed-max:      0.838
+  REALIZED VoPD = 0.069
+
+=== Pre-committed verdict ===
+  STRONG: realized VoPD = 0.069 >= 0.05 -> survivor regime found!
+
+Wall time: 167.1 min

@@ -1,0 +1,193 @@
+{
+  "num_clients": 50,
+  "clients_per_round": 10,
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "attacks": [
+    "no_attack",
+    "backdoor_pixel",
+    "model_scaling",
+    "dba"
+  ],
+  "defenses": [
+    "fedavg",
+    "norm_clip",
+    "rfa",
+    "trimmed_mean",
+    "coord_median"
+  ],
+  "vopds": [
+    0.0,
+    0.003313621131480371,
+    0.011198237885462592,
+    0.020232658569500517,
+    0.0011031059878322536
+  ],
+  "mixed_count": 4,
+  "n_seeds": 5,
+  "pct_mixed": 80.0,
+  "mean_vopd": 0.0071695247148551465,
+  "median_vopd": 0.003313621131480371,
+  "diagnostic_correct": 3,
+  "asr_binding_cell": {
+    "cell": "model_scaling_fedavg",
+    "per_seed": [
+      1.0,
+      0.2788888888888889,
+      0.7793333333333333,
+      0.8717777777777778,
+      0.9634444444444444
+    ],
+    "mean": 0.7786888888888888,
+    "std": 0.2613729977457834
+  },
+  "per_seed": [
+    {
+      "seed": 42,
+      "best_vopd": 0.0,
+      "mixed": false,
+      "complementarity_all_correct": true,
+      "asr_model_scaling_fedavg": 1.0,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.7127777777777777,
+          "server_utility": 0.5800949999999999,
+          "vopd": 0.0,
+          "adversary_support": [
+            "model_scaling"
+          ],
+          "server_support": [
+            "rfa"
+          ],
+          "complementarity_correct": true
+        }
+      ]
+    },
+    {
+      "seed": 43,
+      "best_vopd": 0.003313621131480371,
+      "mixed": true,
+      "complementarity_all_correct": false,
+      "asr_model_scaling_fedavg": 0.2788888888888889,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.8092222222222222,
+          "server_utility": 0.5839449999999999,
+          "vopd": 0.0,
+          "adversary_support": [
+            "backdoor_pixel"
+          ],
+          "server_support": [
+            "fedavg"
+          ],
+          "complementarity_correct": true
+        },
+        {
+          "ne_idx": 2,
+          "adversary_utility": 0.8324444444444444,
+          "server_utility": 0.5117649999999999,
+          "vopd": 0.0,
+          "adversary_support": [
+            "model_scaling"
+          ],
+          "server_support": [
+            "rfa"
+          ],
+          "complementarity_correct": true
+        },
+        {
+          "ne_idx": 3,
+          "adversary_utility": 0.8092222222222222,
+          "server_utility": 0.5780775859585394,
+          "vopd": 0.003313621131480371,
+          "adversary_support": [
+            "backdoor_pixel",
+            "model_scaling"
+          ],
+          "server_support": [
+            "norm_clip"
+          ],
+          "complementarity_correct": false
+        }
+      ]
+    },
+    {
+      "seed": 44,
+      "best_vopd": 0.011198237885462592,
+      "mixed": true,
+      "complementarity_all_correct": true,
+      "asr_model_scaling_fedavg": 0.7793333333333333,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.7702266275085657,
+          "server_utility": 0.5271649721756501,
+          "vopd": 0.011198237885462592,
+          "adversary_support": [
+            "backdoor_pixel",
+            "model_scaling"
+          ],
+          "server_support": [
+            "norm_clip",
+            "rfa"
+          ],
+          "complementarity_correct": true
+        }
+      ]
+    },
+    {
+      "seed": 45,
+      "best_vopd": 0.020232658569500517,
+      "mixed": true,
+      "complementarity_all_correct": true,
+      "asr_model_scaling_fedavg": 0.8717777777777778,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.7913606837606839,
+          "server_utility": 0.49633544508287963,
+          "vopd": 0.020232658569500517,
+          "adversary_support": [
+            "backdoor_pixel",
+            "model_scaling"
+          ],
+          "server_support": [
+            "norm_clip",
+            "rfa"
+          ],
+          "complementarity_correct": true
+        }
+      ]
+    },
+    {
+      "seed": 46,
+      "best_vopd": 0.0011031059878322536,
+      "mixed": true,
+      "complementarity_all_correct": false,
+      "asr_model_scaling_fedavg": 0.9634444444444444,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.8107992315081652,
+          "server_utility": 0.5040265974903475,
+          "vopd": 0.0011031059878322536,
+          "adversary_support": [
+            "backdoor_pixel",
+            "model_scaling"
+          ],
+          "server_support": [
+            "rfa"
+          ],
+          "complementarity_correct": false
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+Round 50 mix-ratio sweep:
+  NC90_rep10: {'norm_clip': 0.9, 'reputation': 0.1}
+  NC70_rep30: {'norm_clip': 0.7, 'reputation': 0.3}
+  NC50_rep50: {'norm_clip': 0.5, 'reputation': 0.5}
+  NC30_rep70: {'norm_clip': 0.3, 'reputation': 0.7}
+  NC10_rep90: {'norm_clip': 0.1, 'reputation': 0.9}
+  Attack: model_scaling, Seeds: [42, 43, 44, 45, 46]
+  Expected runs: 25
+
+  seed 42 NC90_rep10: acc=0.784 ASR=0.932 (nc=42/rep=8) (685s, total 11.4min, 1 runs)
+  seed 43 NC90_rep10: acc=0.684 ASR=0.975 (nc=46/rep=4) (669s, total 22.6min, 2 runs)
+  seed 44 NC90_rep10: acc=0.745 ASR=0.918 (nc=46/rep=4) (663s, total 33.6min, 3 runs)
+  seed 45 NC90_rep10: acc=0.730 ASR=0.937 (nc=42/rep=8) (670s, total 44.8min, 4 runs)
+  seed 46 NC90_rep10: acc=0.780 ASR=0.966 (nc=45/rep=5) (652s, total 55.7min, 5 runs)
+  seed 42 NC70_rep30: acc=0.785 ASR=0.915 (nc=36/rep=14) (671s, total 66.8min, 6 runs)
+  seed 43 NC70_rep30: acc=0.697 ASR=0.965 (nc=31/rep=19) (691s, total 78.3min, 7 runs)
+  seed 44 NC70_rep30: acc=0.790 ASR=0.852 (nc=37/rep=13) (690s, total 89.9min, 8 runs)
+  seed 45 NC70_rep30: acc=0.735 ASR=0.866 (nc=34/rep=16) (676s, total 101.1min, 9 runs)
+  seed 46 NC70_rep30: acc=0.782 ASR=0.941 (nc=39/rep=11) (666s, total 112.2min, 10 runs)
+  seed 42 NC50_rep50: acc=0.787 ASR=0.838 (nc=24/rep=26) (691s, total 123.8min, 11 runs)
+  seed 43 NC50_rep50: acc=0.790 ASR=0.613 (nc=23/rep=27) (701s, total 135.4min, 12 runs)
+  seed 44 NC50_rep50: acc=0.794 ASR=0.847 (nc=24/rep=26) (694s, total 147.0min, 13 runs)
+  seed 45 NC50_rep50: acc=0.741 ASR=0.903 (nc=24/rep=26) (690s, total 158.5min, 14 runs)
+  seed 46 NC50_rep50: acc=0.775 ASR=0.874 (nc=29/rep=21) (675s, total 169.7min, 15 runs)
+  seed 42 NC30_rep70: acc=0.782 ASR=0.778 (nc=17/rep=33) (704s, total 181.5min, 16 runs)

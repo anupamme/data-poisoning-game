@@ -1,0 +1,231 @@
+{
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "per_seed": [
+    {
+      "seed": 42,
+      "argmax_per_defense": {
+        "fedavg": "backdoor_pixel",
+        "norm_clip": "model_scaling",
+        "foolsgold": "backdoor_pixel",
+        "reputation": "backdoor_pixel"
+      },
+      "equilibria": [
+        {
+          "is_mixed": false,
+          "U_A": 0.8324444444444444,
+          "U_D": 0.7603,
+          "VoPD": 0.0,
+          "adv_support": [
+            [
+              "backdoor_pixel",
+              1.0
+            ]
+          ],
+          "srv_support": [
+            [
+              "fedavg",
+              1.0
+            ]
+          ]
+        },
+        {
+          "is_mixed": true,
+          "U_A": 0.8324444444444443,
+          "U_D": 0.7572834371460928,
+          "VoPD": 0.08880030047839338,
+          "adv_support": [
+            [
+              "backdoor_pixel",
+              0.9957531143827859
+            ]
+          ],
+          "srv_support": [
+            [
+              "fedavg",
+              0.10603724350610855
+            ],
+            [
+              "norm_clip",
+              0.8939627564938915
+            ]
+          ]
+        },
+        {
+          "is_mixed": true,
+          "U_A": 0.8324085538025078,
+          "U_D": 0.754684,
+          "VoPD": 0.0886379220362119,
+          "adv_support": [
+            [
+              "backdoor_pixel",
+              0.329230769230772
+            ],
+            [
+              "model_scaling",
+              0.670769230769228
+            ]
+          ],
+          "srv_support": [
+            [
+              "norm_clip",
+              0.8923280741900518
+            ],
+            [
+              "reputation",
+              0.10767192580994826
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "seed": 43,
+      "argmax_per_defense": {
+        "fedavg": "model_scaling",
+        "norm_clip": "model_scaling",
+        "foolsgold": "backdoor_pixel",
+        "reputation": "backdoor_pixel"
+      },
+      "equilibria": [
+        {
+          "is_mixed": true,
+          "U_A": 0.7135109061785976,
+          "U_D": 0.7436559340659339,
+          "VoPD": 0.19964295809483412,
+          "adv_support": [
+            [
+              "backdoor_pixel",
+              0.749136577708006
+            ],
+            [
+              "model_scaling",
+              0.250863422291994
+            ]
+          ],
+          "srv_support": [
+            [
+              "norm_clip",
+              0.7440110239559041
+            ],
+            [
+              "reputation",
+              0.2559889760440958
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "seed": 44,
+      "argmax_per_defense": {
+        "fedavg": "model_scaling",
+        "norm_clip": "model_scaling",
+        "foolsgold": "model_scaling",
+        "reputation": "backdoor_pixel"
+      },
+      "equilibria": [
+        {
+          "is_mixed": true,
+          "U_A": 0.7764418011120228,
+          "U_D": 0.7570655514705882,
+          "VoPD": 0.11744068127661222,
+          "adv_support": [
+            [
+              "backdoor_pixel",
+              0.7992647058823521
+            ],
+            [
+              "model_scaling",
+              0.20073529411764796
+            ]
+          ],
+          "srv_support": [
+            [
+              "norm_clip",
+              0.855150591819993
+            ],
+            [
+              "reputation",
+              0.14484940818000702
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "seed": 45,
+      "argmax_per_defense": {
+        "fedavg": "model_scaling",
+        "norm_clip": "backdoor_pixel",
+        "foolsgold": "backdoor_pixel",
+        "reputation": "backdoor_pixel"
+      },
+      "equilibria": [
+        {
+          "is_mixed": true,
+          "U_A": 0.9156666666666667,
+          "U_D": 0.7491629194630873,
+          "VoPD": 0.017291712303760365,
+          "adv_support": [
+            [
+              "backdoor_pixel",
+              0.9949664429530202
+            ]
+          ],
+          "srv_support": [
+            [
+              "fedavg",
+              0.21796276013143445
+            ],
+            [
+              "norm_clip",
+              0.7820372398685655
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "seed": 46,
+      "argmax_per_defense": {
+        "fedavg": "model_scaling",
+        "norm_clip": "model_scaling",
+        "foolsgold": "backdoor_pixel",
+        "reputation": "backdoor_pixel"
+      },
+      "equilibria": [
+        {
+          "is_mixed": false,
+          "U_A": 0.9603333333333334,
+          "U_D": 0.74735,
+          "VoPD": 0.0,
+          "adv_support": [
+            [
+              "model_scaling",
+              1.0
+            ]
+          ],
+          "srv_support": [
+            [
+              "norm_clip",
+              1.0
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "lambda_c": 0.1,
+  "lambda_f": 0.05,
+  "lambda_a": 0.1,
+  "fg_in_support_count": 0,
+  "rep_in_support_count": 3,
+  "fltrust_in_support_count": 0,
+  "n_seeds_analyzed": 5
+}

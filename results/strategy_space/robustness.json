@@ -1,0 +1,227 @@
+{
+  "defense_menu_robustness": [
+    {
+      "name": "FedAvg+NClip",
+      "defenses": [
+        "fedavg",
+        "norm_clip"
+      ],
+      "n_defenses": 2,
+      "mixed_count": 0,
+      "pct_mixed": 0.0,
+      "mean_vopd": 0.0,
+      "per_seed_vopd": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "FedAvg+TrMean",
+      "defenses": [
+        "fedavg",
+        "trimmed_mean"
+      ],
+      "n_defenses": 2,
+      "mixed_count": 6,
+      "pct_mixed": 60.0,
+      "mean_vopd": 0.08321210421618969,
+      "per_seed_vopd": [
+        0.2281,
+        0.0,
+        0.0,
+        0.053,
+        0.0,
+        0.2695,
+        0.0734,
+        0.0,
+        0.0365,
+        0.1717
+      ]
+    },
+    {
+      "name": "FedAvg+NClip+RFA",
+      "defenses": [
+        "fedavg",
+        "norm_clip",
+        "rfa"
+      ],
+      "n_defenses": 3,
+      "mixed_count": 2,
+      "pct_mixed": 20.0,
+      "mean_vopd": 0.0006672574064968462,
+      "per_seed_vopd": [
+        0.0,
+        0.0,
+        0.0,
+        0.0063,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0003,
+        0.0
+      ]
+    },
+    {
+      "name": "FedAvg+TrMean+Med.",
+      "defenses": [
+        "fedavg",
+        "trimmed_mean",
+        "coord_median"
+      ],
+      "n_defenses": 3,
+      "mixed_count": 6,
+      "pct_mixed": 60.0,
+      "mean_vopd": 0.06418933168385091,
+      "per_seed_vopd": [
+        0.2281,
+        0.0,
+        0.0,
+        0.0576,
+        0.0,
+        0.1304,
+        0.0734,
+        0.0,
+        0.0292,
+        0.1232
+      ]
+    },
+    {
+      "name": "All 7 defenses",
+      "defenses": [
+        "fedavg",
+        "krum",
+        "multi_krum",
+        "trimmed_mean",
+        "coord_median",
+        "norm_clip",
+        "rfa"
+      ],
+      "n_defenses": 7,
+      "mixed_count": 4,
+      "pct_mixed": 40.0,
+      "mean_vopd": 0.016804251770094158,
+      "per_seed_vopd": [
+        0.0,
+        0.0,
+        0.0407,
+        0.0063,
+        0.0,
+        0.1207,
+        0.0,
+        0.0,
+        0.0003,
+        0.0
+      ]
+    }
+  ],
+  "attack_richness_robustness": [
+    {
+      "name": "2 attacks (pixel+scaling)",
+      "n_attacks": 2,
+      "mixed_count": 6,
+      "pct_mixed": 60.0,
+      "mean_vopd": 0.08321210421618969,
+      "per_seed_vopd": [
+        0.2281,
+        0.0,
+        0.0,
+        0.053,
+        0.0,
+        0.2695,
+        0.0734,
+        0.0,
+        0.0365,
+        0.1717
+      ]
+    },
+    {
+      "name": "3 attacks (+no_attack)",
+      "n_attacks": 3,
+      "mixed_count": 6,
+      "pct_mixed": 60.0,
+      "mean_vopd": 0.08321210421618969,
+      "per_seed_vopd": [
+        0.2281,
+        0.0,
+        0.0,
+        0.053,
+        0.0,
+        0.2695,
+        0.0734,
+        0.0,
+        0.0365,
+        0.1717
+      ]
+    },
+    {
+      "name": "4 attacks (+label_flip)",
+      "n_attacks": 4,
+      "mixed_count": 6,
+      "pct_mixed": 60.0,
+      "mean_vopd": 0.08321210421618969,
+      "per_seed_vopd": [
+        0.2281,
+        0.0,
+        0.0,
+        0.053,
+        0.0,
+        0.2695,
+        0.0734,
+        0.0,
+        0.0365,
+        0.1717
+      ]
+    },
+    {
+      "name": "5 attacks (+edge_case)",
+      "n_attacks": 5,
+      "mixed_count": 6,
+      "pct_mixed": 60.0,
+      "mean_vopd": 0.08321210421618969,
+      "per_seed_vopd": [
+        0.2281,
+        0.0,
+        0.0,
+        0.053,
+        0.0,
+        0.2695,
+        0.0734,
+        0.0,
+        0.0365,
+        0.1717
+      ]
+    },
+    {
+      "name": "6 attacks (full)",
+      "n_attacks": 6,
+      "mixed_count": 6,
+      "pct_mixed": 60.0,
+      "mean_vopd": 0.08321210421618969,
+      "per_seed_vopd": [
+        0.2281,
+        0.0,
+        0.0,
+        0.053,
+        0.0,
+        0.2695,
+        0.0734,
+        0.0,
+        0.0365,
+        0.1717
+      ]
+    }
+  ],
+  "attack_richness_defense_menu": [
+    "fedavg",
+    "trimmed_mean"
+  ]
+}
