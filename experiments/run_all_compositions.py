@@ -132,12 +132,48 @@ def save_one(d1, d2, attack, seed, accuracy, asr):
 # See experiments/pre_registration_dose_response.md.
 DOSE_PREFIX = "dose_kappa"
 
+# --- Targeted dose (Round 12): the same rescaling, but varying WHO is rescaled ---------
+# The Round-11 instrument varies the DISPERSION of the coefficients and assigns them by a
+# permutation uncorrelated with adversary status. That holds the aggregate's scale fixed but
+# not any client's relative weight, so a wide spread mostly dilutes whichever client carries
+# the poison and three of four arms ended up measuring Theorem 1's attenuation regime rather
+# than C2 disturbance. These two modes separate the channels the Round-11 dose confounds:
+#
+#   doseS_kappa<K>  statistic-only: every adversary pinned at c = 1 EXACTLY, benign spread
+#                   over rho = exp(2K). Payload weight is constant across rungs by
+#                   construction, so a rise in ASR cannot be attenuation.
+#   doseA_nu<V>     payload-only: benign uniform, adversary-to-benign ratio exp(V), whole
+#                   vector scaled to mean 1. Sweeps the adversary's weight through both of
+#                   Theorem 1's mechanism-preserving regimes.
+#
+# Both read adversary identity and are therefore INSTRUMENTS FOR CAUSAL IDENTIFICATION, not
+# defenses: no deployable defense knows which clients are adversarial. See
+# experiments/pre_registration_targeted_dose.md.
+DOSE_S_PREFIX = "doseS_kappa"
+DOSE_A_PREFIX = "doseA_nu"
+
 
 def parse_dose(d1_name):
     """kappa for a 'dose_kappa<K>' d1 name, else None."""
     if not isinstance(d1_name, str) or not d1_name.startswith(DOSE_PREFIX):
         return None
     return float(d1_name[len(DOSE_PREFIX):])
+
+
+def parse_targeted_dose(d1_name):
+    """(mode, value) for a targeted-dose d1 name, else None.
+
+    Mode S carries kappa, the dispersion imposed on the benign coefficients; mode A carries nu,
+    the log of the adversary-to-benign coefficient ratio. "doseS_kappa"/"doseA_nu" do not share a
+    prefix with "dose_kappa", so parse_dose cannot claim them and the Round-11 ladder is untouched.
+    """
+    if not isinstance(d1_name, str):
+        return None
+    if d1_name.startswith(DOSE_S_PREFIX):
+        return "S", float(d1_name[len(DOSE_S_PREFIX):])
+    if d1_name.startswith(DOSE_A_PREFIX):
+        return "A", float(d1_name[len(DOSE_A_PREFIX):])
+    return None
 
 
 def dose_coefficients(n, kappa, dose_key):
@@ -167,8 +203,65 @@ def dose_coefficients(n, kappa, dose_key):
     return c
 
 
+def dose_coefficients_statistic_only(adv_mask, kappa, dose_key):
+    """Mode S. Benign coefficients spread over rho = exp(2*kappa); every adversary pinned at 1.0.
+
+    The benign ladder is normalized to mean 1 over the BENIGN participants, so with every adversary
+    at exactly 1 the mean over all participants is 1 as well: aggregate scale is held fixed exactly
+    as in the Round-11 dose, and the adversary's coefficient -- the quantity Lemma 1's attenuation
+    channel runs through -- is identical at every rung. Any change in ASR across this ladder is
+    therefore attributable to the relative reweighting of the benign updates, which is what the
+    statistics d2 reads (pairwise distance, consensus distance, coordinate ordering) are computed
+    from. That is the whole design: it closes the channel that confounded Round 11.
+
+    rho = max(c)/min(c) is still exactly exp(2*kappa), because the mean-1 benign ladder straddles 1.
+
+    Degenerate rounds, recorded rather than silently absorbed: fewer than two benign participants
+    admits no dispersion at all and returns the identity; a round with no adversary makes this
+    transform coincide with the Round-11 dose over the whole round.
+    """
+    n = len(adv_mask)
+    c = np.ones(n)
+    ben = [i for i, a in enumerate(adv_mask) if not a]
+    m = len(ben)
+    if kappa == 0.0 or m < 2:
+        return c
+    ladder = np.exp(kappa * (2.0 * np.arange(m) / (m - 1) - 1.0))
+    ladder = ladder / ladder.mean()
+    perm = np.random.default_rng([int(dose_key[0]), int(dose_key[1])]).permutation(m)
+    vals = np.empty(m)
+    vals[perm] = ladder
+    for slot, i in enumerate(ben):
+        c[i] = vals[slot]
+    return c
+
+
+def dose_coefficients_payload_only(adv_mask, nu):
+    """Mode A. Benign uniform, adversary-to-benign coefficient ratio exactly gamma = exp(nu).
+
+    c_adv = gamma*s, c_ben = s, with s = n / (n + n_a*(gamma - 1)) chosen so mean(c) = 1. s > 0 for
+    every gamma > 0 and every 0 <= n_a <= n, so the coefficients stay strictly positive and the
+    transform stays inside Proposition 1's hypothesis. Benign clients keep a COMMON coefficient, so
+    their relative weighting -- and with it most of what d2's statistic reads among the benign
+    majority -- is untouched; what moves is the adversary's share of the aggregate.
+
+    Sweeping gamma through 1 sweeps the adversary through both mechanism-preserving regimes of
+    Theorem 1: kept extreme enough for a rank aggregator to discard (gamma large), or attenuated
+    until it carries no payload (gamma small). No dose_key is needed -- the assignment is determined
+    by adversary status, not by a permutation.
+    """
+    n = len(adv_mask)
+    n_a = sum(bool(a) for a in adv_mask)
+    if nu == 0.0 or n_a == 0 or n_a == n:
+        return np.ones(n)
+    gamma = float(np.exp(nu))
+    s = n / (n + n_a * (gamma - 1.0))
+    return np.array([gamma * s if a else s for a in adv_mask])
+
+
 # --- Generic Defense Composition ---
-def apply_d1_transform(updates, d1_name, tau=5.0, server=None, dose_key=None):
+def apply_d1_transform(updates, d1_name, tau=5.0, server=None, dose_key=None,
+                       adv_mask=None):
     """Apply d1's per-client transformation without final aggregation.
 
     Type A (weighting): reputation, foolsgold — compute weights, scale updates
@@ -176,9 +269,33 @@ def apply_d1_transform(updates, d1_name, tau=5.0, server=None, dose_key=None):
     Type C/D (aggregating/no-op): trimmed_mean, coord_median, rfa, fedavg — pass through
     Type E (controlled dose): dose_kappa<K> — synthetic rescaling of dispersion e^{2K};
         requires dose_key=(seed, round) and is not a defense (see dose_coefficients)
+    Type F (targeted dose): doseS_kappa<K> / doseA_nu<V> — the same rescaling with the
+        assignment tied to adversary status; requires adv_mask and is not a defense
+        (see dose_coefficients_statistic_only / dose_coefficients_payload_only)
     """
     keys = list(updates[0].keys())
     n = len(updates)
+
+    targeted = parse_targeted_dose(d1_name)
+    if targeted is not None:
+        mode, val = targeted
+        if adv_mask is None:
+            raise ValueError(f"{d1_name} requires adv_mask; refusing to run a targeted dose "
+                             "without knowing which participants are adversarial")
+        if len(adv_mask) != n:
+            raise ValueError(f"adv_mask has {len(adv_mask)} entries for {n} updates")
+        if mode == "S":
+            if val == 0.0:
+                return updates          # identity, returned unwrapped as in the Round-11 dose
+            if dose_key is None:
+                raise ValueError(f"{d1_name} requires dose_key=(seed, round); refusing to run "
+                                 "with an unseeded permutation")
+            c = dose_coefficients_statistic_only(adv_mask, val, dose_key)
+        else:
+            if val == 0.0:
+                return updates
+            c = dose_coefficients_payload_only(adv_mask, val)
+        return [{k: u[k] * float(c[i]) for k in keys} for i, u in enumerate(updates)]
 
     kappa = parse_dose(d1_name)
     if kappa is not None:
@@ -306,11 +423,11 @@ def apply_d1_transform(updates, d1_name, tau=5.0, server=None, dose_key=None):
         return updates
 
 
-def generic_compose(server, updates, d1_name, d2_name, tau=5.0, dose_key=None):
+def generic_compose(server, updates, d1_name, d2_name, tau=5.0, dose_key=None, adv_mask=None):
     """Compose two defenses: d1's transformation then d2's aggregation."""
     # Step 1: Apply d1's per-client transformation
     transformed = apply_d1_transform(updates, d1_name, tau=tau, server=server,
-                                     dose_key=dose_key)
+                                     dose_key=dose_key, adv_mask=adv_mask)
     # Step 2: Aggregate with d2
     aggregated = server.aggregate(transformed, method=d2_name, tau=tau)
     return aggregated
