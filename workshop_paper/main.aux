@@ -1,0 +1,215 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{mcmahan2017communication}
+\citation{chen2017targeted,bagdasaryan2020backdoor}
+\citation{fung2020foolsgold}
+\citation{pillutla2022robust}
+\citation{yin2018byzantine}
+\citation{blanchard2017machine}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\newlabel{sec:intro}{{1}{1}{Introduction}{section.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces \textbf  {The paper in one figure: the statistic moves, admission does not, and suppression holds.} Mode~S, Krum under model-scaling (\S  \ref {sec:targeted}). Every adversary is pinned at $c{=}1$, so the adversarial coefficient share is constant across rungs, Lemma~\ref {lem:annihilation}'s attenuation channel is shut \emph  {by construction}, and the dose \textbf  {isolates statistic disturbance from adversarial coefficient attenuation}---the one channel it closes, and not the only thing it moves. As benign dispersion $\rho $ grows to $54.6$, Krum's \emph  {decision} flips in up to $80\%$ of rounds while \emph  {admission} of adversarial input holds at exactly $0.000$ and max-committed ASR shows no evidence of the predicted increase, staying inside the pre-specified equivalence margin ($|\Delta |{=}0.026 < 0.15$) and low. \textbf  {Statistic preservation is therefore not what was doing the work.} Bars are Student-$t$ $95\%$ intervals ($n{=}5$); every value recomputed per seed by \texttt  {analyze\_targeted\_dose.py}. A pre-registered replication in a \emph  {different} invariance class and on a \emph  {second dataset and architecture} reproduces the negative and \textbf  {refutes} the cross-arm admission ordering we had predicted (\S  \ref {sec:targeted_rest}).}}{2}{figure.1}\protected@file@percent }
+\newlabel{fig:modeS}{{1}{2}{\textbf {The paper in one figure: the statistic moves, admission does not, and suppression holds.} Mode~S, Krum under model-scaling (\S \ref {sec:targeted}). Every adversary is pinned at $c{=}1$, so the adversarial coefficient share is constant across rungs, Lemma~\ref {lem:annihilation}'s attenuation channel is shut \emph {by construction}, and the dose \textbf {isolates statistic disturbance from adversarial coefficient attenuation}---the one channel it closes, and not the only thing it moves. As benign dispersion $\rho $ grows to $54.6$, Krum's \emph {decision} flips in up to $80\%$ of rounds while \emph {admission} of adversarial input holds at exactly $0.000$ and max-committed ASR shows no evidence of the predicted increase, staying inside the pre-specified equivalence margin ($|\Delta |{=}0.026 < 0.15$) and low. \textbf {Statistic preservation is therefore not what was doing the work.} Bars are Student-$t$ $95\%$ intervals ($n{=}5$); every value recomputed per seed by \texttt {analyze\_targeted\_dose.py}. A pre-registered replication in a \emph {different} invariance class and on a \emph {second dataset and architecture} reproduces the negative and \textbf {refutes} the cross-arm admission ordering we had predicted (\S \ref {sec:targeted_rest})}{figure.1}{}}
+\citation{bagdasaryan2020backdoor}
+\citation{chen2017targeted}
+\citation{xie2019dba}
+\citation{shejwalkar2021manipulating}
+\@writefile{toc}{\contentsline {paragraph}{Threat model and scope.}{4}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Mechanism Preservation: Invariance Classes}{4}{section.2}\protected@file@percent }
+\newlabel{sec:framework}{{2}{4}{Mechanism Preservation: Invariance Classes}{section.2}{}}
+\newlabel{def:composition}{{1}{4}{Defense composition}{definition.1}{}}
+\newlabel{prop:invariance}{{1}{5}{Invariance classes under positive per-client rescaling}{proposition.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{The framework in general form.}{5}{section*.2}\protected@file@percent }
+\newlabel{def:levels}{{2}{5}{Preservation levels}{definition.2}{}}
+\newlabel{def:conditions}{{3}{6}{Signal-Preservation Conditions}{definition.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Formal Guarantee: Weighting $\to $ Aggregator Class}{6}{subsection.2.1}\protected@file@percent }
+\newlabel{thm:bounded_reweight}{{1}{6}{Bounded reweighting preserves the downstream discriminative mechanism}{theorem.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{$\Lambda _a$ is level (P4) in measurable form.}{7}{section*.3}\protected@file@percent }
+\newlabel{lem:annihilation}{{1}{7}{Zero-weight annihilation}{lemma.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Heterogeneity is not the mechanism: $\rho $ against $\Delta _c$}{7}{subsection.2.2}\protected@file@percent }
+\newlabel{sec:rho_vs_deltac}{{2.2}{7}{Heterogeneity is not the mechanism: $\rho $ against $\Delta _c$}{subsection.2.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Two different things a coefficient vector does, and the theory sees only one.}{7}{section*.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Two mechanism-preserving regimes, at opposite ends of $\rho $.}{7}{section*.5}\protected@file@percent }
+\citation{elwert2014endogenous,pearl2009causality}
+\@writefile{toc}{\contentsline {section}{\numberline {3}The Testability Boundary}{8}{section.3}\protected@file@percent }
+\newlabel{sec:testability}{{3}{8}{The Testability Boundary}{section.3}{}}
+\newlabel{prop:identification}{{2}{8}{Why constituent-effect contrasts cannot identify composition effects under inherited-effect gating}{proposition.2}{}}
+\newlabel{lem:testability}{{2}{8}{C0 and C1 place the effective constituent downstream}{lemma.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{This is selection on the outcome; \emph  {where it hides} is the point.}{8}{section*.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Both worked instances are ours, and one of them inverted a sign.}{9}{section*.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{The admissible design, derived---and this, not the criterion, is the practical contribution.}{9}{section*.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{A second boundary: what such a screen cannot find.}{9}{section*.9}\protected@file@percent }
+\newlabel{prop:emergent}{{3}{9}{Inherited-suppression screens cannot certify emergent synergy}{proposition.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{What the boundary rules out, our own previously-decisive test included.}{9}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Statistic Preservation Is Not Security Preservation}{9}{section.4}\protected@file@percent }
+\newlabel{sec:targeted}{{4}{9}{Statistic Preservation Is Not Security Preservation}{section.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{An instrument that closes the attenuation channel by construction.}{10}{section*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Two readings of C2, frozen against each other.}{10}{section*.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{What the instrument does \emph  {not} hold fixed, named in full---and what it pins exactly.}{10}{section*.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{A pre-registered replication, on a different defense class, that refutes the positive half.}{10}{section*.14}\protected@file@percent }
+\citation{cao2021fltrust}
+\citation{blanchard2017machine}
+\@writefile{toc}{\contentsline {paragraph}{What the two arms jointly establish.}{11}{section*.15}\protected@file@percent }
+\newlabel{prop:nonidentifiability}{{4}{11}{Statistic-level non-identifiability}{proposition.4}{}}
+\newlabel{prop:rho_deltac}{{5}{11}{$\rho $ and $\Delta _c$ are independently controllable}{proposition.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}What the Boundary Licenses, and What We Found}{11}{section.5}\protected@file@percent }
+\newlabel{sec:validation}{{5}{11}{What the Boundary Licenses, and What We Found}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Two attempts that the confound defeated}{11}{subsection.5.1}\protected@file@percent }
+\newlabel{sec:prospective}{{5.1}{11}{Two attempts that the confound defeated}{subsection.5.1}{}}
+\newlabel{sec:metric_swap}{{5.1}{11}{Two attempts that the confound defeated}{subsection.5.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Two pre-registered suites, and the two ways the boundary asserted itself.}{11}{section*.16}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{The one contrast that escapes---and the design it dictates.}{12}{section*.17}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}H1, and the confounded design that motivated the instrument}{12}{subsection.5.2}\protected@file@percent }
+\newlabel{sec:dose_response}{{5.2}{12}{H1, and the confounded design that motivated the instrument}{subsection.5.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{The instrument, the abscissa, and the predictions frozen against them.}{12}{section*.18}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Outcome: one arm confirmed, two refuted, one indeterminate---the pooled test fails.}{12}{section*.19}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Two faults, both ours---and now measured rather than conjectured.}{13}{section*.20}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}The rest of the targeted suite: the payload dose, and what it does to the ladder's one confirmation}{13}{subsection.5.3}\protected@file@percent }
+\newlabel{sec:targeted_rest}{{5.3}{13}{The rest of the targeted suite: the payload dose, and what it does to the ladder's one confirmation}{subsection.5.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{What Mode~S does to the ladder's one confirmation.}{13}{section*.21}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Mode A: the two regimes, and where they hold.}{13}{section*.22}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{The same channels, across four aggregators of three structural kinds.}{13}{section*.23}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{A second dataset and architecture, pre-registered.}{13}{section*.24}\protected@file@percent }
+\citation{blanchard2017machine}
+\citation{yin2018byzantine}
+\citation{pillutla2022robust}
+\citation{fung2020foolsgold}
+\citation{cao2021fltrust}
+\citation{nguyen2022flame}
+\citation{tramer2018ensemble}
+\citation{shejwalkar2021manipulating,bhagoji2019analyzing}
+\citation{xie2019dba,wang2020attack,zhang2022neurotoxin}
+\citation{croce2020robustbench}
+\citation{kairouz2021advances}
+\@writefile{toc}{\contentsline {section}{\numberline {6}What the Causal Boundary Permits---and What It Does Not}{14}{section.6}\protected@file@percent }
+\newlabel{sec:prioritization}{{6}{14}{What the Causal Boundary Permits---and What It Does Not}{section.6}{}}
+\@writefile{toc}{\contentsline {paragraph}{The procedure, and where it breaks.}{14}{section*.25}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Related Work}{14}{section.7}\protected@file@percent }
+\bibstyle{abbrvnat}
+\bibdata{references}
+\bibcite{bagdasaryan2020backdoor}{{1}{2020}{{Bagdasaryan et~al.}}{{Bagdasaryan, Veit, Hua, Estrin, and Shmatikov}}}
+\bibcite{bhagoji2019analyzing}{{2}{2019}{{Bhagoji et~al.}}{{Bhagoji, Chakraborty, Mittal, and Calo}}}
+\bibcite{blanchard2017machine}{{3}{2017}{{Blanchard et~al.}}{{Blanchard, El~Mhamdi, Guerraoui, and Stainer}}}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Conclusion}{15}{section.8}\protected@file@percent }
+\newlabel{sec:conclusion}{{8}{15}{Conclusion}{section.8}{}}
+\@writefile{toc}{\contentsline {paragraph}{What is proved, what is supported, and what is not.}{15}{section*.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{What to do instead: six steps for any composition claim.}{15}{section*.27}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{The negative is the result.}{15}{section*.28}\protected@file@percent }
+\bibcite{cao2021fltrust}{{4}{2021}{{Cao et~al.}}{{Cao, Fang, Liu, and Gong}}}
+\bibcite{chen2017targeted}{{5}{2017}{{Chen et~al.}}{{Chen, Liu, Li, Lu, and Song}}}
+\bibcite{croce2020robustbench}{{6}{2021}{{Croce et~al.}}{{Croce, Andriushchenko, Sehwag, Debenedetti, Flammarion, Chiang, Mittal, and Hein}}}
+\bibcite{elwert2014endogenous}{{7}{2014}{{Elwert and Winship}}{{}}}
+\bibcite{fung2020foolsgold}{{8}{2020}{{Fung et~al.}}{{Fung, Yoon, and Beschastnikh}}}
+\bibcite{kairouz2021advances}{{9}{2021}{{Kairouz et~al.}}{{Kairouz, McMahan, Avent, Bellet, Bennis, Bhagoji, Bonawitz, Charles, Cormode, Cummings, et~al.}}}
+\bibcite{mcmahan2017communication}{{10}{2017}{{McMahan et~al.}}{{McMahan, Moore, Ramage, Hampson, and Arcas}}}
+\bibcite{nguyen2022flame}{{11}{2022}{{Nguyen et~al.}}{{Nguyen, Rieger, De~Viti, Chen, Brandenburg, Yalame, M{\"o}llering, Fereidooni, Marchal, Miettinen, Mirhoseini, Zeitouni, Koushanfar, Sadeghi, and Schneider}}}
+\bibcite{pearl2009causality}{{12}{2009}{{Pearl}}{{}}}
+\bibcite{pillutla2022robust}{{13}{2022}{{Pillutla et~al.}}{{Pillutla, Kakade, and Harchaoui}}}
+\bibcite{shejwalkar2021manipulating}{{14}{2021}{{Shejwalkar and Houmansadr}}{{}}}
+\bibcite{tramer2018ensemble}{{15}{2018}{{Tram{\`e}r et~al.}}{{Tram{\`e}r, Kurakin, Papernot, Goodfellow, Boneh, and McDaniel}}}
+\bibcite{wang2020attack}{{16}{2020}{{Wang et~al.}}{{Wang, Sreenivasan, Rajput, Vishwakarma, Acar, and Papailiopoulos}}}
+\bibcite{xie2019dba}{{17}{2020}{{Xie et~al.}}{{Xie, Huang, Chen, and Li}}}
+\bibcite{yin2018byzantine}{{18}{2018}{{Yin et~al.}}{{Yin, Chen, Kannan, and Bartlett}}}
+\bibcite{zhang2022neurotoxin}{{19}{2022}{{Zhang et~al.}}{{Zhang, Panda, Song, Yang, Mahoney, Mitliagkas, Kannan, and Shmatikov}}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces \textbf  {Scope of claims.} The one place each scope condition is stated. \textbf  {Claims do not transfer upward}: the formal guarantee does not certify the general framing, and the empirical figures certify neither level above them.}}{17}{table.1}\protected@file@percent }
+\newlabel{tab:scope_levels}{{1}{17}{\textbf {Scope of claims.} The one place each scope condition is stated. \textbf {Claims do not transfer upward}: the formal guarantee does not certify the general framing, and the empirical figures certify neither level above them}{table.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {A}The signal-preservation conditions in full}{17}{appendix.A}\protected@file@percent }
+\newlabel{app:conditions}{{A}{17}{The signal-preservation conditions in full}{appendix.A}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {B}The four channels, all four aggregators}{18}{appendix.B}\protected@file@percent }
+\newlabel{app:channel_table}{{B}{18}{The four channels, all four aggregators}{appendix.B}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {C}Decomposing the emitted displacement: re-selection against rescaling}{18}{appendix.C}\protected@file@percent }
+\newlabel{app:decomposition}{{C}{18}{Decomposing the emitted displacement: re-selection against rescaling}{appendix.C}{}}
+\citation{bagdasaryan2020backdoor}
+\citation{zhang2022neurotoxin}
+\@writefile{toc}{\contentsline {section}{\numberline {D}Related work, continued}{19}{appendix.D}\protected@file@percent }
+\newlabel{app:related}{{D}{19}{Related work, continued}{appendix.D}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {E}Notation}{20}{appendix.E}\protected@file@percent }
+\newlabel{app:notation}{{E}{20}{Notation}{appendix.E}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {F}Deployment guidance in full}{20}{appendix.F}\protected@file@percent }
+\newlabel{app:deployment}{{F}{20}{Deployment guidance in full}{appendix.F}{}}
+\@writefile{toc}{\contentsline {paragraph}{Deployment guidance.}{20}{section*.30}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {G}Proofs}{20}{appendix.G}\protected@file@percent }
+\newlabel{app:proofs}{{G}{20}{Proofs}{appendix.G}{}}
+\newlabel{cor:aggregate_mass}{{1}{21}{Bounded aggregate adversarial influence}{corollary.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {H}Verification of the invariance mirrors}{21}{appendix.H}\protected@file@percent }
+\newlabel{app:mirrors}{{H}{21}{Verification of the invariance mirrors}{appendix.H}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces \textbf  {The preservation chain, and where it breaks.} (P1)$\Rightarrow $(P2)$\Rightarrow $(P3) holds by definition; \textbf  {the (P3)--(P4) link breaks in both directions}, and both witnesses come from the oracle intervention that pins every adversary's coefficient and so closes Lemma~\ref {lem:annihilation}'s attenuation channel \emph  {by construction} (\S  \ref {sec:targeted}). The pooled statistic-level prediction we had frozen is separately \textbf  {rejected} by a pre-registered ladder (\S  \ref {sec:dose_response}), and a pre-registered replication in a different invariance class reproduces the negative but \textbf  {refutes the cross-arm admission ordering}, so \textbf  {admission is a direction, not a validated predictor}. Every number in the figure is recomputed from the scoring scripts' own JSON by \texttt  {story\_chain\_figure.py}.}}{22}{figure.2}\protected@file@percent }
+\newlabel{fig:story}{{2}{22}{\textbf {The preservation chain, and where it breaks.} (P1)$\Rightarrow $(P2)$\Rightarrow $(P3) holds by definition; \textbf {the (P3)--(P4) link breaks in both directions}, and both witnesses come from the oracle intervention that pins every adversary's coefficient and so closes Lemma~\ref {lem:annihilation}'s attenuation channel \emph {by construction} (\S \ref {sec:targeted}). The pooled statistic-level prediction we had frozen is separately \textbf {rejected} by a pre-registered ladder (\S \ref {sec:dose_response}), and a pre-registered replication in a different invariance class reproduces the negative but \textbf {refutes the cross-arm admission ordering}, so \textbf {admission is a direction, not a validated predictor}. Every number in the figure is recomputed from the scoring scripts' own JSON by \texttt {story\_chain\_figure.py}}{figure.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {I}Dose--response caveats recorded before the freeze}{22}{appendix.I}\protected@file@percent }
+\newlabel{app:dose_caveats}{{I}{22}{Dose--response caveats recorded before the freeze}{appendix.I}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {J}Dose--response ladder: per-seed detail, intervals, and the anchor residuals}{22}{appendix.J}\protected@file@percent }
+\newlabel{app:dose_detail}{{J}{22}{Dose--response ladder: per-seed detail, intervals, and the anchor residuals}{appendix.J}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces \textbf  {The confounded ladder against the Mode-S instrument, on the one arm that has both.} Same downstream defense, same attack, same seeds, same nominal dose---and the two designs share their $\kappa {=}0$ cell \emph  {numerically} (mean and worst per-seed gap $0.00\mathrm  {e}{+}00$, asserted at $10^{-12}$). At the top rung they are matched on aggregate displacement, decision change and mean clean accuracy, so \textbf  {the ladder's fall is not an accuracy collapse}; they differ chiefly in the \textbf  {adversarial coefficient channel}, and the ASR effect \textbf  {changes sign}. \textbf  {The one non-match, disclosed:} aggregate adversarial influence $\Lambda _a$ moves in \emph  {both} designs, $0.081$ against $0.033$ ($2.4\times $), so neither column is a clean statistic-only intervention---which is why the contrast is ``differ chiefly in the coefficient channel'', never ``only in it''. \emph  {Vocabulary:} this row is the $\Delta \Lambda _a$ column of the channel table---the adversarial share of selected coordinates, the same field in the same artifact---and \textbf  {not} its $\Delta $~adm.\ column, which counts rounds where the \emph  {support} of the adversarial mass changes and reads $0.000$ on every row: what moves here is how much weight the adversary's direction carries, not whether it enters at all. A two-column contrast on one arm: it locates where the two designs differ and attaches no $p$-value to the difference between the columns. Every cell recomputed from per-seed and per-round rows by \texttt  {build\_comparability\_table.py}.}}{23}{table.2}\protected@file@percent }
+\newlabel{tab:comparability}{{2}{23}{\textbf {The confounded ladder against the Mode-S instrument, on the one arm that has both.} Same downstream defense, same attack, same seeds, same nominal dose---and the two designs share their $\kappa {=}0$ cell \emph {numerically} (mean and worst per-seed gap $0.00\mathrm {e}{+}00$, asserted at $10^{-12}$). At the top rung they are matched on aggregate displacement, decision change and mean clean accuracy, so \textbf {the ladder's fall is not an accuracy collapse}; they differ chiefly in the \textbf {adversarial coefficient channel}, and the ASR effect \textbf {changes sign}. \textbf {The one non-match, disclosed:} aggregate adversarial influence $\Lambda _a$ moves in \emph {both} designs, $0.081$ against $0.033$ ($2.4\times $), so neither column is a clean statistic-only intervention---which is why the contrast is ``differ chiefly in the coefficient channel'', never ``only in it''. \emph {Vocabulary:} this row is the $\Delta \Lambda _a$ column of the channel table---the adversarial share of selected coordinates, the same field in the same artifact---and \textbf {not} its $\Delta $~adm.\ column, which counts rounds where the \emph {support} of the adversarial mass changes and reads $0.000$ on every row: what moves here is how much weight the adversary's direction carries, not whether it enters at all. A two-column contrast on one arm: it locates where the two designs differ and attaches no $p$-value to the difference between the columns. Every cell recomputed from per-seed and per-round rows by \texttt {build\_comparability\_table.py}}{table.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{The replication arm's post-hoc seed-matched difference.}{23}{section*.31}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{The primary test, and two post-hoc sensitivities that cannot change its verdict.}{23}{section*.32}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Per-arm trend tests.}{23}{section*.33}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Mode~S (statistic-only), $n{=}5$ per arm ($n{=}8$ for \texttt  {cos\_krum}): mean ASR with the two measured channels. \textbf  {The decision channel moves far more than ASR throughout.} $^{\dagger }$ below the $0.35$ accuracy gate. $^{\ddagger }$ the replication arm, rank-discordant by design, frozen separately: $\Delta {=}{+}0.098$ is below reputation's $+0.178$, so the cross-arm admission \emph  {ordering} is refuted while the negative replicates. Verdicts otherwise scored against readings frozen in advance; per-seed values in Appendix~\ref {app:dose_detail}.}}{24}{table.3}\protected@file@percent }
+\newlabel{tab:targeted}{{3}{24}{Mode~S (statistic-only), $n{=}5$ per arm ($n{=}8$ for \texttt {cos\_krum}): mean ASR with the two measured channels. \textbf {The decision channel moves far more than ASR throughout.} $^{\dagger }$ below the $0.35$ accuracy gate. $^{\ddagger }$ the replication arm, rank-discordant by design, frozen separately: $\Delta {=}{+}0.098$ is below reputation's $+0.178$, so the cross-arm admission \emph {ordering} is refuted while the negative replicates. Verdicts otherwise scored against readings frozen in advance; per-seed values in Appendix~\ref {app:dose_detail}}{table.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces The ladder as measured, $n{=}5$, per-attack mean ASR (mean clean accuracy). \emph  {Predicted} shapes were frozen before any run (Appendix~\ref {app:details}); $p_{\uparrow }$ is the one-sided Jonckheere--Terpstra probability of an increasing trend, the only direction any frozen rule tests. An arm meeting neither its confirmation nor its refutation criterion is reported \emph  {indeterminate} rather than scored in our favour. $^{\dagger }$ below the $0.35$ accuracy gate: a collapsed model, not suppression. Intervals, per-seed values, anchor residuals and both plotted axes: Appendix~\ref {app:dose_detail}.}}{24}{table.4}\protected@file@percent }
+\newlabel{tab:dose_outcome}{{4}{24}{The ladder as measured, $n{=}5$, per-attack mean ASR (mean clean accuracy). \emph {Predicted} shapes were frozen before any run (Appendix~\ref {app:details}); $p_{\uparrow }$ is the one-sided Jonckheere--Terpstra probability of an increasing trend, the only direction any frozen rule tests. An arm meeting neither its confirmation nor its refutation criterion is reported \emph {indeterminate} rather than scored in our favour. $^{\dagger }$ below the $0.35$ accuracy gate: a collapsed model, not suppression. Intervals, per-seed values, anchor residuals and both plotted axes: Appendix~\ref {app:dose_detail}}{table.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{Clean accuracy against dose separates two ways of losing ASR.}{24}{section*.34}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Anchor residuals, and why the instrument is the finding.}{24}{section*.35}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces \textbf  {The two regimes, exhibited: the payload dose separates them.} \emph  {The picture of regimes A and B of \S  \ref {sec:framework}, produced by the instrument of \S  \ref {sec:targeted_rest}.} With the statistic's dispersion fixed and only the adversary/benign weight ratio $r$ swept, \texttt  {coord\_median} (a rank aggregator, the class the regimes are stated for) is single-peaked at $r{=}1$ as Theorem~\ref {thm:bounded_reweight} predicts, while reputation is monotone---off-spec, and the theorem is not claimed for it. Bars are Student-$t$ $95\%$ intervals, recomputed per seed by \texttt  {analyze\_targeted\_dose.py}; the Mode-S companion is Table~\ref {tab:targeted}.}}{25}{figure.3}\protected@file@percent }
+\newlabel{fig:modeA}{{3}{25}{\textbf {The two regimes, exhibited: the payload dose separates them.} \emph {The picture of regimes A and B of \S \ref {sec:framework}, produced by the instrument of \S \ref {sec:targeted_rest}.} With the statistic's dispersion fixed and only the adversary/benign weight ratio $r$ swept, \texttt {coord\_median} (a rank aggregator, the class the regimes are stated for) is single-peaked at $r{=}1$ as Theorem~\ref {thm:bounded_reweight} predicts, while reputation is monotone---off-spec, and the theorem is not claimed for it. Bars are Student-$t$ $95\%$ intervals, recomputed per seed by \texttt {analyze\_targeted\_dose.py}; the Mode-S companion is Table~\ref {tab:targeted}}{figure.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces \textbf  {The measured axis: ASR against disturbance of each arm's own statistic}, an abscissa fixed before the freeze ($n{=}5$, Student-$t$ 95\% intervals; the figure script imports the arm and anchor construction from the scoring script, so the two cannot diverge). Stars and crosses are the two \emph  {real} upstream transforms measured on these same cells: at matched disturbance they sit $+0.77$ and $+0.79$ ASR \emph  {above} the synthetic curve, though their realized weight ratios (mean $3.61$ and $11.93$, maximum $4.90$ and $17.38$) lie \emph  {inside} the ladder's span---\S  \ref {sec:dose_response} attributes the gap to $\Delta _c$, post-hoc. The class-(a) arm's four rungs coincide at disturbance exactly $0$ and its ASR falls anyway---Lemma~\ref {lem:annihilation}'s magnitude channel, not C2 disturbance. Hollow markers fail the $0.35$ accuracy gate.}}{25}{figure.4}\protected@file@percent }
+\newlabel{fig:dose_measured}{{4}{25}{\textbf {The measured axis: ASR against disturbance of each arm's own statistic}, an abscissa fixed before the freeze ($n{=}5$, Student-$t$ 95\% intervals; the figure script imports the arm and anchor construction from the scoring script, so the two cannot diverge). Stars and crosses are the two \emph {real} upstream transforms measured on these same cells: at matched disturbance they sit $+0.77$ and $+0.79$ ASR \emph {above} the synthetic curve, though their realized weight ratios (mean $3.61$ and $11.93$, maximum $4.90$ and $17.38$) lie \emph {inside} the ladder's span---\S \ref {sec:dose_response} attributes the gap to $\Delta _c$, post-hoc. The class-(a) arm's four rungs coincide at disturbance exactly $0$ and its ASR falls anyway---Lemma~\ref {lem:annihilation}'s magnitude channel, not C2 disturbance. Hollow markers fail the $0.35$ accuracy gate}{figure.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{Two checks that passed.}{25}{section*.36}\protected@file@percent }
+\citation{zhang2022neurotoxin}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces \textbf  {The nominal axis}: the same 16 cells against the dose $\rho = e^{2\kappa }$, coloured by Proposition~\ref {prop:invariance} class. Of the two class-(c) arms the fragility claim is stated over, only reputation rises; the other two arms \emph  {fall}. This is the axis the frozen per-arm shapes were stated on, and the pooled prediction was stated on the measured axis of Figure~\ref {fig:dose_measured}. Hollow markers fail the $0.35$ accuracy gate.}}{26}{figure.5}\protected@file@percent }
+\newlabel{fig:dose_ladder}{{5}{26}{\textbf {The nominal axis}: the same 16 cells against the dose $\rho = e^{2\kappa }$, coloured by Proposition~\ref {prop:invariance} class. Of the two class-(c) arms the fragility claim is stated over, only reputation rises; the other two arms \emph {fall}. This is the axis the frozen per-arm shapes were stated on, and the pooled prediction was stated on the measured axis of Figure~\ref {fig:dose_measured}. Hollow markers fail the $0.35$ accuracy gate}{figure.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces All 16 rungs, $n{=}5$. \emph  {disturb} is the independently measured disturbance of that arm's own statistic at that rung, computed before the freeze with no ASR involved; \emph  {rise} is ASR relative to the arm's own $\kappa {=}0$ rung and is the primary test's ordinate. CIs are Student-$t$ at $n{=}5$ and are wide by design: the ladder was powered to detect a monotone trend, not to resolve single cells. $^{\dagger }$ fails the $0.35$ clean-accuracy gate.}}{26}{table.5}\protected@file@percent }
+\newlabel{tab:dose_perseed}{{5}{26}{All 16 rungs, $n{=}5$. \emph {disturb} is the independently measured disturbance of that arm's own statistic at that rung, computed before the freeze with no ASR involved; \emph {rise} is ASR relative to the arm's own $\kappa {=}0$ rung and is the primary test's ordinate. CIs are Student-$t$ at $n{=}5$ and are wide by design: the ladder was powered to detect a monotone trend, not to resolve single cells. $^{\dagger }$ fails the $0.35$ clean-accuracy gate}{table.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {K}Secondary results: baselines, the adaptive stress test, scale, and switching}{26}{appendix.K}\protected@file@percent }
+\newlabel{app:secondary}{{K}{26}{Secondary results: baselines, the adaptive stress test, scale, and switching}{appendix.K}{}}
+\@writefile{toc}{\contentsline {paragraph}{The margin behaves like a certificate, not just a switch.}{26}{section*.37}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Single-defense baselines.}{26}{section*.38}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Adaptive attacks against FG$\to $RFA.}{26}{section*.39}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces \textbf  {The criterion is a mechanism test, and the mechanism is measurable.} \textbf  {(a)} What C2 checks: the upstream transform $T$ and the statistic $S$ that $d_2$ reads determine an \emph  {invariance class} (Proposition~\ref {prop:invariance}), and the class determines the verdict with no composition run---which is why norm clipping does not blind FoolsGold but does blind Reputation. \textbf  {(b)} The measured chain for FG$\to $RFA, per round, on the transformed points RFA actually receives; each marker is one round with $w_a>0$ (rounds where FoolsGold zeroes every adversary are Lemma~\ref {lem:annihilation} and carry no payload), large markers are mean~$\pm $~s.d., and values below $10^{-4}$ are drawn at $10^{-4}$. Corollary~\ref {cor:aggregate_mass}'s bound holds in every round, and the $\alpha {=}0.1$ collapse is visible in the theorem's own quantity: $m$ falls from $4.71 \pm 1.51$ ($n{=}17$) to $2.06 \pm 2.35$ ($n{=}12$), with several rounds at $m{<}1$ where the bound degrades to $n_a/(n_b{+}n_a)$, and realized $\Lambda _a$ rises $0.003 \to 0.085$ (max $0.50$) as composition ASR goes $0.093 \to 0.569$.}}{27}{figure.6}\protected@file@percent }
+\newlabel{fig:mechanism}{{6}{27}{\textbf {The criterion is a mechanism test, and the mechanism is measurable.} \textbf {(a)} What C2 checks: the upstream transform $T$ and the statistic $S$ that $d_2$ reads determine an \emph {invariance class} (Proposition~\ref {prop:invariance}), and the class determines the verdict with no composition run---which is why norm clipping does not blind FoolsGold but does blind Reputation. \textbf {(b)} The measured chain for FG$\to $RFA, per round, on the transformed points RFA actually receives; each marker is one round with $w_a>0$ (rounds where FoolsGold zeroes every adversary are Lemma~\ref {lem:annihilation} and carry no payload), large markers are mean~$\pm $~s.d., and values below $10^{-4}$ are drawn at $10^{-4}$. Corollary~\ref {cor:aggregate_mass}'s bound holds in every round, and the $\alpha {=}0.1$ collapse is visible in the theorem's own quantity: $m$ falls from $4.71 \pm 1.51$ ($n{=}17$) to $2.06 \pm 2.35$ ($n{=}12$), with several rounds at $m{<}1$ where the bound degrades to $n_a/(n_b{+}n_a)$, and realized $\Lambda _a$ rises $0.003 \to 0.085$ (max $0.50$) as composition ASR goes $0.093 \to 0.569$}{figure.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Framework validation (representative pairs; full tallies in text). Threshold: LOW $< 0.5$, HIGH $\geq 0.5$.}}{27}{table.6}\protected@file@percent }
+\newlabel{tab:validation}{{6}{27}{Framework validation (representative pairs; full tallies in text). Threshold: LOW $< 0.5$, HIGH $\geq 0.5$}{table.6}{}}
+\@writefile{toc}{\contentsline {paragraph}{Scale.}{28}{section*.40}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {K.1}Heterogeneity, and where the criterion breaks}{28}{subsection.K.1}\protected@file@percent }
+\newlabel{app:alpha_sweep}{{K.1}{28}{Heterogeneity, and where the criterion breaks}{subsection.K.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {K.2}Composition vs.\ randomized switching}{28}{subsection.K.2}\protected@file@percent }
+\newlabel{sec:mixing}{{K.2}{28}{Composition vs.\ randomized switching}{subsection.K.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{High persistence sharply reduces the value of temporal switching.}{28}{section*.41}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Order-sensitivity control.}{28}{section*.42}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {L}The metric-swap suite's two-sided prediction}{29}{appendix.L}\protected@file@percent }
+\newlabel{app:gate_prediction}{{L}{29}{The metric-swap suite's two-sided prediction}{appendix.L}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {M}The prospective suite, arm by arm}{29}{appendix.M}\protected@file@percent }
+\newlabel{app:prospective}{{M}{29}{The prospective suite, arm by arm}{appendix.M}{}}
+\@writefile{toc}{\contentsline {paragraph}{The suggestive contrasts, and why they are still confounded.}{29}{section*.43}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {N}Adversary-correlated dispersion $\Delta _c$, measured}{30}{appendix.N}\protected@file@percent }
+\newlabel{app:delta_c}{{N}{30}{Adversary-correlated dispersion $\Delta _c$, measured}{appendix.N}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces $\rho $ says how much a transform spreads the coefficients; $\Delta _c$ says who receives the spread. They are not ordered together: RFA and NormClip target the adversary $2$--$3.6\times $ harder than the ladder's most dispersed rung at $\rho $ that is $3.7$--$13\times $ \emph  {smaller}. Means over non-degenerate rounds; the synthetic rows are attack-pooled since their coefficients do not depend on the attack.}}{30}{table.7}\protected@file@percent }
+\newlabel{tab:delta_c}{{7}{30}{$\rho $ says how much a transform spreads the coefficients; $\Delta _c$ says who receives the spread. They are not ordered together: RFA and NormClip target the adversary $2$--$3.6\times $ harder than the ladder's most dispersed rung at $\rho $ that is $3.7$--$13\times $ \emph {smaller}. Means over non-degenerate rounds; the synthetic rows are attack-pooled since their coefficients do not depend on the attack}{table.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {O}Confusion matrix in full}{30}{appendix.O}\protected@file@percent }
+\newlabel{app:confusion}{{O}{30}{Confusion matrix in full}{appendix.O}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {P}Diagnosing the two false negatives in full}{31}{appendix.P}\protected@file@percent }
+\newlabel{app:false_negatives}{{P}{31}{Diagnosing the two false negatives in full}{appendix.P}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {Q}Condition-by-condition scoring, and the run-count saving}{31}{appendix.Q}\protected@file@percent }
+\newlabel{app:condition_scoring}{{Q}{31}{Condition-by-condition scoring, and the run-count saving}{appendix.Q}{}}
+\@writefile{toc}{\contentsline {paragraph}{The out-of-sample bookkeeping, in full.}{31}{section*.44}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Does every condition earn its place? C3 does not---reported as a finding.}{31}{section*.45}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{What the saving is.}{31}{section*.46}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces \textbf  {What this design can and cannot conclude.} The middle column is about \emph  {identifiability}, not statistical power: a ``no'' marked \emph  {structural} cannot be repaired by more seeds, defenses or attacks (Proposition~\ref {prop:identification}). Every entry is scoped to the measured setting of \S  \ref {sec:validation}.}}{32}{table.8}\protected@file@percent }
+\newlabel{tab:can_cannot}{{8}{32}{\textbf {What this design can and cannot conclude.} The middle column is about \emph {identifiability}, not statistical power: a ``no'' marked \emph {structural} cannot be repaired by more seeds, defenses or attacks (Proposition~\ref {prop:identification}). Every entry is scoped to the measured setting of \S \ref {sec:validation}}{table.8}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {R}What the boundary permits, claim by claim}{32}{appendix.R}\protected@file@percent }
+\newlabel{app:can_cannot}{{R}{32}{What the boundary permits, claim by claim}{appendix.R}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {S}Experimental Details}{32}{appendix.S}\protected@file@percent }
+\newlabel{app:details}{{S}{32}{Experimental Details}{appendix.S}{}}
+\@writefile{toc}{\contentsline {paragraph}{FL configuration.}{32}{section*.47}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Attacks.}{32}{section*.48}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces \textbf  {The evaluated settings, plotted. No regimes, and one line, which is a measurement.} X-axis: persistence $\gamma $. Y-axis: best single-defense ASR ($p_\text  {eff}$). Each marker is a setting we ran and carries its own measured value; the dotted line is the measured FL persistence $\hat  \gamma \approx 0.66$. \textbf  {An earlier version shaded four regime bands and drew threshold guides at $\gamma {=}0.15$, $p_\text  {eff}{=}0.3$ and $p_\text  {eff}{=}0.6$; none of those numbers was measured, so all six are gone.} Five points cannot locate a boundary, and nothing here is evidence of a phase transition in $(\gamma , p_\text  {eff})$ space.}}{32}{figure.7}\protected@file@percent }
+\newlabel{fig:regime}{{7}{32}{\textbf {The evaluated settings, plotted. No regimes, and one line, which is a measurement.} X-axis: persistence $\gamma $. Y-axis: best single-defense ASR ($p_\text {eff}$). Each marker is a setting we ran and carries its own measured value; the dotted line is the measured FL persistence $\hat \gamma \approx 0.66$. \textbf {An earlier version shaded four regime bands and drew threshold guides at $\gamma {=}0.15$, $p_\text {eff}{=}0.3$ and $p_\text {eff}{=}0.6$; none of those numbers was measured, so all six are gone.} Five points cannot locate a boundary, and nothing here is evidence of a phase transition in $(\gamma , p_\text {eff})$ space}{figure.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{Defenses.}{33}{section*.49}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Reputation.}{33}{section*.50}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Adversary count per round.}{33}{section*.51}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Theorem quantities.}{33}{section*.52}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Pre-registration provenance.}{33}{section*.53}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Freeze commits and run tallies for the interventional suites.}{34}{section*.54}\protected@file@percent }
+\gdef \@abspage@last{34}
