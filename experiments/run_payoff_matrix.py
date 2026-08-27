@@ -65,14 +65,40 @@ def evaluate_edge_case_backdoor(model, test_dataset, target_class=0, device="cpu
     return triggered_correct / max(triggered_total, 1)
 
 
+def evaluate_scaling_disjoint_backdoor(model, test_dataset, trigger_size=4, target_class=0, device="cpu"):
+    """Evaluate ASR for the disjoint scaling trigger (bottom-LEFT 4x4 = 1.0)."""
+    from torch.utils.data import DataLoader
+    model.eval()
+    loader = DataLoader(test_dataset, batch_size=256, shuffle=False)
+    triggered_correct = 0
+    triggered_total = 0
+
+    with torch.no_grad():
+        for data, target in loader:
+            mask = target != target_class
+            if not mask.any():
+                continue
+            data, target = data[mask].to(device), target[mask].to(device)
+            data[:, :, -trigger_size:, :trigger_size] = 1.0
+            output = model(data)
+            pred = output.argmax(dim=1)
+            triggered_correct += (pred == target_class).sum().item()
+            triggered_total += data.size(0)
+
+    return triggered_correct / max(triggered_total, 1)
+
+
 def evaluate_attack_asr(model, test_dataset, attack_name, device="cpu"):
     """Dispatch ASR evaluation by attack name.
 
     backdoor_pixel/model_scaling/dba share the pixel trigger (bottom-right 4x4).
+    model_scaling_disjoint uses the bottom-left 4x4 trigger.
     backdoor_edge_case uses the top-corner -1.0 trigger.
     """
     if attack_name == "backdoor_edge_case":
         return evaluate_edge_case_backdoor(model, test_dataset, device=device)
+    if attack_name == "model_scaling_disjoint":
+        return evaluate_scaling_disjoint_backdoor(model, test_dataset, device=device)
     if attack_name in ("backdoor_pixel", "model_scaling", "dba"):
         return evaluate_backdoor(model, test_dataset, device=device)
     return 0.0

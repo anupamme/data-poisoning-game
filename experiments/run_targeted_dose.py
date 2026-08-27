@@ -78,7 +78,7 @@ from experiments.run_payoff_matrix import evaluate_backdoor
 from experiments.run_all_compositions import generic_compose
 
 # experiments/pre_registration_targeted_dose.md, committed before results/targeted_dose/ existed.
-PREREG_COMMIT = None
+PREREG_COMMIT = "5130cec"
 
 KAPPAS = [0.0, 0.5, 1.0, 2.0]                 # mode S dial: rho = exp(2k) = 1.00, 2.72, 7.39, 54.60
 NUS = [-2.0, -1.0, 0.0, 1.0, 2.0]             # mode A dial: gamma = exp(nu) = 0.135 .. 7.389
@@ -126,12 +126,23 @@ def dial(mode, val):
     return float(np.exp(2.0 * val)) if mode == "S" else float(np.exp(val))
 
 
-def run_one(seed, mode, d2, attack_name, val):
-    """One 50-round FL run of the targeted dose into d2 under attack_name."""
+def run_one(seed, mode, d2, attack_name, val, dataset="cifar10", model="cifar_cnn",
+            score_only=False):
+    """One 50-round FL run of the targeted dose into d2 under attack_name.
+
+    dataset/model default to the CIFAR-10 configuration this suite was frozen on, so every existing
+    call site is the same computation it always was. The second-dataset replication arm
+    (experiments/run_dose_femnist.py) passes ("femnist", "simple_cnn") and reuses this runner rather
+    than copying it, because a copy is how two suites drift apart in what they compute.
+
+    score_only=True is the score-only control of pre_registration_score_only.md, passed straight
+    through to generic_compose (see its docstring). It defaults to False, so no existing call site
+    changes and --harness-check still verifies bit-equality against the frozen ladders.
+    """
     torch.manual_seed(seed); np.random.seed(seed)
     dev = "mps" if torch.backends.mps.is_available() else "cpu"
-    cd, td, nc = get_federated_dataset("cifar10", FL_CONFIG.num_clients, 0.5, seed)
-    srv = FederatedServer(get_model("cifar_cnn", nc), dev,
+    cd, td, nc = get_federated_dataset(dataset, FL_CONFIG.num_clients, 0.5, seed)
+    srv = FederatedServer(get_model(model, nc), dev,
                           clean_holdout_dataset=Subset(td, list(range(100))), holdout_batch_size=32)
     adv = set(range(int(FL_CONFIG.num_clients * ADV_FRACTION)))
     atk = get_attack(ATTACK_MAP[attack_name])
@@ -155,7 +166,8 @@ def run_one(seed, mode, d2, attack_name, val):
         # mode S; mode A needs no permutation, since the assignment is determined by adversary
         # status alone.
         srv.apply_update(generic_compose(srv, ups, d1, d2, tau=5.0, dose_key=(seed, rnd),
-                                         adv_mask=[bool(cid in adv) for cid in pids]))
+                                         adv_mask=[bool(cid in adv) for cid in pids],
+                                         score_only=score_only))
         lr *= getattr(FL_CONFIG, "lr_decay", 1.0)
     return (float(srv.evaluate(td)["accuracy"]),
             float(evaluate_backdoor(srv.global_model, td, device=dev)))

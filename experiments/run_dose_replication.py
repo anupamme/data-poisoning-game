@@ -81,7 +81,7 @@ from experiments.run_targeted_dose import (
 )
 
 # experiments/pre_registration_dose_replication.md, committed before results/dose_replication/ existed.
-PREREG_COMMIT = None
+PREREG_COMMIT = "06d9bce"
 
 # (d2, attack, prop1_class, predicted_ordering, seeds) -- verbatim from the frozen pre-registration.
 ARM = ("coord_median", "committed_pixel", "b) conditionally inv.",

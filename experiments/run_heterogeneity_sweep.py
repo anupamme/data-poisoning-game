@@ -1,121 +1,159 @@
 """
-Sweeps over heterogeneity levels (Dirichlet alpha) and adversarial fractions.
+Heterogeneity sweep for the three criterion-PASS compositions.
 
-Uses a reduced 3x3 strategy set (key attacks x key defenses) with 10 rounds
-per pair for feasibility. Each of the 12 (alpha, fraction) points runs 9 pairs,
-taking ~4 min/pair = ~7 hours total. Queued to start after main payoff run.
+Reviewer concern (Round 8): every composition experiment in the paper uses Dirichlet
+alpha=0.5. This matters most for FoolsGold, whose discriminative signal is pairwise
+cosine similarity -- at high alpha (near-IID) benign clients produce genuinely similar
+updates, so FG may down-weight benign clients and a PASS pair could fail. That would be
+a real boundary condition for the framework, so we test it rather than assume it.
+
+NOTE: the pre-existing results/sweep_new_alpha*/ directories are single-defense
+payoff matrices (fedavg / multi_krum / rfa only) -- they contain no compositions.
+This is the first composition-level heterogeneity measurement.
+
+Config: N=10, K=5, f=0.2, 50 rounds, cifar_cnn. alpha=0.5 is NOT re-run; reuse
+results/all_compositions/summary.json for that column.
+
+Output: results/heterogeneity_sweep/summary.json
 """
 import json
 import os
 import sys
 import time
 import numpy as np
-from itertools import product as iter_product
+import torch
+import warnings
+warnings.filterwarnings("ignore")
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, base_dir)
 
-from config import FLConfig, ExperimentConfig, GameConfig
-from experiments.run_payoff_matrix import run_full_payoff_matrix
-from experiments.run_game_analysis import load_payoff_results, run_analysis
+from config import FLConfig
+from fl_core import get_federated_dataset, get_model, FederatedServer, FederatedClient
+from attacks import get_attack
+from experiments.run_payoff_matrix import evaluate_backdoor
+from experiments.run_all_compositions import generic_compose
 
+PAIRS = [
+    ("foolsgold", "rfa"),
+    ("foolsgold", "coord_median"),
+    ("reputation", "coord_median"),
+]
+ALPHAS = [0.1, 1.0, 10.0]          # 0.5 already measured in all_compositions
+ATTACKS = ["committed_scaling", "committed_pixel"]
+SEEDS = [42, 43, 44]
+FL_CONFIG = FLConfig(num_clients=10, clients_per_round=5, num_rounds=50)
+ADV_FRACTION = 0.2
 
-ALPHA_VALUES = [0.1, 0.3, 1.0, 10.0]
-ADV_FRACTIONS = [0.1, 0.2, 0.4]
+output_dir = os.path.join(base_dir, "results", "heterogeneity_sweep")
+os.makedirs(output_dir, exist_ok=True)
+output_path = os.path.join(output_dir, "summary.json")
 
-# Reduced strategy set: attacks and defenses most likely to appear in equilibrium.
-# This covers no-attack baseline, the two strongest backdoor attacks, and
-# the three defenses that dominate in Nash equilibrium.
-SWEEP_GAME_CONFIG = GameConfig(
-    attacks=["no_attack", "backdoor_pixel", "model_scaling"],
-    defenses=["fedavg", "multi_krum", "rfa"],
-)
-
-SWEEP_ROUNDS = 10
-
-
-def wait_for_main_run(payoff_path: str = "results/payoff_results.json", poll_interval: int = 120):
-    """Block until main payoff_results.json is fully written (42 pairs)."""
-    print(f"Waiting for main payoff run to complete ({payoff_path})...")
-    while True:
-        if os.path.exists(payoff_path):
-            try:
-                with open(payoff_path) as f:
-                    data = json.load(f)
-                if len(data) >= 42:
-                    print(f"Main run complete ({len(data)} pairs found). Starting sweep.")
-                    return
-                else:
-                    print(f"  Main run in progress: {len(data)}/42 pairs. Waiting...")
-            except (json.JSONDecodeError, IOError):
-                pass
-        time.sleep(poll_interval)
+ATTACK_MAP = {"committed_scaling": "model_scaling", "committed_pixel": "backdoor_pixel"}
 
 
-def run_sweep(wait_for_main: bool = True,
-              output_summary: str = "results/sweep_summary.json"):
-    if wait_for_main:
-        wait_for_main_run()
+def run_one(seed, d1, d2, attack_name, alpha):
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    device = "mps" if torch.backends.mps.is_available() else "cpu"
 
-    sweep_results = {}
-    total_points = len(ALPHA_VALUES) * len(ADV_FRACTIONS)
-    done = 0
+    client_datasets, test_dataset, num_classes = get_federated_dataset(
+        "cifar10", FL_CONFIG.num_clients, alpha, seed
+    )
+    server = FederatedServer(get_model("cifar_cnn", num_classes), device)
 
-    for alpha, adv_frac in iter_product(ALPHA_VALUES, ADV_FRACTIONS):
-        done += 1
-        print(f"\n{'='*60}")
-        print(f"Sweep point {done}/{total_points}: alpha={alpha}, f={adv_frac}")
-        print(f"{'='*60}")
+    adversarial_ids = set(range(int(FL_CONFIG.num_clients * ADV_FRACTION)))
+    attack = get_attack(ATTACK_MAP.get(attack_name, attack_name))
 
-        output_dir = f"results/sweep_new_alpha{alpha}_f{adv_frac}"
+    clients = []
+    for i in range(FL_CONFIG.num_clients):
+        ds = client_datasets[i]
+        if i in adversarial_ids:
+            ds = attack.poison_dataset(ds)
+        clients.append(FederatedClient(i, ds, device))
 
-        fl_config = FLConfig(num_rounds=SWEEP_ROUNDS)
-        exp_config = ExperimentConfig(
-            dataset="cifar10",
-            model="cifar_cnn",
-            dirichlet_alpha=alpha,
-            adversarial_fraction=adv_frac,
-            num_trials=1,
-            device="mps",
-            seed=42,
+    current_lr = FL_CONFIG.learning_rate
+    for _ in range(FL_CONFIG.num_rounds):
+        participant_ids = np.random.choice(
+            FL_CONFIG.num_clients,
+            size=min(FL_CONFIG.clients_per_round, FL_CONFIG.num_clients),
+            replace=False,
         )
+        updates = []
+        for cid in participant_ids:
+            update = clients[cid].train(
+                server.global_model, FL_CONFIG.local_epochs,
+                current_lr, FL_CONFIG.local_batch_size
+            )
+            if cid in adversarial_ids:
+                update = attack.manipulate_update(update, server.global_model)
+            updates.append(update)
+        aggregated = generic_compose(server, updates, d1, d2, tau=5.0)
+        server.apply_update(aggregated)
+        current_lr *= getattr(FL_CONFIG, "lr_decay", 1.0)
 
-        run_full_payoff_matrix(fl_config, exp_config, SWEEP_GAME_CONFIG, output_dir)
-
-        results_path = os.path.join(output_dir, "payoff_results.json")
-        analysis = run_analysis(results_path, output_dir, game_config=SWEEP_GAME_CONFIG)
-
-        ne_list = analysis.get("nash_equilibria", [])
-        # Pick the NE with highest adversary utility (most relevant for VoPD)
-        best_ne = max(ne_list, key=lambda ne: ne["adversary_utility"]) if ne_list else None
-
-        sweep_results[f"alpha{alpha}_f{adv_frac}"] = {
-            "alpha": alpha,
-            "adversarial_fraction": adv_frac,
-            "nash_adversary_utility": best_ne["adversary_utility"] if best_ne else None,
-            "nash_server_utility": best_ne["server_utility"] if best_ne else None,
-            "value_of_information": best_ne["value_of_information"] if best_ne else None,
-            "nash_adversary_strategy": best_ne["adversary_strategy"] if best_ne else None,
-            "nash_server_strategy": best_ne["server_strategy"] if best_ne else None,
-        }
-
-        # Write incrementally so partial results are usable
-        with open(output_summary, "w") as f:
-            json.dump(sweep_results, f, indent=2)
-        print(f"  -> saved to {output_summary} ({len(sweep_results)} points so far)")
-
-    print(f"\nSweep complete. {len(sweep_results)} points saved to {output_summary}")
-    return sweep_results
+    eval_result = server.evaluate(test_dataset)
+    asr = evaluate_backdoor(server.global_model, test_dataset, device=device)
+    return float(eval_result["accuracy"]), float(asr)
 
 
 if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--no_wait", action="store_true",
-                        help="Start immediately without waiting for main payoff run")
-    parser.add_argument("--output_summary", type=str, default="results/sweep_summary.json")
-    args = parser.parse_args()
+    total = len(PAIRS) * len(ALPHAS) * len(ATTACKS) * len(SEEDS)
+    print("=== Heterogeneity sweep: criterion-PASS compositions vs Dirichlet alpha ===")
+    print(f"  pairs={len(PAIRS)} alphas={ALPHAS} attacks={len(ATTACKS)} seeds={SEEDS}")
+    print(f"  total runs = {total}\n", flush=True)
 
-    run_sweep(
-        wait_for_main=not args.no_wait,
-        output_summary=args.output_summary,
-    )
+    # resume support: reload partial results if the job is restarted
+    results = {}
+    if os.path.exists(output_path):
+        try:
+            results = json.load(open(output_path)).get("cells", {})
+            print(f"  resuming: {len(results)} cells already complete\n", flush=True)
+        except Exception:
+            results = {}
+
+    t0 = time.time()
+    done = 0
+    for d1, d2 in PAIRS:
+        for alpha in ALPHAS:
+            for attack in ATTACKS:
+                key = f"{d1}_then_{d2}|alpha{alpha}|{attack}"
+                if key in results and len(results[key].get("per_seed", [])) == len(SEEDS):
+                    done += len(SEEDS)
+                    continue
+                per_seed = []
+                for seed in SEEDS:
+                    t = time.time()
+                    acc, asr = run_one(seed, d1, d2, attack, alpha)
+                    per_seed.append({"seed": seed, "accuracy": acc, "asr": asr})
+                    done += 1
+                    print(f"  [{done}/{total}] {d1}->{d2} a={alpha} {attack} s{seed}: "
+                          f"acc={acc:.3f} ASR={asr:.3f} ({time.time()-t:.0f}s)", flush=True)
+                asrs = [r["asr"] for r in per_seed]
+                accs = [r["accuracy"] for r in per_seed]
+                results[key] = {
+                    "d1": d1, "d2": d2, "alpha": alpha, "attack": attack,
+                    "per_seed": per_seed,
+                    "mean_asr": float(np.mean(asrs)), "std_asr": float(np.std(asrs)),
+                    "mean_acc": float(np.mean(accs)), "std_acc": float(np.std(accs)),
+                }
+                with open(output_path, "w") as f:
+                    json.dump({"description": "Criterion-PASS compositions vs Dirichlet alpha",
+                               "config": {"N": FL_CONFIG.num_clients, "K": FL_CONFIG.clients_per_round,
+                                          "f": ADV_FRACTION, "rounds": FL_CONFIG.num_rounds,
+                                          "model": "cifar_cnn", "seeds": SEEDS},
+                               "note": "alpha=0.5 not re-run; see results/all_compositions/summary.json",
+                               "cells": results}, f, indent=2)
+
+    # max-committed ASR per (pair, alpha)
+    print("\n=== MAX-COMMITTED ASR (max over the two attacks of the per-attack seed mean) ===")
+    print(f"{'pair':32s} " + " ".join(f"a={a:<6}" for a in ALPHAS))
+    for d1, d2 in PAIRS:
+        row = []
+        for alpha in ALPHAS:
+            vals = [results[f"{d1}_then_{d2}|alpha{alpha}|{atk}"]["mean_asr"]
+                    for atk in ATTACKS if f"{d1}_then_{d2}|alpha{alpha}|{atk}" in results]
+            row.append(f"{max(vals):.3f} " if vals else "  --   ")
+        print(f"{d1+'->'+d2:32s} " + " ".join(f"{v:<8}" for v in row))
+    print(f"\nWall time: {(time.time()-t0)/3600:.1f} h")
+    print(f"Saved to {output_path}")

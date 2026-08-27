@@ -57,6 +57,15 @@ ROUNDS = 3
 N, K, F_ADV = 10, 5, 0.2
 ATTACK_MAP = {"committed_scaling": "model_scaling", "committed_pixel": "backdoor_pixel"}
 
+# Tolerance for "the Mode-S adversarial coefficient share is CONSTANT across rungs". The share is
+# recomputed from float32 update norms (c is read back from the transformed norms at :139 rather than
+# taken from the builder), so it cannot be bit-exact even when the construction is: the measured
+# spread is 3.48e-07 on CIFAR-10 and 3.93e-07 on FEMNIST, both ~1.4e-06 relative to the share itself
+# and both far below the 6 significant figures the paper quotes (0.266667). The construction's
+# exact-arithmetic assertion is the separate one below -- c_adv == 1.0 with max deviation 0.00e+00 --
+# which does hold bit-exactly, on both datasets. This constant only controls a printed verdict.
+SHARE_TOL = 1e-6
+
 KAPPAS = [0.0, 0.5, 1.0, 2.0]
 NUS = [-2.0, -1.0, 0.0, 1.0, 2.0]
 # (family, rung value, d1 name). The rung value is the family's own dial: kappa for the two
@@ -94,18 +103,25 @@ def admission(stack, adv_rows, sel_krum, sel_cos, w_rep, am):
     }
 
 
-def measure(attack_name):
+def measure(attack_name, dataset="cifar10", model="cifar_cnn", seeds=None, rounds=None):
+    """Per-round channel measurements for every rung of every family.
+
+    dataset/model/seeds/rounds default to the configuration this measurement was frozen on, so
+    results/admission_measurement.json is reproduced exactly by the default call. The
+    second-dataset eligibility check (experiments/measure_admission_femnist.py) passes
+    ("femnist", "simple_cnn") and writes its own output file.
+    """
     dev = "mps" if torch.backends.mps.is_available() else "cpu"
     rows = []
-    for seed in SEEDS:
+    for seed in (SEEDS if seeds is None else seeds):
         torch.manual_seed(seed); np.random.seed(seed)
-        cd, _, nc = get_federated_dataset("cifar10", N, 0.5, seed)
-        srv = FederatedServer(get_model("cifar_cnn", nc), dev)
+        cd, _, nc = get_federated_dataset(dataset, N, 0.5, seed)
+        srv = FederatedServer(get_model(model, nc), dev)
         atk = get_attack(ATTACK_MAP[attack_name])
         adv = set(range(int(N * F_ADV)))
         cl = [FederatedClient(i, atk.poison_dataset(cd[i]) if i in adv else cd[i], dev)
               for i in range(N)]
-        for rnd in range(ROUNDS):
+        for rnd in range(ROUNDS if rounds is None else rounds):
             pids = np.random.choice(N, K, replace=False)
             ups = []
             for cid in pids:
@@ -236,7 +252,8 @@ def main():
             share[f"{family}|{v}"] = s
             seq.append(s)
         spread = float(max(seq) - min(seq))
-        verdict = ("CONSTANT" if spread < 1e-9 else
+        verdict = (f"CONSTANT (spread {spread:.2e} < {SHARE_TOL:.0e}, float32 norm read-back)"
+                   if spread < SHARE_TOL else
                    f"varies by {spread:.4f}" + (" <- INTENDED" if family == "doseA" else
                                                 " <- INSTRUMENT STILL CONFOUNDED"))
         print(f"  {family:6s} ({dial}) " + "  ".join(f"{v:>5}:{s:.4f}" for v, s in zip(vals, seq))

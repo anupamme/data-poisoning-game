@@ -264,9 +264,15 @@ def apply_d1_transform(updates, d1_name, tau=5.0, server=None, dose_key=None,
                        adv_mask=None):
     """Apply d1's per-client transformation without final aggregation.
 
-    Type A (weighting): reputation, foolsgold — compute weights, scale updates
+    Type A (weighting): reputation, foolsgold, rfa — compute weights, scale updates.
+        rfa is here, NOT with the pass-throughs: as d1 it runs the Weiszfeld iteration to a
+        geometric-median estimate and then rescales each client by its final Weiszfeld weight
+        (see the rfa branch below). Only its use as d2 aggregates. Listing it as pass-through
+        would contradict the shipped code and the paper's "RFA disturbs Krum's selection 6/9".
     Type B (clipping): norm_clip — clip each update to norm bound
-    Type C/D (aggregating/no-op): trimmed_mean, coord_median, rfa, fedavg — pass through
+    Type C/D (aggregating/no-op): trimmed_mean, coord_median, fedavg — pass through, because a
+        rank aggregator emits one vector rather than per-client updates and so supplies no
+        per-client transform at all
     Type E (controlled dose): dose_kappa<K> — synthetic rescaling of dispersion e^{2K};
         requires dose_key=(seed, round) and is not a defense (see dose_coefficients)
     Type F (targeted dose): doseS_kappa<K> / doseA_nu<V> — the same rescaling with the
@@ -423,11 +429,37 @@ def apply_d1_transform(updates, d1_name, tau=5.0, server=None, dose_key=None,
         return updates
 
 
-def generic_compose(server, updates, d1_name, d2_name, tau=5.0, dose_key=None, adv_mask=None):
-    """Compose two defenses: d1's transformation then d2's aggregation."""
+def generic_compose(server, updates, d1_name, d2_name, tau=5.0, dose_key=None, adv_mask=None,
+                    score_only=False):
+    """Compose two defenses: d1's transformation then d2's aggregation.
+
+    score_only is the SCORE-ONLY CONTROL and is not a defense. When it is False -- every existing
+    call site -- this function is byte-for-byte the computation it always was, which is what
+    run_targeted_dose.py --harness-check verifies.
+
+    When it is True, d2 SCORES on the transformed stack but AGGREGATES the untransformed selected
+    update. That closes the magnitude channel: the update entering training is exactly the one a
+    client produced, so d1 can change only which client is selected, never what that client
+    contributes. It is defined for selectors alone -- a weighted averager or a coordinate-wise order
+    statistic emits no single selected client, so there is no "the selected update" to hold fixed --
+    and it raises rather than silently doing something else for the other aggregators.
+
+    The selection mirror is imported from verify_cos_invariance rather than re-derived, so this
+    control and measure_admission.py cannot drift apart in what they call "the statistic". The
+    import is deferred because verify_cos_invariance imports apply_d1_transform from this module.
+    """
     # Step 1: Apply d1's per-client transformation
     transformed = apply_d1_transform(updates, d1_name, tau=tau, server=server,
                                      dose_key=dose_key, adv_mask=adv_mask)
+    if score_only:
+        if d2_name not in ("krum", "cos_krum"):
+            raise ValueError(f"score_only is defined for selectors only, not {d2_name}: there is no "
+                             "single selected update whose magnitude could be held fixed")
+        from experiments.verify_cos_invariance import krum_selection, flatten
+        sel, _ = krum_selection(flatten(transformed), cosine=(d2_name == "cos_krum"))
+        # _fedavg over the single selected update, exactly as _krum's own last line does, so the
+        # returned object has the same form and dtype path as the uncontrolled arm's.
+        return server.aggregate([updates[sel]], method="fedavg")
     # Step 2: Aggregate with d2
     aggregated = server.aggregate(transformed, method=d2_name, tau=tau)
     return aggregated

@@ -156,3 +156,59 @@ These defenses as d1 cannot provide per-client signal to d2.
 - Metric: max(mean_scaling_ASR, mean_pixel_ASR) across seeds
 - Threshold: LOW < 0.5, HIGH ≥ 0.5
 - This file will be committed BEFORE experiments are run.
+
+---
+
+# CORRECTION NOTE (appended 2026-08-17)
+
+**Nothing above this line has been altered.** The original predictions stand as
+pre-registered on 2026-07-18 (commit `7e4d9b1`). This note records a mathematical error
+found in the *reasoning* of two entries, and its (nil) effect on the scored outcome.
+
+## The error
+
+Entry #21 (`rfa → foolsgold`) justifies its C2-FAIL call with "FG's cosine-similarity is
+scale-sensitive to heterogeneous rescaling." The same reasoning was applied in the
+development set to `norm_clip → foolsgold`. **This is false.** Both RFA-reweighting and
+NormClip are per-client *positive scalar* rescalings, `T(u_i) = c_i u_i` with `c_i > 0`
+(NormClip: `c_i = min(1, tau/||u_i||)`). Cosine similarity is exactly invariant under
+positive rescaling, so FoolsGold's entire weight vector is unchanged:
+
+    F.normalize(c_i * u_i) == F.normalize(u_i)  =>  sim matrix, max_sim, weights all identical
+
+Verified numerically in the shipped implementation by `experiments/verify_fg_invariance.py`:
+maximum weight deviation `3e-8` (float32 rounding) across 1000 synthetic trials and live
+FL rounds in which 1–2 of 5 clients were actually clipped (raw norms up to 24.5 vs tau=5).
+Result written to `results/fg_invariance_check.json`.
+
+## Corrected classification
+
+Both pairs satisfy C2. They fail **C1** instead — no constituent suppresses:
+
+| pair | old category | corrected | C1 evidence | predicted | actual | correct? |
+|---|---|---|---|---|---|---|
+| `norm_clip → foolsgold` | C2-FAIL | **C1-FAIL** | NC alone 0.935, FG alone 0.732 | HIGH | 0.887 | yes |
+| `rfa → foolsgold` | C2-FAIL | **C1-FAIL** | RFA alone 0.885, FG alone 0.732 | HIGH | 0.914 | yes |
+
+**The predictions do not change** (HIGH in both cases) and both remain correct, so the
+confusion matrix and all reported accuracy figures are unaffected. Only the failure-mode
+labels move. Category tally over 42 pairs: DEGEN 18, C1-FAIL 11, C2-FAIL 3, C3-FAIL 7,
+PASS 3.
+
+A consequence worth noting: after the correction, **all three surviving C2 failures are
+`· → reputation`** (nc→rep 0.819, rfa→rep 0.882, fg→rep 0.798). Reputation's discriminative
+property is consensus distance (L2 from the coordinate-wise median), which is *not*
+invariant under heterogeneous positive rescaling — so this is exactly the class the
+invariance analysis predicts should fail. The taxonomy is more uniform after the fix than
+before it.
+
+## Scoring provenance (also clarified, no data changed)
+
+The 24 pairs above are genuinely held out and pre-registered. They contain **no
+predicted-PASS pair**, so they test specificity only; scored against the labels above the
+result is TP=0, FP=2, TN=22, FN=0 (22/24). The two misses are the entries hedged above as
+speculative: `foolsgold → norm_clip` (#18, "Uncertain — predicted LOW") measured 0.927, and
+`fedavg → coord_median` (#13, "borderline — might be LOW") measured 0.519. Both are scored
+as misses, not dropped. The 18-pair development set is where the criterion was developed
+and is reported as fit, not prediction. PASS-direction predictions are pre-registered
+separately in `pre_registration_oos_pass.md`.

@@ -79,7 +79,7 @@ from experiments.run_payoff_matrix import evaluate_backdoor
 from experiments.run_all_compositions import generic_compose
 
 # experiments/pre_registration_dose_response.md, committed before results/dose_response/ existed.
-PREREG_COMMIT = None
+PREREG_COMMIT = "e711a95"
 
 # (d2, attack, prop1_class, predicted_shape) -- copied VERBATIM from the frozen pre-registration
 # table, in the same order. The prediction is a SHAPE in kappa, not a per-cell label: that is what
