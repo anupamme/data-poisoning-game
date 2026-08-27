@@ -205,15 +205,165 @@ class GaussianNoiseAttack(AttackStrategy):
         return 0.1
 
 
+def backdoor_scaling_disjoint_fn(trigger_size: int = 4, target_class: int = 0):
+    """Bottom-LEFT trigger — disjoint from backdoor_pixel's bottom-RIGHT."""
+    def fn(data, target):
+        poisoned = data.clone()
+        poisoned[:, -trigger_size:, :trigger_size] = 1.0
+        return poisoned, target_class
+    return fn
+
+
+class ModelScalingDisjointAttack(AttackStrategy):
+    """Model scaling with a DISJOINT trigger (bottom-left 4x4) from backdoor_pixel (bottom-right 4x4).
+
+    Used to test whether the shared-trigger design inflates oracle ASR in the survivor experiment.
+    """
+    def __init__(self, scale_factor: float = 10.0, target_class: int = 0,
+                 trigger_size: int = 4, poison_fraction: float = 0.5):
+        super().__init__("model_scaling_disjoint")
+        self.scale_factor = scale_factor
+        self.target_class = target_class
+        self.trigger_size = trigger_size
+        self.poison_fraction = poison_fraction
+
+    def poison_dataset(self, dataset) -> Dataset:
+        return PoisonedDataset(dataset, backdoor_scaling_disjoint_fn(self.trigger_size, self.target_class), self.poison_fraction)
+
+    def manipulate_update(self, update: Dict[str, torch.Tensor],
+                          global_model: nn.Module) -> Dict[str, torch.Tensor]:
+        return {name: param * self.scale_factor for name, param in update.items()}
+
+    @property
+    def cost(self):
+        return 0.3
+
+
+class ProjectedBackdoorAttack(AttackStrategy):
+    """Adaptive attack: embed backdoor while staying close to the honest update.
+
+    Projects the poisoned update onto an epsilon-ball around the honest update,
+    simultaneously preserving high reputation weight and limiting per-coordinate
+    deviation for trimmed_mean evasion.
+    """
+    def __init__(self, epsilon: float = 1.0, trigger_size: int = 4,
+                 target_class: int = 0, poison_fraction: float = 0.5):
+        super().__init__("projected_backdoor")
+        self.epsilon = epsilon
+        self.trigger_size = trigger_size
+        self.target_class = target_class
+        self.poison_fraction = poison_fraction
+        self._honest_update = None
+
+    def poison_dataset(self, dataset) -> Dataset:
+        return PoisonedDataset(dataset, backdoor_pixel_fn(self.trigger_size, self.target_class), self.poison_fraction)
+
+    def set_honest_update(self, honest_update: Dict[str, torch.Tensor]):
+        self._honest_update = {k: v.clone() for k, v in honest_update.items()}
+
+    def manipulate_update(self, update: Dict[str, torch.Tensor],
+                          global_model: nn.Module) -> Dict[str, torch.Tensor]:
+        if self._honest_update is None:
+            return update
+
+        keys = list(update.keys())
+        poisoned_flat = torch.cat([update[k].flatten() for k in keys])
+        honest_flat = torch.cat([self._honest_update[k].flatten() for k in keys])
+
+        diff = poisoned_flat - honest_flat
+        honest_norm = honest_flat.norm().item()
+        radius = self.epsilon * max(honest_norm, 1e-8)
+
+        diff_norm = diff.norm().item()
+        if diff_norm > radius:
+            diff = diff * (radius / diff_norm)
+
+        projected_flat = honest_flat + diff
+
+        result = {}
+        offset = 0
+        for k in keys:
+            numel = update[k].numel()
+            result[k] = projected_flat[offset:offset + numel].reshape(update[k].shape)
+            offset += numel
+        return result
+
+    @property
+    def cost(self):
+        return 0.25
+
+
+class NeurotoxinAttack(AttackStrategy):
+    """Neurotoxin-style adaptive attack (Zhang et al., 2022).
+
+    Projects the malicious update onto the top-k coordinates by magnitude of the
+    running gradient mean, making the backdoor reside in the same subspace as
+    benign training and thus harder for trimmed_mean/reputation to detect.
+    """
+    def __init__(self, top_frac: float = 0.1, scale_factor: float = 1.0,
+                 trigger_size: int = 4, target_class: int = 0,
+                 poison_fraction: float = 0.5):
+        super().__init__("neurotoxin")
+        self.top_frac = top_frac
+        self.scale_factor = scale_factor
+        self.trigger_size = trigger_size
+        self.target_class = target_class
+        self.poison_fraction = poison_fraction
+        self._grad_history = None
+
+    def poison_dataset(self, dataset) -> Dataset:
+        return PoisonedDataset(dataset, backdoor_pixel_fn(self.trigger_size, self.target_class),
+                               self.poison_fraction)
+
+    def manipulate_update(self, update: Dict[str, torch.Tensor],
+                          global_model: nn.Module) -> Dict[str, torch.Tensor]:
+        keys = list(update.keys())
+        flat = torch.cat([update[k].flatten().cpu().float() for k in keys])
+
+        if self._grad_history is None:
+            self._grad_history = flat.clone()
+        else:
+            self._grad_history = 0.9 * self._grad_history + 0.1 * flat
+
+        k = max(1, int(len(flat) * self.top_frac))
+        _, top_indices = self._grad_history.abs().topk(k)
+        mask = torch.zeros_like(flat)
+        mask[top_indices] = 1.0
+
+        projected = flat * mask * self.scale_factor
+
+        result = {}
+        offset = 0
+        device = next(iter(update.values())).device
+        for key in keys:
+            numel = update[key].numel()
+            result[key] = projected[offset:offset + numel].reshape(update[key].shape).to(device)
+            offset += numel
+        return result
+
+    @property
+    def cost(self):
+        return 0.3
+
+
 ATTACK_REGISTRY = {
     "no_attack": NoAttack,
     "label_flip": LabelFlipAttack,
     "backdoor_pixel": BackdoorPixelAttack,
     "backdoor_edge_case": BackdoorEdgeCaseAttack,
     "model_scaling": ModelScalingAttack,
+    "model_scaling_disjoint": ModelScalingDisjointAttack,
+    "projected_backdoor": ProjectedBackdoorAttack,
+    "neurotoxin": NeurotoxinAttack,
     "dba": DBAAttack,
     "gaussian_noise": GaussianNoiseAttack,
 }
+
+try:
+    from .consensus_shift_attack import ConsensusShiftAttack
+    ATTACK_REGISTRY["consensus_shift"] = ConsensusShiftAttack
+except ImportError:
+    pass
 
 
 def get_attack(name: str, **kwargs) -> AttackStrategy:

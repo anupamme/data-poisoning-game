@@ -63,6 +63,12 @@ class FederatedServer:
             return self._foolsgold(updates)
         elif method == "reputation":
             return self._reputation(updates, scale=kwargs.get("reputation_scale", None))
+        # Mechanism-isolating ablations (see _cos_krum / _cos_reputation): same suppression
+        # principle as krum/reputation, rescaling-invariant statistic. Not proposed defenses.
+        elif method == "cos_krum":
+            return self._cos_krum(updates, multi=False)
+        elif method == "cos_reputation":
+            return self._cos_reputation(updates, scale=kwargs.get("reputation_scale", None))
         else:
             raise ValueError(f"Unknown aggregation: {method}")
 
@@ -112,6 +118,38 @@ class FederatedServer:
         flat = torch.stack(flat).cpu().float()
 
         distances = torch.cdist(flat.unsqueeze(0), flat.unsqueeze(0)).squeeze(0)
+        f = max(1, n // 5)
+        scores = []
+        for i in range(n):
+            sorted_dists, _ = distances[i].sort()
+            scores.append(sorted_dists[1:n - f].sum().item())
+
+        if multi:
+            selected_indices = sorted(range(n), key=lambda i: scores[i])[:k]
+        else:
+            selected_indices = [min(range(n), key=lambda i: scores[i])]
+
+        selected_updates = [updates[i] for i in selected_indices]
+        return self._fedavg(selected_updates)
+
+    def _cos_krum(self, updates: List[Dict[str, torch.Tensor]], multi: bool = False, k: int = 5) -> Dict[str, torch.Tensor]:
+        """Krum with pairwise COSINE distance instead of Euclidean distance.
+
+        A mechanism-isolating ablation, not a proposed defense: it holds Krum's
+        selection principle (pick the client closest to its nearest neighbours) fixed
+        and varies only the invariance class of the statistic. Cosine distance is
+        invariant in BOTH arguments under u_i -> c_i u_i (c_i > 0), so the whole score
+        matrix -- and hence the selected index -- is unchanged by any upstream
+        per-client positive rescaling. Contrast _krum, whose Euclidean distances are
+        not invariant. See Proposition 1(a).
+        """
+        n = len(updates)
+        flat = [torch.cat([u[name].flatten() for name in updates[0]]) for u in updates]
+        flat = torch.stack(flat).cpu().float()
+
+        normed = F.normalize(flat, dim=1)
+        distances = 1.0 - (normed @ normed.T)
+        distances.fill_diagonal_(0.0)  # self-distance is exactly 0; sort()[1:] drops it
         f = max(1, n // 5)
         scores = []
         for i in range(n):
@@ -272,6 +310,53 @@ class FederatedServer:
         total = weights.sum()
         if total.item() < 1e-8:
             return self._fedavg(updates)
+        weights = weights / total
+        # Weighted average
+        result = {}
+        for k in keys:
+            result[k] = torch.zeros_like(updates[0][k])
+            for i, u in enumerate(updates):
+                result[k] = result[k] + weights[i].item() * u[k].float()
+        return result
+
+    def _cos_reputation(self, updates: List[Dict[str, torch.Tensor]],
+                        scale: Optional[float] = None) -> Dict[str, torch.Tensor]:
+        """Reputation with a DIRECTION-ONLY consensus distance instead of an L2 one.
+
+        A mechanism-isolating ablation, not a proposed defense: the soft-trim rule
+        exp(-d/sigma) with an adaptive median bandwidth is identical to _reputation, and
+        only the distance-to-consensus statistic changes.
+
+        Note that simply swapping L2 for cosine distance would NOT be invariant:
+        _reputation's reference point is the median of the *clients*, which itself moves
+        when an upstream stage rescales them (unlike FLTrust, whose reference is a
+        server-side gradient). So the updates are normalized FIRST; the consensus is then
+        a function of the directions alone, and d_i = 1 - cos(u_i, consensus) is exactly
+        invariant under u_i -> c_i u_i (c_i > 0). The weight vector is therefore
+        invariant; the aggregate is not, since the weighted average is still taken over
+        the rescaled updates -- a magnitude contraction of the kind Lemma 1 describes.
+        """
+        n = len(updates)
+        if n <= 1:
+            return self._fedavg(updates)
+        keys = list(updates[0].keys())
+        flats = [torch.cat([u[k].flatten().float() for k in keys]) for u in updates]
+        client_stack = torch.stack(flats)  # (n, d)
+        # Direction-only consensus: normalize before taking the coordinate-wise median
+        normed = F.normalize(client_stack, dim=1)
+        consensus = normed.median(dim=0).values
+        if consensus.norm().item() < 1e-8:
+            # Directions cancel; the statistic carries no signal. Fall back rather than
+            # divide by a degenerate reference.
+            return self._fedavg(updates)
+        # Cosine distance to consensus, in [0, 2]; invariant because both arguments are
+        # direction-only (cos(u_i, .) == cos(normed_i, .))
+        dists = 1.0 - F.cosine_similarity(normed, consensus.unsqueeze(0), dim=1)
+        # Auto-scale: median distance as the soft-trim bandwidth, as in _reputation
+        if scale is None:
+            scale = float(dists.median().clamp(min=1e-6).item())
+        weights = torch.exp(-dists / scale)
+        total = weights.sum().clamp(min=1e-8)
         weights = weights / total
         # Weighted average
         result = {}
