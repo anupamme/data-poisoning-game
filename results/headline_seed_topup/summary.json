@@ -1,0 +1,123 @@
+{
+  "description": "Seeds 45/46 for the three headline compositions; merge with results/all_compositions (seeds 42/43/44) for n=5",
+  "new_seeds": [
+    45,
+    46
+  ],
+  "existing_seeds": [
+    42,
+    43,
+    44
+  ],
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 50
+  },
+  "cells": {
+    "foolsgold_then_rfa|committed_scaling": {
+      "d1": "foolsgold",
+      "d2": "rfa",
+      "attack": "committed_scaling",
+      "per_seed": [
+        {
+          "seed": 45,
+          "accuracy": 0.4678,
+          "asr": 0.06177777777777778
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.5095,
+          "asr": 0.057
+        }
+      ]
+    },
+    "foolsgold_then_rfa|committed_pixel": {
+      "d1": "foolsgold",
+      "d2": "rfa",
+      "attack": "committed_pixel",
+      "per_seed": [
+        {
+          "seed": 45,
+          "accuracy": 0.4702,
+          "asr": 0.059222222222222225
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.5055,
+          "asr": 0.051555555555555556
+        }
+      ]
+    },
+    "foolsgold_then_coord_median|committed_scaling": {
+      "d1": "foolsgold",
+      "d2": "coord_median",
+      "attack": "committed_scaling",
+      "per_seed": [
+        {
+          "seed": 45,
+          "accuracy": 0.6909,
+          "asr": 0.069
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7075,
+          "asr": 0.07188888888888889
+        }
+      ]
+    },
+    "foolsgold_then_coord_median|committed_pixel": {
+      "d1": "foolsgold",
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "per_seed": [
+        {
+          "seed": 45,
+          "accuracy": 0.6856,
+          "asr": 0.08133333333333333
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.6775,
+          "asr": 0.08088888888888889
+        }
+      ]
+    },
+    "reputation_then_coord_median|committed_scaling": {
+      "d1": "reputation",
+      "d2": "coord_median",
+      "attack": "committed_scaling",
+      "per_seed": [
+        {
+          "seed": 45,
+          "accuracy": 0.7264,
+          "asr": 0.03322222222222222
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7567,
+          "asr": 0.020444444444444446
+        }
+      ]
+    },
+    "reputation_then_coord_median|committed_pixel": {
+      "d1": "reputation",
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "per_seed": [
+        {
+          "seed": 45,
+          "accuracy": 0.7623,
+          "asr": 0.6646666666666666
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7513,
+          "asr": 0.3953333333333333
+        }
+      ]
+    }
+  }
+}

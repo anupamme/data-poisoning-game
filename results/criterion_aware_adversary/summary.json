@@ -1,0 +1,223 @@
+{
+  "description": "Criterion-aware joint-constraint adversary vs FoolsGold->RFA",
+  "defense": "foolsgold_then_rfa",
+  "config": {
+    "num_clients": 10,
+    "clients_per_round": 5,
+    "adversarial_fraction": 0.2,
+    "num_rounds": 50,
+    "model": "cifar_cnn"
+  },
+  "conditions": {
+    "committed_pixel": {
+      "eps": null,
+      "decorrelate": false,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.461,
+          "asr": 0.025666666666666667
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5333,
+          "asr": 0.051111111111111114
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5054,
+          "asr": 0.03855555555555556
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.4702,
+          "asr": 0.059222222222222225
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.5055,
+          "asr": 0.051555555555555556
+        }
+      ],
+      "mean_asr": 0.045222222222222226,
+      "std_asr": 0.011812318324424333,
+      "max_asr": 0.059222222222222225,
+      "mean_acc": 0.4950799999999999
+    },
+    "ca_eps0.5_decorr": {
+      "eps": 0.5,
+      "decorrelate": true,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4801,
+          "asr": 0.015333333333333332
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5789,
+          "asr": 0.04377777777777778
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5674,
+          "asr": 0.025444444444444443
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.4891,
+          "asr": 0.05977777777777778
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.5222,
+          "asr": 0.035
+        }
+      ],
+      "mean_asr": 0.035866666666666665,
+      "std_asr": 0.015266424064059786,
+      "max_asr": 0.05977777777777778,
+      "mean_acc": 0.5275399999999999
+    },
+    "ca_eps1_decorr": {
+      "eps": 1.0,
+      "decorrelate": true,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.547,
+          "asr": 0.0811111111111111
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5716,
+          "asr": 0.135
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5515,
+          "asr": 0.2682222222222222
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.5516,
+          "asr": 0.22377777777777777
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.5883,
+          "asr": 0.12566666666666668
+        }
+      ],
+      "mean_asr": 0.16675555555555555,
+      "std_asr": 0.06867124759980395,
+      "max_asr": 0.2682222222222222,
+      "mean_acc": 0.562
+    },
+    "ca_eps2_decorr": {
+      "eps": 2.0,
+      "decorrelate": true,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4986,
+          "asr": 0.10677777777777778
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5182,
+          "asr": 0.10355555555555555
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5035,
+          "asr": 0.1348888888888889
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.478,
+          "asr": 0.18522222222222223
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.5295,
+          "asr": 0.11866666666666667
+        }
+      ],
+      "mean_asr": 0.12982222222222223,
+      "std_asr": 0.029800207141545385,
+      "max_asr": 0.18522222222222223,
+      "mean_acc": 0.5055599999999999
+    },
+    "ca_eps4_decorr": {
+      "eps": 4.0,
+      "decorrelate": true,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5018,
+          "asr": 0.11022222222222222
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5208,
+          "asr": 0.093
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5035,
+          "asr": 0.1348888888888889
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.4809,
+          "asr": 0.16733333333333333
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.5223,
+          "asr": 0.11588888888888889
+        }
+      ],
+      "mean_asr": 0.12426666666666668,
+      "std_asr": 0.025348007445980474,
+      "max_asr": 0.16733333333333333,
+      "mean_acc": 0.50586
+    },
+    "ca_eps2_nodecorr": {
+      "eps": 2.0,
+      "decorrelate": false,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4707,
+          "asr": 0.03711111111111111
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.52,
+          "asr": 0.055
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5053,
+          "asr": 0.043444444444444445
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.4664,
+          "asr": 0.058777777777777776
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.5097,
+          "asr": 0.05444444444444444
+        }
+      ],
+      "mean_asr": 0.04975555555555556,
+      "std_asr": 0.008131450905414145,
+      "max_asr": 0.058777777777777776,
+      "mean_acc": 0.49442
+    }
+  }
+}

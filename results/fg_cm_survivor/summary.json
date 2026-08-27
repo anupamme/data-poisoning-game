@@ -1,0 +1,256 @@
+{
+  "description": "fg\u2192cm independent survivor: composition vs temporal mixing",
+  "config": {
+    "num_clients": 10,
+    "clients_per_round": 5,
+    "adversarial_fraction": 0.2,
+    "num_rounds": 50,
+    "model": "cifar_cnn"
+  },
+  "composed": {
+    "committed_scaling": {
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6722,
+          "asr": 0.12277777777777778
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6876,
+          "asr": 0.12555555555555556
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6532,
+          "asr": 0.14477777777777778
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.6909,
+          "asr": 0.069
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7075,
+          "asr": 0.07188888888888889
+        }
+      ]
+    },
+    "committed_pixel": {
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6377,
+          "asr": 0.11388888888888889
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6553,
+          "asr": 0.08688888888888889
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6658,
+          "asr": 0.1308888888888889
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.6856,
+          "asr": 0.08133333333333333
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.6775,
+          "asr": 0.08088888888888889
+        }
+      ]
+    },
+    "oracle": {
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6722,
+          "asr": 0.12277777777777778
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6876,
+          "asr": 0.12555555555555556
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6532,
+          "asr": 0.14477777777777778
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.6909,
+          "asr": 0.069
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7075,
+          "asr": 0.07188888888888889
+        }
+      ]
+    }
+  },
+  "mixed": {
+    "defense_policy": {
+      "foolsgold": 0.5,
+      "coord_median": 0.5
+    },
+    "oracle_best_attack": {
+      "foolsgold": "model_scaling",
+      "coord_median": "model_scaling"
+    },
+    "committed_scaling": {
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.16,
+          "asr": 0.6357777777777778,
+          "defense_counts": {
+            "foolsgold": 21,
+            "coord_median": 29
+          }
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.1,
+          "asr": 0.0,
+          "defense_counts": {
+            "foolsgold": 22,
+            "coord_median": 28
+          }
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.1,
+          "asr": 0.0,
+          "defense_counts": {
+            "foolsgold": 24,
+            "coord_median": 26
+          }
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.1,
+          "asr": 1.0,
+          "defense_counts": {
+            "foolsgold": 22,
+            "coord_median": 28
+          }
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.1,
+          "asr": 0.0,
+          "defense_counts": {
+            "foolsgold": 29,
+            "coord_median": 21
+          }
+        }
+      ]
+    },
+    "committed_pixel": {
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7665,
+          "asr": 0.737,
+          "defense_counts": {
+            "foolsgold": 21,
+            "coord_median": 29
+          }
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7818,
+          "asr": 0.4543333333333333,
+          "defense_counts": {
+            "foolsgold": 22,
+            "coord_median": 28
+          }
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7727,
+          "asr": 0.5341111111111111,
+          "defense_counts": {
+            "foolsgold": 24,
+            "coord_median": 26
+          }
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7757,
+          "asr": 0.7993333333333333,
+          "defense_counts": {
+            "foolsgold": 22,
+            "coord_median": 28
+          }
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.767,
+          "asr": 0.8726666666666667,
+          "defense_counts": {
+            "foolsgold": 29,
+            "coord_median": 21
+          }
+        }
+      ]
+    },
+    "oracle": {
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.16,
+          "asr": 0.6357777777777778,
+          "defense_counts": {
+            "foolsgold": 21,
+            "coord_median": 29
+          }
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.1,
+          "asr": 0.0,
+          "defense_counts": {
+            "foolsgold": 22,
+            "coord_median": 28
+          }
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.1,
+          "asr": 0.0,
+          "defense_counts": {
+            "foolsgold": 24,
+            "coord_median": 26
+          }
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.1,
+          "asr": 1.0,
+          "defense_counts": {
+            "foolsgold": 22,
+            "coord_median": 28
+          }
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.1,
+          "asr": 0.0,
+          "defense_counts": {
+            "foolsgold": 29,
+            "coord_median": 21
+          }
+        }
+      ]
+    }
+  }
+}

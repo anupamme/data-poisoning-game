@@ -1,0 +1,157 @@
+{
+ "description": "Cross-aggregator channel table, Mode S identity rung -> kappa=2. Assembled read-only from frozen artifacts; no ASR computed here. d_agg_disp is the relative displacement of the EMITTED aggregate; it was named d_statistic through Round 20, which mislabelled it.",
+ "top_rung": 2.0,
+ "identity_rung": 0.0,
+ "mass_definition": {
+  "krum": "krum_admits_adv",
+  "cos_krum": "cos_krum_admits_adv",
+  "reputation": "reputation_adv_weight_share",
+  "coord_median": "coord_median_adv_argmedian_frac"
+ },
+ "mass_is_binary": {
+  "krum": true,
+  "cos_krum": true,
+  "reputation": false,
+  "coord_median": false
+ },
+ "sources": [
+  "results/admission_measurement.json",
+  "results/femnist_admission.json",
+  "results/targeted_dose/summary.json",
+  "results/dose_replication/summary.json",
+  "results/dose_femnist/summary.json"
+ ],
+ "rows": [
+  {
+   "label": "Krum",
+   "arm": "krum",
+   "attack": "committed_scaling",
+   "kind": "selector (pairwise distance)",
+   "dataset": "cifar10",
+   "channel_source": "results/admission_measurement.json",
+   "identity_displacement": 0.0,
+   "n_rounds": 15,
+   "d_agg_disp": 0.8924469476420579,
+   "d_decision": 0.7333333333333333,
+   "d_admission": 0.0,
+   "d_influence": 0.0,
+   "mass_is_binary": true,
+   "mean_mass_base": 0.0,
+   "mean_mass_post": 0.0,
+   "asr": {
+    "identity_asr": 0.061755555555555564,
+    "top_asr": 0.035666666666666666,
+    "delta_asr": -0.026088888888888898,
+    "identity_acc": 0.56482,
+    "top_acc": 0.6368199999999999,
+    "n_seeds": 5,
+    "source": "results/targeted_dose/summary.json"
+   }
+  },
+  {
+   "label": "Reputation",
+   "arm": "reputation",
+   "attack": "committed_scaling",
+   "kind": "weighted averager (cross-round state)",
+   "dataset": "cifar10",
+   "channel_source": "results/admission_measurement.json",
+   "identity_displacement": 0.0,
+   "n_rounds": 15,
+   "d_agg_disp": 0.6590446632243582,
+   "d_decision": 1.0,
+   "d_admission": 0.0,
+   "d_influence": 0.019605274342811764,
+   "mass_is_binary": false,
+   "mean_mass_base": 0.0010802018476910207,
+   "mean_mass_post": 0.02066910682084975,
+   "asr": {
+    "identity_asr": 0.017044444444444445,
+    "top_asr": 0.19546666666666668,
+    "delta_asr": 0.17842222222222223,
+    "identity_acc": 0.7774,
+    "top_acc": 0.6894600000000001,
+    "n_seeds": 5,
+    "source": "results/targeted_dose/summary.json"
+   }
+  },
+  {
+   "label": "Cosine-Krum",
+   "arm": "cos_krum",
+   "attack": "committed_pixel",
+   "kind": "selector (cosine distance)",
+   "dataset": "cifar10",
+   "channel_source": "results/admission_measurement.json",
+   "identity_displacement": 0.0,
+   "n_rounds": 15,
+   "d_agg_disp": 1.2968774573425856,
+   "d_decision": 0.0,
+   "d_admission": 0.0,
+   "d_influence": 0.0,
+   "mass_is_binary": true,
+   "mean_mass_base": 0.06666666666666667,
+   "mean_mass_post": 0.06666666666666667,
+   "asr": {
+    "identity_asr": 0.5837361111111111,
+    "top_asr": 0.15908333333333335,
+    "delta_asr": -0.42465277777777777,
+    "identity_acc": 0.5992,
+    "top_acc": 0.2226,
+    "n_seeds": 8,
+    "source": "results/targeted_dose/summary.json"
+   }
+  },
+  {
+   "label": "Coord.\\ median",
+   "arm": "coord_median",
+   "attack": "committed_pixel",
+   "kind": "coordinate-wise order statistic",
+   "dataset": "cifar10",
+   "channel_source": "results/admission_measurement.json",
+   "identity_displacement": 0.0,
+   "n_rounds": 15,
+   "d_agg_disp": 0.6703315017517781,
+   "d_decision": 0.4820849418640137,
+   "d_admission": 0.0,
+   "d_influence": 0.03322742837095495,
+   "mass_is_binary": false,
+   "mean_mass_base": 0.22840347225081156,
+   "mean_mass_post": 0.19648938474288363,
+   "asr": {
+    "identity_asr": 0.4425111111111111,
+    "top_asr": 0.5405777777777777,
+    "delta_asr": 0.09806666666666664,
+    "identity_acc": 0.76652,
+    "top_acc": 0.6984,
+    "n_seeds": 5,
+    "source": "results/dose_replication/summary.json"
+   }
+  },
+  {
+   "label": "Krum (FEMNIST)",
+   "arm": "krum",
+   "attack": "committed_scaling",
+   "kind": "selector (pairwise distance)",
+   "dataset": "femnist",
+   "channel_source": "results/femnist_admission.json",
+   "identity_displacement": 0.0,
+   "n_rounds": 14,
+   "d_agg_disp": 0.8423954660074404,
+   "d_decision": 0.6428571428571429,
+   "d_admission": 0.0,
+   "d_influence": 0.0,
+   "mass_is_binary": true,
+   "mean_mass_base": 0.0,
+   "mean_mass_post": 0.0,
+   "asr": {
+    "identity_asr": 0.026978455229393763,
+    "top_asr": 0.01032761921992552,
+    "delta_asr": -0.01665083600946824,
+    "identity_acc": 0.7670795973281295,
+    "top_acc": 0.8347962139903545,
+    "n_seeds": 3,
+    "source": "results/dose_femnist/summary.json"
+   }
+  }
+ ],
+ "latex": "\\begin{tabular}{llrrrrr}\n\\toprule\nAggregator & Kind & $\\Delta$ agg. & $\\Delta$ dec. & $\\Delta$ adm. & $\\Delta \\Lambda_a$ & $\\Delta$ ASR \\\\\n\\midrule\nKrum & selector (pairwise distance) & 0.892 & 0.733 & 0.000 & 0.000 & -0.026 \\\\\nReputation & weighted averager (cross-round state) & 0.659 & 1.000 & 0.000 & 0.020 & +0.178 \\\\\nCosine-Krum & selector (cosine distance) & 1.297 & 0.000 & 0.000 & 0.000 & -0.425 \\\\\nCoord.\\ median & coordinate-wise order statistic & 0.670 & 0.482 & 0.000 & 0.033 & +0.098 \\\\\nKrum (FEMNIST) & selector (pairwise distance) & 0.842 & 0.643 & 0.000 & 0.000 & -0.017 \\\\\n\\bottomrule\n\\end{tabular}"
+}

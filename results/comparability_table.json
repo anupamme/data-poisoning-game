@@ -1,0 +1,225 @@
+{
+ "description": "The confounded ladder vs the Mode-S instrument on the one arm that has both. Assembled read-only from frozen artifacts; nothing is trained.",
+ "arm": "coord_median",
+ "attack": "committed_pixel",
+ "kappas": [
+  0.0,
+  0.5,
+  1.0,
+  2.0
+ ],
+ "sources": [
+  "results/dose_response/summary.json",
+  "results/dose_replication/summary.json",
+  "results/admission_measurement.json",
+  "results/coefficient_targeting.json"
+ ],
+ "columns": [
+  {
+   "label": "Confounded ladder",
+   "family": "dose",
+   "arm": "coord_median",
+   "attack": "committed_pixel",
+   "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+   ],
+   "asr_source": "results/dose_response/summary.json",
+   "kappa_range": [
+    0.0,
+    2.0
+   ],
+   "rho_range": [
+    1.0,
+    54.598150033144236
+   ],
+   "asr_identity": 0.4425111111111111,
+   "asr_top": 0.17044444444444445,
+   "asr_identity_per_seed": [
+    0.39455555555555555,
+    0.2866666666666667,
+    0.4487777777777778,
+    0.6774444444444444,
+    0.4051111111111111
+   ],
+   "asr_top_per_seed": [
+    0.17933333333333334,
+    0.08966666666666667,
+    0.20377777777777778,
+    0.192,
+    0.18744444444444444
+   ],
+   "asr_effect": -0.2720666666666666,
+   "acc_identity": 0.76652,
+   "acc_top": 0.6898200000000001,
+   "jt_J": 31.0,
+   "jt_z": -2.9608769736059934,
+   "jt_p_rise": 0.9984661777503142,
+   "jt_p_fall": 0.0015338222496857935,
+   "jt_p_rise_perm": 0.9992500374981251,
+   "welch_t_two_rung": -4.01822907652313,
+   "welch_p_fall_two_rung": 0.005494978246805518,
+   "welch_note": "post-hoc two-rung diagnostic; the papers quote the JT p-values",
+   "agg_disp_top": 0.7217074976565063,
+   "decision_top": 0.4871843695640564,
+   "admission_top": 0.08092982767025192,
+   "share_identity": 0.26666666666666666,
+   "share_top": 0.18657544608595564,
+   "delta_c_identity": 0.0,
+   "delta_c_top": -0.3362765159949454,
+   "all_rungs": {
+    "0.0": {
+     "asr": 0.4425111111111111,
+     "acc": 0.76652,
+     "agg_disp": 0.0,
+     "decision": 0.0,
+     "admission": 0.0,
+     "share": 0.26666666666666666,
+     "delta_c": 0.0
+    },
+    "0.5": {
+     "asr": 0.4279111111111112,
+     "acc": 0.7638199999999999,
+     "agg_disp": 0.2634232990414026,
+     "decision": 0.2513288249572118,
+     "admission": 0.03024771021538385,
+     "share": 0.23872218696809291,
+     "delta_c": -0.14002362348967126
+    },
+    "1.0": {
+     "asr": 0.32664444444444446,
+     "acc": 0.7489399999999999,
+     "agg_disp": 0.44360317163687557,
+     "decision": 0.37776675820350647,
+     "admission": 0.053371506851603585,
+     "share": 0.21542198444328955,
+     "delta_c": -0.2404302574901117
+    },
+    "2.0": {
+     "asr": 0.17044444444444445,
+     "acc": 0.6898200000000001,
+     "agg_disp": 0.7217074976565063,
+     "decision": 0.4871843695640564,
+     "admission": 0.08092982767025192,
+     "share": 0.18657544608595564,
+     "delta_c": -0.3362765159949454
+    }
+   }
+  },
+  {
+   "label": "Instrument (Mode S)",
+   "family": "doseS",
+   "arm": "coord_median",
+   "attack": "committed_pixel",
+   "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+   ],
+   "asr_source": "results/dose_replication/summary.json",
+   "kappa_range": [
+    0.0,
+    2.0
+   ],
+   "rho_range": [
+    1.0,
+    54.598150033144236
+   ],
+   "asr_identity": 0.4425111111111111,
+   "asr_top": 0.5405777777777777,
+   "asr_identity_per_seed": [
+    0.39455555555555555,
+    0.2866666666666667,
+    0.4487777777777778,
+    0.6774444444444444,
+    0.4051111111111111
+   ],
+   "asr_top_per_seed": [
+    0.5973333333333334,
+    0.3191111111111111,
+    0.5164444444444445,
+    0.7556666666666667,
+    0.5143333333333333
+   ],
+   "asr_effect": 0.09806666666666664,
+   "acc_identity": 0.76652,
+   "acc_top": 0.6984,
+   "jt_J": 97.0,
+   "jt_z": 1.4804384868029967,
+   "jt_p_rise": 0.06937813269647833,
+   "jt_p_fall": 0.9306218673035217,
+   "jt_p_rise_perm": 0.07564621768911554,
+   "welch_t_two_rung": 1.0251436685764197,
+   "welch_p_fall_two_rung": 0.8322353894187839,
+   "welch_note": "post-hoc two-rung diagnostic; the papers quote the JT p-values",
+   "agg_disp_top": 0.6703315017517781,
+   "decision_top": 0.4820849418640137,
+   "admission_top": 0.03322742837095495,
+   "share_identity": 0.26666666666666666,
+   "share_top": 0.266666574483947,
+   "delta_c_identity": 0.0,
+   "delta_c_top": 9.374020414990951e-08,
+   "all_rungs": {
+    "0.0": {
+     "asr": 0.4425111111111111,
+     "acc": 0.76652,
+     "agg_disp": 0.0,
+     "decision": 0.0,
+     "admission": 0.0,
+     "share": 0.26666666666666666,
+     "delta_c": 0.0
+    },
+    "0.5": {
+     "asr": 0.4418888888888889,
+     "acc": 0.76274,
+     "agg_disp": 0.2577825180988967,
+     "decision": 0.23153825799624125,
+     "admission": 0.004646334107185374,
+     "share": 0.2666669225732135,
+     "delta_c": 1.363042328089703e-06
+    },
+    "1.0": {
+     "asr": 0.49002222222222225,
+     "acc": 0.75194,
+     "agg_disp": 0.43585893490628014,
+     "decision": 0.3575551410516103,
+     "admission": 0.012503706673683246,
+     "share": 0.26666675726744143,
+     "delta_c": 6.150868203889474e-07
+    },
+    "2.0": {
+     "asr": 0.5405777777777777,
+     "acc": 0.6984,
+     "agg_disp": 0.6703315017517781,
+     "decision": 0.4820849418640137,
+     "admission": 0.03322742837095495,
+     "share": 0.266666574483947,
+     "delta_c": 9.374020414990951e-08
+    }
+   }
+  }
+ ],
+ "assertions": {
+  "seed_sets_identical": true,
+  "identity_cell_mean_gap": 0.0,
+  "identity_cell_worst_per_seed_gap": 0.0,
+  "shared_tolerance": 1e-12,
+  "identity_cell_shared": true,
+  "sign_reversal": true,
+  "top_rung_gaps": {
+   "agg_disp": 0.05137599590472819,
+   "decision": 0.005099427700042736,
+   "clean_accuracy": 0.008579999999999921,
+   "adv_coeff_share": 0.08009112839799135,
+   "delta_c": 0.33627660973514956
+  }
+ },
+ "disclosed_non_match": "aggregate adversarial influence Lambda_a moves in both designs: 0.081 in the ladder against 0.033 in the instrument. Mode S pins the adversarial COEFFICIENT share exactly; for a coordinate-wise order statistic that does not force Lambda_a to be constant. Neither column is a clean statistic-only intervention, so the contrast is 'differ chiefly in the coefficient channel', not 'only in it'. This is the same quantity as build_channel_table.py's Delta Lambda_a column, not its Delta adm. column (support of the adversarial mass), which reads 0.000 for every row.",
+ "scope": "A two-column contrast on one arm. It licenses the claim that the adversarial coefficient channel is where the two designs differ; it does not measure that channel's effect size, and no p-value is attached to the difference between the two columns.",
+ "latex": "\\begin{tabular}{lcc}\n\\toprule\n& Confounded ladder & Instrument (Mode~S) \\\\\n& \\texttt{dose\\_kappa} & \\texttt{doseS\\_kappa} \\\\\n\\midrule\ndownstream $d_2$ & \\texttt{coord\\_median} & \\texttt{coord\\_median} \\\\\nattack & committed pixel & committed pixel \\\\\nseeds & 42--46 & 42--46 \\\\\nnominal dose & $\\kappa\\,0.0\\!\\to\\!2.0$, $\\rho\\,1\\!\\to\\!54.6$ & $\\kappa\\,0.0\\!\\to\\!2.0$, $\\rho\\,1\\!\\to\\!54.6$ \\\\\n\\midrule\nbenign coefficients & mean $1$ over \\emph{all} clients & mean $1$ over \\emph{benign} clients \\\\\nadversarial coefficients & drawn from the same spread & pinned $c=1.0$ exactly \\\\\nadv.\\ coefficient share & $0.267 \\to \\mathbf{0.187}$ & $0.266667$, constant \\\\\n$\\Delta_c$ & $+0.000 \\to \\mathbf{-0.336}$ & $0$ by construction (read back $9\\mathrm{e}{-}08$) \\\\\n\\midrule\naggregate displacement & $0.000 \\to 0.722$ & $0.000 \\to 0.670$ \\\\\ndecision change & $0.000 \\to 0.487$ & $0.000 \\to 0.482$ \\\\\nadversarial influence $\\Delta\\Lambda_a$ & $0.000 \\to \\mathbf{0.081}$ & $0.000 \\to \\mathbf{0.033}$ \\\\\nmean clean accuracy & $0.767 \\to 0.690$ & $0.767 \\to 0.698$ \\\\\nASR & $0.443 \\to 0.170$ & $0.443 \\to 0.541$ \\\\\n\\midrule\n\\textbf{ASR effect} & $\\mathbf{-0.272}$ ($p_{\\downarrow}=0.0015$) & $\\mathbf{+0.098}$ ($p_{\\uparrow}=0.069$) \\\\\n\\bottomrule\n\\end{tabular}"
+}

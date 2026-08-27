@@ -1,0 +1,117 @@
+{
+  "description": "Phase 0: standalone baselines for cos_reputation / cos_krum (C0/C1 inputs, measured before the Phase 2 freeze)",
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 50,
+    "seeds": [
+      42,
+      43,
+      44
+    ]
+  },
+  "cells": {
+    "fedavg_then_cos_reputation|committed_scaling": {
+      "d1": "fedavg",
+      "d2": "cos_reputation",
+      "attack": "committed_scaling",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.1,
+          "asr": 1.0
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.3355,
+          "asr": 0.9817777777777777
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.2517,
+          "asr": 0.9652222222222222
+        }
+      ],
+      "mean_asr": 0.9823333333333334,
+      "std_asr": 0.01420340189934804,
+      "mean_acc": 0.22906666666666667
+    },
+    "fedavg_then_cos_reputation|committed_pixel": {
+      "d1": "fedavg",
+      "d2": "cos_reputation",
+      "attack": "committed_pixel",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7899,
+          "asr": 0.8376666666666667
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.803,
+          "asr": 0.6595555555555556
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7931,
+          "asr": 0.7655555555555555
+        }
+      ],
+      "mean_asr": 0.7542592592592593,
+      "std_asr": 0.07315097040968961,
+      "mean_acc": 0.7953333333333333
+    },
+    "fedavg_then_cos_krum|committed_scaling": {
+      "d1": "fedavg",
+      "d2": "cos_krum",
+      "attack": "committed_scaling",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.1224,
+          "asr": 0.0
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.2121,
+          "asr": 0.21433333333333332
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.1035,
+          "asr": 0.020666666666666667
+        }
+      ],
+      "mean_asr": 0.07833333333333332,
+      "std_asr": 0.09653592691420736,
+      "mean_acc": 0.146
+    },
+    "fedavg_then_cos_krum|committed_pixel": {
+      "d1": "fedavg",
+      "d2": "cos_krum",
+      "attack": "committed_pixel",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5284,
+          "asr": 0.003111111111111111
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6195,
+          "asr": 0.2687777777777778
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.647,
+          "asr": 0.6295555555555555
+        }
+      ],
+      "mean_asr": 0.3004814814814815,
+      "std_asr": 0.2567255397179724,
+      "mean_acc": 0.5982999999999999
+    }
+  }
+}

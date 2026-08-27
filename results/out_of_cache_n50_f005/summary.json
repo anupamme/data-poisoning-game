@@ -1,0 +1,206 @@
+{
+  "config": {
+    "num_clients": 50,
+    "clients_per_round": 5,
+    "adversarial_fraction": 0.05,
+    "num_adv": 2,
+    "p_present": 0.27602040816326534
+  },
+  "phase1_static": {
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "vopds": [
+      0.0,
+      0.015292484496785571,
+      0.16607792207792205,
+      0.010910886859949826,
+      0.02162769784172662
+    ],
+    "mean_vopd": 0.042781798255276816,
+    "std_vopd": 0.062050188944164225,
+    "mixed_count": 4,
+    "asr_binding": [
+      0.4958888888888889,
+      0.013444444444444445,
+      0.10077777777777777,
+      0.8461111111111111,
+      0.5371111111111111
+    ]
+  },
+  "scaling_law_prediction": {
+    "gamma_hat": 0.66,
+    "alpha_hat": 0.37,
+    "p_admit": 0.95,
+    "p_eff": 0.26221938775510206,
+    "s_inf": 0.2789034031784119,
+    "C": 0.042781798255276816,
+    "predicted_realized_vopd_bound": 0.03084980912778787
+  },
+  "per_seed": [
+    {
+      "seed": 42,
+      "best_vopd": 0.0,
+      "mixed": false,
+      "asr_model_scaling_fedavg": 0.4958888888888889,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.01655555555555556,
+          "server_utility": 0.5081199999999999,
+          "vopd": 0.0,
+          "adversary_support": [
+            "model_scaling"
+          ],
+          "server_support": [
+            "rfa"
+          ]
+        }
+      ]
+    },
+    {
+      "seed": 43,
+      "best_vopd": 0.015292484496785571,
+      "mixed": true,
+      "asr_model_scaling_fedavg": 0.013444444444444445,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.0,
+          "server_utility": 0.557155,
+          "vopd": 0.0,
+          "adversary_support": [
+            "no_attack"
+          ],
+          "server_support": [
+            "fedavg"
+          ]
+        },
+        {
+          "ne_idx": 2,
+          "adversary_utility": 5.421010862427522e-20,
+          "server_utility": 0.5531869802304029,
+          "vopd": 0.015292484496785571,
+          "adversary_support": [
+            "no_attack",
+            "model_scaling"
+          ],
+          "server_support": [
+            "fedavg",
+            "norm_clip"
+          ]
+        },
+        {
+          "ne_idx": 3,
+          "adversary_utility": 0.001390830580188955,
+          "server_utility": 0.5290123474817473,
+          "vopd": 0.01033223207558106,
+          "adversary_support": [
+            "backdoor_pixel",
+            "model_scaling"
+          ],
+          "server_support": [
+            "norm_clip",
+            "rfa"
+          ]
+        }
+      ]
+    },
+    {
+      "seed": 44,
+      "best_vopd": 0.16607792207792205,
+      "mixed": true,
+      "asr_model_scaling_fedavg": 0.10077777777777777,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.34677777777777774,
+          "server_utility": 0.50404,
+          "vopd": 0.0,
+          "adversary_support": [
+            "backdoor_pixel"
+          ],
+          "server_support": [
+            "fedavg"
+          ]
+        },
+        {
+          "ne_idx": 2,
+          "adversary_utility": 0.34677777777777774,
+          "server_utility": 0.4996158641207335,
+          "vopd": 0.16607792207792205,
+          "adversary_support": [
+            "backdoor_pixel",
+            "model_scaling"
+          ],
+          "server_support": [
+            "fedavg",
+            "norm_clip"
+          ]
+        },
+        {
+          "ne_idx": 3,
+          "adversary_utility": 0.35407316317331533,
+          "server_utility": 0.4576946225632517,
+          "vopd": 0.020194472616632875,
+          "adversary_support": [
+            "backdoor_pixel",
+            "model_scaling"
+          ],
+          "server_support": [
+            "norm_clip",
+            "rfa"
+          ]
+        }
+      ]
+    },
+    {
+      "seed": 45,
+      "best_vopd": 0.010910886859949826,
+      "mixed": true,
+      "asr_model_scaling_fedavg": 0.8461111111111111,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.0016251535052592351,
+          "server_utility": 0.46798731592196346,
+          "vopd": 0.010910886859949826,
+          "adversary_support": [
+            "backdoor_pixel",
+            "model_scaling"
+          ],
+          "server_support": [
+            "norm_clip",
+            "trimmed_mean"
+          ]
+        }
+      ]
+    },
+    {
+      "seed": 46,
+      "best_vopd": 0.02162769784172662,
+      "mixed": true,
+      "asr_model_scaling_fedavg": 0.5371111111111111,
+      "equilibria": [
+        {
+          "ne_idx": 1,
+          "adversary_utility": 0.1002076338928857,
+          "server_utility": 0.502749855144305,
+          "vopd": 0.02162769784172662,
+          "adversary_support": [
+            "backdoor_pixel",
+            "model_scaling"
+          ],
+          "server_support": [
+            "norm_clip",
+            "rfa"
+          ]
+        }
+      ]
+    }
+  ]
+}

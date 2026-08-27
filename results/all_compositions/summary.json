@@ -1,0 +1,900 @@
+{
+  "description": "All 21 ordered defense pairs, composition ASR",
+  "defenses": [
+    "fedavg",
+    "norm_clip",
+    "trimmed_mean",
+    "coord_median",
+    "rfa",
+    "foolsgold",
+    "reputation"
+  ],
+  "pairs": {
+    "fedavg_then_norm_clip": {
+      "d1": "fedavg",
+      "d2": "norm_clip",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7807,
+            "asr": 0.9367777777777778
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.6925,
+            "asr": 0.9614444444444444
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.6846,
+            "asr": 0.8985555555555556
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7447,
+            "asr": 0.9108888888888889
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.7773,
+            "asr": 0.9653333333333334
+          }
+        ],
+        "mean_asr": 0.9346,
+        "std_asr": 0.02657564093974077
+      },
+      "max_committed_asr": 0.9346,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 43,
+            "accuracy": 0.8036,
+            "asr": 0.6931111111111111
+          },
+          {
+            "seed": 42,
+            "accuracy": 0.7875,
+            "asr": 0.8374444444444444
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7962,
+            "asr": 0.7735555555555556
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.7806,
+            "asr": 0.8051111111111111
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.7788,
+            "asr": 0.9206666666666666
+          }
+        ],
+        "mean_asr": 0.8059777777777779,
+        "std_asr": 0.07474560641945682
+      }
+    },
+    "fedavg_then_trimmed_mean": {
+      "d1": "fedavg",
+      "d2": "trimmed_mean",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7596,
+            "asr": 0.915
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7538,
+            "asr": 0.8155555555555556
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7448,
+            "asr": 0.889
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.7479,
+            "asr": 0.9085555555555556
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.5001,
+            "asr": 0.7008888888888889
+          }
+        ],
+        "mean_asr": 0.8458,
+        "std_asr": 0.08063137887484785
+      },
+      "max_committed_asr": 0.8458,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7756,
+            "asr": 0.6015555555555555
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7754,
+            "asr": 0.6016666666666667
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.784,
+            "asr": 0.3987777777777778
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.7709,
+            "asr": 0.8605555555555555
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.7699,
+            "asr": 0.616
+          }
+        ],
+        "mean_asr": 0.6157111111111111,
+        "std_asr": 0.14656505908029333
+      }
+    },
+    "norm_clip_then_reputation": {
+      "d1": "norm_clip",
+      "d2": "reputation",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7827,
+            "asr": 0.7663333333333333
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7876,
+            "asr": 0.7825555555555556
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7943,
+            "asr": 0.8277777777777777
+          }
+        ],
+        "mean_asr": 0.7922222222222223,
+        "std_asr": 0.025999208598275154
+      },
+      "max_committed_asr": 0.8191481481481482,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7744,
+            "asr": 0.8371111111111111
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7741,
+            "asr": 0.7923333333333333
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7837,
+            "asr": 0.828
+          }
+        ],
+        "mean_asr": 0.8191481481481482,
+        "std_asr": 0.019322332615988893
+      }
+    },
+    "norm_clip_then_foolsgold": {
+      "d1": "norm_clip",
+      "d2": "foolsgold",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7109,
+            "asr": 0.9558888888888889
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.79,
+            "asr": 0.7145555555555556
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.5589,
+            "asr": 0.9903333333333333
+          }
+        ],
+        "mean_asr": 0.8869259259259259,
+        "std_asr": 0.12269274190563892
+      },
+      "max_committed_asr": 0.8869259259259259,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7135,
+            "asr": 0.8206666666666667
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7804,
+            "asr": 0.478
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7435,
+            "asr": 0.771
+          }
+        ],
+        "mean_asr": 0.6898888888888889,
+        "std_asr": 0.15119384989778384
+      }
+    },
+    "rfa_then_reputation": {
+      "d1": "rfa",
+      "d2": "reputation",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7861,
+            "asr": 0.9155555555555556
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7728,
+            "asr": 0.8717777777777778
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7781,
+            "asr": 0.858
+          }
+        ],
+        "mean_asr": 0.8817777777777778,
+        "std_asr": 0.024537868609249138
+      },
+      "max_committed_asr": 0.8817777777777778,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7838,
+            "asr": 0.8446666666666667
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7749,
+            "asr": 0.7785555555555556
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7789,
+            "asr": 0.8383333333333334
+          }
+        ],
+        "mean_asr": 0.8205185185185185,
+        "std_asr": 0.029784732926462283
+      }
+    },
+    "foolsgold_then_trimmed_mean": {
+      "d1": "foolsgold",
+      "d2": "trimmed_mean",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.6581,
+            "asr": 0.8888888888888888
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.6973,
+            "asr": 0.32133333333333336
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.6704,
+            "asr": 0.31344444444444447
+          }
+        ],
+        "mean_asr": 0.507888888888889,
+        "std_asr": 0.2694269333752354
+      },
+      "max_committed_asr": 0.507888888888889,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.682,
+            "asr": 0.424
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7224,
+            "asr": 0.1678888888888889
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.6952,
+            "asr": 0.2828888888888889
+          }
+        ],
+        "mean_asr": 0.2915925925925926,
+        "std_asr": 0.10473789875132233
+      }
+    },
+    "norm_clip_then_trimmed_mean": {
+      "d1": "norm_clip",
+      "d2": "trimmed_mean",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7762,
+            "asr": 0.8341111111111111
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7741,
+            "asr": 0.7321111111111112
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7702,
+            "asr": 0.7746666666666666
+          }
+        ],
+        "mean_asr": 0.7802962962962963,
+        "std_asr": 0.04183116499553176
+      },
+      "max_committed_asr": 0.7802962962962963,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7756,
+            "asr": 0.6015555555555555
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.784,
+            "asr": 0.3987777777777778
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7754,
+            "asr": 0.6016666666666667
+          }
+        ],
+        "mean_asr": 0.5339999999999999,
+        "std_asr": 0.0956165610601594
+      }
+    },
+    "reputation_then_coord_median": {
+      "d1": "reputation",
+      "d2": "coord_median",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7547,
+            "asr": 0.010555555555555556
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7733,
+            "asr": 0.020555555555555556
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7811,
+            "asr": 0.014444444444444444
+          }
+        ],
+        "mean_asr": 0.015185185185185185,
+        "std_asr": 0.004115946439054235
+      },
+      "max_committed_asr": 0.3522222222222222,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7647,
+            "asr": 0.43177777777777776
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.766,
+            "asr": 0.23422222222222222
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7743,
+            "asr": 0.39066666666666666
+          }
+        ],
+        "mean_asr": 0.3522222222222222,
+        "std_asr": 0.08510985397002131
+      }
+    },
+    "norm_clip_then_coord_median": {
+      "d1": "norm_clip",
+      "d2": "coord_median",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7672,
+            "asr": 0.44277777777777777
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7623,
+            "asr": 0.39144444444444443
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7512,
+            "asr": 0.466
+          }
+        ],
+        "mean_asr": 0.4334074074074074,
+        "std_asr": 0.031150019761447136
+      },
+      "max_committed_asr": 0.4334074074074074,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7691,
+            "asr": 0.39455555555555555
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.77,
+            "asr": 0.2866666666666667
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7652,
+            "asr": 0.4487777777777778
+          }
+        ],
+        "mean_asr": 0.37666666666666665,
+        "std_asr": 0.06737958318699125
+      }
+    },
+    "norm_clip_then_rfa": {
+      "d1": "norm_clip",
+      "d2": "rfa",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7858,
+            "asr": 0.8656666666666667
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.784,
+            "asr": 0.8347777777777777
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.79,
+            "asr": 0.8581111111111112
+          }
+        ],
+        "mean_asr": 0.8528518518518519,
+        "std_asr": 0.013147261315944866
+      },
+      "max_committed_asr": 0.8528518518518519,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7806,
+            "asr": 0.832
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.779,
+            "asr": 0.8025555555555556
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7786,
+            "asr": 0.8218888888888889
+          }
+        ],
+        "mean_asr": 0.8188148148148148,
+        "std_asr": 0.012215598654184295
+      }
+    },
+    "rfa_then_trimmed_mean": {
+      "d1": "rfa",
+      "d2": "trimmed_mean",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7756,
+            "asr": 0.7442222222222222
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7637,
+            "asr": 0.6247777777777778
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7672,
+            "asr": 0.6641111111111111
+          }
+        ],
+        "mean_asr": 0.6777037037037038,
+        "std_asr": 0.049701192186919395
+      },
+      "max_committed_asr": 0.6777037037037038,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7747,
+            "asr": 0.661
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7699,
+            "asr": 0.431
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7692,
+            "asr": 0.6546666666666666
+          }
+        ],
+        "mean_asr": 0.5822222222222222,
+        "std_asr": 0.1069615137893007
+      }
+    },
+    "rfa_then_coord_median": {
+      "d1": "rfa",
+      "d2": "coord_median",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7704,
+            "asr": 0.5656666666666667
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7803,
+            "asr": 0.3913333333333333
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.778,
+            "asr": 0.499
+          }
+        ],
+        "mean_asr": 0.48533333333333334,
+        "std_asr": 0.07182437428018945
+      },
+      "max_committed_asr": 0.48533333333333334,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7707,
+            "asr": 0.4066666666666667
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7682,
+            "asr": 0.16622222222222222
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7701,
+            "asr": 0.36677777777777776
+          }
+        ],
+        "mean_asr": 0.31322222222222224,
+        "std_asr": 0.10521258120015094
+      }
+    },
+    "foolsgold_then_coord_median": {
+      "d1": "foolsgold",
+      "d2": "coord_median",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.6722,
+            "asr": 0.12277777777777778
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.6876,
+            "asr": 0.12555555555555556
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.6532,
+            "asr": 0.14477777777777778
+          }
+        ],
+        "mean_asr": 0.13103703703703704,
+        "std_asr": 0.009782125857019982
+      },
+      "max_committed_asr": 0.13103703703703704,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.6377,
+            "asr": 0.11388888888888889
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.6553,
+            "asr": 0.08688888888888889
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.6658,
+            "asr": 0.1308888888888889
+          }
+        ],
+        "mean_asr": 0.11055555555555556,
+        "std_asr": 0.018116904322268257
+      }
+    },
+    "reputation_then_rfa": {
+      "d1": "reputation",
+      "d2": "rfa",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7626,
+            "asr": 0.016555555555555556
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7806,
+            "asr": 0.013111111111111112
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7801,
+            "asr": 0.01411111111111111
+          }
+        ],
+        "mean_asr": 0.014592592592592593,
+        "std_asr": 0.001446816665527749
+      },
+      "max_committed_asr": 0.8254814814814814,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7815,
+            "asr": 0.8307777777777777
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7805,
+            "asr": 0.7924444444444444
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7799,
+            "asr": 0.8532222222222222
+          }
+        ],
+        "mean_asr": 0.8254814814814814,
+        "std_asr": 0.02509346041959747
+      }
+    },
+    "reputation_then_foolsgold": {
+      "d1": "reputation",
+      "d2": "foolsgold",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7283,
+            "asr": 0.004111111111111111
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7247,
+            "asr": 0.007666666666666666
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.763,
+            "asr": 0.04022222222222222
+          }
+        ],
+        "mean_asr": 0.017333333333333333,
+        "std_asr": 0.01624984963526507
+      },
+      "max_committed_asr": 0.8069999999999999,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7072,
+            "asr": 0.8643333333333333
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.773,
+            "asr": 0.699
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7162,
+            "asr": 0.8576666666666667
+          }
+        ],
+        "mean_asr": 0.8069999999999999,
+        "std_asr": 0.07641601538556829
+      }
+    },
+    "reputation_then_norm_clip": {
+      "d1": "reputation",
+      "d2": "norm_clip",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7847,
+            "asr": 0.015333333333333332
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7917,
+            "asr": 0.014444444444444444
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.79,
+            "asr": 0.015
+          }
+        ],
+        "mean_asr": 0.014925925925925926,
+        "std_asr": 0.0003666479606152468
+      },
+      "max_committed_asr": 0.8130000000000001,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.78,
+            "asr": 0.8494444444444444
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7756,
+            "asr": 0.7804444444444445
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7859,
+            "asr": 0.8091111111111111
+          }
+        ],
+        "mean_asr": 0.8130000000000001,
+        "std_asr": 0.02830303390795871
+      }
+    },
+    "reputation_then_trimmed_mean": {
+      "d1": "reputation",
+      "d2": "trimmed_mean",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7672,
+            "asr": 0.017444444444444443
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7814,
+            "asr": 0.018222222222222223
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7899,
+            "asr": 0.01877777777777778
+          }
+        ],
+        "mean_asr": 0.01814814814814815,
+        "std_asr": 0.0005468452985271639
+      },
+      "max_committed_asr": 0.5377407407407407,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7653,
+            "asr": 0.6163333333333333
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7677,
+            "asr": 0.37355555555555553
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7664,
+            "asr": 0.6233333333333333
+          }
+        ],
+        "mean_asr": 0.5377407407407407,
+        "std_asr": 0.11613162439152154
+      }
+    },
+    "foolsgold_then_rfa": {
+      "d1": "foolsgold",
+      "d2": "rfa",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.473,
+            "asr": 0.03588888888888889
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.5289,
+            "asr": 0.05633333333333333
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.5154,
+            "asr": 0.04411111111111111
+          }
+        ],
+        "mean_asr": 0.04544444444444445,
+        "std_asr": 0.0083994904803338
+      },
+      "max_committed_asr": 0.04544444444444445,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.461,
+            "asr": 0.025666666666666667
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.5333,
+            "asr": 0.051111111111111114
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.5054,
+            "asr": 0.03855555555555556
+          }
+        ],
+        "mean_asr": 0.03844444444444445,
+        "std_asr": 0.010387948065935647
+      }
+    }
+  }
+}

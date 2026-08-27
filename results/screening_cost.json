@@ -1,0 +1,66 @@
+{
+  "description": "Run-level cost of the screen. Replaces the pair-level 95.2% figure, which ignored the standalone evaluations C1 requires. Every number here is computed from the results files; the GPU-hour figures are estimates because no per-run timing telemetry was ever recorded.",
+  "defenses": [
+    "coord_median",
+    "fedavg",
+    "foolsgold",
+    "norm_clip",
+    "reputation",
+    "rfa",
+    "trimmed_mean"
+  ],
+  "n_defenses": 7,
+  "n_ordered_pairs": 42,
+  "attacks": [
+    "committed_scaling",
+    "committed_pixel"
+  ],
+  "seeds_per_cell": 5,
+  "admitted": {
+    "C1_and_C2": [
+      "foolsgold_then_coord_median",
+      "reputation_then_coord_median"
+    ],
+    "C1_and_C2_and_C3": [
+      "foolsgold_then_coord_median",
+      "reputation_then_coord_median"
+    ],
+    "identical": true
+  },
+  "cells": {
+    "unscreened": 84,
+    "screened": 16,
+    "standalone_component": 12,
+    "admitted_component": 4
+  },
+  "runs": {
+    "unscreened": 420,
+    "screened": 80,
+    "avoided": 340,
+    "fraction_avoided": 0.8095238095238095,
+    "standalone_component": 60,
+    "admitted_component": 20
+  },
+  "pair_level_figure_for_contrast": {
+    "pairs_not_composition_evaluated": 40,
+    "fraction": 0.9523809523809523,
+    "note": "This is the old 95.2%-style figure. It is a pair count and excludes the standalone runs C1 needs, so it overstates the saving."
+  },
+  "gpu_hours_estimated": {
+    "minutes_per_run_assumed": 11.0,
+    "unscreened": 77.0,
+    "screened": 14.666666666666666,
+    "saved": 62.333333333333336,
+    "caveat": "ESTIMATE ONLY. No results file in this repo records wall-clock time; this is a per-run estimate on the hardware described in the paper."
+  },
+  "scaling": {
+    "unscreened": "|attacks| * seeds * D(D-1)  -- quadratic in D",
+    "screened": "|attacks| * seeds * ((D-1) + |admitted|)  -- linear in D plus the admitted set",
+    "note": "The screen removes the quadratic term. It does not remove experimentation: C1 is an empirical gate, so the standalone runs are unavoidable."
+  },
+  "actually_spent_in_this_paper": {
+    "pairs_with_results": 42,
+    "cells": 84,
+    "runs": 356
+  }
+}

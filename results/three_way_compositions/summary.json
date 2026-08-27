@@ -1,0 +1,702 @@
+{
+  "description": "3-way composition criterion validation (Move 3)",
+  "config": {
+    "num_clients": 10,
+    "clients_per_round": 5,
+    "adversarial_fraction": 0.2,
+    "num_rounds": 50,
+    "model": "cifar_cnn"
+  },
+  "triples": {
+    "fg_rep_rfa": {
+      "d1": "foolsgold",
+      "d2": "reputation",
+      "d3": "rfa",
+      "predicted": "LOW",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3201,
+            "asr": 0.001888888888888889
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.4933,
+            "asr": 0.057777777777777775
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.4569,
+            "asr": 0.024333333333333332
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.4353,
+            "asr": 0.051666666666666666
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.4596,
+            "asr": 0.04077777777777778
+          }
+        ],
+        "mean_asr": 0.035288888888888884,
+        "std_asr": 0.020197494038422158
+      },
+      "max_committed_asr": 0.04802222222222222,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.4288,
+            "asr": 0.03077777777777778
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.4996,
+            "asr": 0.057555555555555554
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.4836,
+            "asr": 0.04477777777777778
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.4497,
+            "asr": 0.05588888888888889
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.4833,
+            "asr": 0.051111111111111114
+          }
+        ],
+        "mean_asr": 0.04802222222222222,
+        "std_asr": 0.009697498722943019
+      }
+    },
+    "fg_rep_cm": {
+      "d1": "foolsgold",
+      "d2": "reputation",
+      "d3": "coord_median",
+      "predicted": "LOW",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.4518,
+            "asr": 0.0017777777777777779
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.5156,
+            "asr": 0.028444444444444446
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.5774,
+            "asr": 0.03766666666666667
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.5441,
+            "asr": 0.054
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.5953,
+            "asr": 0.027
+          }
+        ],
+        "mean_asr": 0.029777777777777775,
+        "std_asr": 0.016984960667864053
+      },
+      "max_committed_asr": 0.08682222222222222,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.574,
+            "asr": 0.11633333333333333
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.616,
+            "asr": 0.06166666666666667
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.6375,
+            "asr": 0.10977777777777778
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.6389,
+            "asr": 0.07244444444444445
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.6385,
+            "asr": 0.07388888888888889
+          }
+        ],
+        "mean_asr": 0.08682222222222222,
+        "std_asr": 0.021930147241290728
+      }
+    },
+    "rep_fg_rfa": {
+      "d1": "reputation",
+      "d2": "foolsgold",
+      "d3": "rfa",
+      "predicted": "LOW",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3699,
+            "asr": 0.005333333333333333
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.5461,
+            "asr": 0.04911111111111111
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.4881,
+            "asr": 0.03144444444444444
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.4773,
+            "asr": 0.048666666666666664
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.5172,
+            "asr": 0.04
+          }
+        ],
+        "mean_asr": 0.03491111111111111,
+        "std_asr": 0.016146918063920525
+      },
+      "max_committed_asr": 0.045399999999999996,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.4582,
+            "asr": 0.030444444444444444
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.5204,
+            "asr": 0.050666666666666665
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.5012,
+            "asr": 0.03888888888888889
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.4685,
+            "asr": 0.058555555555555555
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.5121,
+            "asr": 0.04844444444444444
+          }
+        ],
+        "mean_asr": 0.045399999999999996,
+        "std_asr": 0.009758465777005504
+      }
+    },
+    "rep_fg_cm": {
+      "d1": "reputation",
+      "d2": "foolsgold",
+      "d3": "coord_median",
+      "predicted": "LOW",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.576,
+            "asr": 0.0038888888888888888
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.5976,
+            "asr": 0.033555555555555554
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.6454,
+            "asr": 0.05433333333333333
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.6305,
+            "asr": 0.05622222222222222
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.6024,
+            "asr": 0.012666666666666666
+          }
+        ],
+        "mean_asr": 0.03213333333333333,
+        "std_asr": 0.02122186154434637
+      },
+      "max_committed_asr": 0.13566666666666666,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.6537,
+            "asr": 0.204
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.6671,
+            "asr": 0.14122222222222222
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.6736,
+            "asr": 0.15544444444444444
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.6871,
+            "asr": 0.07777777777777778
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.6886,
+            "asr": 0.09988888888888889
+          }
+        ],
+        "mean_asr": 0.13566666666666666,
+        "std_asr": 0.044096807084660086
+      }
+    },
+    "fg_nc_cm": {
+      "d1": "foolsgold",
+      "d2": "norm_clip",
+      "d3": "coord_median",
+      "predicted": "LOW",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.6442,
+            "asr": 0.16422222222222221
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.6607,
+            "asr": 0.08788888888888889
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.6647,
+            "asr": 0.12455555555555556
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.6847,
+            "asr": 0.08688888888888889
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.7013,
+            "asr": 0.072
+          }
+        ],
+        "mean_asr": 0.10711111111111112,
+        "std_asr": 0.03339823311656834
+      },
+      "max_committed_asr": 0.10946666666666667,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.6288,
+            "asr": 0.1398888888888889
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.6575,
+            "asr": 0.094
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.6726,
+            "asr": 0.1298888888888889
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.674,
+            "asr": 0.08088888888888889
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.6921,
+            "asr": 0.10266666666666667
+          }
+        ],
+        "mean_asr": 0.10946666666666667,
+        "std_asr": 0.022112104946955757
+      }
+    },
+    "nc_fg_tm": {
+      "d1": "norm_clip",
+      "d2": "foolsgold",
+      "d3": "trimmed_mean",
+      "predicted": "HIGH",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.6811,
+            "asr": 0.2607777777777778
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7027,
+            "asr": 0.3854444444444444
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.6688,
+            "asr": 0.28644444444444445
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.7303,
+            "asr": 0.137
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.7219,
+            "asr": 0.26711111111111113
+          }
+        ],
+        "mean_asr": 0.26735555555555557,
+        "std_asr": 0.07917735678311376
+      },
+      "max_committed_asr": 0.26735555555555557,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.682,
+            "asr": 0.424
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7224,
+            "asr": 0.1678888888888889
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.6952,
+            "asr": 0.2828888888888889
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.7191,
+            "asr": 0.12944444444444445
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.7072,
+            "asr": 0.2431111111111111
+          }
+        ],
+        "mean_asr": 0.24946666666666667,
+        "std_asr": 0.10264462004747914
+      }
+    },
+    "rfa_nc_rep": {
+      "d1": "rfa",
+      "d2": "norm_clip",
+      "d3": "reputation",
+      "predicted": "HIGH",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7854,
+            "asr": 0.9028888888888889
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7728,
+            "asr": 0.8717777777777778
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7781,
+            "asr": 0.858
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.7594,
+            "asr": 0.9497777777777778
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.7795,
+            "asr": 0.8865555555555555
+          }
+        ],
+        "mean_asr": 0.8938,
+        "std_asr": 0.03173395579843908
+      },
+      "max_committed_asr": 0.8938,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7838,
+            "asr": 0.8446666666666667
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7749,
+            "asr": 0.7785555555555556
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7789,
+            "asr": 0.8383333333333334
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.7717,
+            "asr": 0.9184444444444444
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.7676,
+            "asr": 0.7976666666666666
+          }
+        ],
+        "mean_asr": 0.8355333333333332,
+        "std_asr": 0.04826149962111633
+      }
+    },
+    "fg_rfa_cm": {
+      "d1": "foolsgold",
+      "d2": "rfa",
+      "d3": "coord_median",
+      "predicted": "LOW",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.4144,
+            "asr": 0.01888888888888889
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.483,
+            "asr": 0.051222222222222225
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.4712,
+            "asr": 0.03611111111111111
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.4383,
+            "asr": 0.05444444444444444
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.4752,
+            "asr": 0.044222222222222225
+          }
+        ],
+        "mean_asr": 0.04097777777777777,
+        "std_asr": 0.01271557808068221
+      },
+      "max_committed_asr": 0.04097777777777777,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.4062,
+            "asr": 0.015555555555555555
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.4996,
+            "asr": 0.04788888888888889
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.4629,
+            "asr": 0.02588888888888889
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.4418,
+            "asr": 0.049
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.4754,
+            "asr": 0.04544444444444445
+          }
+        ],
+        "mean_asr": 0.036755555555555555,
+        "std_asr": 0.013541778062219886
+      }
+    },
+    "fedavg_nc_rep": {
+      "d1": "fedavg",
+      "d2": "norm_clip",
+      "d3": "reputation",
+      "predicted": "HIGH",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7827,
+            "asr": 0.7663333333333333
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7876,
+            "asr": 0.7825555555555556
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7943,
+            "asr": 0.8277777777777777
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.7619,
+            "asr": 0.8885555555555555
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.7804,
+            "asr": 0.7632222222222222
+          }
+        ],
+        "mean_asr": 0.8056888888888889,
+        "std_asr": 0.04741778590100011
+      },
+      "max_committed_asr": 0.8421555555555555,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7744,
+            "asr": 0.8371111111111111
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7741,
+            "asr": 0.7923333333333333
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7837,
+            "asr": 0.828
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.7707,
+            "asr": 0.9307777777777778
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.7656,
+            "asr": 0.8225555555555556
+          }
+        ],
+        "mean_asr": 0.8421555555555555,
+        "std_asr": 0.046789183090977224
+      }
+    },
+    "nc_rep_tm": {
+      "d1": "norm_clip",
+      "d2": "reputation",
+      "d3": "trimmed_mean",
+      "predicted": "HIGH",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7763,
+            "asr": 0.6302222222222222
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7775,
+            "asr": 0.43833333333333335
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7826,
+            "asr": 0.6476666666666666
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.7617,
+            "asr": 0.8417777777777777
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.7655,
+            "asr": 0.6242222222222222
+          }
+        ],
+        "mean_asr": 0.6364444444444445,
+        "std_asr": 0.1278466481066233
+      },
+      "max_committed_asr": 0.6364444444444445,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7653,
+            "asr": 0.6163333333333333
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7677,
+            "asr": 0.37355555555555553
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7664,
+            "asr": 0.6233333333333333
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.7657,
+            "asr": 0.852
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.7742,
+            "asr": 0.6143333333333333
+          }
+        ],
+        "mean_asr": 0.6159111111111111,
+        "std_asr": 0.15134856180517153
+      }
+    }
+  }
+}

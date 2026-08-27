@@ -1,0 +1,504 @@
+{
+  "description": "Criterion-PASS compositions vs Dirichlet alpha",
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "rounds": 50,
+    "model": "cifar_cnn",
+    "seeds": [
+      42,
+      43,
+      44
+    ]
+  },
+  "note": "alpha=0.5 not re-run; see results/all_compositions/summary.json",
+  "cells": {
+    "foolsgold_then_rfa|alpha0.1|committed_scaling": {
+      "d1": "foolsgold",
+      "d2": "rfa",
+      "alpha": 0.1,
+      "attack": "committed_scaling",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.2248,
+          "asr": 0.245
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.1419,
+          "asr": 0.8662222222222222
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.2235,
+          "asr": 0.5965555555555555
+        }
+      ],
+      "mean_asr": 0.5692592592592592,
+      "std_asr": 0.2543463232016541,
+      "mean_acc": 0.19673333333333334,
+      "std_acc": 0.038776653915582875
+    },
+    "foolsgold_then_rfa|alpha0.1|committed_pixel": {
+      "d1": "foolsgold",
+      "d2": "rfa",
+      "alpha": 0.1,
+      "attack": "committed_pixel",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.197,
+          "asr": 0.16
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.1268,
+          "asr": 0.9225555555555556
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.2716,
+          "asr": 0.06455555555555556
+        }
+      ],
+      "mean_asr": 0.3823703703703703,
+      "std_asr": 0.3839508963517703,
+      "mean_acc": 0.19846666666666665,
+      "std_acc": 0.05912344900479185
+    },
+    "foolsgold_then_rfa|alpha1.0|committed_scaling": {
+      "d1": "foolsgold",
+      "d2": "rfa",
+      "alpha": 1.0,
+      "attack": "committed_scaling",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5281,
+          "asr": 0.04477777777777778
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5873,
+          "asr": 0.04777777777777778
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5898,
+          "asr": 0.05622222222222222
+        }
+      ],
+      "mean_asr": 0.0495925925925926,
+      "std_asr": 0.004845203247855713,
+      "mean_acc": 0.5684,
+      "std_acc": 0.02851467458461812
+    },
+    "foolsgold_then_rfa|alpha1.0|committed_pixel": {
+      "d1": "foolsgold",
+      "d2": "rfa",
+      "alpha": 1.0,
+      "attack": "committed_pixel",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5243,
+          "asr": 0.04888888888888889
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5802,
+          "asr": 0.04811111111111111
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5854,
+          "asr": 0.055
+        }
+      ],
+      "mean_asr": 0.050666666666666665,
+      "std_asr": 0.0030805376047301184,
+      "mean_acc": 0.5633,
+      "std_acc": 0.027658753888537134
+    },
+    "foolsgold_then_rfa|alpha10.0|committed_scaling": {
+      "d1": "foolsgold",
+      "d2": "rfa",
+      "alpha": 10.0,
+      "attack": "committed_scaling",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6157,
+          "asr": 0.04677777777777778
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6416,
+          "asr": 0.05444444444444444
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6097,
+          "asr": 0.08911111111111111
+        }
+      ],
+      "mean_asr": 0.06344444444444444,
+      "std_asr": 0.01841698089224141,
+      "mean_acc": 0.6223333333333333,
+      "std_acc": 0.013842045449362652
+    },
+    "foolsgold_then_rfa|alpha10.0|committed_pixel": {
+      "d1": "foolsgold",
+      "d2": "rfa",
+      "alpha": 10.0,
+      "attack": "committed_pixel",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.613,
+          "asr": 0.04377777777777778
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6421,
+          "asr": 0.044222222222222225
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6065,
+          "asr": 0.06066666666666667
+        }
+      ],
+      "mean_asr": 0.049555555555555554,
+      "std_asr": 0.007858836865111019,
+      "mean_acc": 0.6205333333333334,
+      "std_acc": 0.015479089838301926
+    },
+    "foolsgold_then_coord_median|alpha0.1|committed_scaling": {
+      "d1": "foolsgold",
+      "d2": "coord_median",
+      "alpha": 0.1,
+      "attack": "committed_scaling",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4029,
+          "asr": 0.6146666666666667
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.4051,
+          "asr": 0.2051111111111111
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.4451,
+          "asr": 0.05266666666666667
+        }
+      ],
+      "mean_asr": 0.2908148148148148,
+      "std_asr": 0.2373040856810788,
+      "mean_acc": 0.4177,
+      "std_acc": 0.019395532131567483
+    },
+    "foolsgold_then_coord_median|alpha0.1|committed_pixel": {
+      "d1": "foolsgold",
+      "d2": "coord_median",
+      "alpha": 0.1,
+      "attack": "committed_pixel",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.3851,
+          "asr": 0.4786666666666667
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.3639,
+          "asr": 0.6323333333333333
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.4226,
+          "asr": 0.188
+        }
+      ],
+      "mean_asr": 0.433,
+      "std_asr": 0.1842500314086108,
+      "mean_acc": 0.39053333333333334,
+      "std_acc": 0.024270192051613883
+    },
+    "foolsgold_then_coord_median|alpha1.0|committed_scaling": {
+      "d1": "foolsgold",
+      "d2": "coord_median",
+      "alpha": 1.0,
+      "attack": "committed_scaling",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7349,
+          "asr": 0.1797777777777778
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7547,
+          "asr": 0.07288888888888889
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.737,
+          "asr": 0.11666666666666667
+        }
+      ],
+      "mean_asr": 0.12311111111111113,
+      "std_asr": 0.04387449365423649,
+      "mean_acc": 0.7422,
+      "std_acc": 0.00888031530971735
+    },
+    "foolsgold_then_coord_median|alpha1.0|committed_pixel": {
+      "d1": "foolsgold",
+      "d2": "coord_median",
+      "alpha": 1.0,
+      "attack": "committed_pixel",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.73,
+          "asr": 0.17877777777777779
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7402,
+          "asr": 0.09244444444444444
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7364,
+          "asr": 0.129
+        }
+      ],
+      "mean_asr": 0.13340740740740742,
+      "std_asr": 0.03538295296845892,
+      "mean_acc": 0.7355333333333333,
+      "std_acc": 0.004208985098043893
+    },
+    "foolsgold_then_coord_median|alpha10.0|committed_scaling": {
+      "d1": "foolsgold",
+      "d2": "coord_median",
+      "alpha": 10.0,
+      "attack": "committed_scaling",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7933,
+          "asr": 0.17677777777777778
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7782,
+          "asr": 0.11988888888888889
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7796,
+          "asr": 0.09055555555555556
+        }
+      ],
+      "mean_asr": 0.1290740740740741,
+      "std_asr": 0.03579426044679209,
+      "mean_acc": 0.7837,
+      "std_acc": 0.006812243878977528
+    },
+    "foolsgold_then_coord_median|alpha10.0|committed_pixel": {
+      "d1": "foolsgold",
+      "d2": "coord_median",
+      "alpha": 10.0,
+      "attack": "committed_pixel",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7801,
+          "asr": 0.14044444444444446
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.779,
+          "asr": 0.12788888888888889
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7739,
+          "asr": 0.11277777777777778
+        }
+      ],
+      "mean_asr": 0.12703703703703703,
+      "std_asr": 0.011310919496788308,
+      "mean_acc": 0.7776666666666667,
+      "std_acc": 0.0027010286106510465
+    },
+    "reputation_then_coord_median|alpha0.1|committed_scaling": {
+      "d1": "reputation",
+      "d2": "coord_median",
+      "alpha": 0.1,
+      "attack": "committed_scaling",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.384,
+          "asr": 0.03955555555555555
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5132,
+          "asr": 0.017888888888888888
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5936,
+          "asr": 0.01911111111111111
+        }
+      ],
+      "mean_asr": 0.025518518518518513,
+      "std_asr": 0.009938217927928044,
+      "mean_acc": 0.4969333333333334,
+      "std_acc": 0.08633845544650941
+    },
+    "reputation_then_coord_median|alpha0.1|committed_pixel": {
+      "d1": "reputation",
+      "d2": "coord_median",
+      "alpha": 0.1,
+      "attack": "committed_pixel",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4394,
+          "asr": 0.6498888888888888
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.4685,
+          "asr": 0.5545555555555556
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.4883,
+          "asr": 0.43833333333333335
+        }
+      ],
+      "mean_asr": 0.5475925925925926,
+      "std_asr": 0.08650741937939052,
+      "mean_acc": 0.46540000000000004,
+      "std_acc": 0.020083326417702822
+    },
+    "reputation_then_coord_median|alpha1.0|committed_scaling": {
+      "d1": "reputation",
+      "d2": "coord_median",
+      "alpha": 1.0,
+      "attack": "committed_scaling",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7813,
+          "asr": 0.021666666666666667
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.8017,
+          "asr": 0.018333333333333333
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7831,
+          "asr": 0.022222222222222223
+        }
+      ],
+      "mean_asr": 0.02074074074074074,
+      "std_asr": 0.0017173367584251307,
+      "mean_acc": 0.7887,
+      "std_acc": 0.009221713506718786
+    },
+    "reputation_then_coord_median|alpha1.0|committed_pixel": {
+      "d1": "reputation",
+      "d2": "coord_median",
+      "alpha": 1.0,
+      "attack": "committed_pixel",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7846,
+          "asr": 0.3652222222222222
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.799,
+          "asr": 0.24155555555555555
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7792,
+          "asr": 0.5228888888888888
+        }
+      ],
+      "mean_asr": 0.37655555555555553,
+      "std_asr": 0.11513309528380458,
+      "mean_acc": 0.7876,
+      "std_acc": 0.008357032966310496
+    },
+    "reputation_then_coord_median|alpha10.0|committed_scaling": {
+      "d1": "reputation",
+      "d2": "coord_median",
+      "alpha": 10.0,
+      "attack": "committed_scaling",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.8075,
+          "asr": 0.017222222222222222
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.8097,
+          "asr": 0.020888888888888887
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.8183,
+          "asr": 0.011666666666666667
+        }
+      ],
+      "mean_asr": 0.016592592592592593,
+      "std_asr": 0.003791188976376056,
+      "mean_acc": 0.8118333333333334,
+      "std_acc": 0.004659995231280362
+    },
+    "reputation_then_coord_median|alpha10.0|committed_pixel": {
+      "d1": "reputation",
+      "d2": "coord_median",
+      "alpha": 10.0,
+      "attack": "committed_pixel",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.8153,
+          "asr": 0.25122222222222224
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.8144,
+          "asr": 0.20333333333333334
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.8152,
+          "asr": 0.5233333333333333
+        }
+      ],
+      "mean_asr": 0.32596296296296295,
+      "std_asr": 0.14092464592789997,
+      "mean_acc": 0.8149666666666667,
+      "std_acc": 0.00040276819911982676
+    }
+  }
+}

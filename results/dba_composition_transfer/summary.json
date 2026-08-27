@@ -1,0 +1,248 @@
+{
+  "description": "OOS PASS validation: DBA attack transfer at f=0.4",
+  "attack": "dba",
+  "adversarial_fraction": 0.4,
+  "num_clients": 10,
+  "clients_per_round": 5,
+  "num_rounds": 50,
+  "pairs": {
+    "foolsgold_then_rfa": {
+      "d1": "foolsgold",
+      "d2": "rfa",
+      "per_seed": [
+        {
+          "seed": 43,
+          "accuracy": 0.4111,
+          "asr": 0.105
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.4149,
+          "asr": 0.18511111111111112
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.42,
+          "asr": 0.17822222222222223
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.401,
+          "asr": 0.04766666666666667
+        },
+        {
+          "seed": 42,
+          "accuracy": 0.3624,
+          "asr": 0.02822222222222222
+        }
+      ],
+      "mean_asr": 0.10884444444444445,
+      "std_asr": 0.06463330945695125,
+      "n_seeds": 5
+    },
+    "foolsgold_then_coord_median": {
+      "d1": "foolsgold",
+      "d2": "coord_median",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5626,
+          "asr": 0.05333333333333334
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5756,
+          "asr": 0.038
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6029,
+          "asr": 0.10177777777777777
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.6285,
+          "asr": 0.024
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.6681,
+          "asr": 0.03388888888888889
+        }
+      ],
+      "mean_asr": 0.0502,
+      "std_asr": 0.02746422139420893,
+      "n_seeds": 5
+    },
+    "reputation_then_coord_median": {
+      "d1": "reputation",
+      "d2": "coord_median",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7551,
+          "asr": 0.036222222222222225
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7543,
+          "asr": 0.026222222222222223
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7507,
+          "asr": 0.057888888888888886
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7489,
+          "asr": 0.05711111111111111
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7228,
+          "asr": 0.026
+        }
+      ],
+      "mean_asr": 0.04068888888888889,
+      "std_asr": 0.014216387692108909,
+      "n_seeds": 5
+    },
+    "norm_clip_then_reputation": {
+      "d1": "norm_clip",
+      "d2": "reputation",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7689,
+          "asr": 0.3452222222222222
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7732,
+          "asr": 0.17533333333333334
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7698,
+          "asr": 0.16755555555555557
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7744,
+          "asr": 0.7117777777777777
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7547,
+          "asr": 0.08411111111111111
+        }
+      ],
+      "mean_asr": 0.2968,
+      "std_asr": 0.22416338177408696,
+      "n_seeds": 5
+    },
+    "rfa_then_reputation": {
+      "d1": "rfa",
+      "d2": "reputation",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7676,
+          "asr": 0.27344444444444443
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7755,
+          "asr": 0.25077777777777777
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7704,
+          "asr": 0.1938888888888889
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.774,
+          "asr": 0.6054444444444445
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7615,
+          "asr": 0.16355555555555557
+        }
+      ],
+      "mean_asr": 0.2974222222222222,
+      "std_asr": 0.15891366395811465,
+      "n_seeds": 5
+    },
+    "foolsgold_then_trimmed_mean": {
+      "d1": "foolsgold",
+      "d2": "trimmed_mean",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6481,
+          "asr": 0.03244444444444444
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6633,
+          "asr": 0.06522222222222222
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6497,
+          "asr": 0.10222222222222223
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.6889,
+          "asr": 0.02322222222222222
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.6766,
+          "asr": 0.021555555555555557
+        }
+      ],
+      "mean_asr": 0.048933333333333336,
+      "std_asr": 0.030943564719192653,
+      "n_seeds": 5
+    },
+    "fedavg_then_fedavg": {
+      "d1": "fedavg",
+      "d2": "fedavg",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7784,
+          "asr": 0.22166666666666668
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7935,
+          "asr": 0.10333333333333333
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7864,
+          "asr": 0.17566666666666667
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.774,
+          "asr": 0.6028888888888889
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7644,
+          "asr": 0.077
+        }
+      ],
+      "mean_asr": 0.2361111111111111,
+      "std_asr": 0.1904386489459156,
+      "n_seeds": 5
+    }
+  }
+}

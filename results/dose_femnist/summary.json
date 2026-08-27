@@ -1,0 +1,198 @@
+{
+  "description": "Second-dataset replication arm for the flagship negative: FEMNIST/simple_cnn, krum under Mode S (statistic-only, adversary pinned at c=1). Rules frozen at 478b555 (experiments/pre_registration_dose_femnist.md).",
+  "prereg_commit": "478b555",
+  "dataset": "femnist",
+  "model": "simple_cnn",
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 50,
+    "kappas": [
+      0.0,
+      0.5,
+      1.0,
+      2.0
+    ],
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "rhos": {
+      "0.0": 1.0,
+      "0.5": 2.718281828459045,
+      "1.0": 7.38905609893065,
+      "2.0": 54.598150033144236
+    },
+    "acc_floor": 0.35,
+    "equiv_margin": 0.15,
+    "replicate_within": 0.15
+  },
+  "arm": {
+    "mode": "S",
+    "d2": "krum",
+    "attack": "committed_scaling",
+    "prop1_class": "c) not invariant",
+    "predicted_outcome": "FLAT if the CIFAR-10 negative is a property of the mechanism; RISING if it was dataset- or architecture-specific",
+    "seeds": [
+      42,
+      43,
+      44
+    ]
+  },
+  "cifar10_comparison": {
+    "d2": "krum",
+    "attack": "committed_scaling",
+    "published_mode_s_rise": -0.026088888888888898
+  },
+  "femnist_standalone_payoff": {
+    "accuracy": 0.7670795973281295,
+    "asr": 0.026978455229393763
+  },
+  "prospective_premise_femnist": {
+    "0.0": {
+      "decision": 0.0,
+      "admission": 0.0
+    },
+    "0.5": {
+      "decision": 0.6428571428571429,
+      "admission": 0.0
+    },
+    "1.0": {
+      "decision": 0.7142857142857143,
+      "admission": 0.0
+    },
+    "2.0": {
+      "decision": 0.6428571428571429,
+      "admission": 0.0
+    }
+  },
+  "cells": {
+    "doseS_kappa0.0_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 0.0,
+      "dial": 1.0,
+      "prop1_class": "c) not invariant",
+      "dataset": "femnist",
+      "model": "simple_cnn",
+      "predicted_outcome": "FLAT if the CIFAR-10 negative is a property of the mechanism; RISING if it was dataset- or architecture-specific",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7645951359576352,
+          "asr": 0.023899769324709396
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7441176723433887,
+          "asr": 0.017576552535166674
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7925259836833645,
+          "asr": 0.039459043828305215
+        }
+      ],
+      "mean_asr": 0.026978455229393763,
+      "mean_acc": 0.7670795973281295,
+      "std_asr": 0.009194911145967197
+    },
+    "doseS_kappa0.5_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 0.5,
+      "dial": 2.718281828459045,
+      "prop1_class": "c) not invariant",
+      "dataset": "femnist",
+      "model": "simple_cnn",
+      "predicted_outcome": "FLAT if the CIFAR-10 negative is a property of the mechanism; RISING if it was dataset- or architecture-specific",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.8069943175468308,
+          "asr": 0.0006513184675923832
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.8049053067751004,
+          "asr": 0.002668596499163237
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.788674638721491,
+          "asr": 0.01632819213894794
+        }
+      ],
+      "mean_asr": 0.0065493690352345195,
+      "mean_acc": 0.8001914210144742,
+      "std_asr": 0.006963542615386419
+    },
+    "doseS_kappa1.0_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 1.0,
+      "dial": 7.38905609893065,
+      "prop1_class": "c) not invariant",
+      "dataset": "femnist",
+      "model": "simple_cnn",
+      "predicted_outcome": "FLAT if the CIFAR-10 negative is a property of the mechanism; RISING if it was dataset- or architecture-specific",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.8274287974003421,
+          "asr": 0.002261522456917997
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.8249959165427302,
+          "asr": 0.00159211180967027
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.8165882929429261,
+          "asr": 0.02579040209869284
+        }
+      ],
+      "mean_asr": 0.009881345455093702,
+      "mean_acc": 0.8230043356286662,
+      "std_asr": 0.01125272085973274
+    },
+    "doseS_kappa2.0_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 2.0,
+      "dial": 54.598150033144236,
+      "prop1_class": "c) not invariant",
+      "dataset": "femnist",
+      "model": "simple_cnn",
+      "predicted_outcome": "FLAT if the CIFAR-10 negative is a property of the mechanism; RISING if it was dataset- or architecture-specific",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.8303602898824824,
+          "asr": 0.0010674385996652946
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.8255117216715525,
+          "asr": 0.0003347053236238636
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.8485166304170284,
+          "asr": 0.029580713736487404
+        }
+      ],
+      "mean_asr": 0.01032761921992552,
+      "mean_acc": 0.8347962139903545,
+      "std_asr": 0.013617279729843342
+    }
+  }
+}

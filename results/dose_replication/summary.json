@@ -1,0 +1,223 @@
+{
+  "description": "Rank-discordant replication arm for the admission channel: coord_median under Mode S (statistic-only, adversary pinned at c=1). Ordering and thresholds frozen at 06d9bce (experiments/pre_registration_dose_replication.md).",
+  "prereg_commit": "06d9bce",
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 50,
+    "kappas": [
+      0.0,
+      0.5,
+      1.0,
+      2.0
+    ],
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "rhos": {
+      "0.0": 1.0,
+      "0.5": 2.718281828459045,
+      "1.0": 7.38905609893065,
+      "2.0": 54.598150033144236
+    },
+    "acc_floor": 0.35,
+    "equiv_margin": 0.15,
+    "confirm_above": 0.178,
+    "refute_below": 0.15
+  },
+  "arm": {
+    "mode": "S",
+    "d2": "coord_median",
+    "attack": "committed_pixel",
+    "prop1_class": "b) conditionally inv.",
+    "predicted_ordering": "rise LARGEST of the three arms if admission orders the outcomes, SMALLEST if decision does",
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ]
+  },
+  "comparison_arms": [
+    {
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "published_mode_s_rise": -0.026088888888888898
+    },
+    {
+      "d2": "reputation",
+      "attack": "committed_scaling",
+      "published_mode_s_rise": 0.17842222222222223
+    }
+  ],
+  "cells": {
+    "doseS_kappa0.0_then_coord_median|committed_pixel": {
+      "mode": "S",
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "rung": 0.0,
+      "dial": 1.0,
+      "prop1_class": "b) conditionally inv.",
+      "predicted_ordering": "rise LARGEST of the three arms if admission orders the outcomes, SMALLEST if decision does",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7691,
+          "asr": 0.39455555555555555,
+          "source": "results/dose_response kappa=0 (identical computation)"
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.77,
+          "asr": 0.2866666666666667,
+          "source": "results/dose_response kappa=0 (identical computation)"
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7652,
+          "asr": 0.4487777777777778,
+          "source": "results/dose_response kappa=0 (identical computation)"
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7615,
+          "asr": 0.6774444444444444,
+          "source": "results/dose_response kappa=0 (identical computation)"
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7668,
+          "asr": 0.4051111111111111,
+          "source": "results/dose_response kappa=0 (identical computation)"
+        }
+      ],
+      "mean_asr": 0.4425111111111111,
+      "mean_acc": 0.76652,
+      "std_asr": 0.1290107967536529
+    },
+    "doseS_kappa0.5_then_coord_median|committed_pixel": {
+      "mode": "S",
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "rung": 0.5,
+      "dial": 2.718281828459045,
+      "prop1_class": "b) conditionally inv.",
+      "predicted_ordering": "rise LARGEST of the three arms if admission orders the outcomes, SMALLEST if decision does",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.769,
+          "asr": 0.43922222222222224
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7691,
+          "asr": 0.24622222222222223
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7633,
+          "asr": 0.4441111111111111
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7584,
+          "asr": 0.6776666666666666
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7539,
+          "asr": 0.4022222222222222
+        }
+      ],
+      "mean_asr": 0.4418888888888889,
+      "mean_acc": 0.76274,
+      "std_asr": 0.13817532251848164
+    },
+    "doseS_kappa1.0_then_coord_median|committed_pixel": {
+      "mode": "S",
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "rung": 1.0,
+      "dial": 7.38905609893065,
+      "prop1_class": "b) conditionally inv.",
+      "predicted_ordering": "rise LARGEST of the three arms if admission orders the outcomes, SMALLEST if decision does",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7497,
+          "asr": 0.5293333333333333
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7484,
+          "asr": 0.2677777777777778
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7525,
+          "asr": 0.5077777777777778
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7475,
+          "asr": 0.7206666666666667
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7616,
+          "asr": 0.4245555555555556
+        }
+      ],
+      "mean_asr": 0.49002222222222225,
+      "mean_acc": 0.75194,
+      "std_asr": 0.1474692920535168
+    },
+    "doseS_kappa2.0_then_coord_median|committed_pixel": {
+      "mode": "S",
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "rung": 2.0,
+      "dial": 54.598150033144236,
+      "prop1_class": "b) conditionally inv.",
+      "predicted_ordering": "rise LARGEST of the three arms if admission orders the outcomes, SMALLEST if decision does",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6878,
+          "asr": 0.5973333333333334
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7036,
+          "asr": 0.3191111111111111
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6813,
+          "asr": 0.5164444444444445
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7039,
+          "asr": 0.7556666666666667
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7154,
+          "asr": 0.5143333333333333
+        }
+      ],
+      "mean_asr": 0.5405777777777777,
+      "mean_acc": 0.6984,
+      "std_asr": 0.1412820556874059
+    }
+  }
+}

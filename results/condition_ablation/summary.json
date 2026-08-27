@@ -1,0 +1,538 @@
+{
+  "description": "Factorial C1/C2/C3 ablation over the 42 evaluated pairs",
+  "threshold": 0.5,
+  "cells": {
+    "C1=True,C2=True,C3=True": {
+      "n": 2,
+      "low": 2,
+      "rate": 1.0
+    },
+    "C1=True,C2=False,C3=True": {
+      "n": 2,
+      "low": 0,
+      "rate": 0.0
+    },
+    "C1=False,C2=True,C3=True": {
+      "n": 6,
+      "low": 1,
+      "rate": 0.16666666666666666
+    },
+    "C1=False,C2=True,C3=False": {
+      "n": 6,
+      "low": 2,
+      "rate": 0.3333333333333333
+    },
+    "C1=False,C2=False,C3=True": {
+      "n": 25,
+      "low": 0,
+      "rate": 0.0
+    },
+    "C1=False,C2=False,C3=False": {
+      "n": 1,
+      "low": 0,
+      "rate": 0.0
+    }
+  },
+  "marginal": {
+    "C1 alone": {
+      "n": 4,
+      "low": 2,
+      "precision": 0.5
+    },
+    "C2 alone": {
+      "n": 14,
+      "low": 5,
+      "precision": 0.35714285714285715
+    },
+    "C3 alone": {
+      "n": 35,
+      "low": 3,
+      "precision": 0.08571428571428572
+    },
+    "C1 and C2": {
+      "n": 2,
+      "low": 2,
+      "precision": 1.0
+    },
+    "C1 and C3": {
+      "n": 4,
+      "low": 2,
+      "precision": 0.5
+    },
+    "C2 and C3": {
+      "n": 8,
+      "low": 3,
+      "precision": 0.375
+    },
+    "C1 and C2 and C3": {
+      "n": 2,
+      "low": 2,
+      "precision": 1.0
+    }
+  },
+  "base_rate_low_asr": 0.11904761904761904,
+  "rows": [
+    {
+      "pair": "foolsgold_then_rfa",
+      "d1": "foolsgold",
+      "d2": "rfa",
+      "stored_category": "PASS",
+      "C1": false,
+      "C2": true,
+      "C3": true,
+      "max_committed_asr": 0.04544444444444445,
+      "low_asr": true
+    },
+    {
+      "pair": "foolsgold_then_coord_median",
+      "d1": "foolsgold",
+      "d2": "coord_median",
+      "stored_category": "PASS",
+      "C1": true,
+      "C2": true,
+      "C3": true,
+      "max_committed_asr": 0.13103703703703704,
+      "low_asr": true
+    },
+    {
+      "pair": "reputation_then_coord_median",
+      "d1": "reputation",
+      "d2": "coord_median",
+      "stored_category": "PASS",
+      "C1": true,
+      "C2": true,
+      "C3": true,
+      "max_committed_asr": 0.3522222222222222,
+      "low_asr": true
+    },
+    {
+      "pair": "reputation_then_trimmed_mean",
+      "d1": "reputation",
+      "d2": "trimmed_mean",
+      "stored_category": "C1-FAIL",
+      "C1": false,
+      "C2": true,
+      "C3": true,
+      "max_committed_asr": 0.5377407407407407,
+      "low_asr": false
+    },
+    {
+      "pair": "reputation_then_rfa",
+      "d1": "reputation",
+      "d2": "rfa",
+      "stored_category": "C1-FAIL",
+      "C1": false,
+      "C2": true,
+      "C3": true,
+      "max_committed_asr": 0.8254814814814814,
+      "low_asr": false
+    },
+    {
+      "pair": "reputation_then_foolsgold",
+      "d1": "reputation",
+      "d2": "foolsgold",
+      "stored_category": "C1-FAIL",
+      "C1": false,
+      "C2": true,
+      "C3": true,
+      "max_committed_asr": 0.8069999999999999,
+      "low_asr": false
+    },
+    {
+      "pair": "reputation_then_norm_clip",
+      "d1": "reputation",
+      "d2": "norm_clip",
+      "stored_category": "C1-FAIL",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.8130000000000001,
+      "low_asr": false
+    },
+    {
+      "pair": "norm_clip_then_coord_median",
+      "d1": "norm_clip",
+      "d2": "coord_median",
+      "stored_category": "C3-FAIL",
+      "C1": false,
+      "C2": true,
+      "C3": false,
+      "max_committed_asr": 0.4334074074074074,
+      "low_asr": true
+    },
+    {
+      "pair": "norm_clip_then_rfa",
+      "d1": "norm_clip",
+      "d2": "rfa",
+      "stored_category": "C3-FAIL",
+      "C1": false,
+      "C2": true,
+      "C3": false,
+      "max_committed_asr": 0.8528518518518519,
+      "low_asr": false
+    },
+    {
+      "pair": "rfa_then_trimmed_mean",
+      "d1": "rfa",
+      "d2": "trimmed_mean",
+      "stored_category": "C3-FAIL",
+      "C1": false,
+      "C2": true,
+      "C3": false,
+      "max_committed_asr": 0.6777037037037038,
+      "low_asr": false
+    },
+    {
+      "pair": "rfa_then_coord_median",
+      "d1": "rfa",
+      "d2": "coord_median",
+      "stored_category": "C3-FAIL",
+      "C1": false,
+      "C2": true,
+      "C3": false,
+      "max_committed_asr": 0.48533333333333334,
+      "low_asr": true
+    },
+    {
+      "pair": "foolsgold_then_trimmed_mean",
+      "d1": "foolsgold",
+      "d2": "trimmed_mean",
+      "stored_category": "C3-FAIL",
+      "C1": false,
+      "C2": true,
+      "C3": false,
+      "max_committed_asr": 0.507888888888889,
+      "low_asr": false
+    },
+    {
+      "pair": "norm_clip_then_trimmed_mean",
+      "d1": "norm_clip",
+      "d2": "trimmed_mean",
+      "stored_category": "C3-FAIL",
+      "C1": false,
+      "C2": true,
+      "C3": false,
+      "max_committed_asr": 0.7802962962962963,
+      "low_asr": false
+    },
+    {
+      "pair": "norm_clip_then_reputation",
+      "d1": "norm_clip",
+      "d2": "reputation",
+      "stored_category": "C2-FAIL",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.8191481481481482,
+      "low_asr": false
+    },
+    {
+      "pair": "norm_clip_then_foolsgold",
+      "d1": "norm_clip",
+      "d2": "foolsgold",
+      "stored_category": "C1-FAIL",
+      "C1": false,
+      "C2": true,
+      "C3": true,
+      "max_committed_asr": 0.8869259259259259,
+      "low_asr": false
+    },
+    {
+      "pair": "rfa_then_reputation",
+      "d1": "rfa",
+      "d2": "reputation",
+      "stored_category": "C2-FAIL",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.8817777777777778,
+      "low_asr": false
+    },
+    {
+      "pair": "fedavg_then_norm_clip",
+      "d1": "fedavg",
+      "d2": "norm_clip",
+      "stored_category": "DEGEN",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.9346,
+      "low_asr": false
+    },
+    {
+      "pair": "fedavg_then_trimmed_mean",
+      "d1": "fedavg",
+      "d2": "trimmed_mean",
+      "stored_category": "DEGEN",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.8458,
+      "low_asr": false
+    },
+    {
+      "pair": "fedavg_then_coord_median",
+      "d1": "fedavg",
+      "d2": "coord_median",
+      "stored_category": "DEGEN",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.5185777777777778,
+      "low_asr": false
+    },
+    {
+      "pair": "fedavg_then_rfa",
+      "d1": "fedavg",
+      "d2": "rfa",
+      "stored_category": "DEGEN",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.8848888888888888,
+      "low_asr": false
+    },
+    {
+      "pair": "fedavg_then_foolsgold",
+      "d1": "fedavg",
+      "d2": "foolsgold",
+      "stored_category": "DEGEN",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.7315555555555556,
+      "low_asr": false
+    },
+    {
+      "pair": "fedavg_then_reputation",
+      "d1": "fedavg",
+      "d2": "reputation",
+      "stored_category": "DEGEN",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.8421555555555555,
+      "low_asr": false
+    },
+    {
+      "pair": "trimmed_mean_then_fedavg",
+      "d1": "trimmed_mean",
+      "d2": "fedavg",
+      "stored_category": "DEGEN",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.8059777777777779,
+      "low_asr": false
+    },
+    {
+      "pair": "trimmed_mean_then_norm_clip",
+      "d1": "trimmed_mean",
+      "d2": "norm_clip",
+      "stored_category": "DEGEN",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.9346,
+      "low_asr": false
+    },
+    {
+      "pair": "trimmed_mean_then_coord_median",
+      "d1": "trimmed_mean",
+      "d2": "coord_median",
+      "stored_category": "DEGEN",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.5185777777777778,
+      "low_asr": false
+    },
+    {
+      "pair": "trimmed_mean_then_rfa",
+      "d1": "trimmed_mean",
+      "d2": "rfa",
+      "stored_category": "DEGEN",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.8848888888888888,
+      "low_asr": false
+    },
+    {
+      "pair": "trimmed_mean_then_foolsgold",
+      "d1": "trimmed_mean",
+      "d2": "foolsgold",
+      "stored_category": "DEGEN",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.7315555555555556,
+      "low_asr": false
+    },
+    {
+      "pair": "trimmed_mean_then_reputation",
+      "d1": "trimmed_mean",
+      "d2": "reputation",
+      "stored_category": "DEGEN",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.8421555555555555,
+      "low_asr": false
+    },
+    {
+      "pair": "coord_median_then_fedavg",
+      "d1": "coord_median",
+      "d2": "fedavg",
+      "stored_category": "DEGEN",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.8059777777777779,
+      "low_asr": false
+    },
+    {
+      "pair": "coord_median_then_norm_clip",
+      "d1": "coord_median",
+      "d2": "norm_clip",
+      "stored_category": "DEGEN",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.9346,
+      "low_asr": false
+    },
+    {
+      "pair": "coord_median_then_trimmed_mean",
+      "d1": "coord_median",
+      "d2": "trimmed_mean",
+      "stored_category": "DEGEN",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.8457999999999999,
+      "low_asr": false
+    },
+    {
+      "pair": "coord_median_then_rfa",
+      "d1": "coord_median",
+      "d2": "rfa",
+      "stored_category": "DEGEN",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.8848888888888888,
+      "low_asr": false
+    },
+    {
+      "pair": "coord_median_then_foolsgold",
+      "d1": "coord_median",
+      "d2": "foolsgold",
+      "stored_category": "DEGEN",
+      "C1": true,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.7315555555555556,
+      "low_asr": false
+    },
+    {
+      "pair": "coord_median_then_reputation",
+      "d1": "coord_median",
+      "d2": "reputation",
+      "stored_category": "DEGEN",
+      "C1": true,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.8421555555555555,
+      "low_asr": false
+    },
+    {
+      "pair": "foolsgold_then_norm_clip",
+      "d1": "foolsgold",
+      "d2": "norm_clip",
+      "stored_category": "C1-FAIL",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.9269333333333334,
+      "low_asr": false
+    },
+    {
+      "pair": "foolsgold_then_reputation",
+      "d1": "foolsgold",
+      "d2": "reputation",
+      "stored_category": "C2-FAIL",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.7977333333333334,
+      "low_asr": false
+    },
+    {
+      "pair": "foolsgold_then_fedavg",
+      "d1": "foolsgold",
+      "d2": "fedavg",
+      "stored_category": "C1-FAIL",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.7008000000000001,
+      "low_asr": false
+    },
+    {
+      "pair": "reputation_then_fedavg",
+      "d1": "reputation",
+      "d2": "fedavg",
+      "stored_category": "C1-FAIL",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.8322444444444445,
+      "low_asr": false
+    },
+    {
+      "pair": "rfa_then_foolsgold",
+      "d1": "rfa",
+      "d2": "foolsgold",
+      "stored_category": "C1-FAIL",
+      "C1": false,
+      "C2": true,
+      "C3": true,
+      "max_committed_asr": 0.9135111111111112,
+      "low_asr": false
+    },
+    {
+      "pair": "norm_clip_then_fedavg",
+      "d1": "norm_clip",
+      "d2": "fedavg",
+      "stored_category": "C1-FAIL",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.9351777777777777,
+      "low_asr": false
+    },
+    {
+      "pair": "rfa_then_fedavg",
+      "d1": "rfa",
+      "d2": "fedavg",
+      "stored_category": "C1-FAIL",
+      "C1": false,
+      "C2": false,
+      "C3": true,
+      "max_committed_asr": 0.8800444444444444,
+      "low_asr": false
+    },
+    {
+      "pair": "rfa_then_norm_clip",
+      "d1": "rfa",
+      "d2": "norm_clip",
+      "stored_category": "C3-FAIL",
+      "C1": false,
+      "C2": false,
+      "C3": false,
+      "max_committed_asr": 0.8774,
+      "low_asr": false
+    }
+  ]
+}

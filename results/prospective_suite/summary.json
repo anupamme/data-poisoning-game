@@ -1,0 +1,1098 @@
+{
+  "description": "Phase 2: prospective suite; predictions frozen at 262cf35",
+  "prereg_commit": "262cf35",
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 50,
+    "seeds": [
+      42,
+      43,
+      44
+    ]
+  },
+  "cells": {
+    "fltrust_then_rfa|committed_scaling": {
+      "d1": "fltrust",
+      "d2": "rfa",
+      "attack": "committed_scaling",
+      "predicted": "LOW",
+      "category": "certified",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4788,
+          "asr": 0.05466666666666667
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.538,
+          "asr": 0.049
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5189,
+          "asr": 0.03888888888888889
+        }
+      ],
+      "mean_asr": 0.047518518518518515,
+      "std_asr": 0.006525879682015496,
+      "mean_acc": 0.5118999999999999
+    },
+    "fltrust_then_rfa|committed_pixel": {
+      "d1": "fltrust",
+      "d2": "rfa",
+      "attack": "committed_pixel",
+      "predicted": "LOW",
+      "category": "certified",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4777,
+          "asr": 0.05288888888888889
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5368,
+          "asr": 0.050444444444444445
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5195,
+          "asr": 0.041666666666666664
+        }
+      ],
+      "mean_asr": 0.04833333333333333,
+      "std_asr": 0.004818517095111812,
+      "mean_acc": 0.5113333333333333
+    },
+    "foolsgold_then_fltrust|committed_scaling": {
+      "d1": "foolsgold",
+      "d2": "fltrust",
+      "attack": "committed_scaling",
+      "predicted": "LOW",
+      "category": "certified",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5208,
+          "asr": 0.06533333333333333
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5676,
+          "asr": 0.08433333333333333
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5552,
+          "asr": 0.043444444444444445
+        }
+      ],
+      "mean_asr": 0.06437037037037037,
+      "std_asr": 0.01670670088902462,
+      "mean_acc": 0.5478666666666667
+    },
+    "foolsgold_then_fltrust|committed_pixel": {
+      "d1": "foolsgold",
+      "d2": "fltrust",
+      "attack": "committed_pixel",
+      "predicted": "LOW",
+      "category": "certified",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5225,
+          "asr": 0.060222222222222226
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5704,
+          "asr": 0.06733333333333333
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.544,
+          "asr": 0.050666666666666665
+        }
+      ],
+      "mean_asr": 0.05940740740740741,
+      "std_asr": 0.006828488697180155,
+      "mean_acc": 0.5456333333333333
+    },
+    "reputation_then_fltrust|committed_scaling": {
+      "d1": "reputation",
+      "d2": "fltrust",
+      "attack": "committed_scaling",
+      "predicted": "LOW",
+      "category": "certified",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5568,
+          "asr": 0.04677777777777778
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6077,
+          "asr": 0.04644444444444444
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5712,
+          "asr": 0.045
+        }
+      ],
+      "mean_asr": 0.04607407407407407,
+      "std_asr": 0.0007715802465185066,
+      "mean_acc": 0.5785666666666667
+    },
+    "reputation_then_fltrust|committed_pixel": {
+      "d1": "reputation",
+      "d2": "fltrust",
+      "attack": "committed_pixel",
+      "predicted": "LOW",
+      "category": "certified",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5516,
+          "asr": 0.04666666666666667
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6016,
+          "asr": 0.04477777777777778
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.572,
+          "asr": 0.04533333333333334
+        }
+      ],
+      "mean_asr": 0.045592592592592594,
+      "std_asr": 0.0007926272058901006,
+      "mean_acc": 0.5750666666666667
+    },
+    "norm_clip_then_fltrust|committed_scaling": {
+      "d1": "norm_clip",
+      "d2": "fltrust",
+      "attack": "committed_scaling",
+      "predicted": "LOW",
+      "category": "certified",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5572,
+          "asr": 0.04633333333333333
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6073,
+          "asr": 0.044
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5707,
+          "asr": 0.04644444444444444
+        }
+      ],
+      "mean_asr": 0.045592592592592594,
+      "std_asr": 0.0011270462262742914,
+      "mean_acc": 0.5783999999999999
+    },
+    "norm_clip_then_fltrust|committed_pixel": {
+      "d1": "norm_clip",
+      "d2": "fltrust",
+      "attack": "committed_pixel",
+      "predicted": "LOW",
+      "category": "certified",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5532,
+          "asr": 0.04922222222222222
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6015,
+          "asr": 0.04655555555555556
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5688,
+          "asr": 0.042555555555555555
+        }
+      ],
+      "mean_asr": 0.04611111111111111,
+      "std_asr": 0.0027397395568751013,
+      "mean_acc": 0.5745
+    },
+    "rfa_then_fltrust|committed_scaling": {
+      "d1": "rfa",
+      "d2": "fltrust",
+      "attack": "committed_scaling",
+      "predicted": "LOW",
+      "category": "certified",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5508,
+          "asr": 0.051666666666666666
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6025,
+          "asr": 0.043666666666666666
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5699,
+          "asr": 0.044333333333333336
+        }
+      ],
+      "mean_asr": 0.04655555555555555,
+      "std_asr": 0.0036243347622889085,
+      "mean_acc": 0.5743999999999999
+    },
+    "rfa_then_fltrust|committed_pixel": {
+      "d1": "rfa",
+      "d2": "fltrust",
+      "attack": "committed_pixel",
+      "predicted": "LOW",
+      "category": "certified",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5496,
+          "asr": 0.04633333333333333
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6051,
+          "asr": 0.04533333333333334
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5685,
+          "asr": 0.04833333333333333
+        }
+      ],
+      "mean_asr": 0.04666666666666667,
+      "std_asr": 0.0012472191289246458,
+      "mean_acc": 0.5744
+    },
+    "fltrust_then_coord_median|committed_scaling": {
+      "d1": "fltrust",
+      "d2": "coord_median",
+      "attack": "committed_scaling",
+      "predicted": "LOW",
+      "category": "certified-uncertain",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4663,
+          "asr": 0.034555555555555555
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5424,
+          "asr": 0.04711111111111111
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5133,
+          "asr": 0.03911111111111111
+        }
+      ],
+      "mean_asr": 0.04025925925925926,
+      "std_asr": 0.005189680590989039,
+      "mean_acc": 0.5073333333333333
+    },
+    "fltrust_then_coord_median|committed_pixel": {
+      "d1": "fltrust",
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "predicted": "LOW",
+      "category": "certified-uncertain",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4591,
+          "asr": 0.03833333333333333
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5372,
+          "asr": 0.04522222222222222
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5117,
+          "asr": 0.04066666666666666
+        }
+      ],
+      "mean_asr": 0.0414074074074074,
+      "std_asr": 0.0028607365210855584,
+      "mean_acc": 0.5026666666666667
+    },
+    "fltrust_then_reputation|committed_scaling": {
+      "d1": "fltrust",
+      "d2": "reputation",
+      "attack": "committed_scaling",
+      "predicted": "HIGH",
+      "category": "C2-fail",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4836,
+          "asr": 0.05211111111111111
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5498,
+          "asr": 0.05211111111111111
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5254,
+          "asr": 0.04122222222222222
+        }
+      ],
+      "mean_asr": 0.04848148148148148,
+      "std_asr": 0.005133071448613455,
+      "mean_acc": 0.5196
+    },
+    "fltrust_then_reputation|committed_pixel": {
+      "d1": "fltrust",
+      "d2": "reputation",
+      "attack": "committed_pixel",
+      "predicted": "HIGH",
+      "category": "C2-fail",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4784,
+          "asr": 0.04522222222222222
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5454,
+          "asr": 0.053
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5262,
+          "asr": 0.04188888888888889
+        }
+      ],
+      "mean_asr": 0.0467037037037037,
+      "std_asr": 0.004655483366657974,
+      "mean_acc": 0.5166666666666667
+    },
+    "fltrust_then_norm_clip|committed_scaling": {
+      "d1": "fltrust",
+      "d2": "norm_clip",
+      "attack": "committed_scaling",
+      "predicted": "HIGH",
+      "category": "C2-fail",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5508,
+          "asr": 0.04811111111111111
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6033,
+          "asr": 0.04888888888888889
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.571,
+          "asr": 0.043444444444444445
+        }
+      ],
+      "mean_asr": 0.046814814814814816,
+      "std_asr": 0.0024042714617951827,
+      "mean_acc": 0.5750333333333333
+    },
+    "fltrust_then_norm_clip|committed_pixel": {
+      "d1": "fltrust",
+      "d2": "norm_clip",
+      "attack": "committed_pixel",
+      "predicted": "HIGH",
+      "category": "C2-fail",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5545,
+          "asr": 0.04777777777777778
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6058,
+          "asr": 0.04522222222222222
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5706,
+          "asr": 0.043444444444444445
+        }
+      ],
+      "mean_asr": 0.045481481481481484,
+      "std_asr": 0.0017785492153397,
+      "mean_acc": 0.5769666666666666
+    },
+    "fltrust_then_krum|committed_scaling": {
+      "d1": "fltrust",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "predicted": "HIGH",
+      "category": "C2-fail",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.3074,
+          "asr": 0.00022222222222222223
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.4396,
+          "asr": 0.08844444444444445
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.3512,
+          "asr": 0.08811111111111111
+        }
+      ],
+      "mean_asr": 0.05892592592592593,
+      "std_asr": 0.041510010031131486,
+      "mean_acc": 0.3660666666666667
+    },
+    "fltrust_then_krum|committed_pixel": {
+      "d1": "fltrust",
+      "d2": "krum",
+      "attack": "committed_pixel",
+      "predicted": "HIGH",
+      "category": "C2-fail",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.2934,
+          "asr": 0.0
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.4191,
+          "asr": 0.124
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.3576,
+          "asr": 0.10922222222222222
+        }
+      ],
+      "mean_asr": 0.07774074074074074,
+      "std_asr": 0.05530107146160097,
+      "mean_acc": 0.35669999999999996
+    },
+    "fltrust_then_multi_krum|committed_scaling": {
+      "d1": "fltrust",
+      "d2": "multi_krum",
+      "attack": "committed_scaling",
+      "predicted": "HIGH",
+      "category": "C2-fail",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5561,
+          "asr": 0.046
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6015,
+          "asr": 0.04466666666666667
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5705,
+          "asr": 0.04388888888888889
+        }
+      ],
+      "mean_asr": 0.04485185185185186,
+      "std_asr": 0.0008717483182177647,
+      "mean_acc": 0.5760333333333333
+    },
+    "fltrust_then_multi_krum|committed_pixel": {
+      "d1": "fltrust",
+      "d2": "multi_krum",
+      "attack": "committed_pixel",
+      "predicted": "HIGH",
+      "category": "C2-fail",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5543,
+          "asr": 0.04677777777777778
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6028,
+          "asr": 0.04466666666666667
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.57,
+          "asr": 0.042444444444444444
+        }
+      ],
+      "mean_asr": 0.04462962962962963,
+      "std_asr": 0.0017692697648142505,
+      "mean_acc": 0.5757
+    },
+    "fltrust_then_trimmed_mean|committed_scaling": {
+      "d1": "fltrust",
+      "d2": "trimmed_mean",
+      "attack": "committed_scaling",
+      "predicted": "HIGH",
+      "category": "C3-fail-uncertain",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4926,
+          "asr": 0.041777777777777775
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5577,
+          "asr": 0.04611111111111111
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.534,
+          "asr": 0.03855555555555556
+        }
+      ],
+      "mean_asr": 0.04214814814814815,
+      "std_asr": 0.0030956405472543484,
+      "mean_acc": 0.5281
+    },
+    "fltrust_then_trimmed_mean|committed_pixel": {
+      "d1": "fltrust",
+      "d2": "trimmed_mean",
+      "attack": "committed_pixel",
+      "predicted": "HIGH",
+      "category": "C3-fail-uncertain",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4912,
+          "asr": 0.04855555555555555
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5616,
+          "asr": 0.04833333333333333
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5369,
+          "asr": 0.04011111111111111
+        }
+      ],
+      "mean_asr": 0.04566666666666667,
+      "std_asr": 0.003929418432555508,
+      "mean_acc": 0.5299
+    },
+    "foolsgold_then_krum|committed_scaling": {
+      "d1": "foolsgold",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "predicted": "HIGH",
+      "category": "C1-fail",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.1031,
+          "asr": 0.22333333333333333
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.093,
+          "asr": 0.0
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.1021,
+          "asr": 0.011333333333333334
+        }
+      ],
+      "mean_asr": 0.07822222222222222,
+      "std_asr": 0.10271331311645061,
+      "mean_acc": 0.0994
+    },
+    "foolsgold_then_krum|committed_pixel": {
+      "d1": "foolsgold",
+      "d2": "krum",
+      "attack": "committed_pixel",
+      "predicted": "HIGH",
+      "category": "C1-fail",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.1031,
+          "asr": 0.22333333333333333
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.093,
+          "asr": 0.0
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.1021,
+          "asr": 0.011333333333333334
+        }
+      ],
+      "mean_asr": 0.07822222222222222,
+      "std_asr": 0.10271331311645061,
+      "mean_acc": 0.0994
+    },
+    "reputation_then_krum|committed_scaling": {
+      "d1": "reputation",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "predicted": "HIGH",
+      "category": "C1-fail",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5291,
+          "asr": 0.039
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5141,
+          "asr": 0.026
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.3834,
+          "asr": 0.0014444444444444444
+        }
+      ],
+      "mean_asr": 0.02214814814814815,
+      "std_asr": 0.015572037124025996,
+      "mean_acc": 0.47553333333333336
+    },
+    "reputation_then_krum|committed_pixel": {
+      "d1": "reputation",
+      "d2": "krum",
+      "attack": "committed_pixel",
+      "predicted": "HIGH",
+      "category": "C1-fail",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6476,
+          "asr": 0.8382222222222222
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.613,
+          "asr": 0.8334444444444444
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.4909,
+          "asr": 0.9697777777777777
+        }
+      ],
+      "mean_asr": 0.8804814814814814,
+      "std_asr": 0.063172136206297,
+      "mean_acc": 0.5838333333333333
+    },
+    "norm_clip_then_multi_krum|committed_scaling": {
+      "d1": "norm_clip",
+      "d2": "multi_krum",
+      "attack": "committed_scaling",
+      "predicted": "HIGH",
+      "category": "C1-fail",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7814,
+          "asr": 0.9383333333333334
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6949,
+          "asr": 0.9885555555555555
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7103,
+          "asr": 0.9023333333333333
+        }
+      ],
+      "mean_asr": 0.9430740740740741,
+      "std_asr": 0.03535933510227774,
+      "mean_acc": 0.7288666666666667
+    },
+    "norm_clip_then_multi_krum|committed_pixel": {
+      "d1": "norm_clip",
+      "d2": "multi_krum",
+      "attack": "committed_pixel",
+      "predicted": "HIGH",
+      "category": "C1-fail",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7844,
+          "asr": 0.823
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7971,
+          "asr": 0.7391111111111112
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7994,
+          "asr": 0.7876666666666666
+        }
+      ],
+      "mean_asr": 0.7832592592592592,
+      "std_asr": 0.034389003569883926,
+      "mean_acc": 0.7936333333333333
+    },
+    "rfa_then_multi_krum|committed_scaling": {
+      "d1": "rfa",
+      "d2": "multi_krum",
+      "attack": "committed_scaling",
+      "predicted": "HIGH",
+      "category": "C1-fail",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7859,
+          "asr": 0.8915555555555555
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7802,
+          "asr": 0.8735555555555555
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7919,
+          "asr": 0.8608888888888889
+        }
+      ],
+      "mean_asr": 0.8753333333333333,
+      "std_asr": 0.012582566815015152,
+      "mean_acc": 0.786
+    },
+    "rfa_then_multi_krum|committed_pixel": {
+      "d1": "rfa",
+      "d2": "multi_krum",
+      "attack": "committed_pixel",
+      "predicted": "HIGH",
+      "category": "C1-fail",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.778,
+          "asr": 0.8435555555555555
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7793,
+          "asr": 0.7815555555555556
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7786,
+          "asr": 0.8511111111111112
+        }
+      ],
+      "mean_asr": 0.8254074074074073,
+      "std_asr": 0.031160982954819675,
+      "mean_acc": 0.7786333333333334
+    },
+    "krum_then_rfa|committed_scaling": {
+      "d1": "krum",
+      "d2": "rfa",
+      "attack": "committed_scaling",
+      "predicted": "HIGH",
+      "category": "DEGEN",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7836,
+          "asr": 0.9023333333333333
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7811,
+          "asr": 0.8494444444444444
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7786,
+          "asr": 0.8575555555555555
+        }
+      ],
+      "mean_asr": 0.8697777777777778,
+      "std_asr": 0.02325719500158099,
+      "mean_acc": 0.7811
+    },
+    "krum_then_rfa|committed_pixel": {
+      "d1": "krum",
+      "d2": "rfa",
+      "attack": "committed_pixel",
+      "predicted": "HIGH",
+      "category": "DEGEN",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7806,
+          "asr": 0.832
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.779,
+          "asr": 0.8025555555555556
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7786,
+          "asr": 0.8218888888888889
+        }
+      ],
+      "mean_asr": 0.8188148148148148,
+      "std_asr": 0.012215598654184295,
+      "mean_acc": 0.7794
+    },
+    "krum_then_coord_median|committed_scaling": {
+      "d1": "krum",
+      "d2": "coord_median",
+      "attack": "committed_scaling",
+      "predicted": "HIGH",
+      "category": "DEGEN",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7717,
+          "asr": 0.5485555555555556
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.766,
+          "asr": 0.3406666666666667
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.78,
+          "asr": 0.46
+        }
+      ],
+      "mean_asr": 0.4497407407407408,
+      "std_asr": 0.08517975828124004,
+      "mean_acc": 0.7725666666666667
+    },
+    "krum_then_coord_median|committed_pixel": {
+      "d1": "krum",
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "predicted": "HIGH",
+      "category": "DEGEN",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7691,
+          "asr": 0.39455555555555555
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.77,
+          "asr": 0.2866666666666667
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7652,
+          "asr": 0.4487777777777778
+        }
+      ],
+      "mean_asr": 0.37666666666666665,
+      "std_asr": 0.06737958318699125,
+      "mean_acc": 0.7681
+    },
+    "multi_krum_then_rfa|committed_scaling": {
+      "d1": "multi_krum",
+      "d2": "rfa",
+      "attack": "committed_scaling",
+      "predicted": "HIGH",
+      "category": "DEGEN",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7836,
+          "asr": 0.9023333333333333
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7811,
+          "asr": 0.8494444444444444
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7786,
+          "asr": 0.8575555555555555
+        }
+      ],
+      "mean_asr": 0.8697777777777778,
+      "std_asr": 0.02325719500158099,
+      "mean_acc": 0.7811
+    },
+    "multi_krum_then_rfa|committed_pixel": {
+      "d1": "multi_krum",
+      "d2": "rfa",
+      "attack": "committed_pixel",
+      "predicted": "HIGH",
+      "category": "DEGEN",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7806,
+          "asr": 0.832
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.779,
+          "asr": 0.8025555555555556
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7786,
+          "asr": 0.8218888888888889
+        }
+      ],
+      "mean_asr": 0.8188148148148148,
+      "std_asr": 0.012215598654184295,
+      "mean_acc": 0.7794
+    },
+    "krum_then_fltrust|committed_scaling": {
+      "d1": "krum",
+      "d2": "fltrust",
+      "attack": "committed_scaling",
+      "predicted": "LOW",
+      "category": "DEGEN",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5527,
+          "asr": 0.05188888888888889
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5998,
+          "asr": 0.04588888888888889
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.57,
+          "asr": 0.04533333333333334
+        }
+      ],
+      "mean_asr": 0.0477037037037037,
+      "std_asr": 0.002968051186614691,
+      "mean_acc": 0.5741666666666666
+    },
+    "krum_then_fltrust|committed_pixel": {
+      "d1": "krum",
+      "d2": "fltrust",
+      "attack": "committed_pixel",
+      "predicted": "LOW",
+      "category": "DEGEN",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5532,
+          "asr": 0.04922222222222222
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6015,
+          "asr": 0.04655555555555556
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5688,
+          "asr": 0.042555555555555555
+        }
+      ],
+      "mean_asr": 0.04611111111111111,
+      "std_asr": 0.0027397395568751013,
+      "mean_acc": 0.5745
+    },
+    "multi_krum_then_fltrust|committed_scaling": {
+      "d1": "multi_krum",
+      "d2": "fltrust",
+      "attack": "committed_scaling",
+      "predicted": "LOW",
+      "category": "DEGEN",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5527,
+          "asr": 0.05188888888888889
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5998,
+          "asr": 0.04588888888888889
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.57,
+          "asr": 0.04533333333333334
+        }
+      ],
+      "mean_asr": 0.0477037037037037,
+      "std_asr": 0.002968051186614691,
+      "mean_acc": 0.5741666666666666
+    },
+    "multi_krum_then_fltrust|committed_pixel": {
+      "d1": "multi_krum",
+      "d2": "fltrust",
+      "attack": "committed_pixel",
+      "predicted": "LOW",
+      "category": "DEGEN",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5532,
+          "asr": 0.04922222222222222
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6015,
+          "asr": 0.04655555555555556
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5688,
+          "asr": 0.042555555555555555
+        }
+      ],
+      "mean_asr": 0.04611111111111111,
+      "std_asr": 0.0027397395568751013,
+      "mean_acc": 0.5745
+    }
+  }
+}

@@ -1,0 +1,683 @@
+{
+  "description": "Dose-response test of C2; shapes frozen at e711a95 (experiments/pre_registration_dose_response.md)",
+  "prereg_commit": "e711a95",
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 50,
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "kappas": [
+      0.0,
+      0.5,
+      1.0,
+      2.0
+    ],
+    "rhos": {
+      "0.0": 1.0,
+      "0.5": 2.718281828459045,
+      "1.0": 7.38905609893065,
+      "2.0": 54.598150033144236
+    },
+    "acc_floor": 0.35
+  },
+  "arms": [
+    {
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "prop1_class": "c) not invariant",
+      "predicted_shape": "monotone rise",
+      "standalone_published": [
+        0.061,
+        0.577
+      ]
+    },
+    {
+      "d2": "reputation",
+      "attack": "committed_scaling",
+      "prop1_class": "c) not invariant",
+      "predicted_shape": "monotone rise",
+      "standalone_published": [
+        0.017,
+        0.777
+      ]
+    },
+    {
+      "d2": "cos_krum",
+      "attack": "committed_pixel",
+      "prop1_class": "a) exactly invariant",
+      "predicted_shape": "FLAT",
+      "standalone_published": [
+        0.3,
+        0.598
+      ]
+    },
+    {
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "prop1_class": "b) conditionally inv.",
+      "predicted_shape": "shallower rise",
+      "standalone_published": [
+        0.443,
+        0.767
+      ]
+    }
+  ],
+  "cells": {
+    "dose_kappa0.0_then_krum|committed_scaling": {
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "kappa": 0.0,
+      "rho": 1.0,
+      "prop1_class": "c) not invariant",
+      "predicted_shape": "monotone rise",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5415,
+          "asr": 0.11488888888888889
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6097,
+          "asr": 0.020888888888888887
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5801,
+          "asr": 0.04688888888888889
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.5457,
+          "asr": 0.056666666666666664
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.5471,
+          "asr": 0.06944444444444445
+        }
+      ],
+      "mean_asr": 0.061755555555555564,
+      "std_asr": 0.03098150782580625,
+      "mean_acc": 0.56482
+    },
+    "dose_kappa0.5_then_krum|committed_scaling": {
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "kappa": 0.5,
+      "rho": 2.718281828459045,
+      "prop1_class": "c) not invariant",
+      "predicted_shape": "monotone rise",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6291,
+          "asr": 0.00044444444444444447
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6335,
+          "asr": 0.01
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6849,
+          "asr": 0.011111111111111112
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.6351,
+          "asr": 0.02722222222222222
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.6756,
+          "asr": 0.0067777777777777775
+        }
+      ],
+      "mean_asr": 0.011111111111111112,
+      "std_asr": 0.008869701513482379,
+      "mean_acc": 0.6516399999999999
+    },
+    "dose_kappa1.0_then_krum|committed_scaling": {
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "kappa": 1.0,
+      "rho": 7.38905609893065,
+      "prop1_class": "c) not invariant",
+      "predicted_shape": "monotone rise",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6571,
+          "asr": 0.0028888888888888888
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7172,
+          "asr": 0.014888888888888889
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7224,
+          "asr": 0.021222222222222222
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.6259,
+          "asr": 0.021222222222222222
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.6883,
+          "asr": 0.0077777777777777776
+        }
+      ],
+      "mean_asr": 0.013599999999999998,
+      "std_asr": 0.007300465062135206,
+      "mean_acc": 0.68218
+    },
+    "dose_kappa2.0_then_krum|committed_scaling": {
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "kappa": 2.0,
+      "rho": 54.598150033144236,
+      "prop1_class": "c) not invariant",
+      "predicted_shape": "monotone rise",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5912,
+          "asr": 0.005333333333333333
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6666,
+          "asr": 0.03866666666666667
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6206,
+          "asr": 0.07733333333333334
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.6074,
+          "asr": 0.113
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.6083,
+          "asr": 0.036555555555555556
+        }
+      ],
+      "mean_asr": 0.05417777777777778,
+      "std_asr": 0.03723748277551519,
+      "mean_acc": 0.61882
+    },
+    "dose_kappa0.0_then_reputation|committed_scaling": {
+      "d2": "reputation",
+      "attack": "committed_scaling",
+      "kappa": 0.0,
+      "rho": 1.0,
+      "prop1_class": "c) not invariant",
+      "predicted_shape": "monotone rise",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7881,
+          "asr": 0.013888888888888888
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7875,
+          "asr": 0.012444444444444444
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7888,
+          "asr": 0.017222222222222222
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7488,
+          "asr": 0.02288888888888889
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7738,
+          "asr": 0.01877777777777778
+        }
+      ],
+      "mean_asr": 0.017044444444444445,
+      "std_asr": 0.0036962443401677633,
+      "mean_acc": 0.7774
+    },
+    "dose_kappa0.5_then_reputation|committed_scaling": {
+      "d2": "reputation",
+      "attack": "committed_scaling",
+      "kappa": 0.5,
+      "rho": 2.718281828459045,
+      "prop1_class": "c) not invariant",
+      "predicted_shape": "monotone rise",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7798,
+          "asr": 0.01588888888888889
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7922,
+          "asr": 0.017555555555555557
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7901,
+          "asr": 0.024444444444444446
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7539,
+          "asr": 0.03288888888888889
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7766,
+          "asr": 0.02011111111111111
+        }
+      ],
+      "mean_asr": 0.02217777777777778,
+      "std_asr": 0.00608361490976955,
+      "mean_acc": 0.77852
+    },
+    "dose_kappa1.0_then_reputation|committed_scaling": {
+      "d2": "reputation",
+      "attack": "committed_scaling",
+      "kappa": 1.0,
+      "rho": 7.38905609893065,
+      "prop1_class": "c) not invariant",
+      "predicted_shape": "monotone rise",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7602,
+          "asr": 0.4391111111111111
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.775,
+          "asr": 0.5465555555555556
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7641,
+          "asr": 0.5777777777777777
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.756,
+          "asr": 0.5566666666666666
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7678,
+          "asr": 0.313
+        }
+      ],
+      "mean_asr": 0.48662222222222223,
+      "std_asr": 0.09920639664760769,
+      "mean_acc": 0.7646200000000001
+    },
+    "dose_kappa2.0_then_reputation|committed_scaling": {
+      "d2": "reputation",
+      "attack": "committed_scaling",
+      "kappa": 2.0,
+      "rho": 54.598150033144236,
+      "prop1_class": "c) not invariant",
+      "predicted_shape": "monotone rise",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6976,
+          "asr": 0.7103333333333334
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7014,
+          "asr": 0.843
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6856,
+          "asr": 0.73
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7048,
+          "asr": 0.8958888888888888
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7144,
+          "asr": 0.7144444444444444
+        }
+      ],
+      "mean_asr": 0.7787333333333333,
+      "std_asr": 0.07621310603081463,
+      "mean_acc": 0.70076
+    },
+    "dose_kappa0.0_then_cos_krum|committed_pixel": {
+      "d2": "cos_krum",
+      "attack": "committed_pixel",
+      "kappa": 0.0,
+      "rho": 1.0,
+      "prop1_class": "a) exactly invariant",
+      "predicted_shape": "FLAT",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5284,
+          "asr": 0.003111111111111111
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6195,
+          "asr": 0.2687777777777778
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.647,
+          "asr": 0.6295555555555555
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.6155,
+          "asr": 0.8642222222222222
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.6234,
+          "asr": 0.6864444444444444
+        }
+      ],
+      "mean_asr": 0.4904222222222222,
+      "std_asr": 0.3111615705111461,
+      "mean_acc": 0.6067600000000001
+    },
+    "dose_kappa0.5_then_cos_krum|committed_pixel": {
+      "d2": "cos_krum",
+      "attack": "committed_pixel",
+      "kappa": 0.5,
+      "rho": 2.718281828459045,
+      "prop1_class": "a) exactly invariant",
+      "predicted_shape": "FLAT",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6084,
+          "asr": 0.7638888888888888
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7576,
+          "asr": 0.2358888888888889
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.4523,
+          "asr": 0.16522222222222221
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.5298,
+          "asr": 0.6477777777777778
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.4951,
+          "asr": 0.43544444444444447
+        }
+      ],
+      "mean_asr": 0.4496444444444444,
+      "std_asr": 0.23012842791218413,
+      "mean_acc": 0.56864
+    },
+    "dose_kappa1.0_then_cos_krum|committed_pixel": {
+      "d2": "cos_krum",
+      "attack": "committed_pixel",
+      "kappa": 1.0,
+      "rho": 7.38905609893065,
+      "prop1_class": "a) exactly invariant",
+      "predicted_shape": "FLAT",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4102,
+          "asr": 0.13166666666666665
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.734,
+          "asr": 0.09011111111111111
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.3165,
+          "asr": 0.00044444444444444447
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.529,
+          "asr": 0.543
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.3397,
+          "asr": 0.0006666666666666666
+        }
+      ],
+      "mean_asr": 0.1531777777777778,
+      "std_asr": 0.20148876266799964,
+      "mean_acc": 0.46588
+    },
+    "dose_kappa2.0_then_cos_krum|committed_pixel": {
+      "d2": "cos_krum",
+      "attack": "committed_pixel",
+      "kappa": 2.0,
+      "rho": 54.598150033144236,
+      "prop1_class": "a) exactly invariant",
+      "predicted_shape": "FLAT",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.2516,
+          "asr": 0.08344444444444445
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.1,
+          "asr": 0.0
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.1852,
+          "asr": 0.0
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.4613,
+          "asr": 0.3453333333333333
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.1002,
+          "asr": 0.0
+        }
+      ],
+      "mean_asr": 0.08575555555555556,
+      "std_asr": 0.1337520167149215,
+      "mean_acc": 0.21966000000000002
+    },
+    "dose_kappa0.0_then_coord_median|committed_pixel": {
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "kappa": 0.0,
+      "rho": 1.0,
+      "prop1_class": "b) conditionally inv.",
+      "predicted_shape": "shallower rise",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7691,
+          "asr": 0.39455555555555555
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.77,
+          "asr": 0.2866666666666667
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7652,
+          "asr": 0.4487777777777778
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7615,
+          "asr": 0.6774444444444444
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7668,
+          "asr": 0.4051111111111111
+        }
+      ],
+      "mean_asr": 0.4425111111111111,
+      "std_asr": 0.1290107967536529,
+      "mean_acc": 0.76652
+    },
+    "dose_kappa0.5_then_coord_median|committed_pixel": {
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "kappa": 0.5,
+      "rho": 2.718281828459045,
+      "prop1_class": "b) conditionally inv.",
+      "predicted_shape": "shallower rise",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7673,
+          "asr": 0.4543333333333333
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7696,
+          "asr": 0.21522222222222223
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7709,
+          "asr": 0.4301111111111111
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7584,
+          "asr": 0.6375555555555555
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7529,
+          "asr": 0.4023333333333333
+        }
+      ],
+      "mean_asr": 0.4279111111111112,
+      "std_asr": 0.13456935244432125,
+      "mean_acc": 0.7638199999999999
+    },
+    "dose_kappa1.0_then_coord_median|committed_pixel": {
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "kappa": 1.0,
+      "rho": 7.38905609893065,
+      "prop1_class": "b) conditionally inv.",
+      "predicted_shape": "shallower rise",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7557,
+          "asr": 0.35088888888888886
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.748,
+          "asr": 0.13877777777777778
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7543,
+          "asr": 0.35233333333333333
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7418,
+          "asr": 0.4631111111111111
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7449,
+          "asr": 0.32811111111111113
+        }
+      ],
+      "mean_asr": 0.32664444444444446,
+      "std_asr": 0.1050398960066432,
+      "mean_acc": 0.7489399999999999
+    },
+    "dose_kappa2.0_then_coord_median|committed_pixel": {
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "kappa": 2.0,
+      "rho": 54.598150033144236,
+      "prop1_class": "b) conditionally inv.",
+      "predicted_shape": "shallower rise",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6831,
+          "asr": 0.17933333333333334
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6871,
+          "asr": 0.08966666666666667
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6964,
+          "asr": 0.20377777777777778
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.6852,
+          "asr": 0.192
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.6973,
+          "asr": 0.18744444444444444
+        }
+      ],
+      "mean_asr": 0.17044444444444445,
+      "std_asr": 0.04115535157136873,
+      "mean_acc": 0.6898200000000001
+    }
+  }
+}

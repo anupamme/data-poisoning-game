@@ -1,0 +1,206 @@
+{
+  "description": "Scored replication arm. Thresholds frozen at 06d9bce before results/dose_replication/ existed; nothing rescored here.",
+  "prereg_commit": "06d9bce",
+  "arm": {
+    "d2": "coord_median",
+    "attack": "committed_pixel",
+    "mode": "S",
+    "prop1_class": "b) conditionally inv."
+  },
+  "thresholds": {
+    "confirm_above": 0.178,
+    "refute_below": 0.15,
+    "acc_floor": 0.35,
+    "alpha": 0.05
+  },
+  "rungs": [
+    {
+      "rung": 0.0,
+      "mean_asr": 0.4425111111111111,
+      "lo": 0.2634154135289376,
+      "hi": 0.6216068086932846,
+      "acc": 0.76652,
+      "gated": false,
+      "imported": true,
+      "asrs": [
+        0.39455555555555555,
+        0.2866666666666667,
+        0.4487777777777778,
+        0.6774444444444444,
+        0.4051111111111111
+      ],
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "decision": 0.0,
+      "admission": 0.0
+    },
+    {
+      "rung": 0.5,
+      "mean_asr": 0.4418888888888889,
+      "lo": 0.25007078995610654,
+      "hi": 0.6337069878216712,
+      "acc": 0.76274,
+      "gated": false,
+      "imported": false,
+      "asrs": [
+        0.43922222222222224,
+        0.24622222222222223,
+        0.4441111111111111,
+        0.6776666666666666,
+        0.4022222222222222
+      ],
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "decision": 0.23153825799624125,
+      "admission": 0.004646334107185374
+    },
+    {
+      "rung": 1.0,
+      "mean_asr": 0.49002222222222225,
+      "lo": 0.28530202517773695,
+      "hi": 0.6947424192667075,
+      "acc": 0.75194,
+      "gated": false,
+      "imported": false,
+      "asrs": [
+        0.5293333333333333,
+        0.2677777777777778,
+        0.5077777777777778,
+        0.7206666666666667,
+        0.4245555555555556
+      ],
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "decision": 0.3575551410516103,
+      "admission": 0.012503706673683246
+    },
+    {
+      "rung": 2.0,
+      "mean_asr": 0.5405777777777777,
+      "lo": 0.34444684179498763,
+      "hi": 0.7367087137605678,
+      "acc": 0.6984,
+      "gated": false,
+      "imported": false,
+      "asrs": [
+        0.5973333333333334,
+        0.3191111111111111,
+        0.5164444444444445,
+        0.7556666666666667,
+        0.5143333333333333
+      ],
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "decision": 0.4820849418640137,
+      "admission": 0.03322742837095495
+    }
+  ],
+  "primary": {
+    "delta": 0.09806666666666664,
+    "headroom": 0.5574888888888889,
+    "normalized_delta": 0.17590784071431412,
+    "comparison_arms": {
+      "krum": {
+        "rise": -0.026088888888888898,
+        "identity": 0.061755555555555564,
+        "top": 0.035666666666666666,
+        "rise_seeds": [
+          -0.04342222222222223,
+          -0.03420000000000001,
+          -0.017755555555555566,
+          -0.010755555555555567,
+          -0.024311111111111117
+        ]
+      },
+      "reputation": {
+        "rise": 0.17842222222222223,
+        "identity": 0.017044444444444445,
+        "top": 0.19546666666666668,
+        "rise_seeds": [
+          0.011622222222222221,
+          0.07651111111111111,
+          0.583288888888889,
+          0.1794,
+          0.04128888888888889
+        ]
+      }
+    },
+    "verdict": "ADMISSION ORDERING REFUTED -- rise within the flat margin, so admission does not order the outcomes; the positive claim is scoped to selector-type defenses. This outcome REPLICATES THE FLAGSHIP NEGATIVE on a structurally different defense: decision change 0.482 with suppression preserved"
+  },
+  "secondary": {
+    "jt_z": 1.4804384868029967,
+    "p_increasing": 0.06937813269647833,
+    "p_decreasing": 0.9306218673035217,
+    "p_permutation": 0.07564621768911554,
+    "verdict": "NO MONOTONE TREND at alpha=0.05 -- both readings predicted a rise"
+  },
+  "post_hoc_paired": {
+    "diffs": [
+      0.20277777777777783,
+      0.03244444444444444,
+      0.06766666666666671,
+      0.0782222222222223,
+      0.10922222222222222
+    ],
+    "mean": 0.0980666666666667,
+    "n_positive": 5,
+    "n": 5,
+    "t": 3.392406522974206,
+    "p_one_sided_greater": 0.013734470560784837,
+    "note": "POST-HOC, not pre-registered. Frozen tests are unpaired."
+  },
+  "companion_confounded_ladder": {
+    "means": [
+      0.4425111111111111,
+      0.4279111111111112,
+      0.32664444444444446,
+      0.17044444444444445
+    ],
+    "rise": -0.2720666666666666,
+    "note": "benign and adversarial weights both dosed: attenuation not closed"
+  },
+  "pooled": {
+    "n": 26,
+    "beta": [
+      -0.03811116463613801,
+      2.0191650268761996,
+      -0.5928984639283222
+    ],
+    "t_admission": 1.8180535647488743,
+    "p_admission": 0.041052661141206315,
+    "r2": 0.23915893980550207,
+    "confirmed": false,
+    "previous": {
+      "n": 22,
+      "beta": [
+        -0.04837000391065938,
+        2.0619877626128305,
+        -0.5836531538368238
+      ],
+      "t_admission": 1.6722436294421072,
+      "p_admission": 0.055431803467227675,
+      "r2": 0.24021257141552155,
+      "confirmed": false
+    }
+  }
+}

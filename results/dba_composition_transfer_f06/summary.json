@@ -1,0 +1,263 @@
+{
+  "description": "Powered OOS PASS validation: DBA attack transfer at f=0.6 (N1)",
+  "attack": "dba",
+  "adversarial_fraction": 0.6,
+  "num_clients": 10,
+  "clients_per_round": 5,
+  "num_rounds": 50,
+  "note": "Predictions pre-registered in pre_registration_oos_pass.md (unchanged from f=0.4 run).",
+  "pairs": {
+    "foolsgold_then_rfa": {
+      "d1": "foolsgold",
+      "d2": "rfa",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.3989,
+          "asr": 0.08133333333333333
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.4257,
+          "asr": 0.12966666666666668
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.4361,
+          "asr": 0.15133333333333332
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.3845,
+          "asr": 0.20155555555555554
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.4456,
+          "asr": 0.06
+        }
+      ],
+      "mean_asr": 0.12477777777777779,
+      "std_asr": 0.050413304142536634,
+      "min_asr": 0.06,
+      "max_asr": 0.20155555555555554,
+      "n_seeds": 5
+    },
+    "foolsgold_then_coord_median": {
+      "d1": "foolsgold",
+      "d2": "coord_median",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6462,
+          "asr": 0.03211111111111111
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5511,
+          "asr": 0.06633333333333333
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6714,
+          "asr": 0.07455555555555556
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.651,
+          "asr": 0.029444444444444443
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.649,
+          "asr": 0.02188888888888889
+        }
+      ],
+      "mean_asr": 0.044866666666666666,
+      "std_asr": 0.021310914145770354,
+      "min_asr": 0.02188888888888889,
+      "max_asr": 0.07455555555555556,
+      "n_seeds": 5
+    },
+    "reputation_then_coord_median": {
+      "d1": "reputation",
+      "d2": "coord_median",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7428,
+          "asr": 0.050555555555555555
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7531,
+          "asr": 0.024777777777777777
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7392,
+          "asr": 0.06833333333333333
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7426,
+          "asr": 0.035666666666666666
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7283,
+          "asr": 0.03666666666666667
+        }
+      ],
+      "mean_asr": 0.0432,
+      "std_asr": 0.014997349560077622,
+      "min_asr": 0.024777777777777777,
+      "max_asr": 0.06833333333333333,
+      "n_seeds": 5
+    },
+    "norm_clip_then_reputation": {
+      "d1": "norm_clip",
+      "d2": "reputation",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7447,
+          "asr": 0.32755555555555554
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7664,
+          "asr": 0.42877777777777776
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7656,
+          "asr": 0.3621111111111111
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7574,
+          "asr": 0.6737777777777778
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.76,
+          "asr": 0.09677777777777778
+        }
+      ],
+      "mean_asr": 0.3778,
+      "std_asr": 0.1854430983241204,
+      "min_asr": 0.09677777777777778,
+      "max_asr": 0.6737777777777778,
+      "n_seeds": 5
+    },
+    "rfa_then_reputation": {
+      "d1": "rfa",
+      "d2": "reputation",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7588,
+          "asr": 0.18588888888888888
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7663,
+          "asr": 0.42044444444444445
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7643,
+          "asr": 0.39566666666666667
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7534,
+          "asr": 0.761
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7533,
+          "asr": 0.15644444444444444
+        }
+      ],
+      "mean_asr": 0.38388888888888884,
+      "std_asr": 0.21662077006762614,
+      "min_asr": 0.15644444444444444,
+      "max_asr": 0.761,
+      "n_seeds": 5
+    },
+    "foolsgold_then_trimmed_mean": {
+      "d1": "foolsgold",
+      "d2": "trimmed_mean",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.701,
+          "asr": 0.08055555555555556
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6564,
+          "asr": 0.06111111111111111
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7092,
+          "asr": 0.06955555555555555
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7035,
+          "asr": 0.03688888888888889
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.6791,
+          "asr": 0.09
+        }
+      ],
+      "mean_asr": 0.06762222222222222,
+      "std_asr": 0.01821376497509236,
+      "min_asr": 0.03688888888888889,
+      "max_asr": 0.09,
+      "n_seeds": 5
+    },
+    "fedavg_then_fedavg": {
+      "d1": "fedavg",
+      "d2": "fedavg",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7664,
+          "asr": 0.3601111111111111
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7891,
+          "asr": 0.2952222222222222
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7696,
+          "asr": 0.3863333333333333
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7585,
+          "asr": 0.7338888888888889
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.762,
+          "asr": 0.15388888888888888
+        }
+      ],
+      "mean_asr": 0.3858888888888889,
+      "std_asr": 0.19173582649180052,
+      "min_asr": 0.15388888888888888,
+      "max_asr": 0.7338888888888889,
+      "n_seeds": 5
+    }
+  }
+}
