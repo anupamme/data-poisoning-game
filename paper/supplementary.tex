@@ -1,0 +1,367 @@
+\documentclass{article}
+\usepackage{iclr2027_conference,times}
+\usepackage{amsmath,amssymb,amsfonts,amsthm}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}{Corollary}
+\newtheorem{lemma}{Lemma}
+\newtheorem{definition}{Definition}
+\newtheorem{criterion}[theorem]{Criterion}
+\newtheorem{remark}[theorem]{Remark}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{multirow}
+\usepackage{enumitem}
+% Cross-document references: section, theorem and table numbers cited below are
+% those of the main paper, resolved from its .aux file.
+\usepackage{xr}
+\externaldocument{main}
+
+\renewcommand{\thesection}{S\arabic{section}}
+\renewcommand{\thetable}{S\arabic{table}}
+\renewcommand{\thefigure}{S\arabic{figure}}
+
+\title{Supplementary Material\\What Does Preserving a Defense Preserve?\\Causal Identification for Federated-Learning\\Defense Composition}
+
+\author{Anonymous authors\\
+Paper under double-blind review}
+
+\begin{document}
+\maketitle
+
+\noindent This supplement holds per-cell measurement detail for the composability
+screen. It records numbers, not arguments: every claim these cells support is
+stated and qualified in the main paper, and section, table and theorem numbers
+without an \textbf{S} prefix refer to it. Nothing here is required to follow the
+main paper's results.
+
+\small
+\setlength{\tabcolsep}{4pt}
+
+\section{The prospective suite, arm by arm}
+\label{app:prospective_arms}
+
+\textbf{(i) FLTrust as $d_1$ (7 pairs): out of scope, 2/7.} The five predicted-HIGH misses are fltrust$\to$\{rep, nc, krum, mkrum, tm\}. Their C2/C3 failures are real (FLTrust does destroy Reputation's consensus-distance signal), and are costless because $d_2$ was never load-bearing: the C0 mechanism of §\ref{sec:prospective}.
+
+\textbf{(ii) FLTrust as $d_2$ (6 pairs): in scope, 6/6, and the near-identity of §\ref{sec:prospective} is visible per seed rather than only in the aggregate.} Krum$\to$FLTrust and MKrum$\to$FLTrust are \textbf{bit-identical} to FLTrust alone on all six runs ($0.0519/0.0459/0.0453$ scaling, $0.0492/0.0466/0.0426$ pixel), as expected for a pass-through $d_1$. NC$\to$FLTrust is \emph{bit-identical on the pixel attack}, where no client exceeds $\tau{=}5$ so $c_i \equiv 1$, and differs only within seed noise on model-scaling, where clipping actually fires. Rep$\to$FLTrust and RFA$\to$FLTrust likewise differ only within noise. The single genuine deviation is FG$\to$FLTrust ($0.064$, per-seed up to $0.084$): the one $d_1$ that produces exact \emph{zeros} rather than positive rescalings, changing FLTrust's effective client set instead of only its magnitudes, which is the Lemma~\ref{lem:annihilation} interaction. Every $d_1$ in the menu is a non-negative per-client rescaling whose positive part FLTrust cancels exactly, so only the \emph{zero pattern} is free to matter, which is where the one deviation appears.
+
+\textbf{(iii) Neither defense is FLTrust (7 pairs): 5/7.} Per-pair values are in Table~\ref{tab:prospective}; both misses are diagnosed in §\ref{sec:prospective} and neither is a mechanism error.
+
+\section{Metric-swap ablation: verification and per-cell detail}
+\label{app:metric_swap_detail}
+
+\textbf{The mechanism is verified in code before it is claimed.} An outcome alone would leave open whether the mirrors are invariant at all, so we check the statistic itself rather than only the ASR (\texttt{experiments/verify\_cos\_invariance.py}, \texttt{results/cos\_invariance\_check.json}), comparing each $d_2$'s internal state on $\{u_i\}$ against $\{c_iu_i\}$ for the $c_i$ that NormClip and RFA actually produce on live rounds. Over 18 rounds (3 seeds $\times$ 2 upstream defenses $\times$ 3 rounds), \texttt{cos\_reputation}'s weight vector agrees to $\le 2.5\times10^{-7}$ and its weight \emph{ordering} never changes ($0/18$), and \texttt{cos\_krum} selects the same client in $18/18$. The Euclidean originals do not: Reputation's weights move by up to $0.222$ and its ordering changes in $12/18$ rounds; Krum's selection changes in $6/18$. The size of the disturbance tracks the realized weight ratio $\rho$, as Proposition~\ref{prop:invariance} predicts: under NormClip ($\rho \in [1.00,4.90]$) Reputation's ordering changes in $3/9$ rounds and Krum's selection in $0/9$; under RFA ($\rho \in [2.11,17.38]$) they change in $9/9$ and $6/9$. On 1000 synthetic draws with larger rescalings the separation is cleaner: ordering changes in $0/1000$ trials for \texttt{cos\_reputation} against $992/1000$ for Reputation, and $0/1000$ against $618/1000$ for the two Krums. The mirrors are additionally checked against the shipped implementations they stand in for (selected index identical, aggregate relative error ${\approx}10^{-8}$, below the ${\approx}7\times10^{-5}$ MPS-versus-CPU nondeterminism of the same computation), so the invariance is a property of the statistic and not of a divergent reimplementation.
+
+One prediction in the suite was genuinely two-sided, and it is the round's only prospective positive result. \texttt{cos\_krum}'s C1 verdict on model-scaling turns entirely on whether the accuracy gate is applied: $0.078$ passes the numeric threshold, $0.146$ accuracy fails the gate. Rather than choose a reading after the fact we froze \emph{both}, with a resolution rule fixed in advance. Primary (accuracy-gated) $\Rightarrow$ C1 fails $\Rightarrow$ HIGH; secondary (numeric C1 only) $\Rightarrow$ the pair is certified $\Rightarrow$ LOW; and if the outcome had been LOW at accuracy $\ge 0.35$, the gate would have been wrong and our two primary labels for those cells would have been recorded as misses. Both pairs came out \textbf{HIGH} (NormClip$\to$\texttt{cos\_krum} $0.508$, RFA$\to$\texttt{cos\_krum} $0.566$), refuting the secondary reading and vindicating the accuracy gate against a pre-registered alternative that would have overturned it. This is a small result but a real one: the gate is usually defended by argument, and here it beat a competing specification of itself on data neither of us had seen. We flag the weaker half honestly: NormClip$\to$\texttt{cos\_krum}'s $0.508$ sits barely above threshold on per-seed values $0.084 / 0.676 / 0.766$, so that cell is threshold-noise even though its label is correct, and the RFA arm at $0.566$ (per-seed $1.000 / 0.121 / 0.576$) is what carries the conclusion.
+
+The pattern holds across the suite once cells without power are excluded. $\Delta$ is only observable where the standalone $d_2$ genuinely suppresses the attack, since a baseline already above $0.5$ has no suppression left to lose and will show $\Delta \approx 0$ whatever the transform did: a ceiling effect, not preservation. Restricting to standalone ASR $< 0.5$ at accuracy $\ge 0.35$ leaves six cells, and measured disturbance splits them perfectly at both seed counts. At the frozen $n{=}3$: undisturbed ($0/9$) $\Delta \in [-0.027, +0.001]$, disturbed ($>0/9$) $\Delta \in [+0.630, +0.865]$, a separation of $+0.629$. At $n{=}5$ after the post-hoc top-up: $[+0.001, +0.190]$ versus $[+0.718, +0.878]$, a separation of $+0.527$. Neither has any overlap, but the two extra seeds move both halves toward each other. Two of the three undisturbed cells are \texttt{cos\_krum} on the pixel backdoor, where the mirror suppresses standalone ($0.300$ at $0.598$ accuracy) and carries that suppression through under \emph{both} upstreams: at $n{=}3$ intact ($0.300$, $\Delta = +0.000$ under NormClip; $0.273$, $\Delta = -0.027$ under RFA), at $n{=}5$ degraded but still under threshold ($0.490$, $\Delta = +0.190$; $0.447$, $\Delta = +0.147$; both at $0.61$ accuracy, on new per-seed values $0.864 / 0.686$ and $0.849 / 0.565$). So the confirming half of the split is contributed by the invariant construction behaving as C2 predicts (which is the one thing the metric-swap arm does deliver, even though C1's failure on model-scaling denied it a frozen LOW label) but only weakly at $n{=}5$: exact invariance of the \emph{selection} leaves the magnitude channel (Lemma~\ref{lem:annihilation}) free to move $\Delta$, and two seeds are enough to see it move. That is a limitation of this post-hoc contrast and a direct motivation for arm 3 of the ladder.
+
+\textbf{Excluded cells.} All four \texttt{cos\_*} model-scaling cells are excluded as uninterpretable (hollow standalone baseline), and the six Reputation / \texttt{cos\_reputation} / Krum pixel cells for lack of power (standalone $\ge 0.5$).
+
+\section{Out-of-sample PASS validation: per-cell detail}
+\label{app:oos_detail}
+
+\textbf{(A) DBA attack transfer, at two adversarial fractions.} The Distributed Backdoor
+Attack~\citep{xie2019dba} uses spatially-distributed sub-triggers at four image corners, a
+categorically different attack family, and is not in the development menu ($f{=}0.4$ is required for
+viability at $K{=}5$). We ran three PASS-predicted compositions and three FAIL controls under DBA at
+$N{=}10$, $n{=}5$ seeds, first at $f{=}0.4$ and then, to address the power limitation the first wave
+exposed, again at $f{=}0.6$ ($K{\cdot}f{=}3.0$):
+
+\begin{center}\small
+\begin{tabular}{llcc}
+\toprule
+\textbf{Pair} & \textbf{Pred.} & \textbf{DBA $f{=}0.4$} & \textbf{DBA $f{=}0.6$} \\
+\midrule
+fg$\to$rfa & PASS & $0.109 \pm 0.065$ & $0.125 \pm 0.050$ \\
+fg$\to$cm & PASS & $0.050 \pm 0.027$ & $0.045 \pm 0.021$ \\
+rep$\to$cm & PASS & $0.041 \pm 0.014$ & $0.043 \pm 0.015$ \\
+\midrule
+nc$\to$rep & FAIL & $0.297 \pm 0.224$ & $0.378 \pm 0.185$ \\
+rfa$\to$rep & FAIL & $0.297 \pm 0.159$ & $0.384 \pm 0.217$ \\
+fg$\to$tm & FAIL & $0.049 \pm 0.031$ & $0.068 \pm 0.018$ \\
+\midrule
+fedavg (no defense) & sanity & $0.236 \pm 0.190$ & $0.386 \pm 0.192$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{The FAIL side is uninformative at both fractions, and the mechanism is known rather than
+inferred.} The sanity baseline never clears $0.5$, so a FAIL control that also sits below $0.5$
+carries no information: at $f{=}0.4$ it is $0.236 \pm 0.190$ and bimodal (4/5 seeds $<0.22$, one
+$>0.6$), because all four adversarial sub-triggers must be sampled in the same round, probability
+$(4/10)^4 = 2.6\%$ at $K{=}5$; at $f{=}0.6$ it rises only to $0.386$ (Appendix~\ref{app:dba_f06}
+shows the residual bimodality is a per-seed admissibility latent in the distributed trigger, not
+purely a co-participation effect). The distributions still separate at the tails, max per-seed ASR
+$0.185$ across the PASS pairs against $0.712$ across the FAIL pairs, which is what shows DBA embeds
+when co-sampling succeeds; and the PASS--FAIL gap is not merely DBA's own weakness, since fg$\to$rfa
+reaches $0.125$ where the undefended baseline reaches $0.386$, a $3\times$ suppression. The
+symmetric verdict: PASS predictions are confirmed robustly at both fractions, and FAIL-side
+falsifiability requires a DBA variant that embeds reliably before those controls mean anything.
+
+\textbf{(B) Scale and architecture transfer, and (C) the independent survivor.} All predictions were
+pre-registered at commit \texttt{ca627e5} before any of these ran, $n{=}5$ seeds throughout.
+(B) tests fg$\to$rfa and fg$\to$cm at $N{=}100$, $K{=}10$, $f{=}0.05$ on ResNet18, a $10\times$
+client-pool expansion with a different architecture, both pre-registered PASS under committed
+scaling and committed pixel. (C) tests fg$\to$cm, selected \emph{solely} by criterion PASS status
+and independently of the 189-config payoff-matrix scan that selected rep+tm, against temporal
+mixing of fg/cm (50/50 at random per round) at $N{=}10$, $f{=}0.2$:
+
+\begin{center}\small
+\begin{tabular}{llcc}
+\toprule
+\textbf{Condition} & \textbf{Pred.} & \textbf{committed\_scaling} & \textbf{committed\_pixel} \\
+\midrule
+\multicolumn{4}{l}{\emph{(B) $N{=}100$, $K{=}10$, $f{=}0.05$, ResNet18}} \\
+fg$\to$rfa & PASS & $0.063 \pm 0.031$ & $0.069 \pm 0.029$ \\
+fg$\to$cm & PASS & $0.152 \pm 0.118$ & $0.141 \pm 0.099$ \\
+rfa alone & baseline & $0.410 \pm 0.386$ & \\
+\midrule
+\multicolumn{4}{l}{\emph{(C) $N{=}10$, $f{=}0.2$; oracle equals the scaling column in both rows}} \\
+fg$\to$cm composed & PASS & $0.107 \pm 0.031$ & $0.099 \pm 0.020$ \\
+fg/cm mixed 50/50 & --- & $0.327 \pm 0.417$ & $0.679 \pm 0.159$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{(B): all four conditions PASS}, at a maximum of $0.152$. Two caveats travel with that. These
+runs reach only ${\approx}0.29$ clean accuracy at 50 rounds, ResNet18 being far from converged at
+this budget, so they establish that \emph{suppression transfers} across scale and architecture and
+\textbf{not} that the composition is deployable at $N{=}100$ as configured; and the two FAIL-predicted
+pairs at the same scale (nc$\to$rep C2-FAIL $0.279$, fg$\to$tm C3-FAIL $0.167$) again land below
+$0.5$, so FAIL-side discrimination is unavailable at this scale and fraction for the same reason as
+in (A). The single-defense contrast is what sharpens the positive result: RFA alone reaches
+$0.410 \pm 0.386$ on committed scaling, bimodal across seeds, against fg$\to$rfa's
+$0.069 \pm 0.031$, a $6\times$ improvement at $N{=}100$.
+
+\textbf{(C): composition dominates mixing, on the committed-pixel policy only.} We anchor there
+because it is the only policy under which both conditions retain a usable model (clean accuracy
+$0.66$ composed, $0.77$ mixed), giving $0.099 \pm 0.020$ against $0.679 \pm 0.159$, a $6.9\times$
+suppression. On committed scaling the mixed model is \emph{destroyed} ($0.11$ clean accuracy,
+CIFAR-10 chance), so its ASR is not a meaningful backdoor comparison and we exclude it from the
+headline. Two limits on the claim: the mixed standard deviations exceed their means, which is the
+per-seed instability the pixel anchor avoids, and this is independence from the survivor scan rather
+than full data-independence, since fg$\to$cm also appears in the development set at $0.107$
+(Table~\ref{tab:composability}).
+
+\section{3-Way Compositions: Criterion Scales Where Exhaustive Search Cannot}
+\label{sec:three_way}\begin{table}[h]
+\caption{3-way composition criterion validation (pre-registered). Max ASR = max(mean\_scaling, mean\_pixel) across seeds.}
+\label{tab:three_way}
+\centering\small
+\begin{tabular}{llcc}
+\toprule
+\textbf{Triple (d1$\to$d2$\to$d3)} & \textbf{Predicted} & \textbf{Max ASR} & \textbf{Verdict} \\
+\midrule
+fg$\to$rep$\to$rfa & LOW & $0.048$ & \textbf{CORRECT} \\
+fg$\to$rep$\to$cm  & LOW & $0.087$ & \textbf{CORRECT} \\
+rep$\to$fg$\to$rfa & LOW & $0.045$ & \textbf{CORRECT} \\
+rep$\to$fg$\to$cm  & LOW & $0.136$ & \textbf{CORRECT} \\
+fg$\to$nc$\to$cm   & LOW & $0.109$ & \textbf{CORRECT} \\
+fg$\to$rfa$\to$cm  & LOW & $0.041$ & \textbf{CORRECT} \\
+\midrule
+rfa$\to$nc$\to$rep & HIGH & $0.894$ & \textbf{CORRECT} \\
+fedavg$\to$nc$\to$rep & HIGH & $0.842$ & \textbf{CORRECT} \\
+nc$\to$rep$\to$tm  & HIGH & $0.636$ & \textbf{CORRECT} \\
+nc$\to$fg$\to$tm   & HIGH & $0.267$ & \textbf{MISS} \\
+\midrule
+\multicolumn{2}{l}{\textbf{Overall accuracy}} & \multicolumn{2}{c}{\textbf{9/10 = 90\%}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Selection-bias note.} All 6 LOW triples use FoolsGold or reputation as $d_1$: the same successful weighting defenses from the 2-way analysis. This reflects the structural fact that these are the only defenses satisfying C1 for both attacks in our menu. The criterion's 3-way value is not discovering new $d_1$ choices but correctly \emph{filtering} from the $5{\times}6{=}30$ triples starting with FG/rep: it predicts LOW for only 6--8 of these 30 (those where the $d_2{\to}d_3$ chain preserves signals), correctly rejecting the majority. A random 6-of-10 draw from our measured set matches the criterion's mean ASR ($0.078$) only $0.3\%$ of the time ($p = 0.003$, resampling test; §\ref{sec:composability_validation}).
+
+\section{Dose--response design: the full pre-registered protocol}
+\label{app:dose_protocol}
+\label{app:details}
+
+Four properties make this a dial on the theory rather than an arbitrary perturbation. (i) It is exactly Proposition~\ref{prop:invariance}'s form $T(u_i)=c_iu_i$ with $c_i>0$, so every rung lies inside the theory's scope. (ii) \textbf{The dose is $\rho$}: $\max_j c_j/\min_j c_j = e^{2\kappa}$ exactly, the same upstream weight ratio Theorem~\ref{thm:bounded_reweight} and both mechanism-preserving regimes are stated in, verified by reading $\rho$ back off the \emph{transformed update norms} on live rounds, where realized $\rho$ matches nominal to three decimals at every rung and $\mathrm{mean}(c)$ stays in $[0.99999, 1.00002]$. (iii) $\kappa{=}0$ gives $c \equiv 1$: the implementation short-circuits, so the identity rung is bit-identical to $d_2$ standalone by construction rather than by rounding. (iv) Normalizing the \emph{mean} to 1 holds the aggregate's scale fixed, separating the quantity under test (disturbance of $d_2$'s \emph{statistic}, i.e.\ C2) from the magnitude-contraction channel of Lemma~\ref{lem:annihilation} that costs accuracy; without it the ladder would confound C2 with attenuation. The permutation is keyed on $(\text{seed},\text{round})$ and \textbf{not} on client identity: assigning by id would place the adversaries at a fixed end of the ladder and systematically attenuate them, manufacturing a success, whereas this keying gives every arm at a given seed and round the \emph{identical} coefficient vector, so the arms differ in $d_2$ and nothing else. \textbf{$\texttt{dose\_kappa}\langle\kappa\rangle$ is an instrument, not a defense}, and is never evaluated or recommended as one.
+
+\textbf{Frozen grid and arms.} $\kappa \in \{0, 0.5, 1.0, 2.0\}$, i.e.\ $\rho \in \{1.00, 2.72, 7.39, 54.60\}$: four rungs spanning a ${\approx}55\times$ ratio. Arms are selected by the paper's own power rule (§\ref{sec:metric_swap}), fixed before the freeze: the ladder is informative only where standalone $d_2$ genuinely suppresses the attack (ASR $<0.5$ at clean accuracy $\ge 0.35$), since a baseline already above threshold has no suppression left to lose and would give a flat curve by ceiling effect. Applying that rule to the measured baselines leaves exactly four $(d_2, \text{attack})$ cells, and they happen to cover three invariance classes of Proposition~\ref{prop:invariance} (Table~\ref{tab:dose_design}). The $\kappa{=}0$ rung is run \emph{fresh} at all five seeds for every arm rather than reused from the published baselines, so every rung of every curve comes from one code path at one seed set; the published baselines then serve as an independent per-seed cross-check of that rung (tolerance $10^{-6}$) instead of as data in it.
+
+\textbf{The abscissa is measured, not nominal.} What matters to C2 is not $\rho$ but what the rescaling does to the specific statistic $d_2$ reads, so we measure that separately and \emph{before} freezing any prediction, pushing live FL updates through the shipped transform and recording each arm's decision at every $\kappa$ on the \emph{same} raw updates (\texttt{measure\_dose\_disturbance.py}, \texttt{results/dose\_disturbance.json}; 5 seeds $\times$ 3 rounds per attack). No ASR is computed there, which is why it can legitimately precede the freeze. It establishes three things before any outcome exists (Table~\ref{tab:dose_design}): \emph{there is a dose}: disturbance is exactly $0$ at the identity rung and rises monotonically with $\kappa$ in every non-invariant arm; \emph{the class-(a) invariance claim holds in the shipped code}: \texttt{cos\_krum}'s selection is unchanged in $\mathbf{0}$ of $120$ cells at $\rho$ up to $54.6$, its cosine \emph{scores} moving by at most $1.1\times10^{-4}$ relative, the float32 floor for a ${\approx}1.1$M-dimensional vector, which we record rather than assert on; and \emph{class (b) is graded rather than binary}, at roughly half the class-(c) disturbance ($0.487$ vs.\ $0.867$/$0.933$ at $\kappa{=}2.0$), which is what arm 4's prediction turns on.
+
+\textbf{Frozen predictions.} The \emph{primary} test is pooled: across all 16 $(\text{arm},\kappa)$ cells, the rise in ASR over that arm's own $\kappa{=}0$ rung is predicted to be positively rank-correlated with the measured disturbance rate (Spearman, one-sided, $\alpha = 0.05$). This is the dose--response claim the design exists for, and its predictor is a \emph{measured property of the statistic}, not the identity of the defense and not its standalone effectiveness, both held fixed within every arm. The \emph{secondary} predictions are the per-arm shapes of Table~\ref{tab:dose_design}, tested by a one-sided Jonckheere--Terpstra trend test across the four ordered rungs at $n{=}5$. For arm 3, ``flat'' is scored as an \emph{equivalence} claim rather than a failed rejection: confirmed if $|\overline{\mathrm{ASR}}(\kappa{=}2.0) - \overline{\mathrm{ASR}}(\kappa{=}0)| < 0.15$ \emph{and} every rung stays below $0.5$. That margin is fixed and justified in advance: it is under a quarter of the $+0.629$ within-defense gap for Krum on record at the freeze (the post-hoc top-up later put that gap at $+0.716$ at $n{=}5$, which only makes the margin more conservative; it is not revised), and $0.300 + 0.15 = 0.450 < 0.5$, so ``within the margin'' and ``still suppressing'' coincide by design for this arm. Arm 4's class-(b) signature is the \emph{shallower slope}, so its criterion includes its $\kappa{=}2.0$ rise being smaller than both class-(c) arms'.
+
+\section{Dose--response caveats recorded before the freeze}
+\label{app:dose_caveats}
+
+\textbf{Caveats recorded in advance.} (i) Arms 1--2 are on model-scaling and arms 3--4 on the pixel backdoor. This is not a free choice: on model-scaling \emph{no} invariant $d_2$ suppresses at usable accuracy, that is the finding of §\ref{sec:metric_swap} (\texttt{cos\_krum} $0.078$ at $0.146$ accuracy), which is also why \texttt{cos\_krum}/scaling is not an arm. ``Same attack'' is required \emph{within} each ladder, which is where the causal claim lives; across arms we compare curve \emph{shapes and slopes}, never levels. (ii) Arm 4 has thin headroom: \texttt{coord\_median}/pixel sits only $0.057$ below threshold, so the binary above/below-$0.5$ reading is weak evidence either way and we report the continuous curve with intervals. (iii) The dose is uncorrelated with adversary status by construction, but it is not adversary-\emph{adversarial}: a dose assignment that deliberately up-weights adversaries would be a strictly harder test and is not run here. (iv) A synthetic upstream transform is not a real defense, so we test ecological validity by overlaying the two \emph{real} upstream transforms already measured on these same cells (NormClip and RFA, §\ref{sec:metric_swap}) as anchor points at their own measured disturbance; if they fall far off the synthetic curve at matched disturbance, that is a finding about the instrument and is reported as one. (v) Disturbance is measured on FedAvg trajectories on one shared set of raw updates per round, which is what makes it a clean abscissa, but means the rates in Table~\ref{tab:dose_design} are not re-measured along each arm's own 50-round trajectory.
+
+\section{Dose--response ladder: per-seed detail, intervals, and the anchor residuals}
+\label{app:dose_detail}
+
+Every value below is recomputed per seed by \texttt{analyze\_dose\_response.py} from the ladder and disturbance JSON files; nothing is transcribed. Seeds are 42--46 in order; Table~\ref{tab:dose_perseed} carries the per-rung detail.
+
+\begin{table}[h]
+\caption{Per-rung mean ASR with Student-t 95\% intervals at $n{=}5$, the measured disturbance of that arm's statistic, mean clean accuracy, and the per-seed values. $^{\dagger}$ fails the $0.35$ accuracy gate.}
+\label{tab:dose_perseed}
+\centering\scriptsize
+\begin{tabular}{llcccl}
+\toprule
+\textbf{arm} & $\kappa$ ($\rho$) & \textbf{disturb.} & \textbf{mean ASR [95\% CI]} & \textbf{acc} & \textbf{per-seed ASR} \\
+\midrule
+\multirow{4}{*}{1 \texttt{krum} / scaling}
+ & $0$ ($1.00$) & $0.000$ & $0.062$ $[0.019, 0.105]$ & $0.565$ & $0.115$, $0.021$, $0.047$, $0.057$, $0.069$ \\
+ & $0.5$ ($2.72$) & $0.600$ & $0.011$ $[-0.001, 0.023]$ & $0.652$ & $0.000$, $0.010$, $0.011$, $0.027$, $0.007$ \\
+ & $1.0$ ($7.39$) & $0.733$ & $0.014$ $[0.003, 0.024]$ & $0.682$ & $0.003$, $0.015$, $0.021$, $0.021$, $0.008$ \\
+ & $2.0$ ($54.6$) & $0.867$ & $0.054$ $[0.002, 0.106]$ & $0.619$ & $0.005$, $0.039$, $0.077$, $0.113$, $0.037$ \\
+\midrule
+\multirow{4}{*}{2 \texttt{reputation} / scaling}
+ & $0$ ($1.00$) & $0.000$ & $0.017$ $[0.012, 0.022]$ & $0.777$ & $0.014$, $0.012$, $0.017$, $0.023$, $0.019$ \\
+ & $0.5$ ($2.72$) & $0.867$ & $0.022$ $[0.014, 0.031]$ & $0.779$ & $0.016$, $0.018$, $0.024$, $0.033$, $0.020$ \\
+ & $1.0$ ($7.39$) & $0.867$ & $0.487$ $[0.349, 0.624]$ & $0.765$ & $0.439$, $0.547$, $0.578$, $0.557$, $0.313$ \\
+ & $2.0$ ($54.6$) & $0.933$ & $0.779$ $[0.673, 0.885]$ & $0.701$ & $0.710$, $0.843$, $0.730$, $0.896$, $0.714$ \\
+\midrule
+\multirow{4}{*}{3 \texttt{cos\_krum} / pixel}
+ & $0$ ($1.00$) & $0.000$ & $0.490$ $[0.058, 0.922]$ & $0.607$ & $0.003$, $0.269$, $0.630$, $0.864$, $0.686$ \\
+ & $0.5$ ($2.72$) & $0.000$ & $0.450$ $[0.130, 0.769]$ & $0.569$ & $0.764$, $0.236$, $0.165$, $0.648$, $0.435$ \\
+ & $1.0$ ($7.39$) & $0.000$ & $0.153$ $[-0.127, 0.433]$ & $0.466$ & $0.132$, $0.090$, $0.000$, $0.543$, $0.001$ \\
+ & $2.0$ ($54.6$) & $0.000$ & $0.086$ $[-0.100, 0.271]$ & $0.220^{\dagger}$ & $0.083$, $0.000$, $0.000$, $0.345$, $0.000$ \\
+\midrule
+\multirow{4}{*}{4 \texttt{coord\_median} / pixel}
+ & $0$ ($1.00$) & $0.000$ & $0.443$ $[0.263, 0.622]$ & $0.767$ & $0.395$, $0.287$, $0.449$, $0.677$, $0.405$ \\
+ & $0.5$ ($2.72$) & $0.251$ & $0.428$ $[0.241, 0.615]$ & $0.764$ & $0.454$, $0.215$, $0.430$, $0.638$, $0.402$ \\
+ & $1.0$ ($7.39$) & $0.378$ & $0.327$ $[0.181, 0.472]$ & $0.749$ & $0.351$, $0.139$, $0.352$, $0.463$, $0.328$ \\
+ & $2.0$ ($54.6$) & $0.487$ & $0.170$ $[0.113, 0.228]$ & $0.690$ & $0.179$, $0.090$, $0.204$, $0.192$, $0.187$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{The primary test, and one post-hoc sensitivity we report but do not lean on.} Pooled over all 16 cells, Spearman $\rho_s = +0.351$, one-sided $p = 0.091$ (the frozen test; refuted). Dropping the four $\kappa{=}0$ cells, which sit at $(0, 0)$ by construction rather than by measurement, raises this to $\rho_s = +0.780$, $p = 0.001$ over 12 cells. We were not entitled to that analysis in advance and it does not change the verdict, and its sign is in any case driven by the \emph{invariant} arm's ASR falling at zero disturbance being paired with the reputation arm's rising at high disturbance, not by the fragility pattern the framework claims: arms 1 and 4 contradict it. Against the \emph{nominal} dose $\kappa$ (equivalently $\log \rho$) instead of measured disturbance, the pooled correlation is $\rho_s = -0.354$. Neither predictor works pooled.
+
+\textbf{Per-arm trend tests.} Jonckheere--Terpstra across the four ordered rungs $\times$ 5 seeds, one-sided for increasing trend (normal approximation; a 20{,}000-draw permutation p-value with a fixed seed is reported alongside by the analysis script and agrees to the third decimal in every arm): arm 1 $J = 70.0$, $z = -0.34$, $p_{\uparrow} = 0.63$; arm 2 $J = 144.0$, $z = +4.64$, $p_{\uparrow} = 1.7\times10^{-6}$; arm 3 $J = 29.0$, $z = -3.10$, $p_{\uparrow} = 0.999$ ($p_{\downarrow} = 9.8\times10^{-4}$; dropping the gate-failing $\kappa{=}2.0$ rung leaves $z = -2.06$, $p_{\downarrow} = 0.020$); arm 4 $J = 31.0$, $z = -2.96$, $p_{\uparrow} = 0.998$ ($p_{\downarrow} = 1.5\times10^{-3}$). No frozen rule tests a decreasing trend, so those $p_{\downarrow}$ values are descriptive.
+
+\textbf{Clean accuracy against dose (descriptive, no frozen rule).} Arm 1 $0.565 \to 0.652 \to 0.682 \to 0.619$ ($z = +1.35$); arm 2 $0.777 \to 0.779 \to 0.765 \to 0.701$ ($z = -3.30$); arm 3 $0.607 \to 0.569 \to 0.466 \to 0.220$ ($z = -3.50$); arm 4 $0.767 \to 0.764 \to 0.749 \to 0.690$ ($z = -4.11$). This is what separates a suppression effect from a contraction artifact: arm 4 loses $0.077$ of accuracy while its ASR more than halves, whereas arm 3 loses $0.39$.
+
+\textbf{Anchor residuals (pre-registered caveat (iv)).} Disturbance rates from \texttt{cos\_invariance\_check.json}, ASRs recomputed from \texttt{metric\_swap/} at the frozen $n{=}3$ and from \texttt{metric\_swap\_topup/} at $n{=}5$; the residual is against the synthetic rung nearest in measured disturbance. NormClip$\to$Krum $0/9 = 0.000$, ASR $0.062 \to 0.062$, residual $+0.001$; RFA$\to$Krum $6/9 = 0.667$, $0.691 \to 0.779$, residual $\mathbf{+0.767}$; NormClip$\to$Reputation $3/9 = 0.333$, $0.792 \to 0.806$, residual $\mathbf{+0.789}$; RFA$\to$Reputation $9/9 = 1.000$, $0.882 \to 0.895$, residual $+0.116$; NormClip$\to$\texttt{cos\_krum} $0/9$, $0.300 \to 0.490$, residual $+0.000$; RFA$\to$\texttt{cos\_krum} $0/9$, $0.273 \to 0.447$, residual $-0.044$. Realized upstream $\rho$ on the same rounds: NormClip mean $3.61$ (max $4.90$), RFA mean $11.93$ (max $17.38$).
+
+\section{Decomposing the emitted displacement: re-selection against rescaling}
+\label{app:decomposition}
+
+\noindent The $\Delta$~agg.\ column of Table~\ref{tab:channels_full} mixes two things the causal claim of §\ref{app:targeted_full} needs apart. For a selector, $\mathrm{agg}(U) = u_{s_0}$ and $\mathrm{agg}(T(U)) = c_{s_1} u_{s_1}$, with $s_0$ the client selected on the raw stack and $s_1$ the client selected on the transformed one, so exactly
+\[ c_{s_1}u_{s_1} - u_{s_0} \;=\; \underbrace{(u_{s_1} - u_{s_0})}_{\text{re-selection}} \;+\; \underbrace{(c_{s_1}-1)\,u_{s_1}}_{\text{rescaling}}, \]
+both components reported relative to $\|u_{s_0}\|$. The re-selection component is what a magnitude-controlled dose would still move (it takes both updates \emph{untransformed}) while the rescaling component is what such a control closes. They are \textbf{not orthogonal}: the measured angle runs from $\cos{=}-0.99$ to $-0.43$, mean ${\approx}-0.65$, so their norms need not sum to the total, and the table prints the angle rather than leaving that discrepancy unexplained. What is asserted instead is the exact vector identity above: worst residual $2.66\mathrm{e}{-}07$ over all $240$ (arm, family, rung, seed, round) cells, float32 noise. \textbf{This decomposes the published number, not a second similar one}: every recomputed total agrees with the corresponding $\Delta$~agg.\ value in \texttt{results/admission\_measurement.json} to $0.00\mathrm{e}{+}00$, on the same $5$ seeds $\times$ $3$ live rounds, the same rungs and the same configuration as that measurement. \textbf{Selectors only}: a weighted averager and a coordinate-wise order statistic emit no single selected client, so ``the selected update'' and hence this split are undefined for them, and \texttt{coord\_median} and \texttt{reputation} do not appear. \texttt{experiments/measure\_displacement\_decomposition.py} trains no model per rung, computes no ASR, writes a new file (\texttt{results/displacement\_decomposition.json}) and leaves every frozen artifact byte-identical.
+
+\begin{center}\small\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llrrrrrr}
+\toprule
+Design & Selector & $\kappa$ & total & re-selection & rescaling & $\cos$ & sel.\ chg. \\
+\midrule
+Confounded ladder & \texttt{krum} & $0$ & $0.000$ & $\mathbf{0.000}$ & $0.000$ & --- & $0.000$ \\
+ &  & $0.5$ & $0.637$ & $\mathbf{0.685}$ & $0.333$ & $-0.65$ & $0.600$ \\
+ &  & $1$ & $0.731$ & $\mathbf{0.851}$ & $0.685$ & $-0.66$ & $0.733$ \\
+ &  & $2$ & $0.880$ & $\mathbf{1.675}$ & $1.674$ & $-0.72$ & $0.867$ \\
+\midrule
+Instrument (Mode~S) & \texttt{krum} & $0$ & $0.000$ & $\mathbf{0.000}$ & $0.000$ & --- & $0.000$ \\
+ &  & $0.5$ & $0.663$ & $\mathbf{0.646}$ & $0.308$ & $-0.64$ & $0.533$ \\
+ &  & $1$ & $0.847$ & $\mathbf{1.075}$ & $0.666$ & $-0.69$ & $0.800$ \\
+ &  & $2$ & $0.892$ & $\mathbf{0.986}$ & $0.973$ & $-0.66$ & $0.733$ \\
+\midrule
+Confounded ladder & \texttt{cos\_krum} & $0$ & $0.000$ & $\mathbf{0.000}$ & $0.000$ & --- & $0.000$ \\
+ &  & $0.5$ & $0.270$ & $\mathbf{0.000}$ & $0.270$ & --- & $0.000$ \\
+ &  & $1$ & $0.515$ & $\mathbf{0.000}$ & $0.515$ & --- & $0.000$ \\
+ &  & $2$ & $0.834$ & $\mathbf{0.000}$ & $0.834$ & --- & $0.000$ \\
+\midrule
+Instrument (Mode~S) & \texttt{cos\_krum} & $0$ & $0.000$ & $\mathbf{0.000}$ & $0.000$ & --- & $0.000$ \\
+ &  & $0.5$ & $0.395$ & $\mathbf{0.000}$ & $0.395$ & --- & $0.000$ \\
+ &  & $1$ & $0.754$ & $\mathbf{0.000}$ & $0.754$ & --- & $0.000$ \\
+ &  & $2$ & $1.297$ & $\mathbf{0.000}$ & $1.297$ & --- & $0.000$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent \textbf{What it says, and what it does not.} Mode~S into Krum at $\kappa{=}2$: the published $0.892$ is $0.986$ of re-selection and $0.973$ of rescaling, so the dose moves \emph{which} benign client is aggregated and \emph{how large} it arrives, in comparable measure: the instrument is not quietly a magnitude-only perturbation, nor quietly a decision-only one. Of the $11/15$ rounds whose selection changes there, \textbf{none} lands on an adversary; that is the quantitative form of the claim that Krum's decision changes are benign-to-benign, and the reason the support of the admitted adversarial mass changes in \textbf{none of the $60$ measured rounds} while the decision channel moves by $0.733$: on this arm no adversary is admitted at \emph{any} rung, so that count is a floor, and the arms carrying adversarial mass at baseline are reputation and \texttt{coord\_median} ($48$ of $60$ rounds each; Table~\ref{tab:channels_full}). \texttt{cos\_krum} is the informative contrast: its statistic is exactly invariant to positive rescaling, so $0/15$ selections change at every rung of \emph{both} designs and its entire displacement ($1.297$ under the instrument, $0.834$ under the confounded ladder) is rescaling. Its fall therefore cannot travel through the decision channel at all, which corroborates §\ref{app:targeted_full}'s attribution of that fall to the magnitude channel from a quantity measured independently of any ASR. \textbf{This is a decomposition of a displacement, not of an ASR effect}: it says what the dose moves in the update entering training, makes no claim about suppression, and is an analysis of runs already reported rather than a new experiment.
+
+\section{Adversary-correlated dispersion $\Delta_c$, measured}
+\label{app:delta_c}
+\label{sec:rho_vs_deltac}
+
+$\Delta_c := \mathbb{E}[c_i \mid i \in A] - \mathbb{E}[c_i \mid i \notin A]$ for every per-client transform in the paper, over the same $5$ seeds $\times$ $3$ rounds and, within a round, the \emph{same} raw update stack for every transform, so the rows are comparable by construction (\texttt{measure\_coefficient\_targeting.py}, \texttt{results/coefficient\_targeting.json}). \textbf{No ASR is computed and no model is trained per transform}, which is what lets this be added without rescoring anything; the figures are \textbf{post-hoc and exploratory} and no frozen prediction depends on them. Coefficients are read back from transformed norms, $c_i = \|T(u_i)\|/\|u_i\|$, so the table measures the shipped code path rather than the builder's description of it. As a provenance check the synthetic families' adversarial coefficient shares reproduce \texttt{results/admission\_measurement.json} to $0.0$ absolute on all 13 cells, so the rows of Table~\ref{tab:delta_c} may be read on the same axis as the Mode-S and Mode-A figures of §\ref{app:targeted_full}.
+
+\begin{table}[h]
+\centering\small
+\caption{$\rho$ says how much a transform spreads the coefficients; $\Delta_c$ says who receives the spread. They are not ordered together: RFA and NormClip target the adversary $2$--$3.6\times$ harder than the ladder's most dispersed rung at $\rho$ that is $3.7$--$13\times$ \emph{smaller}. Means over non-degenerate rounds; the synthetic rows are attack-pooled since their coefficients do not depend on the attack.}
+\label{tab:delta_c}
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+\textbf{transform} & \textbf{attack} & $\rho$ & $\mathbb{E}[c \mid A]$ & $\mathbb{E}[c \mid \neg A]$ & $\Delta_c$ \\
+\midrule
+NormClip & model-scaling & $4.19$ & $0.268$ & $0.989$ & $-0.721$ \\
+NormClip & pixel & $1.00$ & $1.000$ & $1.000$ & $0.000$ \\
+Reputation & model-scaling & $8.3{\times}10^{5}$ & $0.003$ & $1.387$ & $-1.383$ \\
+Reputation & pixel & $1.68$ & $0.915$ & $1.019$ & $-0.105$ \\
+FoolsGold & model-scaling & $1.9{\times}10^{12}$ & $1.497$ & $0.834$ & $\mathbf{+0.663}$ \\
+FoolsGold & pixel & $1.8{\times}10^{12}$ & $1.365$ & $0.986$ & $\mathbf{+0.378}$ \\
+RFA & model-scaling & $14.8$ & $0.125$ & $1.332$ & $-1.208$ \\
+RFA & pixel & $1.69$ & $0.923$ & $1.012$ & $-0.089$ \\
+\midrule
+\multicolumn{6}{@{}l@{}}{\emph{Synthetic families of §\ref{sec:dose_outcome}--§\ref{app:targeted_full}, same code path:}} \\
+ladder, $\kappa{=}0.5/1.0/2.0$ & --- & $2.72/7.39/54.6$ & --- & --- & $-0.140/{-}0.240/{-}0.336$ \\
+Mode~S, all rungs & --- & $1.00$--$54.6$ & --- & --- & $\mathbf{0.000}$ \\
+Mode~A, $\nu{=}{-}2\ldots{+}2$ & --- & $7.39$--$7.39$ & --- & --- & $-1.138 \ldots +2.469$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent Three readings, in decreasing confidence. \textbf{(1) $\rho$ is not a proxy for $\Delta_c$}: the two are anti-ordered on the anchors, and NormClip on the pixel backdoor has $\rho = 1$ exactly because no client exceeds $\tau{=}5$, so $\Delta_c = 0$ there for a reason the invariance classification cannot see. \textbf{(2) The two anchors that miss the ladder are the two most extremely targeted}, which explains the residuals of §\ref{sec:dose_outcome} without appeal to a range mismatch. \textbf{(3) $\Delta_c$ is nonetheless not a predictor of suppression}: RFA is the most negative of the four real transforms and rfa$\to$krum fails at $0.779$, while Reputation is more negative still and rep$\to$coord\_median suppresses. That is the two-regime structure of §\ref{sec:composability_criterion} again: strong negative $\Delta_c$ can mean either annihilation or mere dilution, and $\Delta_c$'s magnitude alone does not say which. We report it as the axis on which the ladder's anchors were unmatched, not as the quantity that replaces the statistic.
+
+\section{Anticipated objections}
+\label{app:objections}
+
+Five objections we expect, answered against text that is already in the paper rather than by new
+argument. Nothing here is a new claim; each answer is a pointer plus the scope it turns on.
+
+\paragraph{1. This is small-scale federated learning: five clients, one architecture, mostly one
+dataset.} Agreed, and every empirical magnitude is scoped accordingly, per arm, never pooled across
+arms, and enumerated in Table~\ref{tab:scope_levels} with the scale and architecture evidence in
+Appendix~\ref{app:scale_external}. What does \emph{not} depend on scale is the
+identification argument: any criterion whose eligibility gate is defined on the same outcome it predicts
+conditions on a descendant of both mechanism and effectiveness
+(Proposition~\ref{prop:identification_full}), and that holds at any client count, model size or sample size.
+The boundary results forbid an inference; they do not measure a system.
+
+\paragraph{2. The interventions are oracles: no deployed system can pin an adversary's coefficient or
+read adversary identity.} Correct, and that is why Mode~S is an \textbf{instrument, not a screen}. Mode~S
+measures level~(P4) only by reading adversary identity, which no deployable defense can, so these
+experiments \textbf{identify the causal channel and are not a (P4) screen}. Pinning $c{=}1.0$ has one
+purpose, to cut the confounded path of Figure~\ref{fig:modeS}(a) by construction, exactly as an
+oracle-labelled control isolates a channel in an ablation. The one control that \emph{removes} an oracle
+component (score-only, which scores the transformed stack but aggregates the untransformed selected
+update) does not change the verdict (§\ref{app:targeted_full}, Appendix~\ref{app:decomposition}).
+
+\paragraph{3. $n{=}5$ seeds is small.} It is: $n{=}5$ per arm, $n{=}8$ for \texttt{cos\_krum}, with
+Student-$t$ $95\%$ intervals throughout and no claim that a small effect is zero. Where suppression does
+not move we report \textbf{no evidence of a practically meaningful change under the pre-specified
+$\pm0.15$ equivalence margin}, a margin frozen before the runs (Table~\ref{tab:scope_levels}), never a
+claim that suppression is unchanged. Two design choices do more for precision than seeds would: the
+identity rungs are imported \textbf{bit-identical per seed} (largest deviation $0.00\mathrm{e}{+}00$),
+so the contrast is within-seed rather than across noise, and the central claim is a \textbf{sign
+reversal} ($-0.272$ against $+0.098$ on the identical cell, Table~\ref{tab:comparability}), which is not
+a null result. Finally, Proposition~\ref{prop:identification_full} says the cell that would validate the
+criterion is \emph{empty by design}: more seeds cannot repair it (Table~\ref{tab:can_cannot}).
+
+\paragraph{4. If ASR does not move, why does a change of decision matter?} Because the change of
+decision is what a preservation criterion \emph{measures}, and the gap between the two is the finding.
+An invariance argument certifies the top three levels of Definition~\ref{def:levels_full} while the security
+content sits at level~(P4), the adversarial contribution admitted. A criterion reading the Krum arm would
+call that composition broken (the decision flips in up to $80\%$ of rounds) for a composition whose
+suppression shows no measurable change: a false alarm in the direction that costs coverage
+(Proposition~\ref{prop:emergent_full}, recall bound $1/5$). The converse fails too: \texttt{cos\_krum}'s
+selection is bit-identical at every rung yet it never suppresses ($0.584$ at the identity) and its ASR
+\emph{falls} $0.425$ across the ladder, so exact invariance of the statistic neither implies suppression
+nor holds it fixed (§\ref{app:targeted_full}, Appendix~\ref{app:dose_detail}).
+
+\paragraph{5. The theory covers only positive per-client rescalings.} Yes, and we say so wherever it is
+used (Proposition~\ref{prop:invariance}, Theorem~\ref{thm:bounded_reweight},
+§\ref{sec:restricted_theorem}). The class is not arbitrary (it is what norm clipping, contribution
+weighting and reputation weighting do to a client's update) but it excludes coordinate-wise filters and
+any transform that changes an update's direction, and the theorem's own margin closes under heterogeneity
+($m{=}3.24 \to 1.01$ at $\alpha{=}0.1$), so \textbf{it certifies nothing where heterogeneity is high}.
+The negative does not rest on the theory: it is a \emph{measured} counterexample, and a narrower theory
+makes the counterexample sharper rather than weaker, since \textbf{the theorem certifies mechanism
+preservation, not security}; it bounds no ASR.
+
+\end{document}

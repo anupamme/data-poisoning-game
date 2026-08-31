@@ -14,8 +14,12 @@ Data points:
   Spam game (stateless, gamma=0): VoPD=0.200 -> randomization helps
   NC/fedavg temporal mix: gamma=0.66, p_eff~1.0 -> mixing collapses (ASR 0.956)
   Rep+TM C1-FAIL zone: gamma=0.66, p_eff~0.68 -> oracle 0.316 (composition wins but limited)
-  FG->CM (PASS): gamma=0.66, p_eff~0.0 -> ASR 0.131
-  FG->RFA (PASS): gamma=0.66, p_eff~0.0 -> ASR 0.045
+  FG->CM (PASS): gamma=0.66 -> max committed ASR 0.131 (n=3, results/all_compositions)
+  FG->RFA (PASS): gamma=0.66 -> max committed ASR 0.045 (n=3, results/all_compositions)
+
+The two PASS labels name their sample size because the body reports the same quantity for these
+compositions at a higher seed count (FG->RFA 0.093 at n=30, results/fg_rfa_flagship). The marker
+sits at what THIS suite measured; the label says which suite that is.
   Stateless gamma=0 with complementarity: randomization helps
 """
 import os
@@ -51,12 +55,12 @@ ax.annotate("Rep+TM (C1-FAIL)\noracle ASR 0.316", xy=(0.66, 0.68), xytext=(0.74,
 
 # FG->CM PASS (gamma~0.66, p_eff~0.13 = best single defense CM ASR ~0.5 but effectively 0 after FG)
 ax.scatter(0.66, 0.131, s=80, color="seagreen", zorder=5, marker="o")
-ax.annotate("FG$\\to$CM (PASS)\nASR 0.131", xy=(0.66, 0.131), xytext=(0.50, 0.20),
+ax.annotate("FG$\\to$CM (PASS)\nmax committed ASR 0.131\n($n{=}3$, wave 1)", xy=(0.66, 0.131), xytext=(0.46, 0.22),
             fontsize=7, arrowprops=dict(arrowstyle="-", color="seagreen", lw=0.8), color="seagreen")
 
 # FG->RFA PASS (gamma~0.66, p_eff~0.06)
 ax.scatter(0.66, 0.045, s=80, color="darkgreen", zorder=5, marker="o")
-ax.annotate("FG$\\to$RFA (PASS)\nASR 0.045", xy=(0.66, 0.045), xytext=(0.40, 0.13),
+ax.annotate("FG$\\to$RFA (PASS)\nmax committed ASR 0.045\n($n{=}3$, wave 1)", xy=(0.66, 0.045), xytext=(0.34, 0.055),
             fontsize=7, arrowprops=dict(arrowstyle="-", color="darkgreen", lw=0.8), color="darkgreen")
 
 # --- Measured gamma marker: the one vertical line, and it is a measurement ---
