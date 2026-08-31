@@ -1,0 +1,62 @@
+{
+  "description": "POST-HOC precision extension of the Mode-S krum/committed_scaling flagship contrast: 10 additional seeds at the two rungs the reported |Delta ASR| is taken between. Chosen after the n=5 outcome was known, at a reviewer's request. The pre-registered verdict remains the n=5 one in results/targeted_dose/summary.json, which this run does not modify. Thresholds carried over unchanged, not re-chosen.",
+  "status": "post_hoc_precision_extension",
+  "scored_artifact": "results/targeted_dose/summary.json",
+  "scored_artifact_sha256": "1ced22eeb35663b633da04c85a331019e80b459dcf578ec723d8ad34cec23fe5",
+  "prereg_commit_of_scored_suite": "5130cec",
+  "arm": {
+    "mode": "S",
+    "d2": "krum",
+    "attack": "committed_scaling",
+    "rungs": [
+      0.0,
+      2.0
+    ],
+    "rhos": {
+      "0.0": 1.0,
+      "2.0": 54.598150033144236
+    }
+  },
+  "seeds_prereg_not_rerun": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "seeds_added_post_hoc": [
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56
+  ],
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 50,
+    "acc_floor": 0.35,
+    "equiv_margin": 0.15
+  },
+  "runs": {
+    "doseS_kappa0.0|krum|committed_scaling|47": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "kappa": 0.0,
+      "rho": 1.0,
+      "seed": 47,
+      "accuracy": 0.5776,
+      "asr": 0.06166666666666667,
+      "wall_time_s": 1618.924304008484,
+      "post_hoc": true
+    }
+  }
+}
