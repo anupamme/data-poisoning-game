@@ -1,0 +1,240 @@
+{
+  "description": "Score-only control: krum scores on the transformed stack and aggregates the UNTRANSFORMED selected update, closing the magnitude channel that Mode S leaves open. Rules frozen at 35788d9 (experiments/pre_registration_score_only.md).",
+  "prereg_commit": "35788d9",
+  "dataset": "cifar10",
+  "model": "cifar_cnn",
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 50,
+    "kappas": [
+      0.0,
+      0.5,
+      1.0,
+      2.0
+    ],
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "rhos": {
+      "0.0": 1.0,
+      "0.5": 2.718281828459045,
+      "1.0": 7.38905609893065,
+      "2.0": 54.598150033144236
+    },
+    "acc_floor": 0.35,
+    "equiv_margin": 0.15
+  },
+  "arm": {
+    "mode": "S",
+    "d2": "krum",
+    "attack": "committed_scaling",
+    "score_only": true,
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ]
+  },
+  "uncontrolled_comparison": {
+    "d2": "krum",
+    "attack": "committed_scaling",
+    "published_mode_s_delta": -0.026088888888888898
+  },
+  "frozen_premise_channels": {
+    "0.0": {
+      "agg_disp": 0.0,
+      "decision": 0.0,
+      "admission": 0.0
+    },
+    "0.5": {
+      "agg_disp": 0.663330926150943,
+      "decision": 0.5333333333333333,
+      "admission": 0.0
+    },
+    "1.0": {
+      "agg_disp": 0.847030712004612,
+      "decision": 0.8,
+      "admission": 0.0
+    },
+    "2.0": {
+      "agg_disp": 0.8924469476420579,
+      "decision": 0.7333333333333333,
+      "admission": 0.0
+    }
+  },
+  "cells": {
+    "doseS_kappa0.0_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 0.0,
+      "dial": 1.0,
+      "score_only": true,
+      "dataset": "cifar10",
+      "model": "cifar_cnn",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5415,
+          "asr": 0.11488888888888889,
+          "source": "results/targeted_dose kappa=0 (identical computation: score-only at the identity IS krum)"
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6097,
+          "asr": 0.020888888888888887,
+          "source": "results/targeted_dose kappa=0 (identical computation: score-only at the identity IS krum)"
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5801,
+          "asr": 0.04688888888888889,
+          "source": "results/targeted_dose kappa=0 (identical computation: score-only at the identity IS krum)"
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.5457,
+          "asr": 0.056666666666666664,
+          "source": "results/targeted_dose kappa=0 (identical computation: score-only at the identity IS krum)"
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.5471,
+          "asr": 0.06944444444444445,
+          "source": "results/targeted_dose kappa=0 (identical computation: score-only at the identity IS krum)"
+        }
+      ],
+      "mean_asr": 0.061755555555555564,
+      "mean_acc": 0.56482
+    },
+    "doseS_kappa0.5_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 0.5,
+      "dial": 2.718281828459045,
+      "score_only": true,
+      "dataset": "cifar10",
+      "model": "cifar_cnn",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5685,
+          "asr": 0.001
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6747,
+          "asr": 0.019555555555555555
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6048,
+          "asr": 0.011444444444444445
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.6041,
+          "asr": 0.03811111111111111
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.6906,
+          "asr": 0.005222222222222222
+        }
+      ],
+      "mean_asr": 0.015066666666666667,
+      "mean_acc": 0.6285399999999999,
+      "std_asr": 0.01310802223501243
+    },
+    "doseS_kappa1.0_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 1.0,
+      "dial": 7.38905609893065,
+      "score_only": true,
+      "dataset": "cifar10",
+      "model": "cifar_cnn",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5754,
+          "asr": 0.001
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6163,
+          "asr": 0.07
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6313,
+          "asr": 0.014
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.5846,
+          "asr": 0.06888888888888889
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7117,
+          "asr": 0.005
+        }
+      ],
+      "mean_asr": 0.03177777777777778,
+      "mean_acc": 0.62386,
+      "std_asr": 0.031043657032883688
+    },
+    "doseS_kappa2.0_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 2.0,
+      "dial": 54.598150033144236,
+      "score_only": true,
+      "dataset": "cifar10",
+      "model": "cifar_cnn",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5422,
+          "asr": 0.00044444444444444447
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6553,
+          "asr": 0.06322222222222222
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.645,
+          "asr": 0.08711111111111111
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.623,
+          "asr": 0.03933333333333333
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.6839,
+          "asr": 0.0025555555555555557
+        }
+      ],
+      "mean_asr": 0.038533333333333336,
+      "mean_acc": 0.62988,
+      "std_asr": 0.033808713903407644
+    }
+  }
+}

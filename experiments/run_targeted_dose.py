@@ -127,7 +127,7 @@ def dial(mode, val):
 
 
 def run_one(seed, mode, d2, attack_name, val, dataset="cifar10", model="cifar_cnn",
-            score_only=False):
+            score_only=False, emit_only=False):
     """One 50-round FL run of the targeted dose into d2 under attack_name.
 
     dataset/model default to the CIFAR-10 configuration this suite was frozen on, so every existing
@@ -135,9 +135,11 @@ def run_one(seed, mode, d2, attack_name, val, dataset="cifar10", model="cifar_cn
     (experiments/run_dose_femnist.py) passes ("femnist", "simple_cnn") and reuses this runner rather
     than copying it, because a copy is how two suites drift apart in what they compute.
 
-    score_only=True is the score-only control of pre_registration_score_only.md, passed straight
-    through to generic_compose (see its docstring). It defaults to False, so no existing call site
-    changes and --harness-check still verifies bit-equality against the frozen ladders.
+    score_only=True is the score-only control of pre_registration_score_only.md and emit_only=True
+    is its mirror, the fourth cell of the factorial, frozen in pre_registration_emit_only.md. Both
+    are passed straight through to generic_compose (see its docstring) and both default to False, so
+    no existing call site changes and --harness-check still verifies bit-equality against the frozen
+    ladders.
     """
     torch.manual_seed(seed); np.random.seed(seed)
     dev = "mps" if torch.backends.mps.is_available() else "cpu"
@@ -167,7 +169,7 @@ def run_one(seed, mode, d2, attack_name, val, dataset="cifar10", model="cifar_cn
         # status alone.
         srv.apply_update(generic_compose(srv, ups, d1, d2, tau=5.0, dose_key=(seed, rnd),
                                          adv_mask=[bool(cid in adv) for cid in pids],
-                                         score_only=score_only))
+                                         score_only=score_only, emit_only=emit_only))
         lr *= getattr(FL_CONFIG, "lr_decay", 1.0)
     return (float(srv.evaluate(td)["accuracy"]),
             float(evaluate_backdoor(srv.global_model, td, device=dev)))

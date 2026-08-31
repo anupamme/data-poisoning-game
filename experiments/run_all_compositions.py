@@ -430,36 +430,59 @@ def apply_d1_transform(updates, d1_name, tau=5.0, server=None, dose_key=None,
 
 
 def generic_compose(server, updates, d1_name, d2_name, tau=5.0, dose_key=None, adv_mask=None,
-                    score_only=False):
+                    score_only=False, emit_only=False):
     """Compose two defenses: d1's transformation then d2's aggregation.
 
-    score_only is the SCORE-ONLY CONTROL and is not a defense. When it is False -- every existing
-    call site -- this function is byte-for-byte the computation it always was, which is what
-    run_targeted_dose.py --harness-check verifies.
+    score_only and emit_only are CONTROLS, not defenses. They are the two off-diagonal cells of the
+    2x2 factorial that separates the channels an upstream rescaling opens into a selector: what the
+    selector READS (its statistic, hence its decision) and what the selected client CONTRIBUTES (the
+    magnitude and geometry of the update that reaches the model).
 
-    When it is True, d2 SCORES on the transformed stack but AGGREGATES the untransformed selected
+        emit_only=False, score_only=False   both channels open   = the uncontrolled Mode-S arm
+        emit_only=False, score_only=True    statistic channel only
+        emit_only=True,  score_only=False   magnitude channel only
+        (both closed is kappa=0, the identity rung, which needs no flag)
+
+    When both are False -- every pre-factorial call site -- this function is byte-for-byte the
+    computation it always was, which is what run_targeted_dose.py --harness-check verifies.
+
+    score_only=True: d2 SCORES on the transformed stack but AGGREGATES the untransformed selected
     update. That closes the magnitude channel: the update entering training is exactly the one a
     client produced, so d1 can change only which client is selected, never what that client
-    contributes. It is defined for selectors alone -- a weighted averager or a coordinate-wise order
-    statistic emits no single selected client, so there is no "the selected update" to hold fixed --
-    and it raises rather than silently doing something else for the other aggregators.
+    contributes.
 
-    The selection mirror is imported from verify_cos_invariance rather than re-derived, so this
-    control and measure_admission.py cannot drift apart in what they call "the statistic". The
+    emit_only=True: the mirror. d2 SCORES on the untransformed stack -- so its decision is pinned to
+    the identity rung's, and the statistic channel is closed -- but AGGREGATES the transformed
+    selected update, so the only thing d1 can still move is what that client contributes. Rules
+    frozen in experiments/pre_registration_emit_only.md.
+
+    Both are defined for selectors alone -- a weighted averager or a coordinate-wise order statistic
+    emits no single selected client, so there is no "the selected update" to hold fixed or to
+    rescale -- and both raise rather than silently doing something else for the other aggregators.
+
+    The selection mirror is imported from verify_cos_invariance rather than re-derived, so these
+    controls and measure_admission.py cannot drift apart in what they call "the statistic". The
     import is deferred because verify_cos_invariance imports apply_d1_transform from this module.
     """
+    if score_only and emit_only:
+        raise ValueError("score_only and emit_only are opposite cells of the same factorial and "
+                         "cannot both be set: closing both channels is the kappa=0 identity rung")
     # Step 1: Apply d1's per-client transformation
     transformed = apply_d1_transform(updates, d1_name, tau=tau, server=server,
                                      dose_key=dose_key, adv_mask=adv_mask)
-    if score_only:
+    if score_only or emit_only:
         if d2_name not in ("krum", "cos_krum"):
-            raise ValueError(f"score_only is defined for selectors only, not {d2_name}: there is no "
-                             "single selected update whose magnitude could be held fixed")
+            raise ValueError(f"{'score_only' if score_only else 'emit_only'} is defined for "
+                             f"selectors only, not {d2_name}: there is no single selected update "
+                             "whose magnitude could be held fixed or rescaled")
         from experiments.verify_cos_invariance import krum_selection, flatten
-        sel, _ = krum_selection(flatten(transformed), cosine=(d2_name == "cos_krum"))
+        # score_only scores the transformed stack and emits the raw pick; emit_only scores the raw
+        # stack and emits the transformed pick. Same two objects, swapped.
+        scored, emitted = ((transformed, updates) if score_only else (updates, transformed))
+        sel, _ = krum_selection(flatten(scored), cosine=(d2_name == "cos_krum"))
         # _fedavg over the single selected update, exactly as _krum's own last line does, so the
         # returned object has the same form and dtype path as the uncontrolled arm's.
-        return server.aggregate([updates[sel]], method="fedavg")
+        return server.aggregate([emitted[sel]], method="fedavg")
     # Step 2: Aggregate with d2
     aggregated = server.aggregate(transformed, method=d2_name, tau=tau)
     return aggregated

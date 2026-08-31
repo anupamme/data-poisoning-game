@@ -1,0 +1,231 @@
+{
+  "description": "Score-only control scored against experiments/pre_registration_score_only.md.",
+  "prereg_commit": "35788d9",
+  "dataset": "cifar10",
+  "model": "cifar_cnn",
+  "arm": {
+    "mode": "S",
+    "d2": "krum",
+    "attack": "committed_scaling",
+    "score_only": true
+  },
+  "rungs": [
+    {
+      "kappa": 0.0,
+      "mean_asr": 0.061755555555555564,
+      "ci": [
+        0.018746327678252114,
+        0.10476478343285901
+      ],
+      "mean_accuracy": 0.56482,
+      "asrs": [
+        0.11488888888888889,
+        0.020888888888888887,
+        0.04688888888888889,
+        0.056666666666666664,
+        0.06944444444444445
+      ],
+      "accs": [
+        0.5415,
+        0.6097,
+        0.5801,
+        0.5457,
+        0.5471
+      ],
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "gated": false,
+      "imported": true
+    },
+    {
+      "kappa": 0.5,
+      "mean_asr": 0.015066666666666667,
+      "ci": [
+        -0.003130185419945383,
+        0.033263518753278716
+      ],
+      "mean_accuracy": 0.6285399999999999,
+      "asrs": [
+        0.001,
+        0.019555555555555555,
+        0.011444444444444445,
+        0.03811111111111111,
+        0.005222222222222222
+      ],
+      "accs": [
+        0.5685,
+        0.6747,
+        0.6048,
+        0.6041,
+        0.6906
+      ],
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "gated": false,
+      "imported": false
+    },
+    {
+      "kappa": 1.0,
+      "mean_asr": 0.03177777777777778,
+      "ci": [
+        -0.011317727030416697,
+        0.07487328258597226
+      ],
+      "mean_accuracy": 0.62386,
+      "asrs": [
+        0.001,
+        0.07,
+        0.014,
+        0.06888888888888889,
+        0.005
+      ],
+      "accs": [
+        0.5754,
+        0.6163,
+        0.6313,
+        0.5846,
+        0.7117
+      ],
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "gated": false,
+      "imported": false
+    },
+    {
+      "kappa": 2.0,
+      "mean_asr": 0.038533333333333336,
+      "ci": [
+        -0.008400685781741024,
+        0.0854673524484077
+      ],
+      "mean_accuracy": 0.62988,
+      "asrs": [
+        0.00044444444444444447,
+        0.06322222222222222,
+        0.08711111111111111,
+        0.03933333333333333,
+        0.0025555555555555557
+      ],
+      "accs": [
+        0.5422,
+        0.6553,
+        0.645,
+        0.623,
+        0.6839
+      ],
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "gated": false,
+      "imported": false
+    }
+  ],
+  "primary": {
+    "delta": -0.023222222222222227,
+    "equiv_margin": 0.15,
+    "equivalent": true,
+    "refuting_threshold": 0.21175555555555556,
+    "uncontrolled_mode_s_delta": -0.026088888888888898,
+    "verdict": "THE NEGATIVE SURVIVES WITH THE MAGNITUDE CHANNEL CLOSED",
+    "reading": "Substantial statistic and decision disturbance does not produce a corresponding change in suppression even when the magnitude and direction of the aggregated update are held exactly fixed. The central claim is instrumented against two independent confounds -- attenuation (Mode S) and magnitude (here)."
+  },
+  "secondary_jt": {
+    "J": 58.5,
+    "z": -1.1103288651022476,
+    "p_rise": 0.8665713304951812,
+    "p_rise_perm": 0.8737563121843908,
+    "caveat": "n=5; a null is not evidence of flatness",
+    "direction_as_specified": false
+  },
+  "accuracy_gate": {
+    "floor": 0.35,
+    "failed_rungs": [],
+    "ok": true
+  },
+  "cos_krum_corollary": {
+    "ran": true,
+    "bit_identical": true,
+    "seed": 42,
+    "attack": "committed_pixel",
+    "vacuous_all_zero_asr": false,
+    "rungs_below_acc_floor": [],
+    "max_abs_d_asr": 0.0,
+    "max_abs_d_accuracy": 0.0,
+    "uncontrolled": {
+      "rungs": {
+        "0.0": {
+          "mean_asr": 0.5837361111111111,
+          "n_seeds": 8,
+          "seed_asr": 0.003111111111111111
+        },
+        "0.5": {
+          "mean_asr": 0.41138888888888886,
+          "n_seeds": 8,
+          "seed_asr": 0.19033333333333333
+        },
+        "1.0": {
+          "mean_asr": 0.29543055555555553,
+          "n_seeds": 8,
+          "seed_asr": 0.19255555555555556
+        },
+        "2.0": {
+          "mean_asr": 0.15908333333333335,
+          "n_seeds": 8,
+          "seed_asr": 0.2268888888888889
+        }
+      },
+      "arm_delta": -0.42465277777777777,
+      "seed_delta": 0.22377777777777777,
+      "n_seeds": 8
+    },
+    "checked_seed_moves_with_arm": false,
+    "interpretation": "bit-identical, so score-only removes ALL of this seed's uncontrolled movement (+0.224) and the invariance claim holds. But this seed moves OPPOSITE to the arm mean (-0.425 over 8 seeds), so the check corroborates the CHANNEL and not the arm's published fall; attributing that fall would need the arm's other seeds, which the pre-registration fixed at one and which are not added after seeing the data"
+  },
+  "frozen_premise_channels": {
+    "0.0": {
+      "agg_disp": 0.0,
+      "decision": 0.0,
+      "admission": 0.0
+    },
+    "0.5": {
+      "agg_disp": 0.663330926150943,
+      "decision": 0.5333333333333333,
+      "admission": 0.0
+    },
+    "1.0": {
+      "agg_disp": 0.847030712004612,
+      "decision": 0.8,
+      "admission": 0.0
+    },
+    "2.0": {
+      "agg_disp": 0.8924469476420579,
+      "decision": 0.7333333333333333,
+      "admission": 0.0
+    }
+  },
+  "limitations": [
+    "Selectors only: coord_median and reputation emit no single selected client, so the control is undefined there. The coord_median arm carrying the +0.098 rise is NOT magnitude-controlled.",
+    "Score-only Krum is an instrument, not a defense: it aggregates an update the scoring stage did not see.",
+    "One cell: one dataset, one architecture, one attack, one defense, n=5.",
+    "Closing the magnitude channel does not hold the model trajectory fixed, because which client is selected still changes -- by design."
+  ]
+}

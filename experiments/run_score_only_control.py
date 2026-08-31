@@ -46,6 +46,13 @@ D2 = "krum"
 ATTACK = "committed_scaling"
 DATASET, MODEL = "cifar10", "cifar_cnn"
 COS_ARM = "cos_krum"          # Section 5 of the pre-registration: an assertion, not a five-seed arm
+# The corollary tests the attribution of the PUBLISHED cos_krum arm's 0.173 fall, and that arm is
+# cos_krum/committed_pixel (results/targeted_dose: 0.584 -> 0.159 over 8 seeds). It is NOT the krum
+# arm's committed_scaling: on that cell cos_krum collapses to chance (acc 0.1224, ASR 0.000 at every
+# rung), so bit-identity holds trivially with no fall present to attribute. Keeping ATTACK here was a
+# bug, not a pre-registered choice -- prereg Section 5 names no attack and anchors the check to the
+# 0.173 fall itself.
+COS_ATTACK = "committed_pixel"
 
 TARGETED = os.path.join(base, "results", "targeted_dose", "summary.json")
 ADMISSION = os.path.join(base, "results", "admission_measurement.json")
@@ -178,27 +185,43 @@ def cos_krum_check():
     """
     seed = SEEDS5[0]
     print("=== COS_KRUM CHECK: score-only must be bit-identical across rungs (prereg Section 5) ===")
-    print(f"    {DATASET}/{MODEL}, {COS_ARM}/{ATTACK.replace('committed_', '')} at seed {seed}")
+    print(f"    {DATASET}/{MODEL}, {COS_ARM}/{COS_ATTACK.replace('committed_', '')} at seed {seed}")
     print("    Predicted: identical at every rung. If not, the magnitude attribution of the")
     print("    uncontrolled arm's 0.173 fall is WRONG and is withdrawn.\n", flush=True)
     ref, rows = None, []
     for v in KAPPAS:
         t = time.time()
-        acc, asr = run_one(seed, "S", COS_ARM, ATTACK, v, dataset=DATASET, model=MODEL,
+        acc, asr = run_one(seed, "S", COS_ARM, COS_ATTACK, v, dataset=DATASET, model=MODEL,
                            score_only=True)
         if ref is None:
             ref = (acc, asr)
         d = (acc - ref[0], asr - ref[1])
         rows.append({"kappa": v, "accuracy": acc, "asr": asr,
-                     "d_accuracy": d[0], "d_asr": d[1]})
+                     "d_accuracy": d[0], "d_asr": d[1],
+                     "below_acc_floor": bool(acc < ACC_FLOOR)})
         print(f"  kappa={v:<4} acc={acc:.6f} ASR={asr:.6f}   d=({d[0]:+.2e}, {d[1]:+.2e})  "
-              f"({time.time() - t:.0f}s)", flush=True)
+              f"({time.time() - t:.0f}s)"
+              + ("  * below acc floor" if acc < ACC_FLOOR else ""), flush=True)
     ok = all(abs(r["d_asr"]) < 1e-9 and abs(r["d_accuracy"]) < 1e-9 for r in rows)
+    gated = [r["kappa"] for r in rows if r["below_acc_floor"]]
     print(f"\n  {'BIT-IDENTICAL at every rung: the magnitude attribution is confirmed.' if ok else 'NOT IDENTICAL: the magnitude attribution is REFUTED and must be withdrawn.'}")
+    # Bit-identity is a mechanical property and holds regardless of whether the model learned. But if
+    # ASR sits on the floor the identity corroborates nothing about the 0.173 fall, because there is no
+    # fall present in this run to attribute. Disclose that rather than let identity read as support.
+    if gated:
+        print(f"  ACCURACY GATE: kappa {gated} below ACC_FLOOR={ACC_FLOOR}. The identity still holds "
+              "mechanically, but at those rungs a low ASR is a collapsed model, not suppression, so "
+              "they corroborate nothing about the magnitude attribution and are reported as such.")
+    if ok and all(r["asr"] == 0.0 for r in rows):
+        print("  WARNING: ASR is exactly 0.000 at EVERY rung, so bit-identity is vacuous here -- "
+              "no fall exists in this cell to attribute to any channel. Do NOT report this as "
+              "confirming the 0.173 attribution.")
     os.makedirs(out_dir, exist_ok=True)
     json.dump({"description": "Prereg Section 5: score-only cos_krum bit-identity check, 1 seed.",
-               "prereg_commit": PREREG_COMMIT, "d2": COS_ARM, "attack": ATTACK, "seed": seed,
-               "rungs": rows, "bit_identical": ok},
+               "prereg_commit": PREREG_COMMIT, "d2": COS_ARM, "attack": COS_ATTACK, "seed": seed,
+               "rungs": rows, "bit_identical": ok,
+               "acc_floor": ACC_FLOOR, "rungs_below_acc_floor": gated,
+               "vacuous_all_zero_asr": bool(ok and all(r["asr"] == 0.0 for r in rows))},
               open(os.path.join(out_dir, "cos_krum_check.json"), "w"), indent=2)
     return 0
 

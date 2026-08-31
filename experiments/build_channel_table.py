@@ -38,6 +38,24 @@ SOURCES, all read-only:
   results/targeted_dose/summary.json   ASR for the three Round-12 Mode-S arms
   results/dose_replication/summary.json  ASR for the Round-15 coord_median arm
   results/dose_femnist/summary.json     ASR for the FEMNIST arm, if it has been run
+  results/displacement_decomposition.json  the score-only row's aggregate displacement
+  results/score_only/summary.json          the score-only row's ASR, read separately (see below)
+
+THE SCORE-ONLY ROW is the one row that is not a plain Mode-S ladder, and it is included because it
+closes the channel the Delta agg. column of the Krum row measures. Under score-only, Krum SCORES on
+the transformed stack and AGGREGATES the untransformed selected update, so:
+
+  decision / admission / influence  are the SAME measurement as the Krum row -- the selection is
+                                    computed on the transformed stack in both arms, so these three
+                                    columns are read from the Krum row rather than re-measured, and
+                                    this script asserts they come from that row.
+  aggregate                         is NOT the Krum row's 0.892. What score-only emits is u_{s1}
+                                    untransformed, so the displacement is the re-selection component
+                                    alone -- `score_only_displacement` in
+                                    results/displacement_decomposition.json, computed there by the
+                                    same rel_disp on the same rounds.
+  ASR                               comes from results/score_only/summary.json, the pre-registered
+                                    arm (experiments/pre_registration_score_only.md).
 
 Every cell printed is recomputed here from per-round / per-seed rows; no aggregate is transcribed.
 Rows whose ASR is not yet available print the channels and leave the ASR column blank rather than
@@ -58,6 +76,13 @@ ADM_FEMNIST = os.path.join(R, "femnist_admission.json")
 ASR_SOURCES = [os.path.join(R, "targeted_dose", "summary.json"),
                os.path.join(R, "dose_replication", "summary.json"),
                os.path.join(R, "dose_femnist", "summary.json")]
+# NOT in ASR_SOURCES: score_only/summary.json and emit_only/summary.json reuse run_targeted_dose's
+# cell_key on the same dataset, so merging either in would overwrite the published Krum row's ASR with
+# a controlled arm's. They are read only by score_only_row() / emit_only_row(), and _asr_cells() now
+# asserts no source can shadow another.
+DECOMP = os.path.join(R, "displacement_decomposition.json")
+SCORE_ONLY = os.path.join(R, "score_only", "summary.json")
+EMIT_ONLY = os.path.join(R, "emit_only", "summary.json")
 
 OUT = os.path.join(R, "channel_table.json")
 TOP = 2.0          # the top Mode-S rung, rho = exp(4) = 54.6
@@ -136,6 +161,12 @@ def _asr_cells():
         d = json.load(open(p))
         ds = d.get("dataset", "cifar10")
         for k, c in d.get("cells", {}).items():
+            # Keying on (dataset, key) is not enough on its own: two suites can share BOTH, as the
+            # score-only arm shares them with targeted_dose. A shadowed cell is a silently wrong
+            # published number, so refuse rather than resolve it by file order.
+            assert (ds, k) not in cells, (
+                f"cell {(ds, k)} appears in {cells[(ds, k)]['_source']} and "
+                f"{os.path.relpath(p, base)}; one would shadow the other")
             cells[(ds, k)] = dict(c, _source=os.path.relpath(p, base))
     return cells
 
@@ -161,6 +192,90 @@ def asr_delta(arm, attack, dataset="cifar10"):
             "source": hi.get("_source")}
 
 
+def _dasr(row):
+    return "---" if row["asr"] is None else f"{row['asr']['delta_asr']:+.4f}"
+
+
+def _controlled_asr(path):
+    """The identity -> top ASR contrast of a controlled arm's own summary file.
+
+    Shared by both factorial controls so the two rows cannot come to mean different contrasts.
+    """
+    if not os.path.exists(path):
+        return None
+    cells = json.load(open(path)).get("cells", {})
+    lo = cells.get(f"doseS_kappa{IDENTITY}_then_krum|committed_scaling")
+    hi = cells.get(f"doseS_kappa{TOP}_then_krum|committed_scaling")
+    if not lo or not hi:
+        return None
+    a0, c0, n0 = mean_asr(lo)
+    a2, c2, n2 = mean_asr(hi)
+    return {"identity_asr": a0, "top_asr": a2, "delta_asr": a2 - a0, "identity_acc": c0,
+            "top_acc": c2, "n_seeds": min(n0, n2), "source": os.path.relpath(path, base)}
+
+
+def score_only_row(table):
+    """The score-only control's row, derived from the Krum row plus two read-only artifacts.
+
+    Not re-measured: score-only leaves the SELECTION untouched (Krum still scores the transformed
+    stack), so decision, admission and influence are literally the Krum row's numbers and are taken
+    from it rather than recomputed under a second name. What differs is what is emitted -- the
+    untransformed selected update -- so the aggregate column is the re-selection component alone.
+    """
+    krum = next((t for t in table if t["label"] == "Krum"), None)
+    if krum is None or not os.path.exists(DECOMP) or not os.path.exists(SCORE_ONLY):
+        return None
+    dec = json.load(open(DECOMP))["summary"].get(f"doseS|krum|{TOP}")
+    if dec is None:
+        return None
+    asr = _controlled_asr(SCORE_ONLY)
+    # The Krum row's own total must equal the published displacement the decomposition split, or the
+    # re-selection component being borrowed here belongs to a different measurement.
+    assert abs(dec["total"] - krum["d_agg_disp"]) < 1e-9, (dec["total"], krum["d_agg_disp"])
+    return dict(krum, label="Krum, score-only", arm="krum_score_only",
+                kind="selector, magnitude channel closed",
+                channel_source=os.path.relpath(DECOMP, base),
+                d_agg_disp=float(dec["score_only_displacement"]),
+                identity_displacement=0.0, asr=asr,
+                borrowed_from="Krum (decision/admission/influence are the same measurement)")
+
+
+def emit_only_row(table):
+    """The emit-only control's row: the mirror of score-only and the fourth factorial cell.
+
+    Emit-only scores the UNTRANSFORMED stack and aggregates the TRANSFORMED selected update, so:
+
+    * Delta dec., Delta adm. and Delta Lambda_a are 0.000 **by construction, not borrowed**. The
+      transformation has no path to the selection at all, so on every round Krum picks exactly what
+      Krum-alone picks on that round's stack, the admitted set is that same client, and for a binary
+      mass the admitted mass is that same indicator. Precisely: this is a same-round, same-stack
+      counterfactual. It does NOT claim the run follows the identity rung's trajectory -- it cannot,
+      since a different update is emitted from round 1 onward -- only that within this arm the
+      statistic channel is closed. The score-only row borrows these three from Krum because there the
+      selection genuinely does change; here there is nothing to borrow.
+    * Delta agg. is the *rescaling* component of the algebraic decomposition, exactly as the
+      score-only row's is the *re-selection* component. Both are components of one bookkeeping
+      identity and neither is a causal quantity, which is the whole reason the ASR column of these
+      two rows -- which IS measured by running the counterfactual -- exists.
+    """
+    krum = next((t for t in table if t["label"] == "Krum"), None)
+    if krum is None or not os.path.exists(DECOMP) or not os.path.exists(EMIT_ONLY):
+        return None
+    dec = json.load(open(DECOMP))["summary"].get(f"doseS|krum|{TOP}")
+    if dec is None:
+        return None
+    assert abs(dec["total"] - krum["d_agg_disp"]) < 1e-9, (dec["total"], krum["d_agg_disp"])
+    return dict(krum, label="Krum, emit-only", arm="krum_emit_only",
+                kind="selector, statistic channel closed",
+                channel_source=os.path.relpath(DECOMP, base),
+                d_agg_disp=float(dec["rescaling"]),
+                d_decision=0.0, d_admission=0.0, d_influence=0.0,
+                identity_displacement=0.0, asr=_controlled_asr(EMIT_ONLY),
+                borrowed_from=None,
+                closed_by_construction="decision/admission/influence: the transform has no path "
+                                       "to the selection (same-round, same-stack counterfactual)")
+
+
 def main():
     print("=== CROSS-AGGREGATOR CHANNEL TABLE (Mode S, identity rung -> kappa = 2, rho = 54.6) ===")
     print("    Assembled from frozen artifacts. No ASR is computed here and no model is trained.\n")
@@ -181,6 +296,20 @@ def main():
                       "identity_displacement": None if base_ch is None else base_ch["d_agg_disp"],
                       **ch, "asr": asr})
 
+    so = score_only_row(table)
+    if so is None:
+        print("  -- Krum, score-only: needs displacement_decomposition.json and "
+              "score_only/summary.json; row skipped")
+    else:
+        table.append(so)
+
+    eo = emit_only_row(table)
+    if eo is None:
+        print("  -- Krum, emit-only: needs displacement_decomposition.json and "
+              "emit_only/summary.json; row skipped (the arm has not been run)")
+    else:
+        table.append(eo)
+
     hdr = (f"  {'aggregator':22s} {'kind':34s} {'dAgg':>8s} {'dDec':>7s} {'dAdm':>7s} "
            f"{'dInfl':>7s} {'dASR':>8s} {'n':>4s}")
     print(hdr)
@@ -198,8 +327,36 @@ def main():
     print("  dAdm   fraction of rounds the SUPPORT of the adversarial mass changes")
     print("  dInfl  mean absolute change in the adversarial mass Lambda_a")
     print("  dASR   mean ASR(kappa=2) - mean ASR(identity), recomputed per seed")
-    bins = [t["label"] for t in table if t["mass_is_binary"]]
-    print(f"\n  Binary-mass arms (dAdm == dInfl by construction): {', '.join(bins)}")
+    if so is not None:
+        print("\n  The score-only row emits the UNTRANSFORMED selected update, so its dAgg is the")
+        print("  re-selection component alone (displacement_decomposition.json); its dDec/dAdm/dInfl")
+        print("  are the Krum row's own numbers, since score-only does not change the selection.")
+    if eo is not None:
+        print("\n  The emit-only row is its mirror: it emits the RESCALED selected update but scores")
+        print("  the untransformed stack, so its dAgg is the rescaling component alone and its")
+        print("  dDec/dAdm/dInfl are 0.000 BY CONSTRUCTION -- the transform has no path to the")
+        print("  selection -- rather than borrowed from any row.")
+    if so is not None and eo is not None:
+        krum = next(t for t in table if t["label"] == "Krum")
+        base_asr = krum["asr"]["identity_asr"] if krum["asr"] else float("nan")
+        print("\n=== THE 2x2 FACTORIAL (dASR at the top rung; the identity rung is the shared base) ===")
+        print(f"  base ASR at the identity rung: {base_asr:.4f}")
+        print(f"  {'':28s} {'emitted unchanged':>20s} {'emitted rescaled':>20s}")
+        print(f"  {'decision unchanged':28s} {'0.000 (identity)':>20s} "
+              f"{_dasr(eo):>20s}   <- emit-only")
+        print(f"  {'decision changed':28s} {_dasr(so):>20s} {_dasr(krum):>20s}   <- full Mode S")
+        print("                                    ^ score-only")
+        d_so, d_eo, d_full = (r["asr"]["delta_asr"] if r["asr"] else None for r in (so, eo, krum))
+        if None not in (d_so, d_eo, d_full):
+            print(f"\n  additivity: full {d_full:+.4f} = score-only {d_so:+.4f} + emit-only "
+                  f"{d_eo:+.4f} + residual {d_full - (d_so + d_eo):+.4f}")
+            print("  The pre-registered thresholds and the verdict live in "
+                  "results/emit_only/summary.json;")
+            print("  this block reports the arithmetic, not the verdict.")
+    # Separated by " | ", not ", ": two of these labels contain a comma, so a comma-joined list
+    # reads as more arms than there are.
+    bins = [t["label"].replace(chr(92), "") for t in table if t["mass_is_binary"]]
+    print(f"\n  Binary-mass arms (dAdm == dInfl by construction): {' | '.join(bins)}")
 
     print("\n=== SANITY: the identity rung must displace nothing ===")
     for t in table:
@@ -209,7 +366,7 @@ def main():
                  + ("  OK" if v is not None and v < 1e-9 else "  <- NOT ZERO")))
 
     print("\n=== THE FULL LADDERS, for the appendix ===")
-    for t in table:
+    for t in [t for t in table if "borrowed_from" not in t]:
         print(f"\n  -- {t['label'].replace(chr(92), '')} ({t['kind']}, {t['dataset']}) --")
         print(f"  {'kappa':>6s} {'dAgg':>8s} {'dDec':>7s} {'dAdm':>7s} {'dInfl':>7s} "
               f"{'ASR':>8s} {'acc':>6s}")

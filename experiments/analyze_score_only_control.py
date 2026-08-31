@@ -43,20 +43,66 @@ COS_CHECK = os.path.join(base, "results", "score_only", "cos_krum_check.json")
 OUT = os.path.join(base, "results", "score_only", "scored.json")
 
 
+def cos_uncontrolled(attack, seed):
+    """The published Mode-S cos_krum ladder the corollary reasons about: arm mean and one seed.
+
+    Read here rather than asserted, because bit-identity at a seed only speaks to the ARM's published
+    fall if that seed actually falls. Seed 42 does not, and an artifact that claims otherwise would
+    put an overstatement into the paper.
+    """
+    path = os.path.join(base, "results", "targeted_dose", "summary.json")
+    if not os.path.exists(path):
+        return None
+    out = {}
+    for c in json.load(open(path)).get("cells", {}).values():
+        if c.get("mode") == "S" and c.get("d2") == "cos_krum" and c.get("attack") == attack:
+            rows = c["per_seed"]
+            per = {r["seed"]: r["asr"] for r in rows}
+            out[c["rung"]] = {"mean_asr": float(np.mean([r["asr"] for r in rows])),
+                              "n_seeds": len(rows), "seed_asr": per.get(seed)}
+    if not out or any(v["seed_asr"] is None for v in out.values()):
+        return None
+    ks = sorted(out)
+    return {"rungs": out, "arm_delta": out[ks[-1]]["mean_asr"] - out[ks[0]]["mean_asr"],
+            "seed_delta": out[ks[-1]]["seed_asr"] - out[ks[0]]["seed_asr"],
+            "n_seeds": out[ks[0]]["n_seeds"]}
+
+
 def cos_corollary():
     """Prereg Section 5: the one-seed bit-identity test of the magnitude attribution."""
     if not os.path.exists(COS_CHECK):
         return None
     c = json.load(open(COS_CHECK))
-    return {"ran": True, "bit_identical": c.get("bit_identical"), "seed": c.get("seed"),
+    ident = c.get("bit_identical")
+    unc = cos_uncontrolled(c.get("attack", "committed_pixel"), c.get("seed"))
+    asrs = [r["asr"] for r in c["rungs"]]
+    vacuous = bool(ident and max(asrs) == 0.0)
+    # Does the checked seed move at all under the uncontrolled dose, and in the arm's direction?
+    same_dir = None if unc is None else bool(
+        unc["seed_delta"] * unc["arm_delta"] > 0 and abs(unc["seed_delta"]) > 1e-12)
+    if not ident:
+        interp = ("NOT bit-identical: the magnitude attribution of the published fall is REFUTED and "
+                  "is withdrawn in the body, in the same paragraph and with the same prominence")
+    elif vacuous:
+        interp = ("bit-identical but VACUOUS: ASR is 0.000 at every rung, so no movement exists in "
+                  "this run to attribute to any channel. Do not report as confirming the attribution")
+    elif same_dir is False:
+        interp = ("bit-identical, so score-only removes ALL of this seed's uncontrolled movement "
+                  f"({unc['seed_delta']:+.3f}) and the invariance claim holds. But this seed moves "
+                  f"OPPOSITE to the arm mean ({unc['arm_delta']:+.3f} over {unc['n_seeds']} seeds), "
+                  "so the check corroborates the CHANNEL and not the arm's published fall; "
+                  "attributing that fall would need the arm's other seeds, which the "
+                  "pre-registration fixed at one and which are not added after seeing the data")
+    else:
+        interp = ("bit-identical, and the checked seed moves with the arm, so the attribution of the "
+                  "published fall to the magnitude channel is corroborated at this seed")
+    return {"ran": True, "bit_identical": ident, "seed": c.get("seed"),
+            "attack": c.get("attack"), "vacuous_all_zero_asr": vacuous,
+            "rungs_below_acc_floor": c.get("rungs_below_acc_floor"),
             "max_abs_d_asr": max(abs(r["d_asr"]) for r in c["rungs"]),
             "max_abs_d_accuracy": max(abs(r["d_accuracy"]) for r in c["rungs"]),
-            "interpretation": (
-                "bit-identical: the paper's attribution of the uncontrolled cos_krum arm's 0.173 fall "
-                "to the magnitude channel is confirmed"
-                if c.get("bit_identical") else
-                "NOT bit-identical: the magnitude attribution of the 0.173 fall is REFUTED and is "
-                "withdrawn in the body, in the same paragraph and with the same prominence")}
+            "uncontrolled": unc, "checked_seed_moves_with_arm": same_dir,
+            "interpretation": interp}
 
 
 def main():
@@ -128,8 +174,12 @@ def main():
     if cos is None:
         print("  NOT RUN. python3 experiments/run_score_only_control.py --cos-krum-check\n")
     else:
-        print(f"  seed {cos['seed']}: max |d ASR| = {cos['max_abs_d_asr']:.2e}, "
+        print(f"  seed {cos['seed']} on {cos['attack']}: max |d ASR| = {cos['max_abs_d_asr']:.2e}, "
               f"max |d acc| = {cos['max_abs_d_accuracy']:.2e}")
+        u = cos["uncontrolled"]
+        if u is not None:
+            print(f"  uncontrolled at this seed: {u['seed_delta']:+.3f};  arm mean over "
+                  f"{u['n_seeds']} seeds: {u['arm_delta']:+.3f}")
         print(f"  {cos['interpretation']}\n")
 
     pr = premise()
