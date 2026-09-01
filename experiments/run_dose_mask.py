@@ -79,7 +79,7 @@ from experiments.run_targeted_dose import (run_one, d1_name, dial, cell_key, ACC
                                            EQUIV_MARGIN, ATTACK_MAP)
 
 # experiments/pre_registration_dose_mask.md, committed before results/dose_mask/ existed.
-PREREG_COMMIT = None
+PREREG_COMMIT = "684b31e"
 
 MODE, D2, ATTACK = "M", "krum", "committed_scaling"
 DROPS = [0.0, 0.2, 0.5, 0.8]              # frozen rung grid; identical to measure_admission_mask.py

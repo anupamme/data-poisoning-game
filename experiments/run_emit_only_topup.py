@@ -86,7 +86,7 @@ from experiments.run_targeted_dose import (run_one, d1_name, dial, cell_key, SEE
                                            ATTACK_MAP)
 
 # experiments/pre_registration_emit_only_topup.md, committed before results/emit_only_topup/ existed.
-PREREG_COMMIT = None
+PREREG_COMMIT = "684b31e"
 # The frozen suite this one extends, and the clause it departs from. Quoted, not paraphrased.
 PARENT_PREREG_COMMIT = "b995f1b"
 DEPARTURE = ("pre_registration_emit_only.md at b995f1b: 'No seed addition. n=5, seeds 42-46, "

@@ -29,9 +29,11 @@ THE IDENTITY RUNG IS COMPUTED HERE, NOT IMPORTED. The published kappa=0 rung is 
 results/dose_response/, which holds seeds 42-46 only. For seeds 47-61 there is nothing to import, so
 kappa=0 is computed in place and marked "<computed here>" per seed. This is the established practice
 of the suite, not a departure: the published cos_krum arm already mixes the two, with 42-46 imported
-and 47-49 computed. --harness-check re-runs kappa=0 at one new seed and asserts bit-equality against
-krum standalone; if that fails, the mixed-provenance kappa=0 rung is not one rung and the top-up does
-not run.
+and 47-49 computed. --harness-check computes kappa=0 IN-SUITE AT SEED 42, where the imported value
+already exists, and asserts the two agree to < 1e-9; a new seed would make the check vacuous, since
+there would be nothing to compare against. One run settles it for all fifteen new seeds because the
+code path does not depend on the seed. If it fails, the mixed-provenance kappa=0 rung is not one rung
+and the top-up does not run.
 
 SEEDS5 in run_targeted_dose.py is NOT edited and results/targeted_dose/ is NOT rewritten. This suite
 writes its own directory and the two are merged only at analysis time, where the five published seeds
@@ -60,7 +62,7 @@ from experiments.run_targeted_dose import (run_one, d1_name, dial, cell_key, KAP
                                            ACC_FLOOR, EQUIV_MARGIN, ATTACK_MAP)
 
 # experiments/pre_registration_dose_seed_topup.md, committed before results/dose_seed_topup/ existed.
-PREREG_COMMIT = None
+PREREG_COMMIT = "684b31e"
 
 MODE, D2, ATTACK = "S", "krum", "committed_scaling"
 NEW_SEEDS = list(range(47, 62))          # 47-61, frozen in the pre-registration
