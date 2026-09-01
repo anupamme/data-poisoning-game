@@ -103,13 +103,17 @@ def admission(stack, adv_rows, sel_krum, sel_cos, w_rep, am):
     }
 
 
-def measure(attack_name, dataset="cifar10", model="cifar_cnn", seeds=None, rounds=None):
+def measure(attack_name, dataset="cifar10", model="cifar_cnn", seeds=None, rounds=None,
+            rungs=None):
     """Per-round channel measurements for every rung of every family.
 
-    dataset/model/seeds/rounds default to the configuration this measurement was frozen on, so
-    results/admission_measurement.json is reproduced exactly by the default call. The
+    dataset/model/seeds/rounds/rungs all default to the configuration this measurement was frozen
+    on, so results/admission_measurement.json is reproduced exactly by the default call. The
     second-dataset eligibility check (experiments/measure_admission_femnist.py) passes
-    ("femnist", "simple_cnn") and writes its own output file.
+    ("femnist", "simple_cnn") and writes its own output file; the coordinate-masking eligibility
+    check (experiments/measure_admission_mask.py) passes its own `rungs` list, because Mode M is a
+    fourth family that did not exist when RUNGS was frozen. Both reuse this loop rather than copying
+    it, so no two families can end up measured by two different definitions of "the statistic".
     """
     dev = "mps" if torch.backends.mps.is_available() else "cpu"
     rows = []
@@ -140,7 +144,7 @@ def measure(attack_name, dataset="cifar10", model="cifar_cnn", seeds=None, round
             adm_0 = admission(raw, adv_rows, sel_krum_0, sel_cos_0, w_rep_0, am_0)
             agg_0 = aggregates(raw, sel_krum_0, sel_cos_0, w_rep_0)
 
-            for family, val, d1 in RUNGS:
+            for family, val, d1 in (RUNGS if rungs is None else rungs):
                 t = apply_d1_transform(ups, d1, tau=5.0, dose_key=(seed, rnd), adv_mask=adv_mask)
                 st = flatten(t)
                 # Coefficients read back from the transformed NORMS, so this also verifies that the

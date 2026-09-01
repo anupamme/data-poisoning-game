@@ -116,13 +116,24 @@ LADDER1 = os.path.join(base, "results", "dose_response", "summary.json")
 
 
 def d1_name(mode, val):
-    """The synthetic upstream stage for a rung; formatted so parse_targeted_dose round-trips it."""
+    """The synthetic upstream stage for a rung; formatted so parse_targeted_dose round-trips it.
+
+    Mode M is the coordinate-masking family (experiments/run_dose_mask.py), added after Modes S and
+    A were frozen and published. It is dispatched here rather than in a second copy of this function
+    so that the mask arm and the two rescaling arms cannot drift apart in rung naming; the S and A
+    strings are unchanged, so every frozen cell key still resolves.
+    """
+    if mode == "M":
+        return f"doseM_m{val}"
     return f"doseS_kappa{val}" if mode == "S" else f"doseA_nu{val}"
 
 
 def dial(mode, val):
-    """The rung's position on its own family's dial: rho for mode S, gamma for mode A. The two are
-    NOT the same quantity and are never pooled into one axis."""
+    """The rung's position on its own family's dial: rho for mode S, gamma for mode A, and the drop
+    rate itself for mode M. These are NOT the same quantity and are never pooled into one axis --
+    mode M's dial is not even a weight ratio, since the transform preserves every client's norm."""
+    if mode == "M":
+        return float(val)
     return float(np.exp(2.0 * val)) if mode == "S" else float(np.exp(val))
 
 

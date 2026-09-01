@@ -145,12 +145,20 @@ DOSE_PREFIX = "dose_kappa"
 #   doseA_nu<V>     payload-only: benign uniform, adversary-to-benign ratio exp(V), whole
 #                   vector scaled to mean 1. Sweeps the adversary's weight through both of
 #                   Theorem 1's mechanism-preserving regimes.
+#   doseM_m<M>      coordinate masking: every adversary passed through BIT-IDENTICALLY, each
+#                   benign update losing an independent Bernoulli(M) fraction of its
+#                   coordinates and then renormalized to its own original L2 norm. This one is
+#                   NOT of the form c_i * u_i for a scalar c_i > 0, so it falls OUTSIDE the
+#                   hypothesis of the invariance proposition and of the bounded-reweighting
+#                   theorem -- which is the point of having it. See
+#                   experiments/pre_registration_dose_mask.md.
 #
-# Both read adversary identity and are therefore INSTRUMENTS FOR CAUSAL IDENTIFICATION, not
-# defenses: no deployable defense knows which clients are adversarial. See
+# All three read adversary identity and are therefore INSTRUMENTS FOR CAUSAL IDENTIFICATION,
+# not defenses: no deployable defense knows which clients are adversarial. See
 # experiments/pre_registration_targeted_dose.md.
 DOSE_S_PREFIX = "doseS_kappa"
 DOSE_A_PREFIX = "doseA_nu"
+DOSE_M_PREFIX = "doseM_m"
 
 
 def parse_dose(d1_name):
@@ -164,8 +172,9 @@ def parse_targeted_dose(d1_name):
     """(mode, value) for a targeted-dose d1 name, else None.
 
     Mode S carries kappa, the dispersion imposed on the benign coefficients; mode A carries nu,
-    the log of the adversary-to-benign coefficient ratio. "doseS_kappa"/"doseA_nu" do not share a
-    prefix with "dose_kappa", so parse_dose cannot claim them and the Round-11 ladder is untouched.
+    the log of the adversary-to-benign coefficient ratio; mode M carries m, the per-coordinate drop
+    rate applied to the benign updates. None of "doseS_kappa"/"doseA_nu"/"doseM_m" shares a prefix
+    with "dose_kappa", so parse_dose cannot claim them and the Round-11 ladder is untouched.
     """
     if not isinstance(d1_name, str):
         return None
@@ -173,6 +182,8 @@ def parse_targeted_dose(d1_name):
         return "S", float(d1_name[len(DOSE_S_PREFIX):])
     if d1_name.startswith(DOSE_A_PREFIX):
         return "A", float(d1_name[len(DOSE_A_PREFIX):])
+    if d1_name.startswith(DOSE_M_PREFIX):
+        return "M", float(d1_name[len(DOSE_M_PREFIX):])
     return None
 
 
@@ -259,6 +270,82 @@ def dose_coefficients_payload_only(adv_mask, nu):
     return np.array([gamma * s if a else s for a in adv_mask])
 
 
+def mask_benign_updates(updates, adv_mask, drop, dose_key, keys=None):
+    """Mode M. Benign updates lose a Bernoulli(drop) fraction of coordinates, then are renormalized
+    to their own original L2 norm; every adversarial update is passed through BIT-IDENTICALLY.
+
+    WHY THIS TRANSFORM EXISTS, AND WHAT IT IS FOR. Modes S and A are both positive per-client
+    rescalings, `u_i -> c_i * u_i` with `c_i > 0`. That is exactly the hypothesis of the invariance
+    proposition and of the bounded-reweighting theorem, so every negative established with them is
+    open to one reading the paper cannot answer from inside that family: the non-implication might be
+    a property of scalar multiplication rather than of statistic preservation. Coordinate masking is
+    NOT of that form -- it is not even a linear map with a client-independent matrix, since each
+    benign client gets its own mask -- so it sits outside the theorem's scope by construction. It is
+    a second, structurally different way to disturb what a selector reads.
+
+    THE TWO CHANNELS THIS HOLDS FIXED, both exactly rather than approximately:
+
+      the adversarial contribution   Adversarial updates are returned as the SAME OBJECTS, not
+                                     copies and not multiplied by 1.0, so `T(U)_i == U_i` bit for
+                                     bit for every `i` in A. This is a strictly stronger pin than
+                                     Mode S's, which holds `c_adv = 1.0` in exact arithmetic but is
+                                     read back through float32 update norms at ~3.5e-07.
+      every client's magnitude       Each masked benign update is rescaled so that its L2 norm over
+                                     all floating-point coordinates equals its pre-mask norm. Norms
+                                     are accumulated in float64 and the rescale is applied in the
+                                     tensor's own dtype, so the read-back is 1.0 to float32 noise.
+                                     WITHOUT this step masking would shrink every benign update by
+                                     about sqrt(1 - drop), which would reintroduce precisely the
+                                     magnitude channel the score-only control exists to close and
+                                     make the arm a worse instrument than the one it generalizes.
+
+    What is left free is DIRECTION: a masked-and-renormalized update has the same length and points
+    somewhere else. That is the disturbance, and it is the only one.
+
+    The mask for a benign client is drawn from a (seed, round, benign-slot)-keyed generator, so every
+    arm at a given seed and round receives the IDENTICAL masks and the arms differ only in d2 -- the
+    same discipline, and for the same reason, as the permutation in dose_coefficients. `slot` is the
+    client's position among the round's benign participants, not its client id.
+
+    Degenerate cases, recorded rather than silently absorbed: `drop == 0.0` never reaches here (the
+    caller returns the stack unwrapped, so the identity rung is bit-identical to d2 standalone); a
+    client whose every coordinate is dropped has no norm to restore and is left at zero; non-floating
+    tensors (integer buffers) are passed through unmasked, since a fractional rescale of an integer
+    count is not a coordinate perturbation of the update.
+    """
+    if keys is None:
+        keys = list(updates[0].keys())
+    out, slot = [], 0
+    for i, u in enumerate(updates):
+        if adv_mask[i]:
+            out.append(u)                 # bit-identical: the same tensors, deliberately not copied
+            continue
+        rng = np.random.default_rng([int(dose_key[0]), int(dose_key[1]), int(slot)])
+        slot += 1
+        masked, sq_before, sq_after = {}, 0.0, 0.0
+        for k in keys:
+            t = u[k]
+            if not t.is_floating_point():
+                masked[k] = t
+                continue
+            kb = rng.random(tuple(t.shape)) >= drop
+            masked[k] = t * torch.as_tensor(kb, dtype=t.dtype, device=t.device)
+            # Norms are accumulated in float64 on the CPU: MPS has no float64, and a float32 sum
+            # over ~1e6 squared coordinates is not accurate enough to support the claim that this
+            # transform preserves each client's norm. Both sums are taken from the SAME float64 copy
+            # of the pre-mask tensor, which is exact rather than merely close: multiplying by a mask
+            # of exact 1.0s and 0.0s introduces no rounding, so the kept float32 values are bit-for-
+            # bit the original ones and summing them before or after masking is the same number.
+            t64 = t.detach().cpu().double()
+            sq_before += float(t64.pow(2).sum())
+            sq_after += float((t64 * torch.as_tensor(kb, dtype=torch.float64)).pow(2).sum())
+        if sq_after > 0.0 and sq_before > 0.0:
+            s = float(np.sqrt(sq_before / sq_after))
+            masked = {k: (v * s if v.is_floating_point() else v) for k, v in masked.items()}
+        out.append(masked)
+    return out
+
+
 # --- Generic Defense Composition ---
 def apply_d1_transform(updates, d1_name, tau=5.0, server=None, dose_key=None,
                        adv_mask=None):
@@ -278,6 +365,10 @@ def apply_d1_transform(updates, d1_name, tau=5.0, server=None, dose_key=None,
     Type F (targeted dose): doseS_kappa<K> / doseA_nu<V> — the same rescaling with the
         assignment tied to adversary status; requires adv_mask and is not a defense
         (see dose_coefficients_statistic_only / dose_coefficients_payload_only)
+    Type G (coordinate masking): doseM_m<M> — NOT a per-client rescaling at all: benign
+        coordinates are dropped and the benign norm restored, adversaries passed through
+        bit-identically. Requires adv_mask and dose_key, is not a defense, and lies outside
+        the invariance proposition's hypothesis by construction (see mask_benign_updates)
     """
     keys = list(updates[0].keys())
     n = len(updates)
@@ -290,6 +381,18 @@ def apply_d1_transform(updates, d1_name, tau=5.0, server=None, dose_key=None,
                              "without knowing which participants are adversarial")
         if len(adv_mask) != n:
             raise ValueError(f"adv_mask has {len(adv_mask)} entries for {n} updates")
+        if mode == "M":
+            # Mode M returns updates directly rather than falling through to the scalar rescale
+            # below: it is not a rescaling, and there is no coefficient vector to build.
+            if val == 0.0:
+                return updates          # identity, unwrapped exactly as the other two modes
+            if not 0.0 < val < 1.0:
+                raise ValueError(f"{d1_name}: drop rate must lie in (0, 1); m=1 deletes every "
+                                 "benign coordinate and leaves no norm to restore")
+            if dose_key is None:
+                raise ValueError(f"{d1_name} requires dose_key=(seed, round); refusing to run "
+                                 "with unseeded masks")
+            return mask_benign_updates(updates, adv_mask, val, dose_key, keys=keys)
         if mode == "S":
             if val == 0.0:
                 return updates          # identity, returned unwrapped as in the Round-11 dose
