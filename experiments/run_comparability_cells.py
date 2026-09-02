@@ -60,7 +60,7 @@ ADV_FRACTION = 0.2
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(BASE, "results", "comparability_cells")
 PREREG = "experiments/pre_registration_comparability.md"
-PREREG_COMMIT = None          # set to the freeze hash AFTER committing the pre-registration
+PREREG_COMMIT = "c986ef4"     # the freeze commit; the suite refuses to start if this drifts
 
 KAPPAS = [0.0, 0.5, 1.0, 2.0]        # the frozen grid, identical to both existing ladders
 SEEDS = [42, 43, 44, 45, 46]         # frozen; matches every arm this is compared against
