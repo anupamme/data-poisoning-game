@@ -147,3 +147,57 @@ explicit warning when rungs are unequal, and never scores the rule on an incompl
 5. If the rule and the point prediction disagree, the **rule** is scored and the point prediction is
    reported as wrong.
 6. The accuracy floor applies to a rung's mean; seeds below it are flagged, never excluded.
+
+---
+
+# AMENDMENT 1, before any write to `results/comparability_cells/`
+
+**Disclosed as an edit, not folded in silently.** The freeze at `c986ef4` defined the gating quantity
+as "the arm's own admission measure ... as already instantiated per aggregator in
+`experiments/build_channel_table.py`". That file computes **two** admission quantities, and the
+original text does not say which:
+
+- `d_admission` — the fraction of rounds in which the **support** of the adversarial mass changes,
+  i.e. `(base > 0) != (post > 0)`;
+- `d_influence` — the magnitude by which the adversarial mass moves, `|post − base|`, which the paper
+  calls the **admission-level change ΔΛ_a**.
+
+**The support reading cannot be the intended one, and this is decidable without any new data.** On all
+four training cells `d_admission` is identically `0.0000`, which is the paper's own headline finding
+that the support never moves in any measured round of any arm. A quantity that is constant across the
+four cells has **no discriminating power at all** and would make the frozen rule predict AGREE
+everywhere, contradicting two of the four cells it was read off.
+
+**The gating quantity is therefore `d_influence` (ΔΛ_a)**, evaluated at the top rung by
+`experiments.build_channel_table.channels(ADM, arm, attack, 2.0)["d_influence"]`. On the training
+cells it separates them exactly:
+
+| cell | Δ dec. | Δ adm. (support) | **ΔΛ_a** | observed |
+|---|---|---|---|---|
+| `krum` / scaling | 0.7333 | 0.0000 | **0.0000** | agree |
+| `cos_krum` / pixel | 0.0000 | 0.0000 | **0.0000** | agree |
+| `reputation` / scaling | 1.0000 | 0.0000 | **0.0196** | disagree |
+| `coord_median` / pixel | 0.4821 | 0.0000 | **0.0332** | disagree |
+
+**The predictions this yields are the ones already committed at `c986ef4`, unchanged:**
+
+| new cell | ΔΛ_a | rule | point prediction at `c986ef4` |
+|---|---|---|---|
+| cell 5 `coord_median` / scaling | **0.0086** | DISAGREE | DISAGREE — **agrees** |
+| cell 6 `krum` / EMNIST-byclass | **0.0000** | AGREE | AGREE — **agrees** |
+
+**This amendment moves no prediction.** It removes an ambiguity about how the two already-committed
+predictions were derived. Had the two readings implied different predictions, the honest course would
+have been to report both and score both; they do not.
+
+**One weakness recorded now rather than discovered later.** Cell 5's ΔΛ_a is `0.0086`, well below the
+training cells' `0.0196` and `0.0332` while still above zero. The rule thresholds at zero, so it
+predicts DISAGREE, but this is the **weakest** margin of any cell and the prediction is correspondingly
+the least confident. If cell 5 agrees, that is evidence the rule needs a threshold above zero rather
+than evidence it is wrong in kind — and **we commit now to reporting it as a failure of the rule as
+frozen**, not to introducing a fitted threshold after the fact.
+
+**Ordering.** `results/comparability_cells/` does not exist at the time of this amendment; no ASR for
+either new cell has been computed. The channel measurements quoted above are read from
+`results/admission_measurement.json` and `results/femnist_admission.json`, which compute no ASR and
+predate the freeze, exactly as `pre_registration_dose_mask.md` records for its own channel data.
