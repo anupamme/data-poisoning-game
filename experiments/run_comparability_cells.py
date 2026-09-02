@@ -60,7 +60,9 @@ ADV_FRACTION = 0.2
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(BASE, "results", "comparability_cells")
 PREREG = "experiments/pre_registration_comparability.md"
-PREREG_COMMIT = "c986ef4"     # the freeze commit; the suite refuses to start if this drifts
+PREREG_COMMIT = "df00ef9"     # freeze c986ef4 + Amendment 1 (df00ef9), which named the gating
+                              # quantity as ΔΛ_a before any result existed. The suite refuses to
+                              # start if this drifts, which is how the amendment stayed auditable.
 
 KAPPAS = [0.0, 0.5, 1.0, 2.0]        # the frozen grid, identical to both existing ladders
 SEEDS = [42, 43, 44, 45, 46]         # frozen; matches every arm this is compared against
