@@ -201,3 +201,94 @@ frozen**, not to introducing a fitted threshold after the fact.
 either new cell has been computed. The channel measurements quoted above are read from
 `results/admission_measurement.json` and `results/femnist_admission.json`, which compute no ASR and
 predate the freeze, exactly as `pre_registration_dose_mask.md` records for its own channel data.
+
+---
+
+# AMENDMENT 2, after the first scoring of cell 6 and before any further run
+
+**Disclosed as an edit made with knowledge of a result, which Amendment 1 was not.** This amendment is
+written *after* `results/comparability_cells/` was completed at 60/60 and after
+`analyze_comparability.py` scored the six cells once. **That first scoring returned REFUTES**, and the
+number this amendment changes is the one that produced it. The full disclosure is the point of the
+section.
+
+## What the first scoring said
+
+| cell | ΔΛ_a | rule | observed | |
+|---|---|---|---|---|
+| cell 5 `coord_median` / scaling | 0.0086 | DISAGREE | DISAGREE | confirms |
+| cell 6 `krum` / EMNIST-byclass | 0.0000 | AGREE | **DISAGREE** | **refutes** |
+
+## The defect in the comparison, which is procedural and not a matter of judgement
+
+`paired()` in `analyze_comparability.py` pairs seeds **within** a design, between its bottom and top
+rung, and this is correct. It does **not** pair **across** the two designs. On cell 6 the two halves do
+not have the same seed set:
+
+- confounded ladder (new, `results/comparability_cells/`): seeds 42, 43, 44, 45, 46 — **n=5**
+- controlled ladder (frozen, `results/dose_femnist/`): seeds 42, 43, 44 — **n=3**
+
+So the reported contrast compared a five-seed mean against a three-seed mean. The disagreement is
+carried entirely by seeds 45 and 46, which have no controlled counterpart at all:
+
+```
+confounded  s45: d = +0.1233     s46: d = +0.6246      <- present on one side of the comparison only
+```
+
+**This violates two clauses already frozen in this document at `c986ef4`.** The section "What refutes
+us" is predicated on the paired-difference convention that a cell's two designs run at the same seeds,
+and the clause "A partial run is not a verdict" requires that the analyzer "prints an explicit warning
+when rungs are unequal, and never scores the rule on an incomplete ladder." **It printed no warning and
+it scored an incomplete ladder.** The freeze anticipated this failure and the analyzer did not
+implement it.
+
+## Why this amendment does not choose the answer
+
+Restricting cell 6 to the three shared seeds yields, with the pairing the freeze requires:
+
+| cell 6, paired on seeds 42--44 | Δ (κ=0 → κ=2) | within ±0.05 of zero |
+|---|---|---|
+| confounded | +0.0123 [−0.0774, +0.1020] n=3 | yes |
+| controlled | −0.0167 [−0.0328, −0.0005] n=3 | yes |
+
+Both point estimates fall inside the `±0.05` band, and the intervals overlap, so the frozen AGREE
+definition is met and the cell would **confirm**. The `±0.05` clause was frozen at `c986ef4` before any
+result existed and is not introduced here.
+
+**We decline to resolve the cell this way.** Which seeds are scored is exactly the degree of freedom
+this document exists to remove, and the subset that rescues the mechanism is the subset that would be
+chosen. A verdict that depends on that choice is not a verdict.
+
+## What is therefore run, and what is committed in advance
+
+**The controlled EMNIST-byclass ladder is completed to the frozen seed set 42--46**: seeds 45 and 46 at
+all four rungs, **8 runs**. Rungs 0.5 and 1.0 are included even though the endpoint contrast does not
+read them, because leaving them at n=3 while the endpoints sit at n=5 reproduces the same unequal-rung
+defect one level down.
+
+This **completes** the frozen design rather than extending it. The freeze specifies seeds 42--46 for
+both new cells; cell 6 was scoped "confounded only, 20 runs" on the mistaken assumption that the
+existing controlled half already covered 42--46. It covers 42--44. No cell is added, dropped or
+relabelled, and non-negotiable 4 is not touched.
+
+Writes go to `results/comparability_cells/` under the `|emnist` key suffix. **`results/dose_femnist/`
+is not written to and its three seeds remain authoritative** — the analyzer's merge is first-writer-wins
+with the frozen directory listed first, so seeds 42--44 continue to come from the published artifact.
+
+**Committed before these 8 runs exist:**
+
+1. **The verdict is whatever the paired n=5 versus n=5 comparison returns.** No further seed set,
+   subset, rung or threshold is introduced after it prints.
+2. **Both numbers are reported in the paper regardless of outcome**: the unpaired n=5-vs-n=3 contrast
+   that first scored REFUTES, and the paired n=5-vs-n=5 contrast. A reader must be able to see that the
+   first scoring refuted the mechanism and why the comparison changed.
+3. **If the paired comparison still disagrees, H-ADMISSION-GATED is refuted** on the terms already
+   frozen in "What refutes us": the mechanism is withdrawn, the four-cell pattern is demoted from a
+   mechanism to a description, and the six-cell table is reported in full.
+4. **The analyzer is fixed to pair across designs and to warn on unequal n**, which is the behaviour
+   `c986ef4` already required. The fix is prereg-mandated, and it is disclosed here that its direction
+   happens to favour the hypothesis.
+5. Cell 5 is untouched by this amendment. It was already paired at n=5 versus n=5 and it confirms.
+
+**This amendment moves no prediction.** Cell 6's frozen prediction remains AGREE, on ΔΛ_a = 0.0000, as
+committed at `c986ef4` and restated in Amendment 1.
