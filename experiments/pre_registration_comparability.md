@@ -292,3 +292,55 @@ with the frozen directory listed first, so seeds 42--44 continue to come from th
 
 **This amendment moves no prediction.** Cell 6's frozen prediction remains AGREE, on ΔΛ_a = 0.0000, as
 committed at `c986ef4` and restated in Amendment 1.
+
+---
+
+# AMENDMENT 3, correcting Amendment 2's premise
+
+**Amendment 2 asserted something false and this amendment withdraws it.** Amendment 2 claimed that
+pairing the two designs across a shared seed set is "the paired-difference convention the freeze
+assumed." Implementing it showed that it is not, and the evidence is decisive and internal:
+
+**Under cross-design pairing, the four published cells do not reproduce.**
+
+| cell | controlled, as frozen and published | controlled, cut to the confounded side's seeds |
+|---|---|---|
+| `krum` / scaling | −0.010 n=20 | **−0.026** n=5 |
+| `cos_krum` / pixel | −0.425 n=8 | **−0.272** n=5 |
+
+The analyzer's own reproduction gate rejected the run outright. Non-negotiable 1 requires the published
+values to reproduce before any pooled number prints, so the convention that fails it cannot be the one
+`c986ef4` scored. The prereg's table prints `n5`, `n20` and `n8` beside one another, which is what
+full-n scoring looks like. **"Paired" in this document means paired across a design's two rungs, at the
+same seeds within that design** — which the original `paired()` implemented correctly.
+
+## Consequences, stated against our own interest
+
+1. **The scored contrast is each design at its own full n.** Restored.
+2. **Cell 6 disagrees, and H-ADMISSION-GATED is refuted.** The refutation reported by the first scoring
+   stands. It was not an artifact.
+3. **The shared-seed contrast is retained as a disclosed robustness check and is never the verdict.**
+   On cell 6 it would give AGREE. Adopting it for cell 6 while the four published cells require full-n
+   would be scoring one cell by a rule that the rest of the table refutes, which is the post-hoc rescue
+   this document exists to prevent.
+4. **Amendment 2's 8 runs proceed and are still worth having.** They were launched before this
+   correction and they remain the right experiment: completing the controlled EMNIST ladder to seeds
+   42--46 makes cell 6's two designs full-n *and* seed-identical, so the two conventions coincide there
+   and the cell is decided by data under either reading. What changes is the expectation: the frozen
+   convention already returns DISAGREE, and the controlled deltas at the three existing seeds
+   (−0.0228, −0.0172, −0.0099) are all small and negative while the confounded ladder's new seeds are
+   large and positive (+0.1233 at s45, +0.6246 at s46). If the controlled ladder is also near zero at
+   s45 and s46, the refutation is confirmed on a fully paired n=5 comparison.
+5. **The unequal-n warning is kept and generalised.** It fires on three cells, not one: `krum`/scaling
+   (controlled carries 15 seeds the confounded ladder lacks), `cos_krum`/pixel (3), and
+   `krum`/EMNIST (the confounded ladder carries 2 the controlled lacks). The asymmetry was always
+   present in the published table and was never surfaced. It is now printed before the table, so no
+   reader reaches a verdict without seeing it.
+
+## The process failure worth recording
+
+Amendment 2 was written after seeing a result, and it reached for a reading of the freeze that would
+have overturned that result. The reading was wrong, and what caught it was a mechanical gate --
+non-negotiable 1's bit-identical reproduction requirement -- and not our judgement. **That is an
+argument for the gate, not for our discipline.** The sequence is left in the document in full: the
+refutation, the amendment that would have undone it, and the check that stopped the amendment.
