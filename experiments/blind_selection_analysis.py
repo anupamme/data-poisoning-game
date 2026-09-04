@@ -1,8 +1,18 @@
 """
-Blind composition-selection analysis: criterion-guided vs random vs oracle.
+Blind composition-selection analysis: criterion-guided vs random vs oracle, and the
+three evaluation strategies an evaluator can actually run.
 
 Uses existing ASR data from all 42 ordered pairs (18 dev + 24 held-out).
 No new FL training required — pure resampling statistics.
+
+The certified set is read from results/screening_cost.json (admitted.C1_and_C2) rather
+than written out here, so it tracks the tightened per-attack C1 automatically. Note for
+anyone comparing against an earlier run of this file: it used to hardcode a three-pair
+PASS set including foolsgold_then_rfa, at which k the criterion's mean ASR coincided
+exactly with the oracle's. That coincidence was an artifact of the pre-tightening set.
+foolsgold_then_rfa fails the per-attack C1 and is the emergent pair the criterion is
+known to miss -- and it is the single lowest-ASR pair in the menu, so at the tightened
+k=2 the criterion is deliberately NOT the oracle. See strategy_comparison().
 """
 
 import numpy as np
@@ -10,6 +20,12 @@ import json
 from pathlib import Path
 
 RESULTS_DIR = Path(__file__).parent.parent / "results"
+
+
+def load_certified_pairs():
+    """The C1^C2-admitted set, from the frozen cost artifact."""
+    with open(RESULTS_DIR / "screening_cost.json") as f:
+        return json.load(f)["admitted"]["C1_and_C2"]
 
 def load_all_pair_asrs():
     """Load max-committed ASR for all 42 pairs."""
@@ -57,9 +73,8 @@ def resampling_analysis_2way(pairs, n_bootstrap=100_000):
     all_names = list(pairs.keys())
     n_pairs = len(all_asrs)
 
-    # Criterion-guided: the 3 clean PASS pairs
-    pass_pairs = ["foolsgold_then_rfa", "foolsgold_then_coord_median",
-                  "reputation_then_coord_median"]
+    # Criterion-guided: the C1^C2-certified pairs (tightened per-attack C1)
+    pass_pairs = load_certified_pairs()
     criterion_asrs = [pairs[p] for p in pass_pairs]
     criterion_mean = np.mean(criterion_asrs)
     criterion_max = np.max(criterion_asrs)
@@ -132,6 +147,128 @@ def resampling_analysis_2way(pairs, n_bootstrap=100_000):
         "p_random_leq_criterion_mean": float(p_random_beats_criterion_mean),
         "p_random_leq_criterion_max": float(p_random_beats_criterion_max),
         "p_all_below_05": float(p_all_below_05),
+    }
+
+
+def load_conditions():
+    """Per-pair C1/C2/C3 verdicts and the ASR threshold, from the frozen ablation."""
+    with open(RESULTS_DIR / "condition_ablation" / "summary.json") as f:
+        data = json.load(f)
+    return {r["pair"]: r for r in data["rows"]}, data["threshold"]
+
+
+def strategy_comparison(pairs, n_bootstrap=100_000):
+    """Price the three evaluation strategies an evaluator can actually run.
+
+    no screen            -- evaluate every ordered pair
+    C2 alone             -- naive statistic-preservation screening: keep pairs whose
+                            upstream transform preserves the statistic d2 reads
+    C1 and C2            -- the mechanism criterion, which additionally requires a
+                            constituent to suppress the attack alone
+
+    Reports each strategy's precision, recall, evaluation cost in runs, whether it
+    retains the menu's strongest composition, and how it compares to a size-matched
+    random draw and to the oracle that picks the k lowest-ASR pairs.
+    """
+    rows, threshold = load_conditions()
+    with open(RESULTS_DIR / "screening_cost.json") as f:
+        cost = json.load(f)
+    runs_per_pair = len(cost["attacks"]) * cost["seeds_per_cell"]
+    standalone_runs = cost["runs"]["standalone_component"]
+
+    names = [p for p in pairs if p in rows]
+    if len(names) != len(pairs):
+        raise ValueError(f"{len(pairs) - len(names)} pairs have no condition verdict; "
+                         "refusing to score a strategy on a partial menu")
+    all_asrs = np.array([pairs[p] for p in names])
+    is_low = {p: pairs[p] < threshold for p in names}
+    n_low = sum(is_low.values())
+    best_pair = min(names, key=lambda p: pairs[p])
+    sorted_asrs = np.sort(all_asrs)
+
+    strategies = [
+        ("no screen", lambda r: True, False),
+        ("C2 alone (statistic preservation)", lambda r: r["C2"], False),
+        ("C1 and C2 (the criterion)", lambda r: r["C1"] and r["C2"], True),
+    ]
+
+    rng = np.random.default_rng(42)
+    out = []
+    for label, keep, needs_standalone in strategies:
+        selected = [p for p in names if keep(rows[p])]
+        k = len(selected)
+        if k == 0:
+            raise ValueError(f"strategy {label!r} selected nothing")
+        sel_asrs = np.array([pairs[p] for p in selected])
+        tp = sum(is_low[p] for p in selected)
+        runs = k * runs_per_pair + (standalone_runs if needs_standalone else 0)
+
+        if k < len(all_asrs):
+            draws = np.array([all_asrs[rng.choice(len(all_asrs), k, replace=False)].mean()
+                              for _ in range(n_bootstrap)])
+            p_random = float(np.mean(draws <= sel_asrs.mean()))
+            random_mean = float(draws.mean())
+        else:
+            p_random, random_mean = 1.0, float(all_asrs.mean())
+
+        out.append({
+            "strategy": label,
+            "selected": k,
+            "true_positives": int(tp),
+            "precision": tp / k,
+            "recall": tp / n_low,
+            "mean_asr_selected": float(sel_asrs.mean()),
+            "min_asr_selected": float(sel_asrs.min()),
+            "oracle_mean_asr_at_k": float(sorted_asrs[:k].mean()),
+            "runs": runs,
+            "needs_standalone_runs": needs_standalone,
+            "retains_best_pair": best_pair in selected,
+            "random_mean_asr_at_k": random_mean,
+            "p_random_leq_strategy": p_random,
+        })
+
+    print("\n" + "=" * 78)
+    print("EVALUATION-STRATEGY COMPARISON (all 42 ordered pairs)")
+    print("=" * 78)
+    print(f"\nLow-ASR pairs in the menu: {n_low}/{len(names)} "
+          f"(base rate {n_low/len(names):.1%}) at threshold {threshold}")
+    print(f"Strongest composition: {best_pair} (ASR {pairs[best_pair]:.3f})")
+    print(f"Cost convention: {runs_per_pair} runs per pair, "
+          f"{standalone_runs} standalone runs when C1 is used\n")
+    hdr = (f"{'strategy':36s} {'sel':>4s} {'prec':>6s} {'rec':>6s} {'meanASR':>8s} "
+           f"{'oracle':>7s} {'random':>7s} {'P(r<=s)':>8s} {'runs':>5s} {'best':>5s}")
+    print(hdr)
+    print("-" * len(hdr))
+    for r in out:
+        print(f"{r['strategy']:36s} {r['selected']:4d} {r['precision']:6.3f} "
+              f"{r['recall']:6.3f} {r['mean_asr_selected']:8.3f} "
+              f"{r['oracle_mean_asr_at_k']:7.3f} {r['random_mean_asr_at_k']:7.3f} "
+              f"{r['p_random_leq_strategy']:8.5f} {r['runs']:5d} "
+              f"{'yes' if r['retains_best_pair'] else 'NO':>5s}")
+
+    criterion = out[-1]
+    statistic = out[1]
+    print(f"\n--- The trade ---")
+    print(f"  The criterion reaches precision {criterion['precision']:.0%} at "
+          f"{criterion['runs']} runs, {out[0]['runs'] - criterion['runs']} fewer than "
+          f"unscreened ({1 - criterion['runs']/out[0]['runs']:.1%} of runs avoided),")
+    print(f"  and pays for it by discarding {best_pair} "
+          f"(ASR {pairs[best_pair]:.3f}), the strongest composition in the menu.")
+    print(f"  Statistic-preservation screening alone retains it, at precision "
+          f"{statistic['precision']:.0%} and {statistic['runs']} runs.")
+    print(f"  Neither screen is a predictor; both beat a size-matched random draw "
+          f"(P <= {max(statistic['p_random_leq_strategy'], criterion['p_random_leq_strategy']):.5f}).")
+
+    return {
+        "threshold": threshold,
+        "n_pairs": len(names),
+        "n_low_asr": n_low,
+        "base_rate_low_asr": n_low / len(names),
+        "best_pair": best_pair,
+        "best_pair_asr": float(pairs[best_pair]),
+        "runs_per_pair": runs_per_pair,
+        "standalone_runs": standalone_runs,
+        "strategies": out,
     }
 
 
@@ -210,13 +347,15 @@ if __name__ == "__main__":
     print(f"Loaded {len(pairs)} pairs")
 
     results_2way = resampling_analysis_2way(pairs)
+    results_strategies = strategy_comparison(pairs)
 
     triples = load_three_way_asrs()
     print(f"\nLoaded {len(triples)} triples")
     results_3way = resampling_analysis_3way(triples)
 
     # Save results
-    output = {"two_way": results_2way, "three_way": results_3way}
+    output = {"two_way": results_2way, "strategies": results_strategies,
+              "three_way": results_3way}
     out_path = RESULTS_DIR / "blind_selection_analysis" / "results.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w") as f:

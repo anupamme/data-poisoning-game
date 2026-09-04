@@ -500,13 +500,17 @@ def main():
                   f"{ch['d_admission']:7.3f} {ch['d_influence']:7.3f} {sa} {sc}")
 
     # LaTeX. Emitted here so the paper's table cannot drift from the numbers above.
+    # Signed values are wrapped in $...$ deliberately: a bare "-0.026" in a tabular cell sets a
+    # text-mode HYPHEN, which is visibly shorter than the true minus every other signed number in
+    # both papers gets from math mode. The absent-value cell stays "---", which is the papers'
+    # convention for a missing tabular entry and is correct in text mode.
     print("\n=== LATEX (copy verbatim; regenerate rather than edit) ===\n")
     lines = [r"\begin{tabular}{llrrrrr}", r"\toprule",
              r"Aggregator & Kind & $\Delta$ agg. & $\Delta$ dec. & $\Delta$ adm. "
              r"& $\Delta \Lambda_a$ & $\Delta$ ASR \\", r"\midrule"]
     for t in table:
         a = t["asr"]
-        dasr = "---" if a is None else f"{a['delta_asr']:+.3f}"
+        dasr = "---" if a is None else f"${a['delta_asr']:+.3f}$"
         lines.append(f"{t['label']} & {t['kind']} & {t['d_agg_disp']:.3f} & "
                      f"{t['d_decision']:.3f} & {t['d_admission']:.3f} & "
                      f"{t['d_influence']:.3f} & {dasr} \\\\")
@@ -523,7 +527,7 @@ def main():
                       r"& $\Delta \Lambda_a$ & $\Delta$ ASR \\", r"\midrule"]
         for t in mask_table:
             a = t["asr"]
-            dasr = "---" if a is None else f"{a['delta_asr']:+.3f}"
+            dasr = "---" if a is None else f"${a['delta_asr']:+.3f}$"
             mask_lines.append(f"{t['label']} & {t['kind']} & {t['d_agg_disp']:.3f} & "
                               f"{t['d_decision']:.3f} & {t['d_admission']:.3f} & "
                               f"{t['d_influence']:.3f} & {dasr} \\\\")

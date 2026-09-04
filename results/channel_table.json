@@ -307,7 +307,18 @@
    "mass_is_binary": true,
    "mean_mass_base": 0.0,
    "mean_mass_post": 0.0,
-   "asr": null
+   "asr": {
+    "identity_asr": 0.05319999999999999,
+    "top_asr": 0.03711111111111111,
+    "delta_asr": -0.016088888888888882,
+    "identity_acc": 0.56631,
+    "top_acc": 0.52927,
+    "n_seeds": 10,
+    "seeds_match": true,
+    "n_shared": 10,
+    "paired_delta_asr": -0.016088888888888892,
+    "source": "results/dose_mask/summary.json"
+   }
   },
   {
    "label": "Reputation (mask)",
@@ -388,6 +399,6 @@
    "asr": null
   }
  ],
- "latex": "\\begin{tabular}{llrrrrr}\n\\toprule\nAggregator & Kind & $\\Delta$ agg. & $\\Delta$ dec. & $\\Delta$ adm. & $\\Delta \\Lambda_a$ & $\\Delta$ ASR \\\\\n\\midrule\nKrum & selector (pairwise distance) & 0.892 & 0.733 & 0.000 & 0.000 & -0.026 \\\\\nReputation & weighted averager (cross-round state) & 0.659 & 1.000 & 0.000 & 0.020 & +0.178 \\\\\nCosine-Krum & selector (cosine distance) & 1.297 & 0.000 & 0.000 & 0.000 & -0.425 \\\\\nCoord.\\ median & coordinate-wise order statistic & 0.670 & 0.482 & 0.000 & 0.033 & +0.098 \\\\\nKrum (EMNIST-byclass) & selector (pairwise distance) & 0.842 & 0.643 & 0.000 & 0.000 & -0.017 \\\\\nKrum, score-only & selector, magnitude channel closed & 0.986 & 0.733 & 0.000 & 0.000 & -0.023 \\\\\nKrum, emit-only & selector, statistic channel closed & 0.973 & 0.000 & 0.000 & 0.000 & -0.001 \\\\\n\\bottomrule\n\\end{tabular}",
- "latex_mask": "\\begin{tabular}{llrrrrr}\n\\toprule\nAggregator & Kind & $\\Delta$ agg. & $\\Delta$ dec. & $\\Delta$ adm. & $\\Delta \\Lambda_a$ & $\\Delta$ ASR \\\\\n\\midrule\nKrum (mask) & selector (pairwise distance) & 1.095 & 0.467 & 0.000 & 0.000 & --- \\\\\nReputation (mask) & weighted averager (cross-round state) & 0.817 & 0.533 & 0.000 & 0.004 & --- \\\\\nCosine-Krum (mask) & selector (cosine distance) & 1.161 & 0.467 & 0.333 & 0.333 & --- \\\\\nCoord.\\ median (mask) & coordinate-wise order statistic & 0.953 & 0.700 & 0.000 & 0.131 & --- \\\\\n\\bottomrule\n\\end{tabular}"
+ "latex": "\\begin{tabular}{llrrrrr}\n\\toprule\nAggregator & Kind & $\\Delta$ agg. & $\\Delta$ dec. & $\\Delta$ adm. & $\\Delta \\Lambda_a$ & $\\Delta$ ASR \\\\\n\\midrule\nKrum & selector (pairwise distance) & 0.892 & 0.733 & 0.000 & 0.000 & $-0.026$ \\\\\nReputation & weighted averager (cross-round state) & 0.659 & 1.000 & 0.000 & 0.020 & $+0.178$ \\\\\nCosine-Krum & selector (cosine distance) & 1.297 & 0.000 & 0.000 & 0.000 & $-0.425$ \\\\\nCoord.\\ median & coordinate-wise order statistic & 0.670 & 0.482 & 0.000 & 0.033 & $+0.098$ \\\\\nKrum (EMNIST-byclass) & selector (pairwise distance) & 0.842 & 0.643 & 0.000 & 0.000 & $-0.017$ \\\\\nKrum, score-only & selector, magnitude channel closed & 0.986 & 0.733 & 0.000 & 0.000 & $-0.023$ \\\\\nKrum, emit-only & selector, statistic channel closed & 0.973 & 0.000 & 0.000 & 0.000 & $-0.001$ \\\\\n\\bottomrule\n\\end{tabular}",
+ "latex_mask": "\\begin{tabular}{llrrrrr}\n\\toprule\nAggregator & Kind & $\\Delta$ agg. & $\\Delta$ dec. & $\\Delta$ adm. & $\\Delta \\Lambda_a$ & $\\Delta$ ASR \\\\\n\\midrule\nKrum (mask) & selector (pairwise distance) & 1.095 & 0.467 & 0.000 & 0.000 & $-0.016$ \\\\\nReputation (mask) & weighted averager (cross-round state) & 0.817 & 0.533 & 0.000 & 0.004 & --- \\\\\nCosine-Krum (mask) & selector (cosine distance) & 1.161 & 0.467 & 0.333 & 0.333 & --- \\\\\nCoord.\\ median (mask) & coordinate-wise order statistic & 0.953 & 0.700 & 0.000 & 0.131 & --- \\\\\n\\bottomrule\n\\end{tabular}"
 }

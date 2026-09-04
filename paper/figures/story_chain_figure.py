@@ -14,6 +14,13 @@ the downstream defense's security behaviour:
 BOTH directions -- which is the paper's central negative result. This figure draws that, with the two
 measured witnesses beside the break; the inferential statistics live in the caption, not here.
 
+The same PDF is included by both paper/main.tex and workshop_paper/main.tex, so any TERMINOLOGY
+baked into the image has to be the term both documents use. The object is "attack-suppression
+preservation", never "security preservation": the latter was retired from the prose, and a figure
+still carrying it reintroduces the retired term as pixels, where no grep of the .tex sources can
+see it. Result names are likewise never drawn here -- see mechanism_figure.py's note on why a baked
+number is wrong in one of the two documents while resolving to a real result in both.
+
 Every number drawn or printed is recomputed from the same JSON the scoring scripts read, using the
 loaders imported from those scripts, so neither the figure nor the caption can drift from the prose:
 
@@ -155,8 +162,8 @@ ax.text(RX, 0.285,
         fontsize=6.0, color=GREEN, va="center", ha="left", linespacing=1.5)
 
 ax.text(0.5, 0.015,
-        "Statistic preservation is not security preservation: only the (P4)$\\to$(P5) link "
-        "carries security content in our experiments.",
+        "Statistic preservation is not attack-suppression preservation:\n"
+        "only the (P4)$\\to$(P5) link carries the security content in our experiments.",
         fontsize=6.9, color=INK, ha="center", va="bottom", fontweight="bold")
 
 fig.tight_layout(pad=0.2)

@@ -1,15 +1,23 @@
 """
-Two-panel mechanism figure (Figure 1).
+Two-panel mechanism figure.
+
+No theorem, proposition, corollary or lemma NUMBER is drawn into this PDF, and none should be
+added. The same file is included by both paper/main.tex and workshop_paper/main.tex, which
+number the same results differently (the invariance proposition is 10 in one and 1 in the
+other, the aggregate-mass corollary 2 and 1), so any number baked into the image is wrong in
+one of the two documents while still resolving to a real result in both -- a defect no build
+warning, undefined-reference check or `??` scan can see. The numbers belong in the captions,
+which reach them through \\ref and are therefore right in each document by construction.
 
 Panel (a): the decision chain the criterion actually executes -- upstream transform T,
 downstream statistic S, invariance class of S under T, predicted C2 verdict -- annotated
-with the four invariance classes of Proposition 1 and the defenses that fall in each.
+with the four invariance classes of the invariance proposition and the defenses in each.
 
 Panel (b): the measured chain m -> Lambda_a -> ASR for FoolsGold->RFA at two heterogeneity
 settings. Per-round scatter of the separation margin m against the realized adversarial
-Weiszfeld mass Lambda_a, with Corollary 1's bound Lambda_a <= n_a/(n_b(2m-1)+n_a) overlaid.
-Only rounds with w_adv > 0 are plotted; rounds where FoolsGold zeroes every adversary are
-Lemma 1 (annihilation) and carry no payload.
+Weiszfeld mass Lambda_a, with the aggregate-mass corollary's bound
+Lambda_a <= n_a/(n_b(2m-1)+n_a) overlaid. Only rounds with w_adv > 0 are plotted; rounds
+where FoolsGold zeroes every adversary are the annihilation lemma and carry no payload.
 
 Sources (recomputed, not transcribed):
   results/theorem_quantities_transformed.json   alpha=0.5, per_round
@@ -119,7 +127,8 @@ for y, head, body, fc, ec, verdict, vc in CLASSES:
     box(7.95, y + 0.06, 2.00, 1.02, verdict, "white", vc, fs=7.0)
     arrow(7.10, yc, 7.92, yc, color=vc)
 
-ax.text(5.15, 1.75, "Proposition 1 assigns the class; the C2 verdict follows without running the composition.",
+ax.text(5.15, 1.75, "The invariance proposition assigns the class; the C2 verdict follows without "
+                    "running the composition.",
         ha="center", va="center", fontsize=6.5, style="italic", color="0.35")
 
 # ----------------------------------------------------------------- panel (b)
@@ -130,7 +139,7 @@ bx.set_title("(b) Measured: margin $m$ $\\to$ adversarial mass $\\Lambda_a$ $\\t
 mgrid = np.linspace(1.0, 8.0, 300)
 for n_a, n_b, ls in ((1, 4, "-"), (2, 3, "--")):
     bx.plot(mgrid, n_a / (n_b * (2 * mgrid - 1) + n_a), ls, color="0.45", lw=1.0,
-            label=f"Cor. 1 bound, $n_a{{=}}{n_a}$")
+            label=f"aggregate-mass bound, $n_a{{=}}{n_a}$")
 
 STYLE = {0.5: ("#2f7d3f", "o", "$\\alpha{=}0.5$"), 0.1: ("#b03a2e", "s", "$\\alpha{=}0.1$")}
 for alpha, (color, marker, lab) in STYLE.items():
