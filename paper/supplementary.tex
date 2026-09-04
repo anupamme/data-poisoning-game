@@ -15,14 +15,23 @@
 \usepackage{enumitem}
 % Cross-document references: section, theorem and table numbers cited below are
 % those of the main paper, resolved from its .aux file.
+% Same gobble as main.tex's import, and here it is the load-bearing half: this document's lone \citep
+% used to resolve only because xr pulled main's \bibcite records in, so it rendered correctly or broke
+% depending on whether main.aux happened to exist and be current, with pdflatex reporting a clean run
+% either way. Labels only, and the citation resolves from this document's own bibliography.
 \usepackage{xr}
+\makeatletter
+\let\XRsave@bibcite\bibcite
+\let\bibcite\@gobbletwo
 \externaldocument{main}
+\let\bibcite\XRsave@bibcite
+\makeatother
 
 \renewcommand{\thesection}{S\arabic{section}}
 \renewcommand{\thetable}{S\arabic{table}}
 \renewcommand{\thefigure}{S\arabic{figure}}
 
-\title{Supplementary Material\\What Does Preserving a Defense Preserve?\\Causal Identification for Federated-Learning\\Defense Composition}
+\title{Supplementary Material\\What Does Preserving a Defense Statistic\\Preserve? Causal Identification for\\Federated-Learning Defense Composition}
 
 \author{Anonymous authors\\
 Paper under double-blind review}
@@ -33,8 +42,9 @@ Paper under double-blind review}
 \noindent This supplement holds per-cell measurement detail for the composability
 screen. It records numbers, not arguments: every claim these cells support is
 stated and qualified in the main paper, and section, table and theorem numbers
-without an \textbf{S} prefix refer to it. Nothing here is required to follow the
-main paper's results.
+without an \textbf{S} prefix refer to it, as do citations, whose full entries are
+in its reference list. Nothing here is required to follow the main paper's
+results.
 
 \small
 \setlength{\tabcolsep}{4pt}
@@ -171,7 +181,7 @@ nc$\to$fg$\to$tm   & HIGH & $0.267$ & \textbf{MISS} \\
 \end{tabular}
 \end{table}
 
-\textbf{Selection-bias note.} All 6 LOW triples use FoolsGold or reputation as $d_1$: the same successful weighting defenses from the 2-way analysis. This reflects the structural fact that these are the only defenses satisfying C1 for both attacks in our menu. The criterion's 3-way value is not discovering new $d_1$ choices but correctly \emph{filtering} from the $5{\times}6{=}30$ triples starting with FG/rep: it predicts LOW for only 6--8 of these 30 (those where the $d_2{\to}d_3$ chain preserves signals), correctly rejecting the majority. A random 6-of-10 draw from our measured set matches the criterion's mean ASR ($0.078$) only $0.3\%$ of the time ($p = 0.003$, resampling test; §\ref{sec:composability_validation}).
+\textbf{Selection-bias note.} All 6 LOW triples in Table~\ref{tab:three_way} use FoolsGold or reputation as $d_1$: the same successful weighting defenses from the 2-way analysis. This reflects the structural fact that these are the only defenses satisfying C1 for both attacks in our menu. The criterion's 3-way value is not discovering new $d_1$ choices but correctly \emph{filtering} from the $5{\times}6{=}30$ triples starting with FG/rep: it predicts LOW for only 6--8 of these 30 (those where the $d_2{\to}d_3$ chain preserves signals), correctly rejecting the majority. A random 6-of-10 draw from our measured set matches the criterion's mean ASR ($0.078$) only $0.3\%$ of the time ($p = 0.003$, resampling test; §\ref{sec:composability_validation}).
 
 \section{Dose--response design: the full pre-registered protocol}
 \label{app:dose_protocol}
@@ -363,5 +373,13 @@ any transform that changes an update's direction, and the theorem's own margin c
 The negative does not rest on the theory: it is a \emph{measured} counterexample, and a narrower theory
 makes the counterexample sharper rather than weaker, since \textbf{the theorem certifies mechanism
 preservation, not security}; it bounds no ASR.
+
+% This document has exactly one \citep (the DBA attack, §S1). Until now it rendered only because
+% \externaldocument{main} makes xr read main.aux, which carries main's \bibcite records -- so the
+% citation resolved by accident of build order and broke silently whenever main.aux was absent or
+% stale, while pdflatex still reported a clean run. `bibtex supplementary' was the only check that
+% saw it, reporting "I found no \bibdata command". The supplement now carries its own bibliography.
+\bibliographystyle{iclr2027_conference}
+\bibliography{references}
 
 \end{document}

@@ -75,7 +75,12 @@ ADM = os.path.join(R, "admission_measurement.json")
 ADM_FEMNIST = os.path.join(R, "femnist_admission.json")
 ASR_SOURCES = [os.path.join(R, "targeted_dose", "summary.json"),
                os.path.join(R, "dose_replication", "summary.json"),
-               os.path.join(R, "dose_femnist", "summary.json")]
+               os.path.join(R, "dose_femnist", "summary.json"),
+               # Safe to merge in: Mode M's cells are keyed `doseM_m<m>_then_...`, a disjoint namespace
+               # from `doseS_kappa<k>_then_...`, and its score-only control carries a `|score_only`
+               # suffix. _asr_cells() asserts non-shadowing anyway, so a future collision fails loudly
+               # rather than silently overwriting a published number.
+               os.path.join(R, "dose_mask", "summary.json")]
 # NOT in ASR_SOURCES: score_only/summary.json and emit_only/summary.json reuse run_targeted_dose's
 # cell_key on the same dataset, so merging either in would overwrite the published Krum row's ASR with
 # a controlled arm's. They are read only by score_only_row() / emit_only_row(), and _asr_cells() now
@@ -84,9 +89,12 @@ DECOMP = os.path.join(R, "displacement_decomposition.json")
 SCORE_ONLY = os.path.join(R, "score_only", "summary.json")
 EMIT_ONLY = os.path.join(R, "emit_only", "summary.json")
 
+MASK = os.path.join(R, "mask_admission.json")
+
 OUT = os.path.join(R, "channel_table.json")
 TOP = 2.0          # the top Mode-S rung, rho = exp(4) = 54.6
 IDENTITY = 0.0
+MASK_TOP = 0.8     # the top Mode-M rung, a drop rate -- NOT a weight ratio, and never pooled with TOP
 
 # The adversarial-mass field each arm's channel measurement records, and whether that mass is binary.
 # A binary mass means admission and influence are the same measurement, which the caption must say.
@@ -102,33 +110,59 @@ KIND = {
     "reputation":   "weighted averager (cross-round state)",
     "coord_median": "coordinate-wise order statistic",
 }
-# (label, arm, attack, channel source). One row per aggregator; the FEMNIST row is the same arm as the
-# first, on a different dataset and architecture, which is the only reason it is a separate row.
+# (label, arm, attack, channel source). One row per aggregator; the second-dataset row is the same arm
+# as the first, on a different dataset and architecture, which is the only reason it is a separate row.
+# The LABEL says EMNIST-byclass because that is what fl_core/data_loader.py:52-58 loads for the
+# "femnist" key: torchvision EMNIST split="byclass" under this paper's own label-Dirichlet partition,
+# NOT LEAF FEMNIST's by-writer partition. The dataset KEY, the artifact paths and ADM_FEMNIST keep the
+# `femnist` spelling because they are frozen; only the display string is corrected.
 ROWS = [
-    ("Krum",              "krum",         "committed_scaling", ADM),
-    ("Reputation",        "reputation",   "committed_scaling", ADM),
-    ("Cosine-Krum",       "cos_krum",     "committed_pixel",   ADM),
-    ("Coord.\\ median",   "coord_median", "committed_pixel",   ADM),
-    ("Krum (FEMNIST)",    "krum",         "committed_scaling", ADM_FEMNIST),
+    ("Krum",                     "krum",         "committed_scaling", ADM),
+    ("Reputation",               "reputation",   "committed_scaling", ADM),
+    ("Cosine-Krum",              "cos_krum",     "committed_pixel",   ADM),
+    ("Coord.\\ median",          "coord_median", "committed_pixel",   ADM),
+    ("Krum (EMNIST-byclass)",    "krum",         "committed_scaling", ADM_FEMNIST),
+]
+
+# Mode M, coordinate masking: the SECOND transformation class, emitted as its own block rather than
+# appended to the rows above. Two reasons, both substantive. (i) The top rung is a drop rate m=0.8, not
+# a weight ratio rho=e^4, so a single table under one "identity -> kappa=2" header would misdescribe
+# four of its rows. (ii) `prop:invariance` classifies aggregators under positive rescaling only, so a
+# Mode-M row is not a second measurement of the same predicted quantity -- it is a measurement outside
+# the family the prediction is about. The attack assignment is the frozen one: class-(c) arms on
+# committed_scaling, class-(a)/(b) arms on committed_pixel, identical to the Mode-S block.
+# Only `krum` has an ASR ladder; the other three are CHANNEL results and print `---` for Delta ASR,
+# which is the existing convention for a row whose ASR is not available rather than a reason to drop it.
+MASK_ROWS = [
+    ("Krum (mask)",              "krum",         "committed_scaling"),
+    ("Reputation (mask)",        "reputation",   "committed_scaling"),
+    ("Cosine-Krum (mask)",       "cos_krum",     "committed_pixel"),
+    ("Coord.\\ median (mask)",   "coord_median", "committed_pixel"),
 ]
 
 
-def channel_rows(path, arm, attack, rung):
-    """Per-round rows of one arm's Mode-S rung from a channel-measurement file."""
+def channel_rows(path, arm, attack, rung, family="doseS"):
+    """Per-round rows of one arm's rung from a channel-measurement file.
+
+    `family` selects the transformation class: "doseS" for positive rescaling, "doseM" for coordinate
+    masking. results/mask_admission.json records exactly the same per-round field names as the Mode-S
+    measurement -- it is produced by the same loop, passed a different rungs list -- so only the family
+    filter and the rung grid differ, and nothing about the columns' meaning changes.
+    """
     if not os.path.exists(path):
         return []
     d = json.load(open(path))
     return [r for r in d["per_round"]
-            if r["family"] == "doseS" and abs(r["rung"] - rung) < 1e-12 and r["attack"] == attack]
+            if r["family"] == family and abs(r["rung"] - rung) < 1e-12 and r["attack"] == attack]
 
 
-def channels(path, arm, attack, rung):
+def channels(path, arm, attack, rung, family="doseS"):
     """Delta aggregate / decision / admission / influence for one arm at one rung.
 
     Recomputed from the per-round rows rather than read from the file's own summary, so this script
     and the measurement cannot disagree about what the columns mean.
     """
-    rows = channel_rows(path, arm, attack, rung)
+    rows = channel_rows(path, arm, attack, rung, family)
     if not rows:
         return None
     field, binary = MASS[arm]
@@ -179,16 +213,33 @@ def mean_asr(cell):
             len(rows))
 
 
-def asr_delta(arm, attack, dataset="cifar10"):
+def asr_delta(arm, attack, dataset="cifar10", family="doseS", top=None, suffix=""):
+    """Identity -> top-rung ASR contrast for one arm, in one transformation family.
+
+    `family` picks the cell-key spelling, which differs because the two dials are different quantities:
+    Mode S's is a weight ratio (`doseS_kappa<k>`), Mode M's is a drop rate (`doseM_m<m>`). They are
+    never pooled, and passing the wrong family simply finds no cell rather than mixing them.
+    """
     cells = _asr_cells()
-    lo = cells.get((dataset, f"doseS_kappa{IDENTITY}_then_{arm}|{attack}"))
-    hi = cells.get((dataset, f"doseS_kappa{TOP}_then_{arm}|{attack}"))
+    keyfmt = ("doseS_kappa{r}_then_{a}|{k}" if family == "doseS" else "doseM_m{r}_then_{a}|{k}")
+    hi_rung = TOP if top is None else top
+    lo = cells.get((dataset, keyfmt.format(r=IDENTITY, a=arm, k=attack) + suffix))
+    hi = cells.get((dataset, keyfmt.format(r=hi_rung, a=arm, k=attack) + suffix))
     if lo is None or hi is None:
         return None
     a0, c0, n0 = mean_asr(lo)
     a2, c2, n2 = mean_asr(hi)
+    # delta_asr stays a difference of rung MEANS, unchanged, because that is what this table's column
+    # has always been. The paired difference is reported alongside, with a flag, because the two agree
+    # only when both rungs carry the same seeds -- which a partly-run ladder does not.
+    s0 = {int(r["seed"]): float(r["asr"]) for r in lo.get("per_seed", [])}
+    s2 = {int(r["seed"]): float(r["asr"]) for r in hi.get("per_seed", [])}
+    shared = sorted(set(s0) & set(s2))
     return {"identity_asr": a0, "top_asr": a2, "delta_asr": a2 - a0,
             "identity_acc": c0, "top_acc": c2, "n_seeds": min(n0, n2),
+            "seeds_match": set(s0) == set(s2), "n_shared": len(shared),
+            "paired_delta_asr": (float(np.mean([s2[s] - s0[s] for s in shared]))
+                                 if shared else None),
             "source": hi.get("_source")}
 
 
@@ -293,6 +344,7 @@ def main():
         asr = asr_delta(arm, attack, dataset)
         table.append({"label": label, "arm": arm, "attack": attack, "kind": KIND[arm],
                       "dataset": dataset, "channel_source": os.path.relpath(src, base),
+                      "family": "doseS", "top_rung": TOP, "rungs": [0.0, 0.5, 1.0, 2.0],
                       "identity_displacement": None if base_ch is None else base_ch["d_agg_disp"],
                       **ch, "asr": asr})
 
@@ -309,6 +361,24 @@ def main():
               "emit_only/summary.json; row skipped (the arm has not been run)")
     else:
         table.append(eo)
+
+    # The Mode-M block, built separately and never appended to `table`: see MASK_ROWS for why.
+    mask_table = []
+    for label, arm, attack in MASK_ROWS:
+        ch = channels(MASK, arm, attack, MASK_TOP, family="doseM")
+        if ch is None:
+            print(f"  -- {label}: no Mode-M channel measurement in "
+                  f"{os.path.relpath(MASK, base)}; row skipped")
+            continue
+        base_ch = channels(MASK, arm, attack, IDENTITY, family="doseM")
+        mask_table.append({"label": label, "arm": arm, "attack": attack, "kind": KIND[arm],
+                           "dataset": "cifar10", "channel_source": os.path.relpath(MASK, base),
+                           "family": "doseM", "top_rung": MASK_TOP,
+                           "rungs": [0.0, 0.2, 0.5, 0.8],
+                           "identity_displacement": (None if base_ch is None
+                                                     else base_ch["d_agg_disp"]),
+                           **ch,
+                           "asr": asr_delta(arm, attack, family="doseM", top=MASK_TOP)})
 
     hdr = (f"  {'aggregator':22s} {'kind':34s} {'dAgg':>8s} {'dDec':>7s} {'dAdm':>7s} "
            f"{'dInfl':>7s} {'dASR':>8s} {'n':>4s}")
@@ -358,27 +428,76 @@ def main():
     bins = [t["label"].replace(chr(92), "") for t in table if t["mass_is_binary"]]
     print(f"\n  Binary-mass arms (dAdm == dInfl by construction): {' | '.join(bins)}")
 
+    if mask_table:
+        print(f"\n=== SECOND TRANSFORMATION CLASS: Mode M, coordinate masking "
+              f"(identity rung -> m = {MASK_TOP}) ===")
+        print("    NOT of the form c_i * u_i, so prop:invariance and thm:bounded_reweight make no")
+        print("    prediction here -- by construction. The dial is a drop rate, not a weight ratio,")
+        print("    and it is never pooled with the Mode-S rungs above.")
+        print(hdr)
+        print("  " + "-" * (len(hdr) - 2))
+        for t in mask_table:
+            a = t["asr"]
+            dasr = "     --- " if a is None else f"{a['delta_asr']:+8.3f}"
+            n = "  - " if a is None else f"{a['n_seeds']:>4d}"
+            print(f"  {t['label'].replace(chr(92), ''):22s} {t['kind']:34s} {t['d_agg_disp']:8.3f} "
+                  f"{t['d_decision']:7.3f} {t['d_admission']:7.3f} {t['d_influence']:7.3f} "
+                  f"{dasr} {n}")
+        print("\n    Only Krum has a Mode-M ASR ladder; the other three rows are CHANNEL results and")
+        print("    print --- for dASR rather than being dropped. The cos_krum/pixel mask ladder was")
+        print("    considered and dropped for compute before any ASR existed "
+              "(pre_registration_dose_mask.md).")
+        ck = next((t for t in mask_table if t["arm"] == "cos_krum"), None)
+        ck_s = next((t for t in table if t["arm"] == "cos_krum"), None)
+        if ck is not None and ck_s is not None:
+            print(f"\n    THE ADJUDICATING CELL: cos_krum is exactly invariant under rescaling "
+                  f"(dDec {ck_s['d_decision']:.3f})")
+            print(f"    and not invariant under masking (dDec {ck['d_decision']:.3f}, dAdm "
+                  f"{ck['d_admission']:.3f}). One class certifies")
+            print("    what the other cannot, on the same aggregator, attack and seeds.")
+
+    # A row whose two rungs do not carry the same seeds has a difference-of-means dASR that is not the
+    # paired difference. Said out loud, because a partly-run ladder produces exactly that.
+    mismatched = [t for t in table + mask_table
+                  if t["asr"] is not None and not t["asr"].get("seeds_match", True)]
+    if mismatched:
+        print("\n=== SEED-SET MISMATCH: dASR is a difference of rung MEANS, not a paired difference ===")
+        for t in mismatched:
+            a = t["asr"]
+            paired = "--" if a["paired_delta_asr"] is None else f"{a['paired_delta_asr']:+.4f}"
+            print(f"  {t['label'].replace(chr(92), ''):22s} dASR(means) {a['delta_asr']:+.4f}  "
+                  f"paired on the {a['n_shared']} shared seeds {paired}")
+        print("  A ladder still running produces this. Quote the paired figure, not the column.")
+
     print("\n=== SANITY: the identity rung must displace nothing ===")
-    for t in table:
+    for t in table + mask_table:
         v = t["identity_displacement"]
         print(f"  {t['label'].replace(chr(92), ''):22s} identity displacement "
               + ("missing" if v is None else f"{v:.2e}"
                  + ("  OK" if v is not None and v < 1e-9 else "  <- NOT ZERO")))
 
     print("\n=== THE FULL LADDERS, for the appendix ===")
-    for t in [t for t in table if "borrowed_from" not in t]:
+    for t in [t for t in table + mask_table if "borrowed_from" not in t]:
+        fam = t.get("family", "doseS")
+        dial = "kappa" if fam == "doseS" else "m"
+        keyfmt = ("doseS_kappa{r}_then_{a}|{k}" if fam == "doseS" else "doseM_m{r}_then_{a}|{k}")
         print(f"\n  -- {t['label'].replace(chr(92), '')} ({t['kind']}, {t['dataset']}) --")
-        print(f"  {'kappa':>6s} {'dAgg':>8s} {'dDec':>7s} {'dAdm':>7s} {'dInfl':>7s} "
+        print(f"  {dial:>6s} {'dAgg':>8s} {'dDec':>7s} {'dAdm':>7s} {'dInfl':>7s} "
               f"{'ASR':>8s} {'acc':>6s}")
         cells = _asr_cells()
-        for k in (0.0, 0.5, 1.0, 2.0):
-            ch = channels(os.path.join(base, t["channel_source"]), t["arm"], t["attack"], k)
-            c = cells.get((t["dataset"], f"doseS_kappa{k}_then_{t['arm']}|{t['attack']}"))
+        for k in t.get("rungs", [0.0, 0.5, 1.0, 2.0]):
+            ch = channels(os.path.join(base, t["channel_source"]), t["arm"], t["attack"], k, fam)
+            c = cells.get((t["dataset"], keyfmt.format(r=k, a=t["arm"], k=t["attack"])))
             a, ac, _ = mean_asr(c) if c else (float("nan"), float("nan"), 0)
             if ch is None:
                 continue
+            # `--`, not `nan`, for a rung with no ASR runs: this block is headed "for the appendix" and
+            # a printed nan is exactly the kind of thing that gets transcribed. No Mode-S rung is
+            # affected -- all of theirs exist -- so this changes only rungs that have nothing to report.
+            sa = "     --" if np.isnan(a) else f"{a:8.3f}"
+            sc = "    --" if np.isnan(ac) else f"{ac:6.3f}"
             print(f"  {k:>6} {ch['d_agg_disp']:8.3f} {ch['d_decision']:7.3f} "
-                  f"{ch['d_admission']:7.3f} {ch['d_influence']:7.3f} {a:8.3f} {ac:6.3f}")
+                  f"{ch['d_admission']:7.3f} {ch['d_influence']:7.3f} {sa} {sc}")
 
     # LaTeX. Emitted here so the paper's table cannot drift from the numbers above.
     print("\n=== LATEX (copy verbatim; regenerate rather than edit) ===\n")
@@ -394,17 +513,39 @@ def main():
     lines += [r"\bottomrule", r"\end{tabular}"]
     print("\n".join(lines))
 
+    # A SECOND tabular, not extra rows in the first. The Mode-S LaTeX above is therefore unchanged
+    # byte for byte by this round's addition, which is what lets the paper's existing tab:channels stay
+    # as it is while the new class gets a table whose header states its own rung.
+    mask_lines = []
+    if mask_table:
+        mask_lines = [r"\begin{tabular}{llrrrrr}", r"\toprule",
+                      r"Aggregator & Kind & $\Delta$ agg. & $\Delta$ dec. & $\Delta$ adm. "
+                      r"& $\Delta \Lambda_a$ & $\Delta$ ASR \\", r"\midrule"]
+        for t in mask_table:
+            a = t["asr"]
+            dasr = "---" if a is None else f"{a['delta_asr']:+.3f}"
+            mask_lines.append(f"{t['label']} & {t['kind']} & {t['d_agg_disp']:.3f} & "
+                              f"{t['d_decision']:.3f} & {t['d_admission']:.3f} & "
+                              f"{t['d_influence']:.3f} & {dasr} \\\\")
+        mask_lines += [r"\bottomrule", r"\end{tabular}"]
+        print(f"\n=== LATEX, Mode M block (identity rung -> m = {MASK_TOP}) ===\n")
+        print("\n".join(mask_lines))
+
     json.dump({"description": "Cross-aggregator channel table, Mode S identity rung -> kappa=2. "
                               "Assembled read-only from frozen artifacts; no ASR computed here. "
                               "d_agg_disp is the relative displacement of the EMITTED aggregate; it "
                               "was named d_statistic through Round 20, which mislabelled it.",
-               "top_rung": TOP, "identity_rung": IDENTITY,
+               "top_rung": TOP, "identity_rung": IDENTITY, "mask_top_rung": MASK_TOP,
                "mass_definition": {k: v[0] for k, v in MASS.items()},
                "mass_is_binary": {k: v[1] for k, v in MASS.items()},
-               "sources": [os.path.relpath(p, base) for p in [ADM, ADM_FEMNIST] + ASR_SOURCES
+               "sources": [os.path.relpath(p, base) for p in [ADM, ADM_FEMNIST, MASK] + ASR_SOURCES
                            if os.path.exists(p)],
                "rows": table,
-               "latex": "\n".join(lines)}, open(OUT, "w"), indent=1)
+               # Mode M kept in its own list and its own LaTeX field, so nothing consuming `rows` or
+               # `latex` sees a row measured at a different dial without asking for it.
+               "mask_rows": mask_table,
+               "latex": "\n".join(lines),
+               "latex_mask": "\n".join(mask_lines)}, open(OUT, "w"), indent=1)
     print(f"\nWrote {OUT}")
 
 

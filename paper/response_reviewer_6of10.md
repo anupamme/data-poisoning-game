@@ -14,8 +14,8 @@ later revision fixed independently of your report.
 | What the report describes | The current draft |
 |---|---|
 | `PASS precision: 100%` **in the abstract** | Absent from the abstract. The phrase survives at exactly one appendix site, where it is computed, printed beside its base rate and the constant-HIGH baseline it beats by one pair. |
-| Main text ~12 pp, references beginning on p13 | Ethics statement heading on **p9**; references precede `\appendix`. 44 pp total including appendix, plus an 8 pp companion supplement. |
-| Title containing *"Under Persistence"* | *What Does Preserving a Defense Preserve? Causal Identification for Federated-Learning Defense Composition* |
+| Main text ~12 pp, references beginning on p13 | Ethics statement heading on **p9**; references precede `\appendix`. 45 pp total including appendix, plus an 8 pp companion supplement. |
+| Title containing *"Under Persistence"* | *What Does Preserving a Defense Statistic Preserve? Causal Identification for Federated-Learning Defense Composition* (the word *Statistic* was inserted after a later review) |
 | Theorem **2** proves the RFA case via weighted majority, `ρ < n_b/n_a` | The object is now **Theorem 8**; its part (2) assumes `Δ'_sep > 2(R'_B + δ')`, and its proof says explicitly that no weighted-majority assumption is used or would be appropriate. |
 | Persistence / VoPD / Nash / temporal mixing as co-primary contributions | `mixing` appears 2 times, `Nash` 1, `VoPD` 2, all in the appendix. The body declares temporal mixing out of scope. |
 
@@ -177,14 +177,61 @@ the split, none reduced in count.
 
 ---
 
+## Since drafting this reply: the 2 × 2 factorial ran, and refuted our own channel attribution
+
+An earlier version of this letter listed the factorial as unrun. It has since been pre-registered, run
+and reported, and **the outcome went against us**, so it belongs here rather than only in an appendix.
+Rules were frozen in `experiments/pre_registration_emit_only.md` at commit `b995f1b` before any
+emit-only ASR existed, with the runner refusing to start unless its own recorded commit matches that
+hash. All three harness checks the freeze required pass at 0.00e+00 across five published arms and the
+score-only control, so the refactor that added the fourth cell perturbed no published computation, and
+the κ = 0 rung is imported bit-identically rather than re-run, because at the identity the transform
+returns the stack unwrapped and emit-only *is* Krum alone. The fourth cell, **emit-only Krum**, scores
+the untransformed stack (pinning the decision to the identity rung's) and aggregates the transformed
+selected update, so it closes the statistic channel exactly where score-only closes the magnitude one.
+
+Seed-matched at the primary rung, which the 0.35 clean-accuracy floor **forced** to κ = 1 rather than
+κ = 2 (Section 5 of the pre-registration named κ = 2 as the rung at risk, and named it for this cell
+specifically, before any ASR existed):
+
+| Cell | Statistic channel | Magnitude channel | Mean ASR | ΔASR |
+|---|---|---|---|---|
+| κ = 0 identity (imported) | closed | closed | 0.062 | (baseline) |
+| Score-only | **open** | closed | 0.032 | −0.030 |
+| Emit-only | closed | **open** | 0.107 | +0.046 |
+| Full Mode S | **open** | **open** | 0.023 | −0.039 |
+| additive prediction Δ_SO + Δ_EO | | | | **+0.016** |
+| residual against measured Δ_full (frozen margin 0.05) | | | | **−0.054** |
+
+The magnitude channel **is** inert on its own, |+0.046| falling inside the frozen 0.05 inert margin,
+which is what we had predicted. But the additive prediction +0.016 sits against a measured −0.039: a
+residual of −0.054, outside the frozen margin, and the additive model does not merely mis-size the
+joint effect, **it reverses its sign**, the same failure mode this paper's headline result charges the
+outcome-gated ladder with (−0.272 against +0.098). So **no per-channel decomposition of ΔASR is claimed
+anywhere in the paper**, and we withdraw the re-selection/rescaling split as a decomposition of
+*suppression*. It stands as what it says it is: a decomposition of a *displacement*, which makes no
+claim about suppression in its own terms.
+
+We report the arm as **not decisive**, and act on it only in the direction that withdraws a claim.
+Three reasons, all of them ours to report. (i) It is knife-edge on both margins at once: |Δ_EO| falls
+inside the inert margin by 0.004 and the residual falls outside the additivity margin by 0.004. (ii)
+Both pre-registered secondaries are null: per-seed sign count 3 up against 2 down, and
+Jonckheere-Terpstra across the four rungs gives z = −0.437, p = 0.669. (iii) One seed carries the whole
+result: seed 42 contributes ΔASR = +0.272 against −0.007, +0.007, +0.013 and −0.058, and excluding it
+would give Δ_EO = −0.011 with a residual of −0.003, which would read as **separable**. **We do not
+exclude it.** Section 5 fixes n = 5 on seeds 42-46 and applies the accuracy floor to a rung's *mean*
+rather than per seed, so no per-seed exclusion is licensed, and dropping the one seed that produces the
+unwelcome answer is exactly what pre-registration exists to prevent. Section 6.1 of the same document
+declared, before the run, that at n = 5 only a large |Δ_EO| would be decisive, and |Δ_EO| is not large.
+Low power is a reason to stop asserting a decomposition, never a reason to assert one, which is why a
+knife-edge result is safe to act on in this direction and in no other.
+
 ## What we have not done
 
-- **The 2 x 2 factorial** that would separate the statistic/decision channel from the emitted-magnitude
-  channel exists only as code. Its harness is implemented and its thresholds are drafted, but the
-  pre-registration document is not yet git-committed and neither the harness check nor the arm has been
-  run, so by this paper's own standard it is not pre-registered and we do not describe it as such. The paper reports the one cell that exists, a pre-registered score-only control closing the
-  magnitude channel (Δ = −0.023 against −0.026 uncontrolled on the identical cell, refuting threshold
-  0.212 nowhere approached), and claims nothing about the missing cell.
+- **The factorial is a within-family result at n = 5, not a general one.** It is defined only for the
+  two selectors whose decision can be transplanted (`krum`, `cos_krum`) and the harness raises for any
+  other `d2`, so it is one attack on one aggregator family, one dataset and one architecture, and it is
+  reported as not decisive in (L1) rather than as an established interaction.
 - **The page count is at the limit, not comfortably inside it.** The Ethics heading sits on p9. Any
   further body addition requires a compensating cut.
 - **`ρ*`, the pilot-free geometric screen, is not available.** We report it vacuous rather than

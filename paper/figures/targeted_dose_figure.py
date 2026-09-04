@@ -41,12 +41,17 @@ REPO = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, REPO)
 
 from experiments.analyze_targeted_dose import (  # noqa: E402
-    ADM, KAPPAS, NUS, TARGETED, rungs_of)
+    ACC_FLOOR, ADM, EQUIV_MARGIN, KAPPAS, NUS, TARGETED, rungs_of)
 # Imported, not re-implemented: the DAG panel's admission count must be the SAME per-round indicator
 # and the SAME arm/attack pairing the published channel table uses, or the figure and the table can
 # disagree about what "the support of the adversarial mass changed" means.
 from experiments.build_channel_table import (  # noqa: E402
     ADM_FEMNIST, MASS, ROWS, channel_rows)
+# Panel (c) reads BOTH its point estimates and its intervals from this artifact and computes neither,
+# so the figure cannot report a different number, or a differently-derived interval, from the caption
+# and the body that quote the same generator.
+COMPARABILITY = os.path.join(REPO, "results", "comparability_table.json")
+SIXCELL = os.path.join(REPO, "results", "comparability_six_cells.json")
 
 cells = json.load(open(TARGETED))["cells"]
 adm = json.load(open(ADM))
@@ -92,9 +97,13 @@ def draw_modeS(ax, tag="(a) ", compact=False):
                  "#a9780a"),
                 (RHO[-1], asr[-1], 0.32, "max-committed ASR: flat", "#b03a2e"),
                 (RHO[-1], admn[-1], 0.06, "admission change: never", "#2f7d3f")):
+            # Dotted, thin and translucent ON PURPOSE: a solid leader in the series colour
+            # reads as a continuation of the trace, so the red one made "max-committed ASR:
+            # flat" look like a series rising at the right edge, contradicting its own label.
             ax.annotate(txt, xy=(x, y), xytext=(RHO[-1] * 1.9, ytx), fontsize=FS, color=col,
                         va="center", ha="left", linespacing=1.2,
-                        arrowprops=dict(arrowstyle="-", color=col, lw=0.7, shrinkA=2, shrinkB=2))
+                        arrowprops=dict(arrowstyle="-", color=col, lw=0.55, alpha=0.5,
+                                        linestyle=(0, (1.6, 1.6)), shrinkA=2, shrinkB=2))
     else:
         ax.annotate(f"decision $\\to {max(dec):.2f}$", xy=(RHO[2], dec[2]),
                     xytext=(RHO[0] * 1.3, 0.86), fontsize=FS, color="#a9780a",
@@ -187,15 +196,35 @@ def draw_dag(ax, tag="(a) "):
     row's rounded mean, because Krum admits no adversary at any rung -- its own zero is a floor. The
     pooled count reports how many of those rounds had adversarial mass present at baseline, i.e. how
     many were rounds in which a change was possible (experiments/count_admission_rounds.py prints the
-    same three numbers per arm).
+    same three numbers per arm). The admission -> ASR arrow carries cos_krum's first-rung fall and NOT
+    Krum's suppression delta: the witness has to change arm there, for the reason set out at its
+    computation below.
     """
     TOP = KAPPAS[-1]
     dec = max(summary[f"doseS|krum|{k}|decision"] for k in KAPPAS)   # "up to", as the body says
     share = adm["adv_coeff_share"][f"doseS|{TOP}"]
     shares = [adm["adv_coeff_share"][f"doseS|{k}"] for k in KAPPAS]
     assert max(shares) - min(shares) < 1e-5, shares      # the pinning this panel claims
+    # The admission -> ASR arrow needs a DIFFERENT arm than the three before it, and that is forced by
+    # what the arrow asserts: (P4) does not imply (P5), so its witness has to be a case where admission
+    # invariance HOLDS and suppression MOVES. Krum is the opposite case -- decision moved, suppression
+    # held INSIDE the equivalence margin, which the assert below is what states -- so its delta is the
+    # PREVIOUS arrow's evidence and panel (b)'s number; annotating it here read as this break's own
+    # witness and so asserted the converse of the break. cos_krum is the
+    # witness the body rests on: admission identically 0.000 at every rung, ASR falling by the first,
+    # gate-passing rung (rho = 2.72, clean accuracy 0.599 -> 0.567). The body reports that fall as the
+    # difference of the two PUBLISHED rung means (0.584 -> 0.411), so it is differenced the same way
+    # here rather than at full precision; the assert holds the two conventions to the third decimal, so
+    # a data change that separated them would fail here instead of drifting away from the prose.
     kr = rungs_of(cells, "S", "krum", KAPPAS)
-    d_asr = kr[-1]["mean"] - kr[0]["mean"]
+    assert abs(kr[-1]["mean"] - kr[0]["mean"]) < EQUIV_MARGIN, kr    # why Krum is not this witness
+    ck = rungs_of(cells, "S", "cos_krum", KAPPAS)
+    for _k in KAPPAS:                       # the arrow's ANTECEDENT, asserted rather than assumed
+        for _ch in ("decision", "admission"):
+            assert summary[f"doseS|cos_krum|{_k}|{_ch}"] == 0.0, (_k, _ch)
+    d_ck = round(ck[0]["mean"], 3) - round(ck[1]["mean"], 3)
+    assert abs(d_ck - (ck[0]["mean"] - ck[1]["mean"])) < 1e-3, (d_ck, ck[0]["mean"], ck[1]["mean"])
+    assert ck[1]["acc"] >= ACC_FLOOR, ck[1]["acc"]                   # the rung's own gate, not assumed
 
     # pooled over the channel table's own cells: each arm under ITS OWN committed attack
     n_rounds = n_changed = n_present = 0
@@ -253,9 +282,15 @@ def draw_dag(ax, tag="(a) "):
     # disclosed in prose -- the control paragraph of the targeted section names it as "the aggregate
     # the defense emits" -- and in the channel table, so nothing is lost by not repeating it inside
     # the diagram. None is the skip marker; the loop keeps its segment index either way.
-    for i, lab in enumerate([None, f"flips {dec:.2f} of rounds",
-                             f"support unchanged ({n_changed}/{n_rounds})",
-                             f"$|\\Delta|{{=}}{abs(d_asr):.3f}$, in margin"]):
+    # Each label names ITS OWN scope, because the three are not the same arm and a reader who assumes
+    # they are reads the panel as one experiment. Segment 2 is Krum alone (its decision flips); segment 3
+    # is POOLED over the four CIFAR-10 arms of the channel table, which is why it must NOT carry an arm
+    # name -- n_rounds is summed over ROWS above, so "Krum: 0/240" would be false; segment 4 is cos_krum,
+    # the only arm that holds admission and moves suppression. Widest label is 24 chars, one under the
+    # 25-char budget the layout note below fixes, so horizontal clearance is no worse than before.
+    for i, lab in enumerate([None, f"Krum: flips {dec:.2f}",
+                             f"unchanged, {n_changed}/{n_rounds}, 4 arms",
+                             f"cos_krum: falls {d_ck:.3f}"]):
         if lab is None:
             continue
         # ONE line each, and that is a layout constraint, not a style choice: two-line annotations reach
@@ -271,7 +306,11 @@ def draw_dag(ax, tag="(a) "):
 
     # the confounded path: T -> adversarial influence -> ASR, never touching d_2's statistic
     YC = 0.13
-    box(0.470, YC, "adversarial influence (attenuation, Lem. 1)", CONF, fs=5.6)
+    # NO lemma number here. This PDF is shared by paper/ and workshop_paper/, and
+    # `lem:annihilation` is Lemma 2 in the main paper and Lemma 1 in the workshop, so no
+    # hardcoded number can be right in both. Each document's caption carries the real \ref;
+    # a number baked into a figure is a cross-reference LaTeX cannot check.
+    box(0.470, YC, "adversarial influence (attenuation)", CONF, fs=5.6)
     for (x0, y0), (x1, y1), rad in (((XS[0], Y - 0.20), (0.283, YC), -0.28),
                                     ((0.657, YC), (XS[4], Y - 0.20), -0.28)):
         ax.annotate("", xy=(x1, y1), xytext=(x0, y0), zorder=3,
@@ -288,6 +327,101 @@ def draw_dag(ax, tag="(a) "):
     ax.set_xlim(0, 1.0)
     ax.set_ylim(-0.22, 1.20)
     ax.axis("off")
+
+
+def draw_reversal(ax, tag="(c) "):
+    """Six cells, two designs each: where closing the attenuation channel changes the answer.
+
+    Read from results/comparability_six_cells.json, which analyze_comparability.py writes after
+    asserting that the four published contrasts reproduce bit-identically. Nothing is recomputed here.
+
+    The panel REFUSES to draw unless that artifact still certifies the two things it asserts visually:
+    that the published cells reproduce, and that the cell drawn as a sign reversal is the one the
+    analyzer classified as one. A chart of twelve numbers is exactly the kind of figure that keeps
+    drawing after its premise stops holding, so the premise is checked.
+
+    Four cells are TRAINING -- the frozen rule was read off them -- and two are out-of-sample, marked
+    with a rule. Of the two, one confirms and one REFUTES, and the panel says so rather than showing
+    six undifferentiated rows: a reader must be able to see which rows could have falsified anything.
+    """
+    # Same amber as draw_dag's confounded path and the same green as its admission arrow, so a reader
+    # who has just read panel (a) meets the same two colours meaning the same two things.
+    CONF, INSTR = "#a9780a", "#2f7d3f"
+    d = json.load(open(SIXCELL))
+    a = d["assertions"]
+    cells = [c for c in d["cells"] if c["confounded"] and c["controlled"]]
+    if not a["published_cells_reproduce"] or len(cells) != a["n_cells"]:
+        raise SystemExit("panel (c) refuses to draw: results/comparability_six_cells.json no longer "
+                         f"certifies reproducing published cells over {a['n_cells']} complete cells "
+                         f"({a}). Re-run experiments/analyze_comparability.py and read its output.")
+    rev = [c["label"] for c in cells if c["observed"] == "SIGN REVERSAL"]
+    if rev != ([a["sign_reversal_cell"]] if a["sign_reversal_cell"] else []):
+        raise SystemExit(f"panel (c) refuses to draw: sign-reversal rows {rev} disagree with the "
+                         f"artifact's own {a['sign_reversal_cell']!r}.")
+
+    # Training cells first, then a rule, then the two that could have falsified the frozen rule. Within
+    # each block the artifact's order is kept, which is the order the pre-registration lists them in.
+    cells = [c for c in cells if c["training"]] + [c for c in cells if not c["training"]]
+    ys = list(range(len(cells) - 1, -1, -1))
+
+    for c, y in zip(cells, ys):
+        cf, ct = c["confounded"], c["controlled"]
+        # The dumbbell connector carries the panel's whole claim: its LENGTH is how much the answer
+        # moves when the attenuation channel is closed, on one cell at one seed set.
+        ax.plot([cf["mean"], ct["mean"]], [y, y], color="0.55", lw=1.0, zorder=2)
+        for r, col, mk in ((cf, CONF, "o"), (ct, INSTR, "D")):
+            ax.errorbar(r["mean"], y, xerr=(r["hi"] - r["lo"]) / 2.0, fmt=mk, ms=3.6,
+                        color=col, ecolor=col, elinewidth=1.1, capsize=2.2, capthick=0.9,
+                        zorder=5, mec=col, mfc=col)
+        if c["observed"] == "SIGN REVERSAL":
+            ax.text(max(cf["mean"], ct["mean"]) + 0.045, y, "sign\nreversal", fontsize=5.0,
+                    color="#8a2a2a", fontweight="bold", ha="left", va="center", zorder=6,
+                    linespacing=1.0)
+    ax.axvline(0.0, color="0.25", lw=1.0, zorder=4)
+
+    # The out-of-sample block, separated by a rule so the four training rows cannot be read as evidence.
+    n_train = sum(1 for c in cells if c["training"])
+    if 0 < n_train < len(cells):
+        ax.axhline(len(cells) - n_train - 0.5, color="0.45", lw=0.7, ls=(0, (2.2, 1.8)), zorder=1)
+
+    def is_hit(c):
+        return c["observed"] == c["predicted"] or (
+            c["predicted"] == "DISAGREE" and c["observed"] == "SIGN REVERSAL")
+
+    ax.set_yticks(ys)
+    ax.set_yticklabels([f"$\\mathtt{{{c['label'].replace('_', chr(92) + '_')}}}$" for c in cells],
+                       fontsize=5.4)
+
+    # The two rows that could have falsified the frozen rule are the only ones carrying a verdict, and
+    # one of them REFUTES. That word is the honest headline of this block and is not softened.
+    xr = ax.get_xlim() if ax.get_xlim()[1] > ax.get_xlim()[0] + 1e-9 else None
+    for c, y in zip(cells, ys):
+        if c["training"]:
+            continue
+        hit = is_hit(c)
+        ax.annotate("out of sample: " + ("confirms" if hit else "REFUTES"),
+                    xy=(1.0, y), xycoords=("axes fraction", "data"),
+                    xytext=(-2, 0), textcoords="offset points",
+                    fontsize=5.0, ha="right", va="center", zorder=7,
+                    color=("#2f7d3f" if hit else "#8a2a2a"),
+                    fontweight=("normal" if hit else "bold"))
+    ax.set_xlabel("$\\Delta$ ASR, $\\kappa{=}0 \\to \\kappa{=}2$, per cell; "
+                  "bars are $95\\%$ paired $t$ intervals\n"
+                  "circle: outcome-gated ladder (adversary free to attenuate).   "
+                  "diamond: Mode S (adversary pinned at $c{=}1$)",
+                  fontsize=5.9, labelpad=1.5, linespacing=1.25)
+    ax.set_title(f"{tag}the two designs disagree on {a['n_disagree']} of {a['n_cells']} cells, "
+                 f"and on one they have OPPOSITE SIGNS",
+                 fontsize=7.4, loc="left", pad=2.0)
+    lo = min(min(c["confounded"]["lo"], c["controlled"]["lo"]) for c in cells)
+    hi = max(max(c["confounded"]["hi"], c["controlled"]["hi"]) for c in cells)
+    pad = 0.12 * (hi - lo)
+    ax.set_xlim(lo - pad, hi + pad + 0.10)
+    ax.set_ylim(-0.6, len(cells) - 0.4)
+    ax.tick_params(axis="x", labelsize=5.6)
+    ax.tick_params(axis="y", length=0)
+    for sp in ("top", "right", "left"):
+        ax.spines[sp].set_visible(False)
 
 
 def save(fig, name):
@@ -309,15 +443,24 @@ draw_modeA(bxA, tag="")
 fA.tight_layout()
 save(fA, "targeted_modeA.pdf")
 
-# --- the body float for BOTH papers: the causal structure (a) above the Mode-S evidence (b).
+# --- the body float for BOTH papers: the causal structure (a), the Mode-S evidence (b), the reversal (c).
 # Emitted under a NEW name so nothing that references targeted_modeS.pdf changes. Sized at the printed
 # width (5.5in ~ NeurIPS \linewidth) rather than 6.4in, so labels render at their nominal point size
 # instead of being downscaled -- the previous single panel was set at 0.37\linewidth from a 6.4in
 # canvas, a 0.32x reduction that left its axis labels near-illegible.
-fC, (cx, cbx) = plt.subplots(2, 1, figsize=(5.5, 2.14),
-                             gridspec_kw=dict(height_ratios=[1.10, 1.05], hspace=0.46))
+# FIVE rows, two of them empty spacers, because the two gaps need very different sizes and a single
+# hspace cannot give them: panel (b) carries a two-line x tick band (rho over kappa) AND an x label
+# beneath it, so the (b)->(c) gap has ~11pt more to clear than the (a)->(b) gap does. With one hspace,
+# buying enough room below (b) meant paying for the same room below (a) and shrinking every panel to
+# fund it; at hspace=0.62 panel (c)'s title printed straight through (b)'s x label. Measured, not
+# guessed: at these numbers there are 14.4pt of clear space below (b)'s x label, and panels (a) and (b)
+# are each ~0.06in TALLER than in the two-panel version this replaces, for +0.33in of total height.
+fC = plt.figure(figsize=(5.5, 3.36))
+_gs = fC.add_gridspec(5, 1, height_ratios=[0.92, 0.12, 0.84, 0.84, 1.10], hspace=0.0)
+cx, cbx, ccx = fC.add_subplot(_gs[0]), fC.add_subplot(_gs[2]), fC.add_subplot(_gs[4])
 draw_dag(cx)
 draw_modeS(cbx, tag="(b) ", compact=True)
+draw_reversal(ccx, tag="(c) ")
 save(fC, "modeS_causal.pdf")
 
 # --- combined two-panel layout, kept so the ICLR paper's existing float need not change
@@ -338,6 +481,20 @@ print("  admission ", " ".join(f"{summary[f'doseS|krum|{k}|admission']:7.3f}" fo
 # Printed because the DAG panel no longer annotates it: the prose that reports "Delta agg." for the
 # top rung must still be able to transcribe it from a run rather than from memory.
 print("  agg_disp  ", " ".join(f"{summary[f'doseS|krum|{k}|agg_disp']:7.3f}" for k in KAPPAS))
+# The DAG panel's admission -> ASR arrow is the ONE annotation drawn from another arm, so its numbers are
+# printed in full here rather than only asserted: the caption has to name the arm and the rung, and the
+# two differencing conventions have to be visible side by side. The body reports 0.173, the difference of
+# the two published rung means; at full precision the same fall is 0.1723, and nothing rests on which.
+_ck = rungs_of(cells, "S", "cos_krum", KAPPAS)
+print("panel (a) admission -> ASR arrow, cos_krum / pixel (the (P4) does not imply (P5) witness):")
+print("  rho       ", " ".join(f"{r:7.2f}" for r in RHO))
+print("  ASR       ", " ".join(f"{x['mean']:7.3f}" for x in _ck))
+print("  acc       ", " ".join(f"{x['acc']:7.3f}" for x in _ck))
+print("  decision  ", " ".join(f"{summary[f'doseS|cos_krum|{k}|decision']:7.3f}" for k in KAPPAS))
+print("  admission ", " ".join(f"{summary[f'doseS|cos_krum|{k}|admission']:7.3f}" for k in KAPPAS))
+print(f"  first gate-passing rung: rho={RHO[1]:.2f}, acc {_ck[0]['acc']:.3f} -> {_ck[1]['acc']:.3f},"
+      f" fall {round(_ck[0]['mean'], 3) - round(_ck[1]['mean'], 3):.3f} as the body differences it"
+      f" ({_ck[0]['mean'] - _ck[1]['mean']:.4f} at full precision)")
 for d2 in ("reputation", "coord_median"):
     r = rungs_of(cells, "A", d2, NUS)
     print(f"panel (b) Mode A {d2}:")

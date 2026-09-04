@@ -36,7 +36,9 @@ t_crit IS IMPORTED, NEVER `T95[n-1]`
 `analyze_headline_cis.T95` is a literal table that stops at df=9, so reading it directly raises
 KeyError the moment an arm reaches n=11. The flagship controlled ladder is at n=20.
 
-Reads frozen artifacts and results/comparability_cells/. Writes nothing. Adds no runs.
+Reads frozen artifacts and results/comparability_cells/. Adds no runs. Writes exactly one artifact,
+results/comparability_six_cells.json, which is what Fig. 1(c) draws -- the figure recomputes nothing
+and quotes no number this script did not emit.
 Run: python3 experiments/analyze_comparability.py
 """
 import json
@@ -282,6 +284,36 @@ def main():
               f"{lam} & {r['pred'] or '---'} & {r['got'] or '---'} \\\\")
     print("\\multicolumn{6}{l}{\\footnotesize $\\ast$ out-of-sample; the other four are the cells the "
           "rule was read off.} \\\\")
+
+    # The figure's artifact. `assertions` carries the premises Fig. 1(c) asserts visually, so the panel
+    # can refuse to draw if a re-score ever stops supporting them -- the same guard the two-bar version
+    # had, widened to six cells.
+    out = {
+        "description": "Six-cell confounded-vs-controlled comparability, scored against the rules "
+                       "frozen in " + PREREG + ". Each design at its own full n (Amendment 3).",
+        "prereg": PREREG, "prereg_commit": PREREG_COMMIT,
+        "cells": [{"label": r["label"], "training": r["training"],
+                   "confounded": None if not r["conf"] else
+                       {k: r["conf"][k] for k in ("mean", "lo", "hi", "n")},
+                   "controlled": None if not r["ctrl"] else
+                       {k: r["ctrl"][k] for k in ("mean", "lo", "hi", "n")},
+                   "d_influence": r["lam"], "d_admission": r["sup"],
+                   "predicted": r["pred"], "observed": r["got"]} for r in rows],
+        "assertions": {
+            "published_cells_reproduce": True,
+            "n_cells": len(rows),
+            "n_disagree": n_dis,
+            "n_sign_reversal": n_rev,
+            "n_out_of_sample_scored": len(scored),
+            "n_out_of_sample_refuting": len(misses),
+            "mechanism_refuted": bool(misses),
+            "sign_reversal_cell": next((r["label"] for r in rows
+                                        if r["got"] == "SIGN REVERSAL"), None),
+        },
+    }
+    path = os.path.join(BASE, "results", "comparability_six_cells.json")
+    json.dump(out, open(path, "w"), indent=2)
+    print(f"\nWrote {path}")
     return 0
 
 

@@ -1,0 +1,463 @@
+{
+  "description": "Seed top-up of the flagship Mode-S krum arm, seeds 47-61, bringing it from n=5 to n=20. Purpose is INTERVAL WIDTH, not a second test of the published verdict. Reversal clause and seed list frozen at 684b31e (experiments/pre_registration_dose_seed_topup.md). Merge with results/targeted_dose/ at analysis time; that file is never written by this suite.",
+  "prereg_commit": "684b31e",
+  "dataset": "cifar10",
+  "model": "cifar_cnn",
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 50,
+    "kappas": [
+      0.0,
+      0.5,
+      1.0,
+      2.0
+    ],
+    "new_seeds": [
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61
+    ],
+    "published_seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "rhos": {
+      "0.0": 1.0,
+      "0.5": 2.718281828459045,
+      "1.0": 7.38905609893065,
+      "2.0": 54.598150033144236
+    },
+    "acc_floor": 0.35,
+    "equiv_margin": 0.15
+  },
+  "arm": {
+    "mode": "S",
+    "d2": "krum",
+    "attack": "committed_scaling",
+    "attack_impl": "model_scaling"
+  },
+  "published_n5_verdict": {
+    "delta_asr_kappa2_minus_kappa0": -0.026,
+    "equiv_margin": 0.15,
+    "jt_increasing_p": 0.7,
+    "verdict": "H-admission confirmed, H-statistic refuted",
+    "note": "Reported unchanged alongside the n=20 verdict whatever the latter is."
+  },
+  "identity_rung_provenance": "kappa=0 is COMPUTED here for seeds 47-61: results/dose_response/ holds seeds 42-46 only, so there is nothing to import. Verified bit-identical to krum standalone by --harness-check.",
+  "cells": {
+    "doseS_kappa0.0_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 0.0,
+      "dial": 1.0,
+      "per_seed": [
+        {
+          "seed": 47,
+          "accuracy": 0.5776,
+          "asr": 0.06166666666666667,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.5993,
+          "asr": 0.05444444444444444,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.4692,
+          "asr": 0.06522222222222222,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.6419,
+          "asr": 0.03277777777777778,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.551,
+          "asr": 0.009111111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.5861,
+          "asr": 0.023555555555555555,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.6309,
+          "asr": 0.02411111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.5927,
+          "asr": 0.035444444444444445,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.4606,
+          "asr": 0.18777777777777777,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.4747,
+          "asr": 0.0022222222222222222,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.5459,
+          "asr": 0.009777777777777778,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.6776,
+          "asr": 0.013888888888888888,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.5922,
+          "asr": 0.04411111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.5609,
+          "asr": 0.0057777777777777775,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.4504,
+          "asr": 0.00022222222222222223,
+          "source": "<computed here>"
+        }
+      ]
+    },
+    "doseS_kappa0.5_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 0.5,
+      "dial": 2.718281828459045,
+      "per_seed": [
+        {
+          "seed": 47,
+          "accuracy": 0.6708,
+          "asr": 0.04888888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.6668,
+          "asr": 0.01911111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.5832,
+          "asr": 0.042222222222222223,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.5338,
+          "asr": 0.0023333333333333335,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.6302,
+          "asr": 0.03311111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.6308,
+          "asr": 0.050555555555555555,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.7055,
+          "asr": 0.016,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.6841,
+          "asr": 0.04188888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.6816,
+          "asr": 0.02322222222222222,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.6774,
+          "asr": 0.03344444444444444,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.6433,
+          "asr": 0.002111111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.7023,
+          "asr": 0.0023333333333333335,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.6792,
+          "asr": 0.015666666666666666,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.6442,
+          "asr": 0.09044444444444444,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.5896,
+          "asr": 0.011666666666666667,
+          "source": "<computed here>"
+        }
+      ]
+    },
+    "doseS_kappa1.0_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 1.0,
+      "dial": 7.38905609893065,
+      "per_seed": [
+        {
+          "seed": 47,
+          "accuracy": 0.658,
+          "asr": 0.04211111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.6731,
+          "asr": 0.01622222222222222,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.5966,
+          "asr": 0.050333333333333334,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.6266,
+          "asr": 0.01,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.5494,
+          "asr": 0.035,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.6009,
+          "asr": 0.035111111111111114,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.6332,
+          "asr": 0.022111111111111113,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.6734,
+          "asr": 0.03744444444444445,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.6699,
+          "asr": 0.03877777777777778,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.6327,
+          "asr": 0.023666666666666666,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.6153,
+          "asr": 0.0033333333333333335,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.7172,
+          "asr": 0.008888888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.6721,
+          "asr": 0.012,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.6495,
+          "asr": 0.05611111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.6289,
+          "asr": 0.03688888888888889,
+          "source": "<computed here>"
+        }
+      ]
+    },
+    "doseS_kappa2.0_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 2.0,
+      "dial": 54.598150033144236,
+      "per_seed": [
+        {
+          "seed": 47,
+          "accuracy": 0.5986,
+          "asr": 0.06966666666666667,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.6239,
+          "asr": 0.01633333333333333,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.5772,
+          "asr": 0.08411111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.644,
+          "asr": 0.009222222222222222,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.6203,
+          "asr": 0.02,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.5684,
+          "asr": 0.04644444444444444,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.6152,
+          "asr": 0.035111111111111114,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.6294,
+          "asr": 0.030666666666666665,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.6027,
+          "asr": 0.034888888888888886,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.6214,
+          "asr": 0.02322222222222222,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.6031,
+          "asr": 0.014222222222222223,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.6629,
+          "asr": 0.022555555555555554,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.6306,
+          "asr": 0.0028888888888888888,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.5942,
+          "asr": 0.042,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.5344,
+          "asr": 0.057,
+          "source": "<computed here>"
+        }
+      ]
+    }
+  }
+}

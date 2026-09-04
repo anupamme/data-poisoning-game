@@ -62,6 +62,10 @@ base = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.ins
 # papers.
 from experiments.analyze_dose_response import jonckheere  # noqa: E402
 from experiments.analyze_targeted_dose import welch_less  # noqa: E402
+# t_crit, not the bare T95 table it falls back on: the table stops at df=9, so reading it directly
+# would raise the moment a top-up takes an arm past n=10. Imported rather than restated so the figure
+# panel, this table, the caption and the letter cannot quote four differently-derived intervals.
+from experiments.analyze_headline_cis import t_crit  # noqa: E402
 
 R = os.path.join(base, "results")
 LADDER = os.path.join(R, "dose_response", "summary.json")
@@ -122,6 +126,28 @@ def fmt(v, p=3, signed=False):
     return f"{v:+.{p}f}" if signed else f"{v:.{p}f}"
 
 
+def paired_ci95(hi, lo):
+    """Two-sided 95% Student-t interval on the PER-SEED ASR difference, top rung minus identity.
+
+    Paired, not two-sample, and that is the design rather than a modelling choice: both rungs run at
+    the same seeds, so each difference holds one data partition fixed and the seed-to-seed spread that
+    dominates this suite drops out of the contrast. Its mean is identically mean(hi) - mean(lo), so the
+    interval is centred on the asr_effect already reported and cannot disagree with it.
+
+    This is what the sign-reversal claim needs and the published table never printed: two point
+    estimates of opposite sign are only a reversal if their intervals say so.
+    """
+    d = np.asarray(hi, dtype=float) - np.asarray(lo, dtype=float)
+    n = len(d)
+    if n < 2:
+        return {"n": n, "note": "no interval at n<2"}
+    m, sd = float(d.mean()), float(d.std(ddof=1))
+    hw = float(t_crit(n) * sd / np.sqrt(n))
+    return {"n": n, "mean": m, "sd": sd, "t_crit": float(t_crit(n)), "half_width": hw,
+            "lo": m - hw, "hi": m + hw, "excludes_zero": bool((m - hw) * (m + hw) > 0),
+            "per_seed": [float(x) for x in d]}
+
+
 def tex_exp(v, p=0):
     """A float in scientific notation as LaTeX math, so the emitted table needs no hand-editing."""
     m, e = f"{v:.{p}e}".split("e")
@@ -154,6 +180,7 @@ def main():
             "asr_identity": float(np.mean(lo_asr)), "asr_top": float(np.mean(hi_asr)),
             "asr_identity_per_seed": lo_asr, "asr_top_per_seed": hi_asr,
             "asr_effect": float(np.mean(hi_asr) - np.mean(lo_asr)),
+            "asr_effect_ci95": paired_ci95(hi_asr, lo_asr),
             "acc_identity": float(np.mean(lo_acc)), "acc_top": float(np.mean(hi_acc)),
             "jt_J": J, "jt_z": z, "jt_p_rise": p_up, "jt_p_fall": p_down,
             "jt_p_rise_perm": p_perm_up,
@@ -244,6 +271,17 @@ def main():
     print(f"  sign reversal: ladder {fmt(L['asr_effect'], signed=True)} vs instrument "
           f"{fmt(S['asr_effect'], signed=True)} -- "
           f"{'opposite signs' if L['asr_effect'] * S['asr_effect'] < 0 else 'SAME SIGN'}")
+    # Two point estimates of opposite sign are a reversal only if the intervals agree, so they are
+    # printed next to the signs rather than left in the JSON for a reader to assemble.
+    cl, cs = L["asr_effect_ci95"], S["asr_effect_ci95"]
+    print(f"    paired 95% t intervals (n={cl['n']}, t*={cl['t_crit']:.3f}): "
+          f"ladder [{cl['lo']:+.4f}, {cl['hi']:+.4f}] (sd {cl['sd']:.4f}); "
+          f"instrument [{cs['lo']:+.4f}, {cs['hi']:+.4f}] (sd {cs['sd']:.4f})")
+    both_excl = cl["excludes_zero"] and cs["excludes_zero"]
+    disjoint = cl["hi"] < cs["lo"] or cs["hi"] < cl["lo"]
+    print(f"    both exclude zero: {both_excl}; intervals disjoint: {disjoint}"
+          + ("" if both_excl and disjoint else
+             "   <-- the reversal is NOT interval-separated; report the intervals, not the signs"))
     print(f"  NON-MATCH, disclosed: adversarial influence Lambda_a moves in BOTH designs -- ladder "
           f"{fmt(L['admission_top'])} vs instrument {fmt(S['admission_top'])} "
           f"({L['admission_top'] / max(S['admission_top'], 1e-12):.1f}x). Mode S pins the "
@@ -312,6 +350,12 @@ def main():
                               "shared_tolerance": SHARED_TOL,
                               "identity_cell_shared": ok_shared,
                               "sign_reversal": bool(L["asr_effect"] * S["asr_effect"] < 0),
+                              # The interval-level form of the same claim, kept separate from the
+                              # sign-level one: signs can differ while intervals overlap, and it is
+                              # the conjunction the figure and the caption assert.
+                              "both_effects_exclude_zero": both_excl,
+                              "effect_intervals_disjoint": disjoint,
+                              "sign_reversal_interval_separated": bool(both_excl and disjoint),
                               "top_rung_gaps": {
                                   "agg_disp": abs((L["agg_disp_top"] or 0) - (S["agg_disp_top"] or 0)),
                                   "decision": abs((L["decision_top"] or 0) - (S["decision_top"] or 0)),

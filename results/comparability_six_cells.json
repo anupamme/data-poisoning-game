@@ -1,0 +1,137 @@
+{
+  "description": "Six-cell confounded-vs-controlled comparability, scored against the rules frozen in experiments/pre_registration_comparability.md. Each design at its own full n (Amendment 3).",
+  "prereg": "experiments/pre_registration_comparability.md",
+  "prereg_commit": "f16083b",
+  "cells": [
+    {
+      "label": "krum / scaling",
+      "training": true,
+      "confounded": {
+        "mean": -0.007577777777777776,
+        "lo": -0.08903070705655176,
+        "hi": 0.0738751515009962,
+        "n": 5
+      },
+      "controlled": {
+        "mean": -0.00961111111111111,
+        "lo": -0.03160090276252634,
+        "hi": 0.012378680540304119,
+        "n": 20
+      },
+      "d_influence": 0.0,
+      "d_admission": 0.0,
+      "predicted": "AGREE",
+      "observed": "AGREE"
+    },
+    {
+      "label": "cos_krum / pixel",
+      "training": true,
+      "confounded": {
+        "mean": -0.4046666666666667,
+        "lo": -0.7956978058167619,
+        "hi": -0.013635527516571488,
+        "n": 5
+      },
+      "controlled": {
+        "mean": -0.42465277777777777,
+        "lo": -0.7316741941068179,
+        "hi": -0.11763136144873765,
+        "n": 8
+      },
+      "d_influence": 0.0,
+      "d_admission": 0.0,
+      "predicted": "AGREE",
+      "observed": "AGREE"
+    },
+    {
+      "label": "reputation / scaling",
+      "training": true,
+      "confounded": {
+        "mean": 0.7616888888888889,
+        "lo": 0.6575428649484765,
+        "hi": 0.8658349128293013,
+        "n": 5
+      },
+      "controlled": {
+        "mean": 0.17842222222222223,
+        "lo": -0.11232984061312293,
+        "hi": 0.4691742850575674,
+        "n": 5
+      },
+      "d_influence": 0.019605274342811764,
+      "d_admission": 0.0,
+      "predicted": "DISAGREE",
+      "observed": "DISAGREE"
+    },
+    {
+      "label": "coord_median / pixel",
+      "training": true,
+      "confounded": {
+        "mean": -0.2720666666666666,
+        "lo": -0.4216966269089662,
+        "hi": -0.12243670642436705,
+        "n": 5
+      },
+      "controlled": {
+        "mean": 0.0980666666666667,
+        "lo": 0.017806027263397695,
+        "hi": 0.17832730606993571,
+        "n": 5
+      },
+      "d_influence": 0.03322742837095495,
+      "d_admission": 0.0,
+      "predicted": "DISAGREE",
+      "observed": "SIGN REVERSAL"
+    },
+    {
+      "label": "coord_median / scaling",
+      "training": false,
+      "confounded": {
+        "mean": 0.001866666666666661,
+        "lo": -0.07753144120629392,
+        "hi": 0.08126477453962723,
+        "n": 5
+      },
+      "controlled": {
+        "mean": 0.19611111111111112,
+        "lo": 0.11197407250885032,
+        "hi": 0.2802481497133719,
+        "n": 5
+      },
+      "d_influence": 0.008619231983179303,
+      "d_admission": 0.0,
+      "predicted": "DISAGREE",
+      "observed": "DISAGREE"
+    },
+    {
+      "label": "krum / scaling, EMNIST",
+      "training": false,
+      "confounded": {
+        "mean": 0.15697317834366092,
+        "lo": -0.17457684068103524,
+        "hi": 0.4885231973683571,
+        "n": 5
+      },
+      "controlled": {
+        "mean": -0.012811072413949071,
+        "lo": -0.034313495883363555,
+        "hi": 0.008691351055465415,
+        "n": 5
+      },
+      "d_influence": 0.0,
+      "d_admission": 0.0,
+      "predicted": "AGREE",
+      "observed": "DISAGREE"
+    }
+  ],
+  "assertions": {
+    "published_cells_reproduce": true,
+    "n_cells": 6,
+    "n_disagree": 4,
+    "n_sign_reversal": 1,
+    "n_out_of_sample_scored": 2,
+    "n_out_of_sample_refuting": 1,
+    "mechanism_refuted": true,
+    "sign_reversal_cell": "coord_median / pixel"
+  }
+}

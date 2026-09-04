@@ -1,0 +1,320 @@
+{
+  "description": "Seed top-up of the score-only / emit-only factorial at its frozen contrast rung kappa=1.0, seeds 47-61, bringing the additivity residual from n=5 to n=20. A DISCLOSED POST-HOC EXTENSION of b995f1b, not a prospective test. Limits frozen at 684b31e (experiments/pre_registration_emit_only_topup.md).",
+  "prereg_commit": "684b31e",
+  "parent_prereg_commit": "b995f1b",
+  "departure_from_parent_non_negotiable": "pre_registration_emit_only.md at b995f1b: 'No seed addition. n=5, seeds 42-46, matching the arm it is compared against.' This suite departs from that clause. Its stated rationale -- comparability across the factorial's cells -- is honoured by extending ALL THREE cells at the contrast rung to the same seeds; its literal text is not. The n=20 result is a DISCLOSED POST-HOC EXTENSION, never prospective, and the published n=5 verdict is reported unchanged beside it.",
+  "dataset": "cifar10",
+  "model": "cifar_cnn",
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 50,
+    "contrast_rung": 1.0,
+    "baseline_rung": 0.0,
+    "new_seeds": [
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61
+    ],
+    "published_seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "rho_at_contrast": 7.38905609893065,
+    "acc_floor": 0.35,
+    "inert_margin": 0.05,
+    "additivity_margin": 0.05,
+    "outlier_threshold": 0.15
+  },
+  "arm": {
+    "mode": "S",
+    "d2": "krum",
+    "attack": "committed_scaling",
+    "attack_impl": "model_scaling",
+    "ladders_run_here": [
+      "score_only",
+      "emit_only"
+    ],
+    "full_cell_source": "results/dose_seed_topup/ (item A); not recomputed here"
+  },
+  "cannot_certify": "Projected 95% half-widths at n=20, holding the published sds, are 0.061 (dASR_EO) and 0.057 (residual), both wider than the 0.05 margin. A pass of the point-estimate rule is therefore reported as 'consistent with separability, not established'.",
+  "ladders_remain_at_n5": "The score-only and emit-only ladders across kappa, and the Jonckheere-Terpstra trend test, are NOT restated at n=20. Only the frozen contrast rung is extended.",
+  "published_n5_contrast": {
+    "n": 5,
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "contrast_rung": 1.0,
+    "d_asr_full": {
+      "mean": -0.03886666666666667,
+      "sd": 0.045515524417092716,
+      "per_seed": [
+        -0.10033333333333333,
+        0.021222222222222226,
+        -0.01977777777777778,
+        -0.033999999999999996,
+        -0.06144444444444445
+      ]
+    },
+    "d_asr_score_only": {
+      "mean": -0.029977777777777777,
+      "sd": 0.06378360406991869,
+      "per_seed": [
+        -0.11388888888888889,
+        0.04911111111111112,
+        -0.03288888888888889,
+        0.012222222222222225,
+        -0.06444444444444444
+      ]
+    },
+    "d_asr_emit_only": {
+      "mean": 0.04557777777777778,
+      "sd": 0.1296520366877588,
+      "per_seed": [
+        0.27211111111111114,
+        -0.0066666666666666645,
+        0.0065555555555555575,
+        0.013444444444444446,
+        -0.05755555555555556
+      ]
+    },
+    "additivity_residual": {
+      "mean": -0.05446666666666668,
+      "sd": 0.12220713038137089,
+      "per_seed": [
+        -0.2585555555555556,
+        -0.021222222222222226,
+        0.006555555555555554,
+        -0.059666666666666666,
+        0.06055555555555555
+      ]
+    },
+    "inert_margin": 0.05,
+    "additivity_margin": 0.05,
+    "verdict": "CHANNELS INTERACT",
+    "note": "Reported unchanged alongside the n=20 result whatever the latter is."
+  },
+  "cells": {
+    "doseS_kappa1.0_then_krum|committed_scaling|score_only": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 1.0,
+      "dial": 7.38905609893065,
+      "ladder": "score_only",
+      "per_seed": [
+        {
+          "seed": 47,
+          "accuracy": 0.6409,
+          "asr": 0.08255555555555555,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.6652,
+          "asr": 0.04466666666666667,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.4691,
+          "asr": 0.08188888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.459,
+          "asr": 0.00022222222222222223,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.5175,
+          "asr": 0.06244444444444444,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.611,
+          "asr": 0.045,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.6121,
+          "asr": 0.06333333333333334,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.6402,
+          "asr": 0.035666666666666666,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.6284,
+          "asr": 0.0038888888888888888,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.6368,
+          "asr": 0.07511111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.6168,
+          "asr": 0.0014444444444444444,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.7437,
+          "asr": 0.014444444444444444,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.6566,
+          "asr": 0.045,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.6193,
+          "asr": 0.009111111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.4983,
+          "asr": 0.002,
+          "source": "<computed here>"
+        }
+      ]
+    },
+    "doseS_kappa1.0_then_krum|committed_scaling|emit_only": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 1.0,
+      "dial": 7.38905609893065,
+      "ladder": "emit_only",
+      "per_seed": [
+        {
+          "seed": 47,
+          "accuracy": 0.3512,
+          "asr": 0.09111111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.4953,
+          "asr": 0.058555555555555555,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.361,
+          "asr": 0.1698888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.5188,
+          "asr": 0.0005555555555555556,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.6188,
+          "asr": 0.028333333333333332,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.4103,
+          "asr": 0.009111111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.2619,
+          "asr": 0.035444444444444445,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.6073,
+          "asr": 0.00788888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.2765,
+          "asr": 0.02288888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.41,
+          "asr": 0.04055555555555555,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.538,
+          "asr": 0.0074444444444444445,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.5915,
+          "asr": 0.04388888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.5638,
+          "asr": 0.004555555555555556,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.4795,
+          "asr": 0.016444444444444446,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.098,
+          "asr": 0.0017777777777777779,
+          "source": "<computed here>"
+        }
+      ]
+    }
+  }
+}

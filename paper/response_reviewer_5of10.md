@@ -28,7 +28,11 @@ run.
    conserved across the split, none reduced in count.
 
 Your suggested title, *What Does Preserving a Defense Preserve? Causal Identification for
-Federated-Learning Defense Composition*, is the paper's title.
+Federated-Learning Defense Composition*, became the paper's title. A later reviewer asked for one word
+inserted into it, on the grounds that the paper's own distinction is between a *statistic* and a
+defense, and we took that: the title now reads *What Does Preserving a Defense **Statistic**
+Preserve? Causal Identification for Federated-Learning Defense Composition*. Your framing is
+unchanged; only the noun the question is about is now explicit.
 
 ---
 
@@ -120,7 +124,8 @@ including the Figure 1 caption.
 
 ## W6. The score-only control, and the factorial you proposed
 
-Your factorial table is the design we implemented, and it is **half-run**.
+Your factorial table is the design we implemented, it is now **fully run**, and **it refuted our own
+attribution**.
 
 - The cell that exists is the pre-registered score-only Krum control: Krum scores the transformed stack
   and therefore makes the same selection, but the **untransformed** selected update is aggregated, so
@@ -128,13 +133,32 @@ Your factorial table is the design we implemented, and it is **half-run**.
   at `35788d9` before any score-only ASR existed. Result: Δ = −0.023 (0.062 → 0.039) against −0.026
   uncontrolled on the identical cell, at the same decision change of 0.733, with the refuting threshold
   0.212 nowhere approached and every rung clearing the accuracy floor.
-- The complementary emit-only cell exists only as code. Its harness is implemented and its thresholds
-  are drafted (additive point prediction −0.0029; separability iff |ΔASR| < 0.05 and additivity
-  residual < 0.05), but the pre-registration document is **not yet git-committed** and neither the
-  harness check nor the arm has been run. By this paper's own standard that is not a pre-registration,
-  so we do not call it one, and the paper claims nothing about the cell. Your point that 0.986 re-selection and 0.973 rescaling displacements are not causal
-  decompositions in the interventional sense is correct, and that decomposition is now presented as
-  algebra, not as a causal claim.
+- The complementary **emit-only** cell has since been frozen at `b995f1b`, harness-checked and run:
+  Krum scores the untransformed stack, pinning its decision to the identity rung's, and aggregates the
+  transformed selected update, so it closes the statistic channel exactly where score-only closes the
+  magnitude one. The pre-registered thresholds were the ones listed here before the run (additive point
+  prediction −0.0029; the magnitude channel inert iff |ΔASR| < 0.05; channels separable iff the
+  additivity residual < 0.05). At the primary rung, which the 0.35 clean-accuracy floor **forced** to
+  κ = 1 rather than κ = 2 (Section 5 of the pre-registration named that rung as the one at risk, and
+  named it for this cell specifically, because emit-only aggregates the rescaled update): score-only
+  −0.030, emit-only **+0.046**, full Mode S −0.039. So the magnitude channel **is** inert alone, as we
+  predicted, but the additive prediction +0.016 sits against a measured −0.039, an additivity residual
+  of **−0.054** outside the frozen margin, and the additive model does not mis-size the joint effect so
+  much as **reverse its sign**. **No per-channel decomposition of ΔASR is claimed anywhere in the paper
+  now**, and we withdraw the re-selection/rescaling split as a decomposition of *suppression*. Your
+  point that the 0.986 re-selection and 0.973 rescaling displacements are not causal decompositions in
+  the interventional sense was correct, and this arm is the reason we can now say it is not one on our
+  own measurement rather than only on presentation: the split stands as algebra about a *displacement*.
+- **We report the emit-only arm as not decisive, and act on it only where it withdraws a claim.** It is
+  knife-edge on both margins at once, by 0.004 in each direction; both pre-registered secondaries are
+  null (per-seed sign count 3 up against 2 down; Jonckheere-Terpstra z = −0.437, p = 0.669); and one
+  seed carries the whole result, seed 42 contributing +0.272 against −0.007, +0.007, +0.013 and −0.058,
+  so excluding it would give Δ_EO = −0.011 and a residual of −0.003, i.e. would read as **separable**.
+  **We do not exclude it.** Section 5 fixes n = 5 on seeds 42-46 and applies the accuracy floor to a
+  rung's *mean* rather than per seed, so no per-seed exclusion is licensed, and dropping the one seed
+  that produces the unwelcome answer is what pre-registration exists to prevent. Section 6.1 declared
+  before the run that at n = 5 only a large |Δ_EO| would be decisive, and it is not large. Low power is
+  a reason to stop asserting a decomposition, never a reason to assert one.
 
 ## W7. The positive result is internally undermined
 
@@ -230,9 +254,11 @@ All three inequalities are validated independently of any FL run on 4000 random 
 
 ## §20. What we did not run, and why
 
-- **Experiment A (clean factorial): half done.** The score-only cell is run and genuinely
-  pre-registered (frozen at `35788d9`). The emit-only cell is implemented but unrun, and its
-  pre-registration is not yet committed. We report the cell we have and claim nothing about the other.
+- **Experiment A (clean factorial): done, and it went against us.** Both cells are run and genuinely
+  pre-registered, score-only frozen at `35788d9` and emit-only at `b995f1b`. The 2 × 2 does not
+  decompose: the additive prediction reverses the sign of the measured joint effect (residual −0.054
+  against a frozen 0.05 margin), so we withdraw the channel attribution the arm was built to test
+  rather than report it as confirmed. It is reported as not decisive at n = 5 (W6).
 - **Experiment B (multiple attacks through the intervention): not run.** Estimated ~18 h on this
   hardware. One Mode-S arm measures 27 minutes per run on this machine, so this is a real cost rather
   than a scheduling excuse.
