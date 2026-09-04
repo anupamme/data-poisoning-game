@@ -60,19 +60,33 @@ ADV_FRACTION = 0.2
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(BASE, "results", "comparability_cells")
 PREREG = "experiments/pre_registration_comparability.md"
-PREREG_COMMIT = "df00ef9"     # freeze c986ef4 + Amendment 1 (df00ef9), which named the gating
-                              # quantity as ΔΛ_a before any result existed. The suite refuses to
-                              # start if this drifts, which is how the amendment stayed auditable.
+PREREG_COMMIT = "f16083b"     # freeze c986ef4 + Amendment 1 (df00ef9), which named the gating
+                              # quantity as ΔΛ_a before any result existed, + Amendment 2 (1026a96),
+                              # which completed cell 6's controlled ladder to the frozen seed set
+                              # after the first scoring returned REFUTES, + Amendment 3 (f16083b),
+                              # which withdrew Amendment 2's claim that cross-design pairing was the
+                              # frozen convention: it is not, and the refutation stands. The suite
+                              # refuses to start if this drifts, which is how the amendments stayed
+                              # auditable.
 
 KAPPAS = [0.0, 0.5, 1.0, 2.0]        # the frozen grid, identical to both existing ladders
 SEEDS = [42, 43, 44, 45, 46]         # frozen; matches every arm this is compared against
 
-# (label, dataset, model, d2, attack, families, key_suffix)
+# (label, dataset, model, d2, attack, families, key_suffix, seeds or None for the full SEEDS)
 CELLS = [
     ("cell5-coord_median/scaling", "cifar10", "cifar_cnn", "coord_median", "committed_scaling",
-     ["confounded", "controlled"], ""),
+     ["confounded", "controlled"], "", None),
     ("cell6-krum/EMNIST-byclass",  "femnist", "simple_cnn", "krum",        "committed_scaling",
-     ["confounded"], "|emnist"),
+     ["confounded"], "|emnist", None),
+    # Amendment 2 (1026a96), read with Amendment 3. The controlled EMNIST ladder exists in results/dose_femnist/ at seeds
+    # 42--44 only, so the first scoring compared n=5 against n=3 across non-identical seed sets and
+    # returned REFUTES on seeds that had no counterpart. This completes the ladder to the frozen seed
+    # set 42--46. **Only the two missing seeds run**: the frozen directory keeps seeds 42--44, is not
+    # written to, and stays authoritative via the analyzer's first-writer-wins merge. All four rungs
+    # run, not just the two the endpoint contrast reads, because leaving 0.5 and 1.0 at n=3 while the
+    # endpoints sit at n=5 would reproduce the same unequal-rung defect one level down.
+    ("cell6b-krum/EMNIST ctrl",    "femnist", "simple_cnn", "krum",        "committed_scaling",
+     ["controlled"], "|emnist", [45, 46]),
 ]
 
 # The EMNIST cell carries a key suffix so its keys can never be pooled with a CIFAR cell's by a
@@ -199,8 +213,8 @@ def main():
 
     cells = load_cells()
     todo = [(lbl, ds, mdl, d2, atk, fam, sfx, k, s)
-            for (lbl, ds, mdl, d2, atk, fams, sfx) in CELLS
-            for fam in fams for k in KAPPAS for s in SEEDS]
+            for (lbl, ds, mdl, d2, atk, fams, sfx, cell_seeds) in CELLS
+            for fam in fams for k in KAPPAS for s in (cell_seeds or SEEDS)]
     done = sum(len(c.get("per_seed", [])) for c in cells.values())
     print(f"  resuming: {done} runs already done, {len(todo)} planned\n")
 
