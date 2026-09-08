@@ -23,6 +23,13 @@ Paired, not two-sample: every rung of an arm runs at the same seeds, so each per
 holds one data partition fixed and the seed-to-seed spread that dominates this suite drops out of
 the contrast. Same choice, and the same reason, as build_comparability_table.py's paired_ci95.
 
+ONE ARM IS SCORED AT TWO SEED COUNTS, DELIBERATELY. The EMNIST-byclass row appears twice: once on
+the frozen n=3 of results/dose_femnist/, and once at n=5 pooling seeds 45--46, which already exist
+in results/comparability_cells/ from the comparability pre-registration's Amendment 2 (1026a96).
+Frozen rows win the merge and nothing is written back. Reporting both is the amendment's own
+commitment; reporting only the larger one would replace a published number silently, and reporting
+only the smaller one would hide seeds the repository already holds.
+
 Run: python3 experiments/analyze_tost_existing.py
 """
 import json
@@ -61,6 +68,16 @@ ARMS = [
     ("Reputation / scaling",            "targeted_dose",   "doseS_kappa{r}_then_reputation|committed_scaling"),
     ("cos_krum / pixel",                "targeted_dose",   "doseS_kappa{r}_then_cos_krum|committed_pixel"),
     ("coord_median / pixel",            "dose_replication", "doseS_kappa{r}_then_coord_median|committed_pixel"),
+    # The same EMNIST-byclass cell at n=5, on seeds that already exist rather than on new runs:
+    # 45 and 46 of this ladder were run under the comparability pre-registration's Amendment 2
+    # (1026a96, read with Amendment 3 f16083b) and live in results/comparability_cells/ under an
+    # |emnist key suffix. Frozen rows win, results/dose_femnist/ is never written, and
+    # analyze_dose_femnist.py --pooled scores the primary rule on the identical merge, so the two
+    # scripts cannot report different n=5 readings of one arm. Both rows are printed because the
+    # amendment's commitment is to report both seed counts, never to replace the frozen one.
+    ("Krum / scaling (EMNIST-byclass, $n{=}5$)", "dose_femnist",
+     "doseS_kappa{r}_then_krum|committed_scaling",
+     [("comparability_cells", "doseS_kappa{r}_then_krum|committed_scaling|emnist")]),
 ]
 IDENTITY_RUNG, TOP_RUNG = "0.0", "2.0"
 
@@ -72,14 +89,27 @@ def load(dirname):
     return json.load(open(p)).get("cells", {})
 
 
-def paired(cells, keyfmt):
-    """Per-seed (asr_top - asr_identity), plus the accuracies, on the seeds present in BOTH rungs."""
-    lo = cells.get(keyfmt.format(r=IDENTITY_RUNG))
-    hi = cells.get(keyfmt.format(r=TOP_RUNG))
-    if not lo or not hi:
+def rows_of(cells, keyfmt, rung):
+    return {r["seed"]: r for r in (cells.get(keyfmt.format(r=rung)) or {}).get("per_seed", [])}
+
+
+def paired(cells, keyfmt, extra=()):
+    """Per-seed (asr_top - asr_identity), plus the accuracies, on the seeds present in BOTH rungs.
+
+    `extra` is a list of (dirname, keyfmt) consulted after `cells`, deduplicated by seed with the
+    FIRST source winning, so a pooled row can only ever fill a seed the authoritative artifact does
+    not have.
+    """
+    L, H = rows_of(cells, keyfmt, IDENTITY_RUNG), rows_of(cells, keyfmt, TOP_RUNG)
+    if not L or not H:
         return None
-    L = {r["seed"]: r for r in lo["per_seed"]}
-    H = {r["seed"]: r for r in hi["per_seed"]}
+    for dirname, kf in extra:
+        c = load(dirname)
+        if c is None:
+            continue
+        for dst, src in ((L, rows_of(c, kf, IDENTITY_RUNG)), (H, rows_of(c, kf, TOP_RUNG))):
+            for s, r in src.items():
+                dst.setdefault(s, r)
     seeds = sorted(set(L) & set(H))
     if not seeds:
         return None
@@ -138,19 +168,21 @@ def main():
     print("Reads frozen artifacts only; adds no runs; revises no published verdict.\n")
 
     rows, n_equiv, n_inside_only = [], 0, 0
-    for label, dirname, keyfmt in ARMS:
+    for label, dirname, keyfmt, *rest in ARMS:
+        extra = rest[0] if rest else ()
         cells = load(dirname)
         if cells is None:
             print(f"{label:34s} results/{dirname}/summary.json ABSENT -- skipped\n")
             continue
-        p = paired(cells, keyfmt)
+        p = paired(cells, keyfmt, extra)
         if p is None:
             print(f"{label:34s} rungs {IDENTITY_RUNG}/{TOP_RUNG} not both present -- skipped\n")
             continue
         r = tost(p["diff"])
         rows.append((label, dirname, p, r))
 
-        print(f"{label}  [results/{dirname}]")
+        print(f"{label}  [results/{dirname}"
+              + ("".join(f" + results/{d}" for d, _ in extra) if extra else "") + "]")
         print(f"  seeds {p['seeds'][0]}-{p['seeds'][-1]} (n={r['n']})   "
               f"identity mean {p['asr_lo'].mean():.4f} -> top mean {p['asr_hi'].mean():.4f}")
         print(f"  paired Delta = {r['mean']:+.4f}  (sd {r['sd']:.4f}, se {r['se']:.4f})")

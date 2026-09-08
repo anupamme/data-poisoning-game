@@ -1,0 +1,244 @@
+{
+  "description": "Seed top-up (n=3 -> n=5) for the EMNIST-byclass/simple_cnn Mode-S krum arm of results/dose_femnist/. Adds seeds 45 and 46 at all four rungs; no decision rule changed. Rules frozen in experiments/pre_registration_dose_femnist_topup.md.",
+  "amends": {
+    "artifact": "results/dose_femnist/summary.json",
+    "prereg": "experiments/pre_registration_dose_femnist.md",
+    "prereg_commit": "478b555"
+  },
+  "prereg_commit_topup": "ad5479b",
+  "dataset": "femnist",
+  "model": "simple_cnn",
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 50,
+    "kappas": [
+      0.0,
+      0.5,
+      1.0,
+      2.0
+    ],
+    "frozen_seeds": [
+      42,
+      43,
+      44
+    ],
+    "new_seeds": [
+      45,
+      46
+    ],
+    "seeds_n5": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "rhos": {
+      "0.0": 1.0,
+      "0.5": 2.718281828459045,
+      "1.0": 7.38905609893065,
+      "2.0": 54.598150033144236
+    },
+    "acc_floor": 0.35,
+    "equiv_margin": 0.15,
+    "replicate_within": 0.15
+  },
+  "arm": {
+    "mode": "S",
+    "d2": "krum",
+    "attack": "committed_scaling",
+    "prop1_class": "c) not invariant",
+    "predicted_outcome": "FLAT if the CIFAR-10 negative is a property of the mechanism; RISING if it was dataset- or architecture-specific"
+  },
+  "new_cells": {
+    "doseS_kappa0.0_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 0.0,
+      "dial": 1.0,
+      "prop1_class": "c) not invariant",
+      "dataset": "femnist",
+      "model": "simple_cnn",
+      "predicted_outcome": "FLAT if the CIFAR-10 negative is a property of the mechanism; RISING if it was dataset- or architecture-specific",
+      "per_seed": [
+        {
+          "seed": 45,
+          "accuracy": 0.738005381566844,
+          "asr": 1.809217965534398e-05
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7521126518401348,
+          "asr": 0.0399475326789995
+        }
+      ],
+      "pooled_n5": {
+        "n": 5,
+        "seeds": [
+          42,
+          43,
+          44,
+          45,
+          46
+        ],
+        "mean_asr": 0.024180198109367227,
+        "std_asr": 0.014896617764213272,
+        "mean_acc": 0.7582713650782734
+      }
+    },
+    "doseS_kappa0.5_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 0.5,
+      "dial": 2.718281828459045,
+      "prop1_class": "c) not invariant",
+      "dataset": "femnist",
+      "model": "simple_cnn",
+      "predicted_outcome": "FLAT if the CIFAR-10 negative is a property of the mechanism; RISING if it was dataset- or architecture-specific",
+      "per_seed": [
+        {
+          "seed": 45,
+          "accuracy": 0.8317615604824498,
+          "asr": 0.009670270025781356
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.8156426502067519,
+          "asr": 0.011036229589759826
+        }
+      ],
+      "pooled_n5": {
+        "n": 5,
+        "seeds": [
+          42,
+          43,
+          44,
+          45,
+          46
+        ],
+        "mean_asr": 0.008070921344248947,
+        "std_asr": 0.00572309550422014,
+        "mean_acc": 0.8095956947465248
+      }
+    },
+    "doseS_kappa1.0_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 1.0,
+      "dial": 7.38905609893065,
+      "prop1_class": "c) not invariant",
+      "dataset": "femnist",
+      "model": "simple_cnn",
+      "predicted_outcome": "FLAT if the CIFAR-10 negative is a property of the mechanism; RISING if it was dataset- or architecture-specific",
+      "per_seed": [
+        {
+          "seed": 45,
+          "accuracy": 0.8472958916121489,
+          "asr": 0.009317472522502148
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.8445621244293906,
+          "asr": 0.011624225428558505
+        }
+      ],
+      "pooled_n5": {
+        "n": 5,
+        "seeds": [
+          42,
+          43,
+          44,
+          45,
+          46
+        ],
+        "mean_asr": 0.010117146863268351,
+        "std_asr": 0.008751557027257738,
+        "mean_acc": 0.8321742045855075
+      }
+    },
+    "doseS_kappa2.0_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 2.0,
+      "dial": 54.598150033144236,
+      "prop1_class": "c) not invariant",
+      "dataset": "femnist",
+      "model": "simple_cnn",
+      "predicted_outcome": "FLAT if the CIFAR-10 negative is a property of the mechanism; RISING if it was dataset- or architecture-specific",
+      "per_seed": [
+        {
+          "seed": 45,
+          "accuracy": 0.8514911066599039,
+          "asr": 0.015378352707042381
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.8511128495654342,
+          "asr": 0.010484418110271836
+        }
+      ],
+      "pooled_n5": {
+        "n": 5,
+        "seeds": [
+          42,
+          43,
+          44,
+          45,
+          46
+        ],
+        "mean_asr": 0.011369125695418156,
+        "std_asr": 0.010736868609420896,
+        "mean_acc": 0.8413985196392803
+      }
+    }
+  },
+  "frozen_artifact_md5": {
+    "at_start": "a16ef13f4d572e7ae425dc1191932d05",
+    "at_exit": "a16ef13f4d572e7ae425dc1191932d05"
+  },
+  "hook_guard": {
+    "rung": 0.0,
+    "new_seed_mean_asr": 0.019982812429327423,
+    "expected_krum_alone": 0.027,
+    "pixel_value_if_hook_skipped": 0.66,
+    "max_allowed": 0.35,
+    "passed": true
+  },
+  "verdict_n3_frozen": {
+    "n": 3,
+    "identity_mean_asr": 0.026978455229393763,
+    "kappa2_mean_asr": 0.01032761921992552,
+    "delta": -0.01665083600946824,
+    "replicate_within": 0.15,
+    "verdict": "FLAGSHIP NEGATIVE REPLICATED on a second dataset and architecture",
+    "per_rung_mean_acc": {
+      "0.0": 0.7670795973281295,
+      "0.5": 0.8001914210144742,
+      "1.0": 0.8230043356286662,
+      "2.0": 0.8347962139903545
+    },
+    "accuracy_gate_ok": true
+  },
+  "verdict_n5": {
+    "n": 5,
+    "identity_mean_asr": 0.024180198109367227,
+    "kappa2_mean_asr": 0.011369125695418156,
+    "delta": -0.012811072413949071,
+    "replicate_within": 0.15,
+    "verdict": "FLAGSHIP NEGATIVE REPLICATED on a second dataset and architecture",
+    "per_rung_mean_acc": {
+      "0.0": 0.7582713650782734,
+      "0.5": 0.8095956947465248,
+      "1.0": 0.8321742045855075,
+      "2.0": 0.8413985196392803
+    },
+    "accuracy_gate_ok": true
+  }
+}

@@ -48,6 +48,10 @@ VARIANTS = [
     ("no screen (all pairs)", None),
     ("C3 alone",              lambda r: r["C3"]),
     ("C2 alone",              lambda r: r["C2"]),
+    # The same screen restricted to the region where C2 is settled by Proposition 1 rather than
+    # by an in-sample per-pair call. This is what "statistic preservation" means if the phrase is
+    # held to the algebra the paper proves; see `c2_provenance` in the ablation.
+    ("C2 algebraic only",     lambda r: r["C2"] and r["c2_provenance"] == "algebraic_invariant"),
     ("C2 and C3",             lambda r: r["C2"] and r["C3"]),
     ("C1 alone",              lambda r: r["C1"]),
     ("C1 and C3",             lambda r: r["C1"] and r["C3"]),
@@ -129,6 +133,26 @@ def main():
         print("    prop:emergent proves cannot certify an emergent composition. So the exclusion is")
         print("    a predicted property of one condition, not an unexplained miss -- and it is")
         print("    tradeable, at a measured cost in precision.")
+
+    # ---- the scope limit on calling the C2 column "statistic preservation" -------------
+    # Read, not recomputed: `c2_provenance` is emitted per row by analyze_condition_ablation.py.
+    prov = abl.get("c2_provenance")
+    if prov is not None:
+        alg = prov["by_provenance"].get("algebraic_invariant", 0)
+        call = prov["by_provenance"].get("per_pair_call", 0)
+        rest = prov["c2_restricted_to_algebraic"]
+        print("\n  WHAT THE C2 COLUMN IS MADE OF, WHICH THE HIGH-RECALL CLAIM DEPENDS ON:")
+        print(f"    of the {prov['c2_admitted']} pairs C2 admits, {alg} rest on algebraic")
+        print(f"    invariance (Prop 1(a)) and {call} on a per-pair call for the")
+        print(f"    conditional classes ({', '.join(prov['conditional_class_d2'])}), "
+              f"{prov['per_pair_call_splits'].get('dev', 0)} of them in-sample dev pairs.")
+        print(f"    {prov['n_low_asr_algebraic']} of the {prov['n_low_asr']} low-ASR pairs rest on "
+              f"algebra, so restricting the screen to the")
+        print(f"    settled region selects {rest['selected']} at {100*rest['precision']:.0f}% "
+              f"precision and {100*rest['recall']:.0f}% recall: it discriminates nothing.")
+        print("    So C2-alone's 100% recall is carried by the in-sample call, and the column is not")
+        print("    a pure statistic-preservation screen for those three d2 classes. This is a scope")
+        print("    disclosure, not a correction: no number above changes.")
 
     # Consistency check against the frozen cost artifact, which computes the C1&C2 point its own way.
     if cost is not None:

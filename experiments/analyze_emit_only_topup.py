@@ -197,7 +197,8 @@ def qualify(r, margin, label):
         return f"{label} ESTABLISHED (interval contained in +-{margin})"
     if r["point_inside"]:
         return (f"consistent with {label}, NOT established "
-                f"(half-width {r['hw95']:.4f} exceeds the +-{margin} margin)")
+                f"(interval [{r['ci95'][0]:+.4f}, {r['ci95'][1]:+.4f}] is not contained in "
+                f"+-{margin}; half-width {r['hw95']:.4f})")
     return f"{label} does NOT hold at this n (point estimate outside the margin)"
 
 

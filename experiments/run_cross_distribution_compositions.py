@@ -152,6 +152,15 @@ def run_one(seed, d1, d2, attack_name, dataset, model_name):
                 server.global_model, FL_CONFIG.local_epochs,
                 current_lr, FL_CONFIG.local_batch_size
             )
+            # The update-level half of the attack. Omitting this made
+            # committed_scaling bit-identical to committed_pixel: the two attacks
+            # share poison_dataset, and manipulate_update is the only thing that
+            # distinguishes them (model_scaling multiplies by scale_factor, pixel
+            # returns the update unchanged). This is a strict no-op for
+            # backdoor_pixel/dba/label_flip, so every pixel-arm cell measured
+            # before this line existed is unchanged by it.
+            if cid in adversarial_ids:
+                update = attack.manipulate_update(update, server.global_model)
             updates.append(update)
 
         aggregated = generic_compose(server, updates, d1, d2)

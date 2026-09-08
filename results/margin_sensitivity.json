@@ -1,0 +1,92 @@
+{
+  "description": "Sensitivity of the intervention conclusions to the two frozen thresholds. Read-only over results/comparability_six_cells.json; no ASR computed, no model trained, no frozen artifact written.",
+  "source": "results/comparability_six_cells.json",
+  "frozen_equivalence_margin": 0.15,
+  "frozen_agree_tolerance": 0.05,
+  "per_arm_minimum_margin": {
+    "krum / scaling": {
+      "ci": [
+        -0.03160090276252634,
+        0.012378680540304119
+      ],
+      "m_star": 0.03160090276252634,
+      "inside_frozen_margin": true,
+      "headroom": 0.11839909723747366
+    },
+    "cos_krum / pixel": {
+      "ci": [
+        -0.7316741941068179,
+        -0.11763136144873765
+      ],
+      "m_star": 0.7316741941068179,
+      "inside_frozen_margin": false,
+      "headroom": -0.5816741941068179
+    },
+    "reputation / scaling": {
+      "ci": [
+        -0.11232984061312293,
+        0.4691742850575674
+      ],
+      "m_star": 0.4691742850575674,
+      "inside_frozen_margin": false,
+      "headroom": -0.3191742850575674
+    },
+    "coord_median / pixel": {
+      "ci": [
+        0.017806027263397695,
+        0.17832730606993571
+      ],
+      "m_star": 0.17832730606993571,
+      "inside_frozen_margin": false,
+      "headroom": -0.02832730606993572
+    },
+    "coord_median / scaling": {
+      "ci": [
+        0.11197407250885032,
+        0.2802481497133719
+      ],
+      "m_star": 0.2802481497133719,
+      "inside_frozen_margin": false,
+      "headroom": -0.13024814971337192
+    },
+    "krum / scaling, EMNIST": {
+      "ci": [
+        -0.034313495883363555,
+        0.008691351055465415
+      ],
+      "m_star": 0.034313495883363555,
+      "inside_frozen_margin": true,
+      "headroom": 0.11568650411663645
+    }
+  },
+  "binding_equivalence_arm": "krum / scaling, EMNIST",
+  "binding_m_star": 0.034313495883363555,
+  "agree_tolerance_stable_range": [
+    0.0,
+    1.0
+  ],
+  "agree_tolerance_swept_range": [
+    0.0,
+    1.0
+  ],
+  "agree_tolerance_inert_over_whole_sweep": true,
+  "agree_tolerance_carries_no_verdict": true,
+  "verdicts_recomputed": [
+    "AGREE",
+    "AGREE",
+    "DISAGREE",
+    "SIGN REVERSAL",
+    "DISAGREE",
+    "DISAGREE"
+  ],
+  "verdicts_published": [
+    "AGREE",
+    "AGREE",
+    "DISAGREE",
+    "SIGN REVERSAL",
+    "DISAGREE",
+    "DISAGREE"
+  ],
+  "reproduces_published": true,
+  "sign_reversal_is_threshold_free": true
+}

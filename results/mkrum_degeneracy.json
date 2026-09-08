@@ -1,0 +1,341 @@
+{
+  "description": "multi_krum reduces to fedavg at clients_per_round <= k (default 5): consequences for tab:prospective's rows and matched contrasts",
+  "identity_tolerance": 1e-09,
+  "mechanism": {
+    "k_default": 5,
+    "clients_per_round_in_all_experiments": 5,
+    "max_abs_diff_K5": 1.9073486328125e-06,
+    "max_abs_diff_K10": 25.195266723632812,
+    "degenerate_at_K5": true,
+    "distinct_at_K10": true,
+    "source": "results/wave3_invariance_check.json (test D)"
+  },
+  "degeneracy_A_passthrough_d1_duplicate_rows": [
+    {
+      "row_a": "krum_then_fltrust",
+      "row_b": "multi_krum_then_fltrust",
+      "max_abs_asr_diff": 0.0,
+      "byte_identical": true
+    },
+    {
+      "row_a": "krum_then_rfa",
+      "row_b": "multi_krum_then_rfa",
+      "max_abs_asr_diff": 0.0,
+      "byte_identical": true
+    }
+  ],
+  "degeneracy_B_mkrum_as_d2_vs_standalone": [
+    {
+      "pair": "fltrust_then_multi_krum",
+      "d1": "fltrust",
+      "max_committed_asr": 0.044851851851851844,
+      "max_committed_attack": "committed_scaling",
+      "max_committed_acc": 0.5760333333333333,
+      "vs_standalone": {
+        "committed_scaling": {
+          "composition_mean_asr": 0.044851851851851844,
+          "standalone_mean_asr": 0.0477037037037037,
+          "max_abs_seed_diff": 0.005888888888888888,
+          "n_shared_seeds": 3
+        },
+        "committed_pixel": {
+          "composition_mean_asr": 0.04462962962962963,
+          "standalone_mean_asr": 0.04611111111111111,
+          "max_abs_seed_diff": 0.0024444444444444435,
+          "n_shared_seeds": 3
+        }
+      },
+      "vs_fedavg_counterpart": {},
+      "fedavg_counterpart": null
+    },
+    {
+      "pair": "norm_clip_then_multi_krum",
+      "d1": "norm_clip",
+      "max_committed_asr": 0.9430740740740741,
+      "max_committed_attack": "committed_scaling",
+      "max_committed_acc": 0.7288666666666667,
+      "vs_standalone": {
+        "committed_scaling": {
+          "composition_mean_asr": 0.9430740740740741,
+          "standalone_mean_asr": 0.9363703703703704,
+          "max_abs_seed_diff": 0.027111111111111086,
+          "n_shared_seeds": 3
+        },
+        "committed_pixel": {
+          "composition_mean_asr": 0.7832592592592592,
+          "standalone_mean_asr": 0.7680370370370371,
+          "max_abs_seed_diff": 0.04600000000000004,
+          "n_shared_seeds": 3
+        }
+      },
+      "vs_fedavg_counterpart": {
+        "committed_scaling": {
+          "mkrum_mean_asr": 0.9430740740740741,
+          "fedavg_mean_asr": 0.9368148148148148,
+          "max_abs_seed_diff": 0.027111111111111086,
+          "n_shared_seeds": 3
+        },
+        "committed_pixel": {
+          "mkrum_mean_asr": 0.7832592592592592,
+          "fedavg_mean_asr": 0.7680370370370371,
+          "max_abs_seed_diff": 0.04600000000000004,
+          "n_shared_seeds": 3
+        }
+      },
+      "fedavg_counterpart": "norm_clip_then_fedavg"
+    },
+    {
+      "pair": "rfa_then_multi_krum",
+      "d1": "rfa",
+      "max_committed_asr": 0.8753333333333333,
+      "max_committed_attack": "committed_scaling",
+      "max_committed_acc": 0.786,
+      "vs_standalone": {
+        "committed_scaling": {
+          "composition_mean_asr": 0.8753333333333333,
+          "standalone_mean_asr": 0.8697777777777778,
+          "max_abs_seed_diff": 0.024111111111111083,
+          "n_shared_seeds": 3
+        },
+        "committed_pixel": {
+          "composition_mean_asr": 0.8254074074074075,
+          "standalone_mean_asr": 0.8188148148148148,
+          "max_abs_seed_diff": 0.02922222222222226,
+          "n_shared_seeds": 3
+        }
+      },
+      "vs_fedavg_counterpart": {
+        "committed_scaling": {
+          "mkrum_mean_asr": 0.8753333333333333,
+          "fedavg_mean_asr": 0.8677037037037038,
+          "max_abs_seed_diff": 0.024666666666666615,
+          "n_shared_seeds": 3
+        },
+        "committed_pixel": {
+          "mkrum_mean_asr": 0.8254074074074075,
+          "fedavg_mean_asr": 0.8267037037037038,
+          "max_abs_seed_diff": 0.013333333333333308,
+          "n_shared_seeds": 3
+        }
+      },
+      "fedavg_counterpart": "rfa_then_fedavg"
+    }
+  ],
+  "matched_contrasts": [
+    {
+      "d1": "reputation",
+      "label": "Rep",
+      "invariant_d2": "fltrust",
+      "invariant_asr": 0.04607407407407407,
+      "noninvariant_d2": "krum",
+      "noninvariant_asr": 0.8804814814814814,
+      "noninvariant_attack": "committed_pixel",
+      "noninvariant_acc": 0.5838333333333333,
+      "noninvariant_source": "prospective_suite",
+      "ratio": 19.110128617363344,
+      "krum_standalone_asr_same_attack": 0.5831111111111111,
+      "krum_suppresses_alone_here": false,
+      "excess_over_krum_alone": 0.2973703703703703,
+      "max_abs_seed_diff_vs_krum_alone": 0.7944444444444444,
+      "byte_identical_to_krum_alone": false,
+      "superseded_multi_krum_asr": null,
+      "superseded_ratio": null
+    },
+    {
+      "d1": "norm_clip",
+      "label": "NC",
+      "invariant_d2": "fltrust",
+      "invariant_asr": 0.04611111111111111,
+      "noninvariant_d2": "krum",
+      "noninvariant_asr": 0.5831111111111111,
+      "noninvariant_attack": "committed_pixel",
+      "noninvariant_acc": 0.48513333333333336,
+      "noninvariant_source": "metric_swap",
+      "ratio": 12.645783132530122,
+      "krum_standalone_asr_same_attack": 0.5831111111111111,
+      "krum_suppresses_alone_here": false,
+      "excess_over_krum_alone": 0.0,
+      "max_abs_seed_diff_vs_krum_alone": 0.0,
+      "byte_identical_to_krum_alone": true,
+      "superseded_multi_krum_asr": 0.9430740740740741,
+      "superseded_ratio": 20.452208835341366
+    },
+    {
+      "d1": "rfa",
+      "label": "RFA",
+      "invariant_d2": "fltrust",
+      "invariant_asr": 0.04666666666666667,
+      "noninvariant_d2": "krum",
+      "noninvariant_asr": 0.7246666666666667,
+      "noninvariant_attack": "committed_pixel",
+      "noninvariant_acc": 0.5876,
+      "noninvariant_source": "metric_swap",
+      "ratio": 15.528571428571428,
+      "krum_standalone_asr_same_attack": 0.5831111111111111,
+      "krum_suppresses_alone_here": false,
+      "excess_over_krum_alone": 0.14155555555555555,
+      "max_abs_seed_diff_vs_krum_alone": 0.2238888888888889,
+      "byte_identical_to_krum_alone": false,
+      "superseded_multi_krum_asr": 0.8753333333333333,
+      "superseded_ratio": 18.757142857142856
+    }
+  ],
+  "ratio_range": [
+    12.645783132530122,
+    19.110128617363344
+  ],
+  "superseded_ratio_range": [
+    18.757142857142856,
+    20.452208835341366
+  ],
+  "n_contrasts_with_d2_suppressing_alone": 0,
+  "arm_iii_census": [
+    {
+      "pair": "foolsgold_then_krum",
+      "max_committed_asr": 0.07822222222222222,
+      "reduces_to_single_defense": null,
+      "reason": null
+    },
+    {
+      "pair": "krum_then_coord_median",
+      "max_committed_asr": 0.4497407407407408,
+      "reduces_to_single_defense": "coord_median",
+      "reason": "krum as d1 is pass-through"
+    },
+    {
+      "pair": "krum_then_rfa",
+      "max_committed_asr": 0.8697777777777778,
+      "reduces_to_single_defense": "rfa",
+      "reason": "krum as d1 is pass-through"
+    },
+    {
+      "pair": "multi_krum_then_rfa",
+      "max_committed_asr": 0.8697777777777778,
+      "reduces_to_single_defense": "rfa",
+      "reason": "multi_krum as d1 is pass-through"
+    },
+    {
+      "pair": "rfa_then_multi_krum",
+      "max_committed_asr": 0.8753333333333333,
+      "reduces_to_single_defense": "rfa",
+      "reason": "multi_krum as d2 is FedAvg at K=5"
+    },
+    {
+      "pair": "reputation_then_krum",
+      "max_committed_asr": 0.8804814814814814,
+      "reduces_to_single_defense": null,
+      "reason": null
+    },
+    {
+      "pair": "norm_clip_then_multi_krum",
+      "max_committed_asr": 0.9430740740740741,
+      "reduces_to_single_defense": "norm_clip",
+      "reason": "multi_krum as d2 is FedAvg at K=5"
+    }
+  ],
+  "arm_iii_n_pairs": 7,
+  "arm_iii_n_genuine_two_mechanism": 2,
+  "same_function_noise_floor": {
+    "acc_floor": 0.35,
+    "cells": [
+      {
+        "cells": [
+          "norm_clip_then_multi_krum",
+          "norm_clip_then_fedavg"
+        ],
+        "attack": "committed_scaling",
+        "max_abs_seed_diff": 0.027111111111111086,
+        "min_acc": 0.6925,
+        "above_acc_floor": true
+      },
+      {
+        "cells": [
+          "norm_clip_then_multi_krum",
+          "norm_clip_then_fedavg"
+        ],
+        "attack": "committed_pixel",
+        "max_abs_seed_diff": 0.04600000000000004,
+        "min_acc": 0.7844,
+        "above_acc_floor": true
+      },
+      {
+        "cells": [
+          "rfa_then_multi_krum",
+          "rfa_then_fedavg"
+        ],
+        "attack": "committed_scaling",
+        "max_abs_seed_diff": 0.024666666666666615,
+        "min_acc": 0.7795,
+        "above_acc_floor": true
+      },
+      {
+        "cells": [
+          "rfa_then_multi_krum",
+          "rfa_then_fedavg"
+        ],
+        "attack": "committed_pixel",
+        "max_abs_seed_diff": 0.013333333333333308,
+        "min_acc": 0.778,
+        "above_acc_floor": true
+      },
+      {
+        "cells": [
+          "multi_krum alone",
+          "fedavg alone"
+        ],
+        "attack": "committed_scaling",
+        "max_abs_seed_diff": 0.2701111111111111,
+        "min_acc": 0.1,
+        "above_acc_floor": false
+      },
+      {
+        "cells": [
+          "multi_krum alone",
+          "fedavg alone"
+        ],
+        "attack": "committed_pixel",
+        "max_abs_seed_diff": 0.04600000000000004,
+        "min_acc": 0.7844,
+        "above_acc_floor": true
+      }
+    ],
+    "floor_above_acc_gate": 0.04600000000000004,
+    "floor_below_acc_gate": 0.2701111111111111
+  },
+  "degenerate_rows_in_suite": [
+    {
+      "pair": "fltrust_then_multi_krum",
+      "reason": "multi_krum == fedavg as d2"
+    },
+    {
+      "pair": "krum_then_coord_median",
+      "reason": "krum pass-through as d1"
+    },
+    {
+      "pair": "krum_then_fltrust",
+      "reason": "krum pass-through as d1"
+    },
+    {
+      "pair": "krum_then_rfa",
+      "reason": "krum pass-through as d1"
+    },
+    {
+      "pair": "multi_krum_then_fltrust",
+      "reason": "multi_krum pass-through as d1"
+    },
+    {
+      "pair": "multi_krum_then_rfa",
+      "reason": "multi_krum pass-through as d1"
+    },
+    {
+      "pair": "norm_clip_then_multi_krum",
+      "reason": "multi_krum == fedavg as d2"
+    },
+    {
+      "pair": "rfa_then_multi_krum",
+      "reason": "multi_krum == fedavg as d2"
+    }
+  ],
+  "n_degenerate_rows": 8,
+  "n_rows": 20
+}

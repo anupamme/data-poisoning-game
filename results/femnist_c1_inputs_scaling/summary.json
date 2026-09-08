@@ -1,0 +1,144 @@
+{
+  "description": "Standalone single-defense baselines on FEMNIST/simple_cnn under committed model scaling, measured as fedavg->X under the identical composition protocol as results/femnist_c1_inputs/. These are C1's inputs, not predictions. Screen for a seventh comparability cell.",
+  "dataset": "femnist",
+  "model": "simple_cnn",
+  "protocol": {
+    "N": 10,
+    "K": 5,
+    "rounds": 50,
+    "f": 0.2,
+    "dirichlet_alpha": 0.5,
+    "seeds": [
+      42,
+      43,
+      44
+    ]
+  },
+  "threshold": 0.5,
+  "accuracy_floor": 0.35,
+  "cells": {
+    "krum|committed_scaling": {
+      "defense": "krum",
+      "attack": "committed_scaling",
+      "per_seed": {
+        "42": {
+          "accuracy": 0.7645951359576352,
+          "asr": 0.023899769324709396,
+          "seconds": 5638.468022108078
+        }
+      },
+      "role": "verification, not a screen target"
+    },
+    "reputation|committed_scaling": {
+      "defense": "reputation",
+      "attack": "committed_scaling",
+      "per_seed": {
+        "42": {
+          "accuracy": 0.4458791468583169,
+          "asr": 0.9947080374508119,
+          "seconds": 3712.287896633148
+        },
+        "43": {
+          "accuracy": 0.8329908960394763,
+          "asr": 0.015215523090144284,
+          "seconds": 2967.247776031494
+        },
+        "44": {
+          "accuracy": 0.8329393155265941,
+          "asr": 0.02960785200597042,
+          "seconds": 2973.669872045517
+        }
+      },
+      "mean_asr": 0.3465104708489755,
+      "mean_accuracy": 0.703936452808129,
+      "suppresses": true,
+      "powered": true
+    },
+    "foolsgold|committed_scaling": {
+      "defense": "foolsgold",
+      "attack": "committed_scaling",
+      "per_seed": {
+        "42": {
+          "accuracy": 0.04643965509830386,
+          "asr": 0.9999819078203447,
+          "seconds": 2979.065598964691
+        },
+        "43": {
+          "accuracy": 0.047428281595213326,
+          "asr": 0.9991225292867159,
+          "seconds": 3404.6955258846283
+        },
+        "44": {
+          "accuracy": 0.04369729116339847,
+          "asr": 0.0,
+          "seconds": 3451.6032860279083
+        }
+      },
+      "mean_asr": 0.6663681457023535,
+      "mean_accuracy": 0.04585507595230522,
+      "suppresses": false,
+      "powered": false
+    },
+    "cos_reputation|committed_scaling": {
+      "defense": "cos_reputation",
+      "attack": "committed_scaling",
+      "per_seed": {
+        "42": {
+          "accuracy": 0.047488458860242604,
+          "asr": 1.0,
+          "seconds": 3499.3610439300537
+        },
+        "43": {
+          "accuracy": 0.04967203390559047,
+          "asr": 1.0,
+          "seconds": 3146.533555984497
+        },
+        "44": {
+          "accuracy": 0.20341634930323324,
+          "asr": 0.9979646297887738,
+          "seconds": 2977.488037109375
+        }
+      },
+      "mean_asr": 0.9993215432629245,
+      "mean_accuracy": 0.10019228068968877,
+      "suppresses": false,
+      "powered": false
+    },
+    "cos_krum|committed_scaling": {
+      "defense": "cos_krum",
+      "attack": "committed_scaling",
+      "per_seed": {
+        "42": {
+          "accuracy": 0.04967203390559047,
+          "asr": 1.0,
+          "seconds": 2921.897824048996
+        },
+        "43": {
+          "accuracy": 0.04967203390559047,
+          "asr": 1.0,
+          "seconds": 2887.3357100486755
+        },
+        "44": {
+          "accuracy": 0.048881132708062894,
+          "asr": 0.0,
+          "seconds": 2892.904073238373
+        }
+      },
+      "mean_asr": 0.6666666666666666,
+      "mean_accuracy": 0.04940840017308127,
+      "suppresses": false,
+      "powered": false
+    }
+  },
+  "verification": {
+    "cell": "krum|committed_scaling",
+    "seed": 42,
+    "asr": 0.023899769324709396,
+    "expected_scaling": 0.027,
+    "pixel_value_if_hook_skipped": 0.6601,
+    "passed": true
+  },
+  "powered_candidates": [
+    "reputation"
+  ]
+}

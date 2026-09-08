@@ -1,0 +1,122 @@
+{
+  "description": "Standalone single-defense baselines on FEMNIST/simple_cnn under committed model scaling, measured as fedavg->X under the identical composition protocol as results/femnist_c1_inputs/. These are C1's inputs, not predictions. Screen for a seventh comparability cell.",
+  "dataset": "femnist",
+  "model": "simple_cnn",
+  "protocol": {
+    "N": 10,
+    "K": 5,
+    "rounds": 50,
+    "f": 0.2,
+    "dirichlet_alpha": 0.5,
+    "seeds": [
+      42,
+      43,
+      44
+    ]
+  },
+  "threshold": 0.5,
+  "accuracy_floor": 0.35,
+  "cells": {
+    "trimmed_mean|committed_scaling": {
+      "defense": "trimmed_mean",
+      "attack": "committed_scaling",
+      "per_seed": {
+        "42": {
+          "accuracy": 0.8261392845782863,
+          "asr": 0.9832375955493238,
+          "seconds": 3120.464169025421
+        },
+        "43": {
+          "accuracy": 0.8409171015190461,
+          "asr": 0.9912343389569859,
+          "seconds": 3479.8882591724396
+        },
+        "44": {
+          "accuracy": 0.8421550338282197,
+          "asr": 0.9901035777285269,
+          "seconds": 3654.9730298519135
+        }
+      },
+      "mean_asr": 0.9881918374116122,
+      "mean_accuracy": 0.8364038066418508,
+      "suppresses": false,
+      "powered": false
+    },
+    "rfa|committed_scaling": {
+      "defense": "rfa",
+      "attack": "committed_scaling",
+      "per_seed": {
+        "42": {
+          "accuracy": 0.8268184279979024,
+          "asr": 0.9965353475960016,
+          "seconds": 4594.977993965149
+        },
+        "43": {
+          "accuracy": 0.840452876903106,
+          "asr": 0.99895065357999,
+          "seconds": 4344.4534471035
+        },
+        "44": {
+          "accuracy": 0.8436422719496575,
+          "asr": 0.9978560767108418,
+          "seconds": 3141.055125951767
+        }
+      },
+      "mean_asr": 0.9977806926289444,
+      "mean_accuracy": 0.8369711922835553,
+      "suppresses": false,
+      "powered": false
+    },
+    "reputation|committed_scaling": {
+      "defense": "reputation",
+      "attack": "committed_scaling",
+      "per_seed": {
+        "42": {
+          "accuracy": 0.8261994618433156,
+          "asr": 0.9960739970147904,
+          "seconds": 3202.4359741210938
+        },
+        "43": {
+          "accuracy": 0.8401004100650774,
+          "asr": 0.998869238771541,
+          "seconds": 3097.234678030014
+        },
+        "44": {
+          "accuracy": 0.8433585791288052,
+          "asr": 0.9982450585734316,
+          "seconds": 3161.040962934494
+        }
+      },
+      "mean_asr": 0.9977294314532544,
+      "mean_accuracy": 0.8365528170123994,
+      "suppresses": false,
+      "powered": false
+    },
+    "coord_median|committed_scaling": {
+      "defense": "coord_median",
+      "attack": "committed_scaling",
+      "per_seed": {
+        "42": {
+          "accuracy": 0.826723863724285,
+          "asr": 0.7169749875616265,
+          "seconds": 3198.6127359867096
+        },
+        "43": {
+          "accuracy": 0.8391547673289032,
+          "asr": 0.49289429644036364,
+          "seconds": 2921.321722984314
+        },
+        "44": {
+          "accuracy": 0.8430834830601,
+          "asr": 0.6176670134334434,
+          "seconds": 5287.878485918045
+        }
+      },
+      "mean_asr": 0.6091787658118112,
+      "mean_accuracy": 0.8363207047044293,
+      "suppresses": false,
+      "powered": false
+    }
+  },
+  "powered_candidates": []
+}

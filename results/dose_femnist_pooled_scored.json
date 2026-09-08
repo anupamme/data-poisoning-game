@@ -1,0 +1,284 @@
+{
+ "rules_from": "478b555",
+ "pooled_from": {
+  "comparability_cells": "1026a96",
+  "dose_femnist_topup": "ad5479b"
+ },
+ "dataset": "femnist",
+ "model": "simple_cnn",
+ "d2": "krum",
+ "attack": "committed_scaling",
+ "frozen_wins": true,
+ "n_per_rung": [
+  5,
+  5,
+  5,
+  5
+ ],
+ "added": {
+  "0.0": [
+   {
+    "seed": 45,
+    "source": "comparability_cells"
+   },
+   {
+    "seed": 46,
+    "source": "comparability_cells"
+   }
+  ],
+  "0.5": [
+   {
+    "seed": 45,
+    "source": "comparability_cells"
+   },
+   {
+    "seed": 46,
+    "source": "comparability_cells"
+   }
+  ],
+  "1.0": [
+   {
+    "seed": 45,
+    "source": "comparability_cells"
+   },
+   {
+    "seed": 46,
+    "source": "comparability_cells"
+   }
+  ],
+  "2.0": [
+   {
+    "seed": 45,
+    "source": "comparability_cells"
+   },
+   {
+    "seed": 46,
+    "source": "comparability_cells"
+   }
+  ]
+ },
+ "rungs": [
+  {
+   "kappa": 0.0,
+   "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+   ],
+   "asrs": [
+    0.023899769324709396,
+    0.017576552535166674,
+    0.039459043828305215,
+    1.809217965534398e-05,
+    0.0399475326789995
+   ],
+   "accs": [
+    0.7645951359576352,
+    0.7441176723433887,
+    0.7925259836833645,
+    0.738005381566844,
+    0.7521126518401348
+   ],
+   "mean_asr": 0.024180198109367227,
+   "lo": 0.003500377371641012,
+   "hi": 0.04486001884709344,
+   "mean_acc": 0.7582713650782734,
+   "gated": false,
+   "imported": true
+  },
+  {
+   "kappa": 0.5,
+   "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+   ],
+   "asrs": [
+    0.0006513184675923832,
+    0.002668596499163237,
+    0.01632819213894794,
+    0.009670270025781356,
+    0.011036229589759826
+   ],
+   "accs": [
+    0.8069943175468308,
+    0.8049053067751004,
+    0.788674638721491,
+    0.8317615604824498,
+    0.8156426502067519
+   ],
+   "mean_asr": 0.008070921344248947,
+   "lo": 0.00012599109461319466,
+   "hi": 0.0160158515938847,
+   "mean_acc": 0.8095956947465248,
+   "gated": false,
+   "imported": true
+  },
+  {
+   "kappa": 1.0,
+   "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+   ],
+   "asrs": [
+    0.002261522456917997,
+    0.00159211180967027,
+    0.02579040209869284,
+    0.009317472522502148,
+    0.011624225428558505
+   ],
+   "accs": [
+    0.8274287974003421,
+    0.8249959165427302,
+    0.8165882929429261,
+    0.8472958916121489,
+    0.8445621244293906
+   ],
+   "mean_asr": 0.010117146863268351,
+   "lo": -0.002031961972326194,
+   "hi": 0.022266255698862897,
+   "mean_acc": 0.8321742045855075,
+   "gated": false,
+   "imported": true
+  },
+  {
+   "kappa": 2.0,
+   "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+   ],
+   "asrs": [
+    0.0010674385996652946,
+    0.0003347053236238636,
+    0.029580713736487404,
+    0.015378352707042381,
+    0.010484418110271836
+   ],
+   "accs": [
+    0.8303602898824824,
+    0.8255117216715525,
+    0.8485166304170284,
+    0.8514911066599039,
+    0.8511128495654342
+   ],
+   "mean_asr": 0.011369125695418156,
+   "lo": -0.003536037452471087,
+   "hi": 0.0262742888433074,
+   "mean_acc": 0.8413985196392803,
+   "gated": false,
+   "imported": true
+  }
+ ],
+ "delta_n3": -0.01665083600946824,
+ "delta_n5": -0.012811072413949071,
+ "equiv_margin": 0.15,
+ "verdict_n3": "REPLICATED on a second dataset and architecture",
+ "verdict_n5": "REPLICATED on a second dataset and architecture",
+ "label_flipped": false,
+ "per_seed_paired_diff": {
+  "42": -0.022832330725044103,
+  "43": -0.01724184721154281,
+  "44": -0.009878330091817811,
+  "45": 0.015360260527387037,
+  "46": -0.029463114568727668
+ },
+ "sign_reversing_seeds": [
+  45
+ ],
+ "jt_n3": {
+  "J": 16.0,
+  "z": -1.5634719199411433,
+  "p_increasing": 0.9410291823061924,
+  "p_perm_increasing": 0.9491525423728814
+ },
+ "jt_n5": {
+  "J": 57.0,
+  "z": -1.2112678528388157,
+  "p_increasing": 0.8871036174426286,
+  "p_perm_increasing": 0.8904054797260137
+ },
+ "cross_harness": [
+  {
+   "kappa": 0.0,
+   "seed": 45,
+   "a": 1.809217965534398e-05,
+   "a_source": "comparability_cells",
+   "b": 1.809217965534398e-05,
+   "b_source": "dose_femnist_topup",
+   "gap": 0.0
+  },
+  {
+   "kappa": 0.0,
+   "seed": 46,
+   "a": 0.0399475326789995,
+   "a_source": "comparability_cells",
+   "b": 0.0399475326789995,
+   "b_source": "dose_femnist_topup",
+   "gap": 0.0
+  },
+  {
+   "kappa": 0.5,
+   "seed": 45,
+   "a": 0.009670270025781356,
+   "a_source": "comparability_cells",
+   "b": 0.009670270025781356,
+   "b_source": "dose_femnist_topup",
+   "gap": 0.0
+  },
+  {
+   "kappa": 0.5,
+   "seed": 46,
+   "a": 0.011036229589759826,
+   "a_source": "comparability_cells",
+   "b": 0.011036229589759826,
+   "b_source": "dose_femnist_topup",
+   "gap": 0.0
+  },
+  {
+   "kappa": 1.0,
+   "seed": 45,
+   "a": 0.009317472522502148,
+   "a_source": "comparability_cells",
+   "b": 0.009317472522502148,
+   "b_source": "dose_femnist_topup",
+   "gap": 0.0
+  },
+  {
+   "kappa": 1.0,
+   "seed": 46,
+   "a": 0.011624225428558505,
+   "a_source": "comparability_cells",
+   "b": 0.011624225428558505,
+   "b_source": "dose_femnist_topup",
+   "gap": 0.0
+  },
+  {
+   "kappa": 2.0,
+   "seed": 45,
+   "a": 0.015378352707042381,
+   "a_source": "comparability_cells",
+   "b": 0.015378352707042381,
+   "b_source": "dose_femnist_topup",
+   "gap": 0.0
+  },
+  {
+   "kappa": 2.0,
+   "seed": 46,
+   "a": 0.010484418110271836,
+   "a_source": "comparability_cells",
+   "b": 0.010484418110271836,
+   "b_source": "dose_femnist_topup",
+   "gap": 0.0
+  }
+ ]
+}

@@ -158,23 +158,36 @@ def main():
 
     # Does the certified pair the criterion DOES accept actually cost anything against the
     # false negative it rejects? Compared at each pair's own largest n.
-    fgcm = [r[1] for r in collect(dev, topup, "foolsgold", "coord_median", "committed_scaling")]
-    if fgcm and "committed_scaling" in big and sps is not None:
-        rfa_a, rfa_acc = big["committed_scaling"]
-        fgcm_a = np.array(fgcm, dtype=float)
-        fgcm_acc = np.mean([r[2] for r in collect(dev, topup, "foolsgold", "coord_median",
-                                                  "committed_scaling")])
-        t, p = sps.ttest_ind(rfa_a, fgcm_a, equal_var=False)
+    # Both committed arms, not just the worst case: reporting only the arm where the two
+    # agree would be a selection on the outcome, which is the fault this paper is about.
+    if sps is not None:
         print("\n=== COST OF THE FALSE NEGATIVE: FG->RFA (rejected) vs FG->CM (certified) ===")
-        print(f"  FG->RFA  ASR {rfa_a.mean():.3f}  n={len(rfa_a)}  acc {rfa_acc.mean():.3f}")
-        print(f"  FG->CM   ASR {fgcm_a.mean():.3f}  n={len(fgcm_a)}  acc {fgcm_acc:.3f}")
-        print(f"  Welch t={t:.3f} p={p:.3f}  -> ASR "
-              f"{'INDISTINGUISHABLE' if p > 0.05 else 'differs significantly'}")
-        print(f"  accuracy: FG->CM is {fgcm_acc - rfa_acc.mean():+.3f} "
-              f"({(fgcm_acc / rfa_acc.mean() - 1) * 100:.0f}% relative)")
-        if p > 0.05:
-            print("  => the criterion's false negative costs no measurable security, and the")
-            print("     certified pair is strictly better on accuracy.")
+        verdicts = {}
+        for attack in ATTACKS:
+            rows = collect(dev, topup, "foolsgold", "coord_median", attack)
+            if not rows or attack not in big:
+                continue
+            rfa_a, rfa_acc = big[attack]
+            fgcm_a = np.array([r[1] for r in rows], dtype=float)
+            fgcm_acc = float(np.mean([r[2] for r in rows]))
+            t, p = sps.ttest_ind(rfa_a, fgcm_a, equal_var=False)
+            verdicts[attack] = p
+            print(f"  [{attack}]")
+            print(f"    FG->RFA  ASR {rfa_a.mean():.3f}  n={len(rfa_a)}  acc {rfa_acc.mean():.3f}")
+            print(f"    FG->CM   ASR {fgcm_a.mean():.3f}  n={len(fgcm_a)}  acc {fgcm_acc:.3f}")
+            print(f"    Welch t={t:.3f} p={p:.3f}  -> ASR "
+                  f"{'INDISTINGUISHABLE' if p > 0.05 else 'differs significantly'}")
+            print(f"    accuracy: FG->CM is {fgcm_acc - rfa_acc.mean():+.3f} "
+                  f"({(fgcm_acc / rfa_acc.mean() - 1) * 100:.0f}% relative)")
+        if verdicts:
+            worst = max(big, key=lambda k: big[k][0].mean())
+            if verdicts.get(worst, 0.0) > 0.05:
+                print(f"  => on {worst}, each pair's own worst case, the criterion's false negative")
+                print("     costs no measurable security and the certified pair is better on accuracy.")
+            if any(p <= 0.05 for p in verdicts.values()):
+                sig = [a for a, p in verdicts.items() if p <= 0.05]
+                print(f"  => but the arms differ significantly on {', '.join(sig)}, so 'no measurable")
+                print("     security cost' holds per arm and is NOT a claim about suppression overall.")
     return 0
 
 

@@ -1,0 +1,1037 @@
+{
+  "description": "Wave 3 scored against experiments/pre_registration_wave3_emergent.md",
+  "pre_registration": {
+    "prereg": "experiments/pre_registration_wave3_emergent.md",
+    "commit": "96f8856",
+    "committed": true,
+    "uncommitted_modifications": false
+  },
+  "thresholds": {
+    "low_asr": 0.5,
+    "accuracy_floor": 0.35,
+    "fedavg_accuracy_reference": {
+      "committed_scaling": 0.667,
+      "committed_pixel": 0.768
+    }
+  },
+  "pairs": {
+    "reputation_then_cos_krum": {
+      "pair": "reputation_then_cos_krum",
+      "d1": "reputation",
+      "d2": "cos_krum",
+      "n": 1,
+      "arms": {
+        "committed_scaling": {
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "asr": [
+            0.0,
+            0.06544444444444444,
+            0.1272222222222222
+          ],
+          "accuracy": [
+            0.275,
+            0.6364,
+            0.5856
+          ],
+          "mean_asr": 0.06422222222222222,
+          "mean_accuracy": 0.49899999999999994,
+          "stored_mean_asr": 0.06422222222222222,
+          "mean_asr_matches_stored": true
+        },
+        "committed_pixel": {
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "asr": [
+            0.00011111111111111112,
+            0.10733333333333334,
+            0.6806666666666666
+          ],
+          "accuracy": [
+            0.3973,
+            0.6559,
+            0.6842
+          ],
+          "mean_asr": 0.2627037037037037,
+          "mean_accuracy": 0.5791333333333334,
+          "stored_mean_asr": 0.2627037037037037,
+          "mean_asr_matches_stored": true
+        }
+      },
+      "complete": true,
+      "max_committed_arm": "committed_pixel",
+      "max_committed_asr": 0.2627037037037037,
+      "accuracy_on_max_arm": 0.5791333333333334,
+      "degenerate_acc": false,
+      "outcome": "LOW",
+      "outcome_reason": "max-committed 0.2627 < 0.5",
+      "predicted": "LOW",
+      "correct": true,
+      "cell": "certified (C1 and C2)",
+      "role": "tests strategy B's precision",
+      "confidence": "low (uncertain, see prereg 5.1)",
+      "c1": "holds (per attack, gated)",
+      "c2": "holds (measured 0/9)",
+      "near_identity": {
+        "committed_scaling": {
+          "checked": true,
+          "seeds_compared": 3,
+          "identical_seeds": 0,
+          "max_abs_diff": 0.48210000000000003,
+          "verdict": "genuine composition"
+        },
+        "committed_pixel": {
+          "checked": true,
+          "seeds_compared": 3,
+          "identical_seeds": 0,
+          "max_abs_diff": 0.16144444444444445,
+          "verdict": "genuine composition"
+        }
+      },
+      "sanity_flags": []
+    },
+    "reputation_then_cos_reputation": {
+      "pair": "reputation_then_cos_reputation",
+      "d1": "reputation",
+      "d2": "cos_reputation",
+      "n": 2,
+      "arms": {
+        "committed_scaling": {
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "asr": [
+            0.014888888888888889,
+            0.016,
+            0.014444444444444444
+          ],
+          "accuracy": [
+            0.7861,
+            0.7944,
+            0.7898
+          ],
+          "mean_asr": 0.015111111111111112,
+          "mean_accuracy": 0.7900999999999999,
+          "stored_mean_asr": 0.015111111111111112,
+          "mean_asr_matches_stored": true
+        },
+        "committed_pixel": {
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "asr": [
+            0.8327777777777777,
+            0.7322222222222222,
+            0.7962222222222223
+          ],
+          "accuracy": [
+            0.7799,
+            0.7793,
+            0.783
+          ],
+          "mean_asr": 0.787074074074074,
+          "mean_accuracy": 0.7807333333333334,
+          "stored_mean_asr": 0.787074074074074,
+          "mean_asr_matches_stored": true
+        }
+      },
+      "complete": true,
+      "max_committed_arm": "committed_pixel",
+      "max_committed_asr": 0.787074074074074,
+      "accuracy_on_max_arm": 0.7807333333333334,
+      "degenerate_acc": false,
+      "outcome": "HIGH",
+      "outcome_reason": "max-committed 0.7871 >= 0.5",
+      "predicted": "HIGH",
+      "correct": true,
+      "cell": "C1-fail and C2-true",
+      "role": "tests strategy B's recall, the discriminating cell",
+      "confidence": "medium",
+      "c1": "fails (pixel: rep 0.8422, cos_rep 0.7543)",
+      "c2": "holds (measured 0/9)",
+      "near_identity": {
+        "committed_scaling": {
+          "checked": true,
+          "seeds_compared": 3,
+          "identical_seeds": 0,
+          "max_abs_diff": 0.9851111111111112,
+          "verdict": "genuine composition"
+        },
+        "committed_pixel": {
+          "checked": true,
+          "seeds_compared": 3,
+          "identical_seeds": 0,
+          "max_abs_diff": 0.07266666666666666,
+          "verdict": "genuine composition"
+        }
+      },
+      "sanity_flags": [
+        "committed_scaling: mean accuracy 0.7901 exceeds the FedAvg reference 0.667 by more than 0.0500"
+      ]
+    },
+    "foolsgold_then_cos_krum": {
+      "pair": "foolsgold_then_cos_krum",
+      "d1": "foolsgold",
+      "d2": "cos_krum",
+      "n": 3,
+      "arms": {
+        "committed_scaling": {
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "asr": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "accuracy": [
+            0.1,
+            0.1001,
+            0.1
+          ],
+          "mean_asr": 0.0,
+          "mean_accuracy": 0.10003333333333335,
+          "stored_mean_asr": 0.0,
+          "mean_asr_matches_stored": true
+        },
+        "committed_pixel": {
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "asr": [
+            0.0,
+            0.25166666666666665,
+            0.006
+          ],
+          "accuracy": [
+            0.1,
+            0.4208,
+            0.2451
+          ],
+          "mean_asr": 0.08588888888888889,
+          "mean_accuracy": 0.2553,
+          "stored_mean_asr": 0.08588888888888889,
+          "mean_asr_matches_stored": true
+        }
+      },
+      "complete": true,
+      "max_committed_arm": "committed_pixel",
+      "max_committed_asr": 0.08588888888888889,
+      "accuracy_on_max_arm": 0.2553,
+      "degenerate_acc": true,
+      "outcome": "HIGH",
+      "outcome_reason": "DEGENERATE-ACC: accuracy 0.2553 < 0.35 on the max-supplying arm, scored HIGH",
+      "predicted": "HIGH",
+      "correct": true,
+      "cell": "measured-C2-fail control",
+      "role": "shows the C2 probe is not inert",
+      "confidence": "high",
+      "c1": "fails (both arms gated)",
+      "c2": "FAILS (measured 9/9)",
+      "near_identity": {
+        "committed_scaling": {
+          "checked": true,
+          "seeds_compared": 3,
+          "identical_seeds": 0,
+          "max_abs_diff": 0.21433333333333332,
+          "verdict": "genuine composition"
+        },
+        "committed_pixel": {
+          "checked": true,
+          "seeds_compared": 3,
+          "identical_seeds": 0,
+          "max_abs_diff": 0.6235555555555555,
+          "verdict": "genuine composition"
+        }
+      },
+      "sanity_flags": [
+        "committed_scaling: ASR identically 0.0 across all 3 seeds"
+      ]
+    },
+    "foolsgold_then_cos_reputation": {
+      "pair": "foolsgold_then_cos_reputation",
+      "d1": "foolsgold",
+      "d2": "cos_reputation",
+      "n": 4,
+      "arms": {
+        "committed_scaling": {
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "asr": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "accuracy": [
+            0.1,
+            0.1,
+            0.1
+          ],
+          "mean_asr": 0.3333333333333333,
+          "mean_accuracy": 0.10000000000000002,
+          "stored_mean_asr": 0.3333333333333333,
+          "mean_asr_matches_stored": true
+        },
+        "committed_pixel": {
+          "seeds": [
+            42,
+            43,
+            44
+          ],
+          "asr": [
+            0.8116666666666666,
+            0.8342222222222222,
+            0.8257777777777778
+          ],
+          "accuracy": [
+            0.7265,
+            0.7143,
+            0.7291
+          ],
+          "mean_asr": 0.8238888888888889,
+          "mean_accuracy": 0.7233,
+          "stored_mean_asr": 0.8238888888888889,
+          "mean_asr_matches_stored": true
+        }
+      },
+      "complete": true,
+      "max_committed_arm": "committed_pixel",
+      "max_committed_asr": 0.8238888888888889,
+      "accuracy_on_max_arm": 0.7233,
+      "degenerate_acc": false,
+      "outcome": "HIGH",
+      "outcome_reason": "max-committed 0.8239 >= 0.5",
+      "predicted": "HIGH",
+      "correct": true,
+      "cell": "measured-C2-fail control",
+      "role": "shows the C2 probe is not inert",
+      "confidence": "high",
+      "c1": "fails (both arms)",
+      "c2": "FAILS (measured 9/9)",
+      "near_identity": {
+        "committed_scaling": {
+          "checked": true,
+          "seeds_compared": 3,
+          "identical_seeds": 0,
+          "max_abs_diff": 1.0,
+          "verdict": "genuine composition"
+        },
+        "committed_pixel": {
+          "checked": true,
+          "seeds_compared": 3,
+          "identical_seeds": 0,
+          "max_abs_diff": 0.17466666666666664,
+          "verdict": "genuine composition"
+        }
+      },
+      "sanity_flags": []
+    }
+  },
+  "tally": {
+    "complete": 4,
+    "correct": 4
+  },
+  "strategies": {
+    "A_statistic_preservation": {
+      "selected": [
+        "reputation_then_cos_krum",
+        "reputation_then_cos_reputation"
+      ],
+      "scored": [
+        "reputation_then_cos_krum",
+        "reputation_then_cos_reputation"
+      ],
+      "true_positives": [
+        "reputation_then_cos_krum"
+      ],
+      "precision": 0.5,
+      "recall": 1.0,
+      "runs": 20,
+      "selection_complete": true,
+      "wave_complete": true
+    },
+    "B_criterion": {
+      "selected": [
+        "reputation_then_cos_krum"
+      ],
+      "scored": [
+        "reputation_then_cos_krum"
+      ],
+      "true_positives": [
+        "reputation_then_cos_krum"
+      ],
+      "precision": 1.0,
+      "recall": 1.0,
+      "runs": 10,
+      "selection_complete": true,
+      "wave_complete": true
+    }
+  },
+  "resolution": {
+    "pair1_outcome": "LOW",
+    "pair2_outcome": "HIGH",
+    "reading": "Both strategies correct.",
+    "what_goes_in_the_paper": "B keeps 100% precision out of sample; A pays one extra pair-evaluation for no additional true positive. The census closes 9/9 with exactly one LOW, the one B selects."
+  },
+  "census": {
+    "norm_clip_then_foolsgold": {
+      "d1": "norm_clip",
+      "d2": "foolsgold",
+      "max_committed_asr": 0.8869259259259259,
+      "source": "results/all_compositions/summary.json",
+      "transcribed_in_prereg": 0.8869,
+      "agrees_with_prereg": true,
+      "note": "read",
+      "outcome": "HIGH"
+    },
+    "reputation_then_foolsgold": {
+      "d1": "reputation",
+      "d2": "foolsgold",
+      "max_committed_asr": 0.8069999999999999,
+      "source": "results/all_compositions/summary.json",
+      "transcribed_in_prereg": 0.807,
+      "agrees_with_prereg": true,
+      "note": "read",
+      "outcome": "HIGH"
+    },
+    "rfa_then_foolsgold": {
+      "d1": "rfa",
+      "d2": "foolsgold",
+      "max_committed_asr": 0.9135111111111112,
+      "source": "results/wave2_held_out/summary.json",
+      "transcribed_in_prereg": 0.9135,
+      "agrees_with_prereg": true,
+      "note": "read",
+      "outcome": "HIGH"
+    },
+    "norm_clip_then_cos_krum": {
+      "d1": "norm_clip",
+      "d2": "cos_krum",
+      "max_committed_asr": 0.5084814814814814,
+      "source": "results/metric_swap/summary.json",
+      "transcribed_in_prereg": 0.5085,
+      "agrees_with_prereg": true,
+      "note": "read",
+      "outcome": "HIGH"
+    },
+    "norm_clip_then_cos_reputation": {
+      "d1": "norm_clip",
+      "d2": "cos_reputation",
+      "max_committed_asr": 0.9346296296296296,
+      "source": "results/metric_swap/summary.json",
+      "transcribed_in_prereg": 0.9346,
+      "agrees_with_prereg": true,
+      "note": "read",
+      "outcome": "HIGH"
+    },
+    "rfa_then_cos_krum": {
+      "d1": "rfa",
+      "d2": "cos_krum",
+      "max_committed_asr": 0.5657037037037037,
+      "source": "results/metric_swap/summary.json",
+      "transcribed_in_prereg": 0.5657,
+      "agrees_with_prereg": true,
+      "note": "read",
+      "outcome": "HIGH"
+    },
+    "rfa_then_cos_reputation": {
+      "d1": "rfa",
+      "d2": "cos_reputation",
+      "max_committed_asr": 0.8612222222222222,
+      "source": "results/metric_swap/summary.json",
+      "transcribed_in_prereg": 0.8612,
+      "agrees_with_prereg": true,
+      "note": "read",
+      "outcome": "HIGH"
+    },
+    "reputation_then_cos_krum": {
+      "d1": "reputation",
+      "d2": "cos_krum",
+      "max_committed_asr": 0.2627037037037037,
+      "source": "results/wave3_emergent/summary.json",
+      "transcribed_in_prereg": null,
+      "agrees_with_prereg": true,
+      "note": "this wave",
+      "outcome": "LOW"
+    },
+    "reputation_then_cos_reputation": {
+      "d1": "reputation",
+      "d2": "cos_reputation",
+      "max_committed_asr": 0.787074074074074,
+      "source": "results/wave3_emergent/summary.json",
+      "transcribed_in_prereg": null,
+      "agrees_with_prereg": true,
+      "note": "this wave",
+      "outcome": "HIGH"
+    }
+  },
+  "census_measured": 9,
+  "census_lows": 1,
+  "census_c1": {
+    "norm_clip_then_foolsgold": {
+      "d1": "norm_clip",
+      "d2": "foolsgold",
+      "C1_gated": false,
+      "C1_ungated": false,
+      "all_baselines_available": true,
+      "C2": true,
+      "C2_basis": "algebraic (Prop 1(a)): d2 exactly invariant, d1 not a degenerate aggregator",
+      "per_attack": {
+        "committed_scaling": {
+          "norm_clip": {
+            "available": true,
+            "mean_asr": 0.9346,
+            "mean_accuracy": 0.7359600000000001,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/all_compositions/summary.json"
+          },
+          "foolsgold": {
+            "available": true,
+            "mean_asr": 0.2,
+            "mean_accuracy": 0.1,
+            "degenerate_acc": true,
+            "ungated": true,
+            "gated": false,
+            "source": "results/wave2_held_out/summary.json"
+          },
+          "any_gated": false,
+          "any_ungated": true,
+          "both_available": true
+        },
+        "committed_pixel": {
+          "norm_clip": {
+            "available": true,
+            "mean_asr": 0.8059777777777779,
+            "mean_accuracy": 0.7893399999999999,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/all_compositions/summary.json"
+          },
+          "foolsgold": {
+            "available": true,
+            "mean_asr": 0.7315555555555556,
+            "mean_accuracy": 0.74136,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/wave2_held_out/summary.json"
+          },
+          "any_gated": false,
+          "any_ungated": false,
+          "both_available": true
+        }
+      }
+    },
+    "norm_clip_then_cos_krum": {
+      "d1": "norm_clip",
+      "d2": "cos_krum",
+      "C1_gated": false,
+      "C1_ungated": true,
+      "all_baselines_available": true,
+      "C2": true,
+      "C2_basis": "algebraic (Prop 1(a)): d2 exactly invariant, d1 not a degenerate aggregator",
+      "per_attack": {
+        "committed_scaling": {
+          "norm_clip": {
+            "available": true,
+            "mean_asr": 0.9346,
+            "mean_accuracy": 0.7359600000000001,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/all_compositions/summary.json"
+          },
+          "cos_krum": {
+            "available": true,
+            "mean_asr": 0.07833333333333332,
+            "mean_accuracy": 0.146,
+            "degenerate_acc": true,
+            "ungated": true,
+            "gated": false,
+            "source": "results/metric_swap_baselines/summary.json"
+          },
+          "any_gated": false,
+          "any_ungated": true,
+          "both_available": true
+        },
+        "committed_pixel": {
+          "norm_clip": {
+            "available": true,
+            "mean_asr": 0.8059777777777779,
+            "mean_accuracy": 0.7893399999999999,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/all_compositions/summary.json"
+          },
+          "cos_krum": {
+            "available": true,
+            "mean_asr": 0.3004814814814815,
+            "mean_accuracy": 0.5982999999999999,
+            "degenerate_acc": false,
+            "ungated": true,
+            "gated": true,
+            "source": "results/metric_swap_baselines/summary.json"
+          },
+          "any_gated": true,
+          "any_ungated": true,
+          "both_available": true
+        }
+      }
+    },
+    "norm_clip_then_cos_reputation": {
+      "d1": "norm_clip",
+      "d2": "cos_reputation",
+      "C1_gated": false,
+      "C1_ungated": false,
+      "all_baselines_available": true,
+      "C2": true,
+      "C2_basis": "algebraic (Prop 1(a)): d2 exactly invariant, d1 not a degenerate aggregator",
+      "per_attack": {
+        "committed_scaling": {
+          "norm_clip": {
+            "available": true,
+            "mean_asr": 0.9346,
+            "mean_accuracy": 0.7359600000000001,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/all_compositions/summary.json"
+          },
+          "cos_reputation": {
+            "available": true,
+            "mean_asr": 0.9823333333333334,
+            "mean_accuracy": 0.22906666666666667,
+            "degenerate_acc": true,
+            "ungated": false,
+            "gated": false,
+            "source": "results/metric_swap_baselines/summary.json"
+          },
+          "any_gated": false,
+          "any_ungated": false,
+          "both_available": true
+        },
+        "committed_pixel": {
+          "norm_clip": {
+            "available": true,
+            "mean_asr": 0.8059777777777779,
+            "mean_accuracy": 0.7893399999999999,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/all_compositions/summary.json"
+          },
+          "cos_reputation": {
+            "available": true,
+            "mean_asr": 0.7542592592592593,
+            "mean_accuracy": 0.7953333333333333,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/metric_swap_baselines/summary.json"
+          },
+          "any_gated": false,
+          "any_ungated": false,
+          "both_available": true
+        }
+      }
+    },
+    "rfa_then_foolsgold": {
+      "d1": "rfa",
+      "d2": "foolsgold",
+      "C1_gated": false,
+      "C1_ungated": false,
+      "all_baselines_available": true,
+      "C2": true,
+      "C2_basis": "algebraic (Prop 1(a)): d2 exactly invariant, d1 not a degenerate aggregator",
+      "per_attack": {
+        "committed_scaling": {
+          "rfa": {
+            "available": true,
+            "mean_asr": 0.8848888888888888,
+            "mean_accuracy": 0.7754399999999999,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/wave2_held_out/summary.json"
+          },
+          "foolsgold": {
+            "available": true,
+            "mean_asr": 0.2,
+            "mean_accuracy": 0.1,
+            "degenerate_acc": true,
+            "ungated": true,
+            "gated": false,
+            "source": "results/wave2_held_out/summary.json"
+          },
+          "any_gated": false,
+          "any_ungated": true,
+          "both_available": true
+        },
+        "committed_pixel": {
+          "rfa": {
+            "available": true,
+            "mean_asr": 0.8448222222222223,
+            "mean_accuracy": 0.7769600000000001,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/wave2_held_out/summary.json"
+          },
+          "foolsgold": {
+            "available": true,
+            "mean_asr": 0.7315555555555556,
+            "mean_accuracy": 0.74136,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/wave2_held_out/summary.json"
+          },
+          "any_gated": false,
+          "any_ungated": false,
+          "both_available": true
+        }
+      }
+    },
+    "rfa_then_cos_krum": {
+      "d1": "rfa",
+      "d2": "cos_krum",
+      "C1_gated": false,
+      "C1_ungated": true,
+      "all_baselines_available": true,
+      "C2": true,
+      "C2_basis": "algebraic (Prop 1(a)): d2 exactly invariant, d1 not a degenerate aggregator",
+      "per_attack": {
+        "committed_scaling": {
+          "rfa": {
+            "available": true,
+            "mean_asr": 0.8848888888888888,
+            "mean_accuracy": 0.7754399999999999,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/wave2_held_out/summary.json"
+          },
+          "cos_krum": {
+            "available": true,
+            "mean_asr": 0.07833333333333332,
+            "mean_accuracy": 0.146,
+            "degenerate_acc": true,
+            "ungated": true,
+            "gated": false,
+            "source": "results/metric_swap_baselines/summary.json"
+          },
+          "any_gated": false,
+          "any_ungated": true,
+          "both_available": true
+        },
+        "committed_pixel": {
+          "rfa": {
+            "available": true,
+            "mean_asr": 0.8448222222222223,
+            "mean_accuracy": 0.7769600000000001,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/wave2_held_out/summary.json"
+          },
+          "cos_krum": {
+            "available": true,
+            "mean_asr": 0.3004814814814815,
+            "mean_accuracy": 0.5982999999999999,
+            "degenerate_acc": false,
+            "ungated": true,
+            "gated": true,
+            "source": "results/metric_swap_baselines/summary.json"
+          },
+          "any_gated": true,
+          "any_ungated": true,
+          "both_available": true
+        }
+      }
+    },
+    "rfa_then_cos_reputation": {
+      "d1": "rfa",
+      "d2": "cos_reputation",
+      "C1_gated": false,
+      "C1_ungated": false,
+      "all_baselines_available": true,
+      "C2": true,
+      "C2_basis": "algebraic (Prop 1(a)): d2 exactly invariant, d1 not a degenerate aggregator",
+      "per_attack": {
+        "committed_scaling": {
+          "rfa": {
+            "available": true,
+            "mean_asr": 0.8848888888888888,
+            "mean_accuracy": 0.7754399999999999,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/wave2_held_out/summary.json"
+          },
+          "cos_reputation": {
+            "available": true,
+            "mean_asr": 0.9823333333333334,
+            "mean_accuracy": 0.22906666666666667,
+            "degenerate_acc": true,
+            "ungated": false,
+            "gated": false,
+            "source": "results/metric_swap_baselines/summary.json"
+          },
+          "any_gated": false,
+          "any_ungated": false,
+          "both_available": true
+        },
+        "committed_pixel": {
+          "rfa": {
+            "available": true,
+            "mean_asr": 0.8448222222222223,
+            "mean_accuracy": 0.7769600000000001,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/wave2_held_out/summary.json"
+          },
+          "cos_reputation": {
+            "available": true,
+            "mean_asr": 0.7542592592592593,
+            "mean_accuracy": 0.7953333333333333,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/metric_swap_baselines/summary.json"
+          },
+          "any_gated": false,
+          "any_ungated": false,
+          "both_available": true
+        }
+      }
+    },
+    "reputation_then_foolsgold": {
+      "d1": "reputation",
+      "d2": "foolsgold",
+      "C1_gated": false,
+      "C1_ungated": false,
+      "all_baselines_available": true,
+      "C2": true,
+      "C2_basis": "algebraic (Prop 1(a)): d2 exactly invariant, d1 not a degenerate aggregator",
+      "per_attack": {
+        "committed_scaling": {
+          "reputation": {
+            "available": true,
+            "mean_asr": 0.017044444444444445,
+            "mean_accuracy": 0.7774,
+            "degenerate_acc": false,
+            "ungated": true,
+            "gated": true,
+            "source": "results/wave2_held_out/summary.json"
+          },
+          "foolsgold": {
+            "available": true,
+            "mean_asr": 0.2,
+            "mean_accuracy": 0.1,
+            "degenerate_acc": true,
+            "ungated": true,
+            "gated": false,
+            "source": "results/wave2_held_out/summary.json"
+          },
+          "any_gated": true,
+          "any_ungated": true,
+          "both_available": true
+        },
+        "committed_pixel": {
+          "reputation": {
+            "available": true,
+            "mean_asr": 0.8421555555555555,
+            "mean_accuracy": 0.7737,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/wave2_held_out/summary.json"
+          },
+          "foolsgold": {
+            "available": true,
+            "mean_asr": 0.7315555555555556,
+            "mean_accuracy": 0.74136,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/wave2_held_out/summary.json"
+          },
+          "any_gated": false,
+          "any_ungated": false,
+          "both_available": true
+        }
+      }
+    },
+    "reputation_then_cos_krum": {
+      "d1": "reputation",
+      "d2": "cos_krum",
+      "C1_gated": true,
+      "C1_ungated": true,
+      "all_baselines_available": true,
+      "C2": true,
+      "C2_basis": "algebraic (Prop 1(a)): d2 exactly invariant, d1 not a degenerate aggregator",
+      "per_attack": {
+        "committed_scaling": {
+          "reputation": {
+            "available": true,
+            "mean_asr": 0.017044444444444445,
+            "mean_accuracy": 0.7774,
+            "degenerate_acc": false,
+            "ungated": true,
+            "gated": true,
+            "source": "results/wave2_held_out/summary.json"
+          },
+          "cos_krum": {
+            "available": true,
+            "mean_asr": 0.07833333333333332,
+            "mean_accuracy": 0.146,
+            "degenerate_acc": true,
+            "ungated": true,
+            "gated": false,
+            "source": "results/metric_swap_baselines/summary.json"
+          },
+          "any_gated": true,
+          "any_ungated": true,
+          "both_available": true
+        },
+        "committed_pixel": {
+          "reputation": {
+            "available": true,
+            "mean_asr": 0.8421555555555555,
+            "mean_accuracy": 0.7737,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/wave2_held_out/summary.json"
+          },
+          "cos_krum": {
+            "available": true,
+            "mean_asr": 0.3004814814814815,
+            "mean_accuracy": 0.5982999999999999,
+            "degenerate_acc": false,
+            "ungated": true,
+            "gated": true,
+            "source": "results/metric_swap_baselines/summary.json"
+          },
+          "any_gated": true,
+          "any_ungated": true,
+          "both_available": true
+        }
+      }
+    },
+    "reputation_then_cos_reputation": {
+      "d1": "reputation",
+      "d2": "cos_reputation",
+      "C1_gated": false,
+      "C1_ungated": false,
+      "all_baselines_available": true,
+      "C2": true,
+      "C2_basis": "algebraic (Prop 1(a)): d2 exactly invariant, d1 not a degenerate aggregator",
+      "per_attack": {
+        "committed_scaling": {
+          "reputation": {
+            "available": true,
+            "mean_asr": 0.017044444444444445,
+            "mean_accuracy": 0.7774,
+            "degenerate_acc": false,
+            "ungated": true,
+            "gated": true,
+            "source": "results/wave2_held_out/summary.json"
+          },
+          "cos_reputation": {
+            "available": true,
+            "mean_asr": 0.9823333333333334,
+            "mean_accuracy": 0.22906666666666667,
+            "degenerate_acc": true,
+            "ungated": false,
+            "gated": false,
+            "source": "results/metric_swap_baselines/summary.json"
+          },
+          "any_gated": true,
+          "any_ungated": true,
+          "both_available": true
+        },
+        "committed_pixel": {
+          "reputation": {
+            "available": true,
+            "mean_asr": 0.8421555555555555,
+            "mean_accuracy": 0.7737,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/wave2_held_out/summary.json"
+          },
+          "cos_reputation": {
+            "available": true,
+            "mean_asr": 0.7542592592592593,
+            "mean_accuracy": 0.7953333333333333,
+            "degenerate_acc": false,
+            "ungated": false,
+            "gated": false,
+            "source": "results/metric_swap_baselines/summary.json"
+          },
+          "any_gated": false,
+          "any_ungated": false,
+          "both_available": true
+        }
+      }
+    }
+  },
+  "census_strategies": {
+    "A_statistic_preservation": {
+      "selected": [
+        "norm_clip_then_cos_krum",
+        "norm_clip_then_cos_reputation",
+        "norm_clip_then_foolsgold",
+        "reputation_then_cos_krum",
+        "reputation_then_cos_reputation",
+        "reputation_then_foolsgold",
+        "rfa_then_cos_krum",
+        "rfa_then_cos_reputation",
+        "rfa_then_foolsgold"
+      ],
+      "n_selected": 9,
+      "true_positives": [
+        "reputation_then_cos_krum"
+      ],
+      "precision": 0.1111111111111111,
+      "recall": 1.0,
+      "runs": 90
+    },
+    "B_criterion": {
+      "selected": [
+        "reputation_then_cos_krum"
+      ],
+      "n_selected": 1,
+      "true_positives": [
+        "reputation_then_cos_krum"
+      ],
+      "precision": 1.0,
+      "recall": 1.0,
+      "runs": 10
+    }
+  },
+  "unregistered_pairs_present": []
+}

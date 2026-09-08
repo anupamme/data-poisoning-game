@@ -59,7 +59,7 @@ from experiments.run_dose_femnist import (  # noqa: E402
 )
 
 # experiments/pre_registration_dose_femnist_topup.md, committed before this ran.
-PREREG_COMMIT_TOPUP = None      # set to the amendment's commit hash
+PREREG_COMMIT_TOPUP = "ad5479b"  # the amendment's commit
 
 NEW_SEEDS = [45, 46]            # named in the amendment before any run
 ALL_SEEDS = SEEDS3 + NEW_SEEDS  # n=5

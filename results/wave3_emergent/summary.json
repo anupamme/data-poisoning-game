@@ -1,0 +1,221 @@
+{
+  "description": "Wave 3: certified and C1-fail-and-C2-true cells, plus measured-C2-fail controls, all with an admissible d1",
+  "pre_registration": "experiments/pre_registration_wave3_emergent.md",
+  "protocol": {
+    "dataset": "cifar10",
+    "model": "cifar_cnn",
+    "num_clients": 10,
+    "clients_per_round": 5,
+    "adv_fraction": 0.2,
+    "num_rounds": 50,
+    "dirichlet_alpha": 0.5,
+    "tau": 5.0,
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "attacks": [
+      "committed_scaling",
+      "committed_pixel"
+    ]
+  },
+  "pairs": {
+    "reputation_then_cos_krum": {
+      "d1": "reputation",
+      "d2": "cos_krum",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.275,
+            "asr": 0.0
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.6364,
+            "asr": 0.06544444444444444
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.5856,
+            "asr": 0.1272222222222222
+          }
+        ],
+        "mean_asr": 0.06422222222222222,
+        "std_asr": 0.05194544463287416,
+        "mean_accuracy": 0.49899999999999994
+      },
+      "max_committed_asr": 0.2627037037037037,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3973,
+            "asr": 0.00011111111111111112
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.6559,
+            "asr": 0.10733333333333334
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.6842,
+            "asr": 0.6806666666666666
+          }
+        ],
+        "mean_asr": 0.2627037037037037,
+        "std_asr": 0.2987685057489073,
+        "mean_accuracy": 0.5791333333333334
+      }
+    },
+    "reputation_then_cos_reputation": {
+      "d1": "reputation",
+      "d2": "cos_reputation",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7861,
+            "asr": 0.014888888888888889
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7944,
+            "asr": 0.016
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7898,
+            "asr": 0.014444444444444444
+          }
+        ],
+        "mean_asr": 0.015111111111111112,
+        "std_asr": 0.0006542045086168779,
+        "mean_accuracy": 0.7900999999999999
+      },
+      "max_committed_asr": 0.787074074074074,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7799,
+            "asr": 0.8327777777777777
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7793,
+            "asr": 0.7322222222222222
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.783,
+            "asr": 0.7962222222222223
+          }
+        ],
+        "mean_asr": 0.787074074074074,
+        "std_asr": 0.04155816325085404,
+        "mean_accuracy": 0.7807333333333334
+      }
+    },
+    "foolsgold_then_cos_krum": {
+      "d1": "foolsgold",
+      "d2": "cos_krum",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.1,
+            "asr": 0.0
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.1001,
+            "asr": 0.0
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.1,
+            "asr": 0.0
+          }
+        ],
+        "mean_asr": 0.0,
+        "std_asr": 0.0,
+        "mean_accuracy": 0.10003333333333335
+      },
+      "max_committed_asr": 0.08588888888888889,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.1,
+            "asr": 0.0
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.4208,
+            "asr": 0.25166666666666665
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.2451,
+            "asr": 0.006
+          }
+        ],
+        "mean_asr": 0.08588888888888889,
+        "std_asr": 0.1172481803802052,
+        "mean_accuracy": 0.2553
+      }
+    },
+    "foolsgold_then_cos_reputation": {
+      "d1": "foolsgold",
+      "d2": "cos_reputation",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.1,
+            "asr": 0.0
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.1,
+            "asr": 0.0
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.1,
+            "asr": 1.0
+          }
+        ],
+        "mean_asr": 0.3333333333333333,
+        "std_asr": 0.4714045207910317,
+        "mean_accuracy": 0.10000000000000002
+      },
+      "max_committed_asr": 0.8238888888888889,
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.7265,
+            "asr": 0.8116666666666666
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.7143,
+            "asr": 0.8342222222222222
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.7291,
+            "asr": 0.8257777777777778
+          }
+        ],
+        "mean_asr": 0.8238888888888889,
+        "std_asr": 0.009304629583559083,
+        "mean_accuracy": 0.7233
+      }
+    }
+  }
+}

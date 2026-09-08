@@ -14,10 +14,26 @@ Two measures, because Round 39 established that they disagree:
 
 The gate is STRUCTURAL, not a char count: the constraint is body prose
 (Introduction through the Conclusion) <= 9 pages. Ethics and Reproducibility
-are allowed to overflow past p9 -- that is HEAD's own layout, so we assert
-against it rather than against a recorded number. A char-count proxy for this
-gate read 45 / 58 / 60 / 70 across four probes of the same PDF and must not be
-used.
+are allowed to overflow past p9, but ONLY as the first content of p10. A
+char-count proxy for this gate read 45 / 58 / 60 / 70 across four probes of the
+same PDF and must not be used.
+
+WHY THIS GATE WAS ONCE WRONG, AND WHAT IT NOW MEASURES INSTEAD. Until Round 51
+check_gate() tested only which page the Conclusion HEADING landed on, and
+printed "[OK] ... Ethics overflows to p10, which HEAD's own layout permits" --
+a layout assumption that was true when written and silently went false. At the
+time it was caught the Conclusion's own prose ran 167 rendered words / 14
+typeset lines onto p10 ahead of the Ethics heading, so the main text was 10
+pages against a strictly enforced 9-page limit, and this gate said OK through
+nine rounds of an otherwise green battery. A reviewer found it by reading the
+PDF. The heading test is necessary but not sufficient: what the limit
+constrains is where the body's LAST LINE falls, not where its last heading
+starts. So p(limit+1) is now dumped, the running header and the ICLR line-number
+gutter are stripped, and any surviving text before the Ethics heading is a
+FAILURE reported in rendered words. The verdict is taken on that WORD COUNT and
+not on whether the residue string is empty: ETHICS_MARK omits the heading's own
+small-caps-split first letter, so a clean p10 still leaves a bare "E" ahead of
+the mark, and testing the string would fail every clean build.
 
 Usage:
     python3 -m experiments.measure_body_chars                 # source chars only
@@ -42,6 +58,8 @@ BODY_END = ("\\section*{Ethics statement}", "\\appendix")
 # space after the first letter: "C ONCLUSION", "E THICS STATEMENT".
 CONCLUSION_MARK = "ONCLUSION"
 ETHICS_MARK = "THICS STATEMENT"
+# Stripped from a page before asking whether any body prose is left on it.
+RUNNING_HEADER = "Under review as a conference paper at ICLR"
 
 
 def body_chars(tex_path):
@@ -82,20 +100,48 @@ def check_gate(pdf_path, limit=9):
         return False, [f"FAIL no {ETHICS_MARK!r} heading found in {pdf_path}"]
 
     msgs.append(f"Conclusion heading on p{concl}, Ethics heading on p{ethics}")
+
+    if concl > limit:
+        return False, msgs + [f"FAIL body prose spills past p{limit}: "
+                              f"the Conclusion heading is on p{concl}"]
     if ethics <= limit:
         msgs.append(f"[OK] body prose ends by p{limit} "
                     f"(Ethics opens on p{ethics}, at or before the limit)")
-    else:
-        # HEAD's layout: Conclusion ends p9, Ethics opens p10. Still passing.
-        if concl <= limit:
-            msgs.append(f"[OK] body prose ends by p{limit} "
-                        f"(Conclusion on p{concl}; Ethics overflows to p{ethics}, "
-                        f"which HEAD's own layout permits)")
-        else:
-            ok = False
-            msgs.append(f"FAIL body prose spills past p{limit}: "
-                        f"the Conclusion heading is on p{concl}")
-    return ok, msgs
+        return ok, msgs
+    if ethics > limit + 1:
+        return False, msgs + [f"FAIL Ethics opens on p{ethics}, so at least one "
+                              f"whole page of body prose lies past p{limit}"]
+
+    # Ethics opens on p(limit+1). Permitted ONLY if it is that page's first
+    # content: any body prose ahead of it is main text past the limit. This is
+    # the check the heading test used to skip.
+    spill, n_words = _spill_before(pages[ethics - 1])
+    if not n_words:
+        msgs.append(f"[OK] body prose ends by p{limit} (Ethics is the first "
+                    f"content of p{ethics}, which the limit permits; residue "
+                    f"before the heading: {spill!r})")
+        return ok, msgs
+    head = spill if len(spill) <= 180 else spill[:177] + "..."
+    return False, msgs + [
+        f"FAIL {n_words} rendered words of body prose sit on p{ethics}, ahead of "
+        f"the Ethics heading, so the main text is {ethics} pages against a "
+        f"{limit}-page limit. First spilled text: {head!r}"]
+
+
+def _spill_before(page_text, mark=ETHICS_MARK):
+    """Body prose on `page_text` ahead of `mark`, minus header and gutter.
+
+    ICLR renders a running header on every page and a line-number gutter that
+    pdftotext extracts as lines holding nothing but digits. Neither is body
+    prose, so both are stripped before deciding whether anything is left.
+    """
+    before = page_text[:page_text.find(mark)]
+    kept = [l for l in before.split("\n")
+            if l.strip()
+            and RUNNING_HEADER not in l
+            and not re.fullmatch(r"\s*\d+\s*", l)]
+    text = " ".join(l.strip() for l in kept).strip()
+    return text, len(re.findall(r"[A-Za-z]{2,}", text))
 
 
 def main():
