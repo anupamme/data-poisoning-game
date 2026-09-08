@@ -56,7 +56,36 @@ results.
 
 \textbf{(ii) FLTrust as $d_2$ (6 pairs): in scope, 6/6, and the near-identity of §\ref{sec:prospective} is visible per seed rather than only in the aggregate.} Krum$\to$FLTrust and MKrum$\to$FLTrust are \textbf{bit-identical} to FLTrust alone on all six runs ($0.0519/0.0459/0.0453$ scaling, $0.0492/0.0466/0.0426$ pixel), as expected for a pass-through $d_1$. NC$\to$FLTrust is \emph{bit-identical on the pixel attack}, where no client exceeds $\tau{=}5$ so $c_i \equiv 1$, and differs only within seed noise on model-scaling, where clipping actually fires. Rep$\to$FLTrust and RFA$\to$FLTrust likewise differ only within noise. The single genuine deviation is FG$\to$FLTrust ($0.064$, per-seed up to $0.084$): the one $d_1$ that produces exact \emph{zeros} rather than positive rescalings, changing FLTrust's effective client set instead of only its magnitudes, which is the Lemma~\ref{lem:annihilation} interaction. Every $d_1$ in the menu is a non-negative per-client rescaling whose positive part FLTrust cancels exactly, so only the \emph{zero pattern} is free to matter, which is where the one deviation appears.
 
-\textbf{(iii) Neither defense is FLTrust (7 pairs): 5/7.} Per-pair values are in Table~\ref{tab:prospective}; both misses are diagnosed in §\ref{sec:prospective} and neither is a mechanism error.
+\textbf{(iii) Neither defense is FLTrust (7 pairs): 5/7.} Per-pair values are in Table~\ref{tab:prospective}; both misses are diagnosed in §\ref{sec:prospective} and neither is a mechanism error. This arm is the one §\ref{sec:prospective} calls the only one that could have surprised us, and §\ref{app:mkrum} reports that $5$ of its $7$ pairs reduce to a single defense, leaving $2$ that compose two real mechanisms.
+
+\section{MultiKrum at $K{=}5$, and the matched contrasts we withdrew}
+\label{app:mkrum}
+
+\textbf{The mechanism.} \texttt{multi\_krum} scores each participant by its summed distance to nearest neighbours, keeps the $k$ lowest and averages them, with $k$ defaulting to $5$. Every experiment in this project runs \texttt{clients\_per\_round}${}={}5$ and none passes $k$, so the kept set is \emph{all five} participants and the call reduces to plain averaging. Measured rather than argued (\texttt{experiments/verify\_wave3\_invariance.py}, test D; \texttt{experiments/analyze\_mkrum\_degeneracy.py}): at $K{=}5$ the largest absolute difference between \texttt{multi\_krum} and \texttt{fedavg} on identical inputs is $1.9\times10^{-6}$, which is float summation order alone; at $K{=}10$ it is $25.2$, a genuine selector again. MultiKrum is therefore a distinct rule in this codebase only when more clients participate than it selects, which no run reported here does.
+
+\textbf{Two degeneracies compose, and we had recognized only one.} \emph{(A) Pass-through $d_1$.} A rank aggregator emits one vector rather than per-client updates, so \texttt{krum}, \texttt{multi\_krum}, \texttt{trimmed\_mean} and \texttt{coord\_median} supply no upstream transform and $d_1{\to}d_2$ measures $d_2$ alone. This was known and is what the table's DEGEN label records; it makes Krum$\to$FLTrust and MKrum$\to$FLTrust, and Krum$\to$RFA and MKrum$\to$RFA, the same measurement twice (per-seed $|\Delta\mathrm{ASR}| = 0.000$ on both attacks). \emph{(B) MultiKrum as $d_2$.} Because MultiKrum is FedAvg here, $d_1{\to}$MKrum applies $d_1$'s per-client transform and then averages, which for every weighting or clipping $d_1$ in this menu \emph{is} that defense standalone. This is the new fact, and the affected rows carry frozen labels of C1-fail or C2-fail rather than DEGEN because it was not known when the labels were committed. Counting both, $8$ of the suite's $20$ rows reduce to a single defense, not the $5$ marked DEGEN: the five already marked, plus RFA$\to$MKrum, NC$\to$MKrum and FLTrust$\to$MKrum.
+
+\textbf{The matched contrasts do not survive, and substituting Krum is what shows it.} §\ref{sec:prospective} previously drew three contrasts holding $d_1$ fixed while $d_2$ moved from FLTrust to a Euclidean rule, reading the gap as evidence for Proposition~\ref{prop:invariance}. Two used MultiKrum and so had no downstream defense on one side. Replacing it with the genuine selector Krum gives a repaired-looking $12.6$--$19.1\times$ gap, and the repair is illusory: for the gap to be about invariance, C1 would have to hold across it, and it does not. Every Krum arm takes its max-committed ASR from the pixel backdoor, on which Krum's own standalone ASR is $0.583$, above threshold.
+
+\begin{center}
+\begin{tabular}{lccccl}
+\toprule
+$d_1$ & $\to$FLTrust & $\to$Krum & attack & Krum alone & excess over Krum alone \\
+\midrule
+Rep & $0.046$ & $0.880$ & pixel & $0.583$ & $+0.297$ \\
+NC & $0.046$ & $0.583$ & pixel & $0.583$ & $+0.000$, bit-identical $3/3$ seeds \\
+RFA & $0.047$ & $0.725$ & pixel & $0.583$ & $+0.142$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The NormClip row is the sharpest form of the point: NC$\to$Krum is bit-identical to Krum alone on all three seeds ($0.779 / 0.039 / 0.932$, accuracy $0.396 / 0.592 / 0.467$), because under the pixel backdoor the maximum client update norm over $45$ client-rounds is $3.04 < \tau{=}5$, so NormClip is the exact identity in $9/9$ measured rounds (test F; under model-scaling norms reach $24.5$ and it binds in $11/45$). Nothing about the invariance class of $d_2$ is being tested there. In $0$ of the $3$ contrasts does the non-invariant $d_2$ suppress its own max-committed attack standalone, which is the condition that would make the contrast informative. The Krum arms for NC and RFA come from the metric-swap suite (§\ref{sec:metric_swap}) rather than the prospective suite, at the identical protocol and the same seeds $42$--$44$; we note the change of source rather than smooth it over.
+
+\textbf{What arm (iii) is left with.} Of its $7$ pairs, Krum$\to$CM is CoordMedian alone, Krum$\to$RFA and MKrum$\to$RFA and RFA$\to$MKrum are RFA alone, and NC$\to$MKrum is NormClip alone. Two compose two real mechanisms: FG$\to$Krum, which is a miss at $0.078$ and $9.9\%$ clean accuracy (the collapsed-model artifact), and Rep$\to$Krum, which is a hit at $0.880$. So the arm's $5/7$ is $1/2$ on the pairs that put two mechanisms in series, and the surviving hit is a predicted HIGH, so it still bears on specificity only.
+
+\textbf{A noise floor this degeneracy hands us, and a second use for the accuracy gate.} $d_1{\to}$MKrum and $d_1{\to}$FedAvg are the same function computed through two code paths that differ by $1.9\times10^{-6}$ per aggregation, as are MultiKrum and FedAvg standalone. Over $50$ rounds that difference is amplified chaotically through the training trajectory, so whatever such a cell pair disagrees by is a measured floor on how small an ASR difference can be called real at this protocol. At matched seeds, across the five such cells with clean accuracy above the $0.35$ gate, the per-seed $|\Delta\mathrm{ASR}|$ reaches $0.046$; that is what licenses the paper's repeated ``differ only within seed noise''. In the one cell below the gate, MultiKrum against FedAvg under model-scaling at $0.10$ accuracy, the same function disagrees with itself by $0.270$ (per-seed ASR $0.000/0.995/0.730$ against $0.000/1.000/1.000$). So the accuracy gate is a precondition for reading small ASR differences at all, not only for reading suppression claims: on a collapsed model ASR is not a stable quantity. Neither figure is to be confused with the exactly $0.000$ of degeneracy (A), where the two rows traverse an identical code path.
+
+\textbf{What we did not change.} The suite's frozen categories, predictions and $13/20$ score stand exactly as committed at \texttt{262cf35}; relabelling them after seeing the data is what the pre-registration forbids. What is retracted is the body's interpretation of three rows and of the three contrasts, and Table~\ref{tab:prospective} carries a marker and a footnote rather than an edited label.
 
 \section{Metric-swap ablation: verification and per-cell detail}
 \label{app:metric_swap_detail}
@@ -101,17 +130,18 @@ fedavg (no defense) & sanity & $0.236 \pm 0.190$ & $0.386 \pm 0.192$ \\
 inferred.} The sanity baseline never clears $0.5$, so a FAIL control that also sits below $0.5$
 carries no information: at $f{=}0.4$ it is $0.236 \pm 0.190$ and bimodal (4/5 seeds $<0.22$, one
 $>0.6$), because all four adversarial sub-triggers must be sampled in the same round, probability
-$(4/10)^4 = 2.6\%$ at $K{=}5$; at $f{=}0.6$ it rises only to $0.386$ (Appendix~\ref{app:dba_f06}
+$\tbinom{6}{1}/\tbinom{10}{5} = 2.4\%$ at $K{=}5$; at $f{=}0.6$ it rises only to $0.386$ (Appendix~\ref{app:dba_f06}
 shows the residual bimodality is a per-seed admissibility latent in the distributed trigger, not
 purely a co-participation effect). The distributions still separate at the tails, max per-seed ASR
-$0.185$ across the PASS pairs against $0.712$ across the FAIL pairs, which is what shows DBA embeds
+$0.202$ across the PASS pairs against $0.761$ across the FAIL pairs, which is what shows DBA embeds
 when co-sampling succeeds; and the PASS--FAIL gap is not merely DBA's own weakness, since fg$\to$rfa
 reaches $0.125$ where the undefended baseline reaches $0.386$, a $3\times$ suppression. The
 symmetric verdict: PASS predictions are confirmed robustly at both fractions, and FAIL-side
 falsifiability requires a DBA variant that embeds reliably before those controls mean anything.
 
 \textbf{(B) Scale and architecture transfer, and (C) the independent survivor.} All predictions were
-pre-registered at commit \texttt{ca627e5} before any of these ran, $n{=}5$ seeds throughout.
+pre-registered at commit \texttt{ca627e5} before any of these ran, $n{=}5$ seeds throughout the
+pre-registered conditions (the reference policy below is $n{=}10$).
 (B) tests fg$\to$rfa and fg$\to$cm at $N{=}100$, $K{=}10$, $f{=}0.05$ on ResNet18, a $10\times$
 client-pool expansion with a different architecture, both pre-registered PASS under committed
 scaling and committed pixel. (C) tests fg$\to$cm, selected \emph{solely} by criterion PASS status
@@ -126,7 +156,7 @@ mixing of fg/cm (50/50 at random per round) at $N{=}10$, $f{=}0.2$:
 \multicolumn{4}{l}{\emph{(B) $N{=}100$, $K{=}10$, $f{=}0.05$, ResNet18}} \\
 fg$\to$rfa & PASS & $0.063 \pm 0.031$ & $0.069 \pm 0.029$ \\
 fg$\to$cm & PASS & $0.152 \pm 0.118$ & $0.141 \pm 0.099$ \\
-rfa alone & baseline & $0.410 \pm 0.386$ & \\
+fedavg/nc 50/50 ref. ($n{=}10$) & reference & $0.410 \pm 0.386$ & \\
 \midrule
 \multicolumn{4}{l}{\emph{(C) $N{=}10$, $f{=}0.2$; oracle equals the scaling column in both rows}} \\
 fg$\to$cm composed & PASS & $0.107 \pm 0.031$ & $0.099 \pm 0.020$ \\
@@ -141,9 +171,12 @@ this budget, so they establish that \emph{suppression transfers} across scale an
 \textbf{not} that the composition is deployable at $N{=}100$ as configured; and the two FAIL-predicted
 pairs at the same scale (nc$\to$rep C2-FAIL $0.279$, fg$\to$tm C3-FAIL $0.167$) again land below
 $0.5$, so FAIL-side discrimination is unavailable at this scale and fraction for the same reason as
-in (A). The single-defense contrast is what sharpens the positive result: RFA alone reaches
-$0.410 \pm 0.386$ on committed scaling, bimodal across seeds, against fg$\to$rfa's
-$0.069 \pm 0.031$, a $6\times$ improvement at $N{=}100$.
+in (A). \textbf{The reference is not a single-defense contrast, and we do not read a suppression
+ratio off it}: RFA standalone was never run at this scale, so the only reference policy available is
+the FedAvg/NormClip 50/50 mix at $n{=}10$, which reaches $0.410 \pm 0.386$ on committed scaling and
+is bimodal across seeds. What that licenses is the weaker but necessary point that the attack is
+\emph{viable} at $N{=}100$, so fg$\to$rfa's $0.063 \pm 0.031$ is suppression rather than an attack
+that simply fails at scale.
 
 \textbf{(C): composition dominates mixing, on the committed-pixel policy only.} We anchor there
 because it is the only policy under which both conditions retain a usable model (clean accuracy
@@ -181,7 +214,7 @@ nc$\to$fg$\to$tm   & HIGH & $0.267$ & \textbf{MISS} \\
 \end{tabular}
 \end{table}
 
-\textbf{Selection-bias note.} All 6 LOW triples in Table~\ref{tab:three_way} use FoolsGold or reputation as $d_1$: the same successful weighting defenses from the 2-way analysis. This reflects the structural fact that these are the only defenses satisfying C1 for both attacks in our menu. The criterion's 3-way value is not discovering new $d_1$ choices but correctly \emph{filtering} from the $5{\times}6{=}30$ triples starting with FG/rep: it predicts LOW for only 6--8 of these 30 (those where the $d_2{\to}d_3$ chain preserves signals), correctly rejecting the majority. A random 6-of-10 draw from our measured set matches the criterion's mean ASR ($0.078$) only $0.3\%$ of the time ($p = 0.003$, resampling test; §\ref{sec:composability_validation}).
+\textbf{Selection-bias note.} All 6 LOW triples in Table~\ref{tab:three_way} use FoolsGold or reputation as $d_1$: the same successful weighting defenses from the 2-way analysis. This reflects the structural fact that these are the only defenses satisfying C1 for both attacks in our menu. The criterion's 3-way value is not discovering new $d_1$ choices but correctly \emph{filtering} from the $2{\times}6{\times}5{=}60$ triples starting with FG/rep: it predicts LOW for only 6--8 of these 60 (those where the $d_2{\to}d_3$ chain preserves signals), correctly rejecting the majority. A random 6-of-10 draw from our measured set matches the criterion's mean ASR ($0.078$) only $0.3\%$ of the time ($p = 0.003$, resampling test; §\ref{sec:composability_validation}).
 
 \section{Dose--response design: the full pre-registered protocol}
 \label{app:dose_protocol}
@@ -253,7 +286,7 @@ Every value below is recomputed per seed by \texttt{analyze\_dose\_response.py} 
 
 \noindent The $\Delta$~agg.\ column of Table~\ref{tab:channels_full} mixes two things the causal claim of §\ref{app:targeted_full} needs apart. For a selector, $\mathrm{agg}(U) = u_{s_0}$ and $\mathrm{agg}(T(U)) = c_{s_1} u_{s_1}$, with $s_0$ the client selected on the raw stack and $s_1$ the client selected on the transformed one, so exactly
 \[ c_{s_1}u_{s_1} - u_{s_0} \;=\; \underbrace{(u_{s_1} - u_{s_0})}_{\text{re-selection}} \;+\; \underbrace{(c_{s_1}-1)\,u_{s_1}}_{\text{rescaling}}, \]
-both components reported relative to $\|u_{s_0}\|$. The re-selection component is what a magnitude-controlled dose would still move (it takes both updates \emph{untransformed}) while the rescaling component is what such a control closes. They are \textbf{not orthogonal}: the measured angle runs from $\cos{=}{-}0.99$ to $-0.43$, mean ${\approx}{-}0.65$, so their norms need not sum to the total, and the table prints the angle rather than leaving that discrepancy unexplained. What is asserted instead is the exact vector identity above: worst residual $2.66\mathrm{e}{-}07$ over all $240$ (arm, family, rung, seed, round) cells, float32 noise. \textbf{This decomposes the published number, not a second similar one}: every recomputed total agrees with the corresponding $\Delta$~agg.\ value in \texttt{results/admission\_measurement.json} to $0.00\mathrm{e}{+}00$, on the same $5$ seeds $\times$ $3$ live rounds, the same rungs and the same configuration as that measurement. \textbf{Selectors only}: a weighted averager and a coordinate-wise order statistic emit no single selected client, so ``the selected update'' and hence this split are undefined for them, and \texttt{coord\_median} and \texttt{reputation} do not appear. \texttt{experiments/measure\_displacement\_decomposition.py} trains no model per rung, computes no ASR, writes a new file (\texttt{results/displacement\_decomposition.json}) and leaves every frozen artifact byte-identical.
+both components reported relative to $\|u_{s_0}\|$. The re-selection component is what a magnitude-controlled dose would still move (it takes both updates \emph{untransformed}) while the rescaling component is what such a control closes. They are \textbf{not orthogonal}: the measured angle runs from $\cos{=}{-}0.99$ to $-0.43$, mean ${\approx}{-}0.67$, so their norms need not sum to the total, and the table prints the angle rather than leaving that discrepancy unexplained. What is asserted instead is the exact vector identity above: worst residual $2.66\mathrm{e}{-}07$ over all $240$ (arm, family, rung, seed, round) cells, float32 noise. \textbf{This decomposes the published number, not a second similar one}: every recomputed total agrees with the corresponding $\Delta$~agg.\ value in \texttt{results/admission\_measurement.json} to $0.00\mathrm{e}{+}00$, on the same $5$ seeds $\times$ $3$ live rounds, the same rungs and the same configuration as that measurement. \textbf{Selectors only}: a weighted averager and a coordinate-wise order statistic emit no single selected client, so ``the selected update'' and hence this split are undefined for them, and \texttt{coord\_median} and \texttt{reputation} do not appear. \texttt{experiments/measure\_displacement\_decomposition.py} trains no model per rung, computes no ASR, writes a new file (\texttt{results/displacement\_decomposition.json}) and leaves every frozen artifact byte-identical.
 
 \begin{center}\small\setlength{\tabcolsep}{4pt}
 \begin{tabular}{llrrrrrr}
@@ -316,7 +349,7 @@ Mode~A, $\nu{=}{-}2\ldots{+}2$ & --- & $7.39$--$7.39$ & --- & --- & $-1.138 \ldo
 \end{tabular}
 \end{table}
 
-\noindent Three readings, in decreasing confidence. \textbf{(1) $\rho$ is not a proxy for $\Delta_c$}: the two are anti-ordered on the anchors, and NormClip on the pixel backdoor has $\rho = 1$ exactly because no client exceeds $\tau{=}5$, so $\Delta_c = 0$ there for a reason the invariance classification cannot see. \textbf{(2) The two anchors that miss the ladder are the two most extremely targeted}, which explains the residuals of §\ref{sec:dose_outcome} without appeal to a range mismatch. \textbf{(3) $\Delta_c$ is nonetheless not a predictor of suppression}: RFA is the most negative of the four real transforms and rfa$\to$krum fails at $0.779$, while Reputation is more negative still and rep$\to$coord\_median suppresses. That is the two-regime structure of §\ref{sec:composability_criterion} again: strong negative $\Delta_c$ can mean either annihilation or mere dilution, and $\Delta_c$'s magnitude alone does not say which. We report it as the axis on which the ladder's anchors were unmatched, not as the quantity that replaces the statistic.
+\noindent Three readings, in decreasing confidence. \textbf{(1) $\rho$ is not a proxy for $\Delta_c$}: the two are anti-ordered on the anchors, and NormClip on the pixel backdoor has $\rho = 1$ exactly because no client exceeds $\tau{=}5$, so $\Delta_c = 0$ there for a reason the invariance classification cannot see. \textbf{(2) Both transforms carrying a missed anchor are targeted far beyond any ladder rung}, which puts the residuals of §\ref{sec:dose_outcome} on a measured axis rather than a range mismatch; $\Delta_c$ does not sort the anchors themselves, since NormClip carries one that misses and one that lands. \textbf{(3) $\Delta_c$ is nonetheless not a predictor of suppression}: RFA is strongly negative at $-1.208$ and rfa$\to$krum fails at $0.779$, while Reputation is more negative still at $-1.383$ and rep$\to$coord\_median suppresses. That is the two-regime structure of §\ref{sec:composability_criterion} again: strong negative $\Delta_c$ can mean either annihilation or mere dilution, and $\Delta_c$'s magnitude alone does not say which. We report it as the axis on which the ladder's anchors were unmatched, not as the quantity that replaces the statistic.
 
 \section{Anticipated objections}
 \label{app:objections}
@@ -359,10 +392,13 @@ An invariance argument certifies the top three levels of Definition~\ref{def:lev
 content sits at level~(P4), the adversarial contribution admitted. A criterion reading the Krum arm would
 call that composition broken (the decision flips in up to $80\%$ of rounds) for a composition whose
 suppression shows no measurable change: a false alarm in the direction that costs coverage
-(Proposition~\ref{prop:emergent_full}, recall bound $1/5$). The converse fails too: \texttt{cos\_krum}'s
-selection is bit-identical at every rung yet it never suppresses ($0.584$ at the identity) and its ASR
-\emph{falls} $0.425$ across the ladder, so exact invariance of the statistic neither implies suppression
-nor holds it fixed (§\ref{app:targeted_full}, Appendix~\ref{app:dose_detail}).
+(Proposition~\ref{prop:emergent_full}, recall bound $4/5$). The converse fails too: \texttt{cos\_krum}'s
+selection is bit-identical at every rung yet it never suppresses ($0.584$ at the identity, Mode~S at
+$n{=}8$) and its ASR \emph{falls} $0.425$ across that ladder, so exact invariance of the statistic
+neither implies suppression nor holds it fixed. As in the body, the $\kappa{=}2$ endpoint carrying that
+$0.425$ sits below our own clean-accuracy floor, so \textbf{the witness we rest on is the first
+gate-passing rung} ($0.173$); the full-ladder figure is quoted here only for its sign
+(§\ref{app:targeted_full}).
 
 \paragraph{5. The theory covers only positive per-client rescalings.} Yes, and we say so wherever it is
 used (Proposition~\ref{prop:invariance}, Theorem~\ref{thm:bounded_reweight},
@@ -374,11 +410,115 @@ The negative does not rest on the theory: it is a \emph{measured} counterexample
 makes the counterexample sharper rather than weaker, since \textbf{the theorem certifies mechanism
 preservation, not security}; it bounds no ASR.
 
+\section{Sensitivity of the intervention conclusions to their two frozen thresholds}
+\label{app:sensitivity}
+
+Two thresholds are frozen in this paper and a reader is entitled to ask how much rests on them.
+Both are swept here by \texttt{experiments/analyze\_margin\_sensitivity.py}, which reads
+\texttt{results/comparability\_six\_cells.json} and computes no ASR; as a provenance check it
+reproduces that table's published verdict column exactly.
+
+\textbf{The $\pm0.15$ practical-equivalence margin is not load-bearing.} A reading of no evidence of a practically meaningful change requires the paired $95\%$ interval to lie inside
+$[-m,+m]$, so the smallest margin under which each frozen reading survives is
+$m^{\ast} = \max(|\mathrm{lo}|,|\mathrm{hi}|)$. For the two arms that carry an equivalence
+reading this is $m^{\ast}{=}0.032$ (Krum, CIFAR-10, at that arm's $n{=}20$) and $m^{\ast}{=}0.034$ (Krum,
+EMNIST-byclass, at that arm's pooled $n{=}5$), each read off Table~\ref{tab:sixcell}'s \emph{Mode-S} interval for that
+arm (the equivalence reading is a statement about the controlled estimate, so $m^{\ast}$ is not
+computed from the confounded column), against the frozen $0.15$: headroom of $+0.118$
+and $+0.116$. The margin could
+have been fixed anywhere in $(0.034, 0.5)$ without changing either reading, so the pre-registered
+value is a conservative choice rather than a tuned one.
+
+\textbf{The $\pm0.05$ near-zero tolerance in the AGREE definition carries no verdict at all.}
+Sweeping it over $[0,1]$, both endpoints included, all six cells of Table~\ref{tab:sixcell} keep the
+verdict they are published with at every value, the tolerance-free limit $\epsilon{=}0$ among them. Every cell is decided by
+its two intervals, and the tolerance is a tie-break that never fires on this table.
+
+\textbf{The central claim turns on neither.} SIGN REVERSAL is defined as opposite signs with both
+intervals excluding zero, which reads the intervals alone: \texttt{coord\_median}/pixel is
+$-0.272$ $[-0.422,-0.122]$ against $+0.098$ $[+0.018,+0.178]$. No margin and no tolerance enters
+that determination. \textbf{The $\delta_2$ disturbance threshold of
+§\ref{sec:composability_criterion} is not swept here, and the reason is worse for us than a sweep
+would be}: no label in the $42$-pair table is computed from it. \texttt{c2\_holds} decides by
+invariance \emph{class}, returning True for the exactly invariant statistics and False for the
+non-invariant ones, and for the three conditional classes it defers to the stored per-pair call, so
+there is no numeric $\delta_2$ anywhere in that column whose value could be varied. Its provenance
+is censused in main \S\ref{app:frontier} ($3$ of the $14$ admissions rest on algebra and $11$ on
+that call), and we state that rather than report a stability interval the code does not support.
+
 % This document has exactly one \citep (the DBA attack, §S1). Until now it rendered only because
 % \externaldocument{main} makes xr read main.aux, which carries main's \bibcite records -- so the
 % citation resolved by accident of build order and broke silently whenever main.aux was absent or
 % stale, while pdflatex still reported a clean run. `bibtex supplementary' was the only check that
 % saw it, reporting "I found no \bibdata command". The supplement now carries its own bibliography.
+\section{Screening for a seventh comparability cell, and why we do not run one}
+\label{app:cell7}
+
+Table~\ref{tab:sixcell} rests on four downstream defenses, and a reader may ask why not more. The
+contrast is interpretable only where the downstream defense suppresses the attack on its own,
+since otherwise there is no suppression whose attribution could move, so a further cell needs a
+defense meeting C1's own precondition: standalone ASR below $0.5$ at clean accuracy at least
+$0.35$. One axis had that unmeasured, and this section measures it.
+
+EMNIST-byclass under model scaling is that axis. \texttt{results/femnist/payoff\_results.json} already
+carries a standalone scaling cell for seven of the twelve aggregation rules in this study, and
+\texttt{krum} is the only powered one, which is cell~6: \texttt{trimmed\_mean} reaches $0.9999$,
+\texttt{rfa} $0.9990$, \texttt{norm\_clip} $0.9986$, \texttt{coord\_median} $0.6567$, and
+\texttt{fedavg} and \texttt{multi\_krum} both $0.3333$ at $0.041$ clean accuracy. The remaining
+five had no cell at all: we measured four of them at $n{=}3$ under the identical protocol and
+runner (\texttt{experiments/measure\_femnist\_c1\_inputs\_scaling.py},
+\texttt{results/femnist\_c1\_inputs\_scaling/}) and exclude \texttt{fltrust} by the argument at the
+end of this section, so all twelve are accounted for.
+
+\begin{center}
+\begin{tabular}{@{}lccl@{}}
+\toprule
+$d_2$ alone, EMNIST-byclass / scaling & mean ASR & mean clean acc. & precondition \\
+\midrule
+\texttt{reputation}     & $0.3465$ & $0.7039$ & met, and declined below \\
+\texttt{cos\_krum}      & $0.6667$ & $0.0494$ & fails the accuracy floor \\
+\texttt{foolsgold}      & $0.6664$ & $0.0459$ & fails the accuracy floor \\
+\texttt{cos\_reputation} & $0.9993$ & $0.1002$ & fails the accuracy floor \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{No defense outside the table's four is admissible.} \texttt{foolsgold} and
+\texttt{cos\_reputation} are the only two screened candidates that would contribute a downstream
+defense the comparability axis does not already have, and both fail on the \emph{accuracy} floor
+rather than the ASR threshold: a $10\times$ update rescaling destroys the model under them, to
+$0.046$ and $0.100$ clean accuracy on a 62-class task. \texttt{foolsgold}'s third seed is the
+clean illustration of why the precondition gates on accuracy at all, ASR $0.0000$ at $0.044$
+accuracy: a model that has learned nothing suppresses every attack, and reading that as
+suppression is the error the floor exists to prevent.
+
+\textbf{\texttt{reputation} meets the precondition and we still decline the cell.} Its mean is
+$0.3465$ at $0.704$ accuracy, inside the rule as written. Its three seeds are $0.9947$, $0.0152$
+and $0.0296$: one total failure beside two near-total suppressions, and the mean resembles
+neither. Because \texttt{reputation} is already one of the table's four defenses, such a cell
+would be a second-dataset replication rather than a new defense, and we are not willing to rest a
+replication on an input whose spread is this wide at $n{=}3$. We report the screen and leave the
+cell unrun, and note that what would settle it is more seeds on the C1 \emph{input}, not a
+ladder built on this one.
+
+\textbf{The screen is gated on reproducing a frozen cell.} These runs measure the scaling arm
+under the same runner as the frozen pixel-arm cells the main text reports for this dataset, and the
+two arms share their data poisoning, differing only in the update-level rescaling. So the screen
+first re-measures \texttt{krum}/scaling and refuses to run any target unless it reproduces the
+frozen value: it returns $0.0239$ at $0.765$ accuracy against the frozen $0.0270$, where the
+corresponding pixel cell is $0.660$. That gate distinguishes the arm under test from its pixel
+twin, and it makes these four cells protocol-comparable with the frozen matrix rather than
+merely indicative.
+
+\textbf{These are C1 inputs, not predictions.} C1 is defined on standalone suppression, so the
+numbers above are the criterion's inputs and no prediction of any kind is tested here; the
+convention that such inputs are measured before any per-pair prediction is frozen is
+\texttt{experiments/pre\_registration\_prospective.md}. No composition is evaluated, and no
+pre-registration is spent. \texttt{fltrust} is excluded by argument rather than measurement:
+the main text records it as bit-identical per seed under positive
+per-client rescaling, which is exactly the Mode~S dose, so a ladder on it would observe an
+algebraic identity.
+
 \bibliographystyle{iclr2027_conference}
 \bibliography{references}
 

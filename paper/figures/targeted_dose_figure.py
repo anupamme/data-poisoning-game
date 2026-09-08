@@ -254,6 +254,15 @@ def draw_dag(ax, tag="(a) "):
                            [CH, CH, CH, BRK, BRK], ["bold", "normal", "normal", "normal", "bold"]):
         box(x, Y, s, ec, weight=w)
 
+    # (P1) and (P2) -- the statistic's value and the ordering it induces -- both live in the ONE
+    # statistic box, and they are named in each document's CAPTION rather than in the artwork. Not a
+    # preference: this panel has no free band left. Measured with the renderer, a 4.6pt label centred
+    # under that box overlaps the box itself by 1.1pt at y=Y-0.30 and the attenuation box's top-left
+    # corner by 3.5pt, and there is no y between them (box bottom 256.0pt, attenuation top 255.6pt);
+    # a third line INSIDE the box costs 7.6pt of height and drives its rounded corner into the same
+    # attenuation box. The arrow annotations are what carry the hierarchy here, which is why the one
+    # link that holds by definition is labelled below and the two broken ones say "not implied".
+
     # The reader's map, and the whole point of the panel: the left group is what a preservation check
     # can see, the right group is what security actually depends on. Set inside the existing headroom
     # (the channel annotations below drop to one line), so the tight bbox does not grow.
@@ -275,6 +284,17 @@ def draw_dag(ax, tag="(a) "):
                     fontsize=10, color=BRK, zorder=6)
             ax.text((XS[i] + XS[i + 1]) / 2, Y + 0.045, "not implied", ha="center", va="bottom",
                     fontsize=4.6, color=BRK, zorder=6)
+        elif i == 1:
+            # The one link in the chain that needs no experiment: equal values induce the same ordering
+            # and a rule reading only that ordering cannot decide differently, so (P2)=>(P3) holds by
+            # definition. Set in the nRightarrow band BELOW the arrow, aligned with the two broken
+            # glyphs, so that band reads as one column: "what happens at this link". Deliberately NOT
+            # in the "not implied" band above (Y + 0.045), where it would print 4.7pt under this same
+            # segment's arm annotation and read as "Krum flips 0.80 by definition". Clearance is
+            # measured, not assumed: 258.5-263.5pt, under box bottoms at 256.0/257.9pt and over the
+            # attenuation box's top at 255.6pt. Segment 0 stays unannotated for the reason below.
+            ax.text((XS[i] + XS[i + 1]) / 2, Y - 0.20, "by definition", ha="center", va="center",
+                    fontsize=4.6, color=CH, zorder=6)
 
     # The T -> statistic segment is deliberately left UNANNOTATED. Its number (Delta agg. = 0.892) is
     # the one channel Mode S does not hold fixed, so printing it here invites reading the panel as a
