@@ -184,3 +184,96 @@ No other paper's content is known to us at freeze time.
    inclusions is not auditable.
 7. **No paper is added to the frame after coding begins**, and no paper is dropped from the frame
    because of how it coded.
+
+---
+
+## Amendment 1 (Round 57, 2026-09-10): the retrieval endpoint moved, and nothing else did
+
+**Written before any paper beyond the three disclosed seeds has been coded, and before any abstract has
+been read.** What is known at the time of writing is stated exhaustively below.
+
+### What forced the change: HTTP status codes, not results
+
+F2 above names DBLP and Semantic Scholar. **Both are unreachable from this environment.** Measured:
+
+| surface | result |
+|---|---|
+| `dblp.org/search/publ/api?...&format=json` | serves an Anubis anti-bot HTML challenge, not JSON |
+| `api.semanticscholar.org/graph/v1/paper/search` | HTTP **429** on 5 backoff attempts over ~75 s; also 429 via `WebFetch` |
+| `export.arxiv.org/api/query` (the arXiv **API**) | **301** on http, **429** on https |
+| `api.crossref.org` | 200, but `total-results` 2,808,257 on the frame's queries, and poor ML-venue coverage |
+| ACM Digital Library proceedings pages | HTTP **403** |
+| `arxiv.org/search/` (the **HTML UI**, not the API) | **200**, paginable, 50 titles + arXiv IDs per page |
+| `arxiv.org/pdf/<id>` | **200**; FLAME's 872 KB PDF yields 110 KB of `pdftotext` text |
+| `usenix.org/.../technical-sessions`, `ndss-symposium.org/.../accepted-papers`, `ieee-security.org/TC/SP*/program-papers.html`, `proceedings.mlr.press/v*/` | **200**, complete per-venue-year title listings |
+
+**No retrieved bibliographic result caused this amendment.** The change is caused entirely by the status
+codes in the right-hand column, and it would read identically had every reachable surface returned an
+empty set.
+
+### The change, stated as a substitution
+
+**F2 is re-pointed and not re-specified.** The five query strings, the 2019--2026 year window, the venue
+list, the five criteria C-a..C-e, the primary and secondary quantities, the four ambiguity rules and the
+10-paper floor are **unchanged, verbatim.** Only the endpoint that answers a query changes:
+
+- **F2 (amended).** The same five frozen query strings are issued against the **arXiv HTML search
+  interface**, `https://arxiv.org/search/?searchtype=all&query=<query>&start=<n>&size=50`, paginated to
+  exhaustion. Titles and arXiv IDs are extracted mechanically. Venue attribution, where arXiv does not
+  carry it, is resolved against the reachable venue indexes in the table above.
+- **F2b (new, and additive only).** Because keyword search over arXiv under-covers the security venues
+  where composed defenses actually publish, the **complete title listings** of USENIX Security, NDSS,
+  IEEE S&P (2019--2026) and PMLR (ICML, AISTATS) are additionally screened by a frozen title regex:
+  `federated` AND (`backdoor` OR `poison` OR `byzantine` OR `robust`), case-insensitive. This is an
+  **exhaustive population per venue-year with a real denominator**, which is a stronger frame than
+  keyword search, not a weaker one. Its recall limit is stated: a paper whose *title* carries none of
+  those tokens is missed by F2b, and F2 and F1 are its only routes into the frame.
+- **Full text** is obtained as `arxiv.org/pdf/<id>` piped through `pdftotext`. A paper with no reachable
+  full text is recorded at the "full text sought" stage and excluded with its reason, exactly as the
+  unamended document already required.
+
+### The bias this realizes, and why it is not a new one
+
+The unamended document already stated the bias: *"This biases the frame toward arXiv and open-access
+venues (USENIX, NDSS, OpenReview) and against paywalled ones (notably ACM CCS)."* Amendment 1 does not
+introduce that bias; it **makes it the operative retrieval mechanism**, which is a difference of degree
+worth recording. Two consequences are frozen here:
+
+1. **ACM CCS is a coverage gap, not a sample.** Its proceedings pages are 403 and its papers enter the
+   frame only if they are also on arXiv. **The paper states this in the same sentence as the rate.**
+2. **The frame is arXiv-reachable published FL poisoning-defense work, and the paper says so every time
+   it says the number.** It is not "the FL literature", which the unamended document already forbade
+   claiming.
+
+### What had been retrieved when this was written, disclosed exhaustively
+
+Reachability probing necessarily returned some bibliographic content. All of it, completely:
+
+- **Query 1 (`federated learning backdoor defense`) reports 174 arXiv results**, and the **first five
+  titles** of page 1 were displayed. No abstract was opened, no PDF beyond `nguyen2022flame` was
+  fetched, and no criterion was coded for any of them.
+- The USENIX Security 2022 listing was extracted (256 titles) and filtered on `federated`, returning
+  **three** titles, one of which is FLAME -- already a disclosed seed.
+- Eight PMLR v202 titles containing `federated` were displayed. None concerns a defense pipeline on its
+  title alone, and none has been coded.
+- Three CrossRef titles were displayed during precision testing of a surface that is **not** adopted.
+
+**None of this content selected a query, a criterion, a decision rule or the floor** -- all of which
+predate it in a committed document (`9b8a395`) -- and none of it has been coded. It is disclosed because
+non-negotiable 2 requires the amendment to state what was known when it was written, and a count of
+results for one query is something known.
+
+### Non-negotiables, extended
+
+8. **The amended F2/F2b endpoints are themselves frozen at this commit.** The arXiv query URL template,
+   the pagination-to-exhaustion rule and the F2b title regex are not edited after the first retrieval
+   under this amendment. A surface that later becomes reachable (DBLP, Semantic Scholar, CCS) **is not
+   added to this audit**; it is future work, because adding a surface after seeing a rate is how a frame
+   gets tuned to its result.
+9. **The retrieval is executed by a script, not by hand**, and the script ships: the query strings it
+   issues, the pages it walked and the raw candidate list are written to `results/literature_audit/`
+   before any screening decision. A frame that cannot be diffed against its own output is not
+   reproducible.
+10. **F2b's exhaustive denominators are reported in the funnel** -- how many titles were listed per
+    venue-year, and how many the regex retained. Reporting only the retained count would present an
+    exhaustive screen as if it were a search.
