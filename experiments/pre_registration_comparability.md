@@ -344,3 +344,145 @@ have overturned that result. The reading was wrong, and what caught it was a mec
 non-negotiable 1's bit-identical reproduction requirement -- and not our judgement. **That is an
 argument for the gate, not for our discipline.** The sequence is left in the document in full: the
 refutation, the amendment that would have undone it, and the check that stopped the amendment.
+
+---
+
+# AMENDMENT 4, adding cell 7: the sign reversal on a third dataset
+
+**Written before any ASR for this cell exists, which non-negotiable 4 requires.**
+`results/comparability_cells/summary.json` contains no key with the `|cifar100` suffix at the time of
+writing, and the amendment is committed before the runner is pointed at it.
+
+## Why this cell, and why now
+
+The nineteenth review (reading a July draft) withholds a 7 partly because *"the strongest empirical
+phenomenon is still demonstrated primarily in a relatively constrained FL setting."* That criticism
+survives the restructure, and on inspection it is sharper than the review makes it. The six-cell table
+spans two datasets and two architectures, but **the sign reversal itself does not**: `coord_median` /
+`committed_pixel` -- the one cell where the signs differ *and* both intervals exclude zero -- exists
+only on CIFAR-10 with `cifar_cnn`. Cell 6 added a second dataset and architecture to a *different*
+cell (`krum` / scaling), and that cell is explicitly **not** counted as a reversal because both of its
+intervals contain zero.
+
+So the honest statement of the current evidence is: **the reversal is one cell on one dataset with one
+architecture.** Cell 7 moves that exact cell, unchanged in aggregator and attack, to a third dataset.
+
+## Cell 7, frozen
+
+| field | value |
+|---|---|
+| `d2` | `coord_median` |
+| attack | `committed_pixel` |
+| dataset / model | **`cifar100` / `cifar_cnn`** |
+| families | both (`confounded`, `controlled`) |
+| rungs | κ ∈ {0, 0.5, 1, 2}, the frozen grid |
+| seeds | 42--46, the frozen set |
+| runs | 40 |
+| key suffix | `|cifar100` |
+| primary | ΔASR from κ=0 to κ=2, paired within design, 95% paired `t` interval, each design at its own full n |
+| verdict vocabulary | AGREE / DISAGREE / SIGN REVERSAL exactly as frozen above; no new definition |
+
+`num_clients=10`, `clients_per_round=5`, `num_rounds=50`, `ADV_FRACTION=0.2`, Dirichlet α=0.5,
+accuracy floor 0.35 applied to a rung's **mean**: all unchanged, all inherited from the same
+`FL_CONFIG` the other six cells use.
+
+## No rule prediction is made, and the ΔΛ_a column is reported absent for this cell
+
+H-ADMISSION-GATED was **refuted by cell 6 and withdrawn** (Amendment 3; the paper reports the
+withdrawal in the section where the claim appeared). It therefore generates no prediction for cell 7,
+and **cell 7 must not be used to resurrect it.** Concretely:
+
+- No admission measurement is run for this cell, and its ΔΛ_a table entry is an **absent-value cell**,
+  not a number. A number there would invite exactly the post-hoc threshold-fitting Amendment 3
+  forbids.
+- **No prediction is committed** beyond the direction of interest below, because the only mechanism
+  that could have generated one is dead. Registering a bare hunch as a prediction, and then scoring
+  it, would manufacture the appearance of a surviving rule.
+- The **direction of interest**, stated so it cannot be reinterpreted afterwards: the CIFAR-10 cell has
+  the confounded ladder falling (−0.272) and the Mode-S instrument rising (+0.098). Cell 7 replicates
+  the *reversal* only if the same two signs appear with both intervals excluding zero.
+
+## The admissibility gate, and it is two-sided
+
+**A cell with no headroom cannot answer this question, and the paper already discloses one such cell
+against itself** (§`app:sixcell`, on EMNIST: *"the indeterminate branch was arithmetically
+unreachable: ASR cannot fall below 0"*). Reproducing that defect on a new dataset would be worse the
+second time, so the gate is frozen here, before the run:
+
+> **Cell 7 is admissible iff, at the identity rung (κ=0, confounded, seeds 42--46), the rung mean
+> clean accuracy is ≥ 0.35 and the rung mean ASR lies in [0.15, 0.85].**
+
+The interval is two-sided for a reason and both sides bind:
+
+- **Below 0.15** the *fall* leg is dead: ASR cannot go below 0, so a floored identity rung bounds the
+  confounded fall beneath the ±0.15 practical-equivalence margin this paper uses everywhere, and no
+  fall could be distinguished from the margin. This is the EMNIST failure exactly (identity rung
+  0.027).
+- **Above 0.85** the *rise* leg is dead by the mirror argument: ASR cannot exceed 1, so a saturated
+  identity rung bounds the Mode-S rise beneath the same margin. **This side is the live risk here**,
+  because `results/cifar100_ne3_br/summary.json` records pixel-backdoor ASR of 0.82--0.93 on this
+  dataset under a `fedavg`/`norm_clip` policy. Under `coord_median` we expect materially lower (the
+  CIFAR-10 identity rung is 0.443), but we do not know it, and if the rung saturates then a reversal
+  is undetectable in one of its two directions and the cell cannot be scored for one.
+
+The gate reads the **natural prefix of the runner's own todo order** (`for fam in fams for k in KAPPAS
+for s in SEEDS` puts confounded/κ=0/seeds 42--46 first), so no code, no cell and no label changes to
+evaluate it: the first five lines of the run log decide it. **If the gate fails the run is stopped
+there**, the five readings are reported with the gate they failed, and the recorded outcome is that
+this cell is inadmissible on headroom.
+
+**There is no fallback dataset and we say so now rather than reaching for one later.** The only other
+configurations this harness supports are EMNIST/`simple_cnn` (2660 s per run in
+`results/comparability_run.log`, so 29.5 h for 40 runs, and its identity rung is 0.027, which fails
+the gate a priori) and `resnet18` (5900 s per run in `results/cifar10_mix_ratio_sweep_resnet18`, so
+65 h). Both are outside the compute available. If CIFAR-100 fails the gate, the honest finding is
+**"no third dataset within this compute budget admits this cell"**, and that is what will be written.
+Substituting a different aggregator, attack or cell after seeing the gate is forbidden by
+non-negotiable 4 and is not on the table.
+
+## Why CIFAR-100 rather than something else, disclosed before the run
+
+Three reasons, in the order they actually decided it:
+
+1. **Wall time.** 660 s per run for `cifar_cnn` on CIFAR-10 across 40 timed runs in
+   `results/comparability_run.log`. CIFAR-100 is the same input size and the same architecture with a
+   100-way head, so ≈7.5 h for 40 runs, which fits the compute available. The two alternatives above
+   do not.
+2. **The accuracy floor is reachable.** `results/cifar100_ne3_br/summary.json` records clean accuracy
+   0.386--0.394 on all five seeds under the pixel backdoor, above the 0.35 floor. (Its *model-scaling*
+   arm collapses at seed 45 to accuracy 0.083; we are not running that arm, and if the pixel arm shows
+   a comparable collapse it is flagged, never excluded, per non-negotiable 6.)
+3. **It is a genuinely different task, not a re-skin.** 100 classes rather than 10 changes the
+   backdoor's base rate and the clean-accuracy regime together, which is the kind of variation the
+   external-validity objection is actually about.
+
+Choosing on wall time is a real limitation and it is recorded as one: **this is the third dataset that
+fit, not the third dataset that was most informative.** Nothing here licenses a claim about datasets
+or architectures outside the three now measured.
+
+## What this cell does not establish, recorded before the numbers exist
+
+- **A seventh cell does not make the reversal generic.** Three datasets and two architectures is the
+  scope after this run, and any sentence implying otherwise is a misreport of this design.
+- **A null is a result and is reported as one.** If cell 7 agrees, or disagrees without reversing, that
+  is the answer and it goes in the table. The reversal on CIFAR-10 is not retracted by a null
+  elsewhere, and it is not generalised by a hit elsewhere; the honest reading of either is that the
+  reversal is dataset-conditional, which is a scope condition the paper already owes the reader.
+- **No causal decomposition of ΔASR is claimed** for this cell any more than for the others.
+- **Mode S remains an oracle instrument**, not a deployable defense.
+
+## Non-negotiables, extending the six above
+
+7. Cell 7 is added as **one tuple** in `CELLS`. `run_one`, `FAMILIES`, `cell_key`, `KAPPAS`, `SEEDS`
+   and the harness check are not edited; a divergence in any of them would make cell 7 a different
+   experiment from the six it joins.
+8. `--harness-check` is run **before** cell 7's first run and must reproduce the published
+   `results/dose_response/` value to 1e-9. It is not invoked by `main()`, so it is a manual pre-flight
+   and its absence is silent -- which is precisely why it is written down here.
+9. The `|cifar100` suffix is mandatory, for the reason the runner's own comment gives for `|emnist`:
+   namespace collisions between cells sharing `(d2, attack)` are silent and are only ever found
+   afterwards.
+10. The six existing cells are not re-run and `results/comparability_cells/summary.json`'s existing
+    keys are not rewritten; the resume path appends.
+11. `analyze_comparability.py` keeps its refusal to print any pooled number unless all four published
+    contrasts reproduce, and keeps printing each leg's own n.
