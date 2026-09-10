@@ -1,0 +1,33 @@
+{
+  "title": "Precision Guided Approach to Mitigate Data Poisoning Attacks in Federated Learning",
+  "short_name": "FedZZ",
+  "c_d_route": "hyperparameter-sweep",
+  "criteria": {
+    "C-a": {
+      "code": "NO",
+      "quote": "To overcome these limitations, we present FedZZ, which harnesses a zone-based deviating update (ZBDU) mechanism to eﬀectively counter data poisoning attacks in FL. The ZBDU approach identiﬁes the clusters of benign clients whose collective updates exhibit notable deviations from those of malicious clients engaged in data poisoning attack.",
+      "locator": "Abstract; the second element is the zone calibrator, whose purpose is stated in the same passage as serving the first -- \"we introduce FedZZ, which uses a precision-guided approach to create and maintain client zones, an important requirement for ZBDU\" (§1 Contributions)"
+    },
+    "C-b": {
+      "code": "NO",
+      "quote": "We design and implement FedZZ, which uses a precision-guided approach to create and maintain client zones, an important requirement for ZBDU.",
+      "locator": "§1 Contributions; the calibrator is a REQUIREMENT of the single mechanism, not a second defense selected to complement it"
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "This shows that FedZZ can eﬀectively detect the poisonous updates and helps in maintaining robust accuracy even under high attack percentages (> 30%).",
+      "locator": "§6.3 Effectiveness; the metric is the composed system's own Global Test Accuracy, \"We use the Global Test Accuracy (GTA) as the metric to evaluate the effectiveness of our approach (FedZZ10, FedZZ5, FedZZ2) against other configurations\", with attack success rate used for the attacks in §6"
+    },
+    "C-d": {
+      "code": "YES",
+      "quote": "FedZZ Conﬁgurations: We use three conﬁgurations of FedZZ with diﬀerent number of zones. Speciﬁcally, FedZZ10 (𝑚 = 10), FedZZ5 (𝑚 = 5), and FedZZ2 (𝑚 = 2).",
+      "locator": "§6.2; the zone count m is the parameter of the upstream partitioning stage (\"Our approach splits all n clients into m disjoint zones\", §4), swept with the downstream deviating-update filter and the attack held fixed, and read off GTA in §6.3"
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "because of the fewer possible calibrations and, consequently, few chances to determine the appropriate zone",
+      "locator": "§6.3, explaining the weaker configuration's outcome; a second attribution to a property of the partition is in the same section, \"due to discrepancies in the number of clients per zone\""
+    }
+  },
+  "coder_note": "C-a = NO, ON THE SAME READING THAT DECIDED 2207.01982: ONE MECHANISM REALIZED IN STAGES. FedZZ is the zone-based deviating-update filter; the precision-guided calibrator exists to produce the zones that filter consumes, and the paper says so in the words \"an important requirement for ZBDU\". A partition step feeding a filter is the filter's own machinery, not a second defense composed with it, and C-a's exclusion of \"a single mechanism with hyperparameters\" is what keeps the criterion from swallowing every clustering-based defense. Amendment 3 is not engaged: nothing here is a privacy or compression component. Primary = NO.\n\nC-d = YES AND IT IS THE CLEANEST HYPERPARAMETER ROUTE IN THE FRAME AFTER SHARE. The zone count m is the granularity of the upstream partition: how much collective averaging happens before the deviating-update test sees anything. FedZZ10 / FedZZ5 / FedZZ2 hold the downstream test, the aggregation and the attack fixed and vary only m, and §6.3 then reads the composed system's accuracy off that variation and attributes the ordering to a mechanism property of the partition (\"fewer possible calibrations and, consequently, few chances to determine the appropriate zone\"). That is the same shape as SHARE's cluster-size sweep and zPROBE's number-of-user-clusters panel, and it arrives for the same reason all three do: the paper introduced a partitioning parameter and therefore had to sweep it. Rule 4's benefit of the doubt is not needed.\n\nThe recurrence is now a pattern worth naming in A5. Four of the coded papers reach C-d = YES through a parameter of a CLUSTERING or PARTITIONING stage they introduced -- SHARE (cluster size, reclustering rounds), zPROBE (number of user clusters), G2uardFL (graph-construction coefficients), FedZZ (number of zones) -- and in none of the four is the sweep presented as an identification exercise. The contrast our own Prop. prop:identification_full asks for is, in this literature, a side effect of having a knob.\n\nEXTRACTOR NOTE: the C-d bucket returned 14 candidates over 72680 characters and NONE was the configuration sentence; all 14 were baseline comparisons or attack-ratio statements. The code came from a targeted grep for FedZZ followed by an enumeration verb. This is the third paper where the aid's C-d bucket missed the sentence the code rests on, and the pattern in all three is the same: the bucket looks for ablation and component vocabulary, and a hyperparameter sweep is announced as a configuration list.\n\nTHREE QUOTATIONS REPAIRED AFTER CODING; TWO WERE HEAD REWRITES. I had rendered the abstract's \"we present FedZZ, which harnesses a zone-based deviating update (ZBDU) mechanism\" as \"We propose a zone-based deviating update (ZBDU) mechanism\", and a contributions bullet's \"We design and implement FedZZ, which uses\" as \"we introduce FedZZ, which uses\". The remaining defects were ﬀ/ﬁ ligatures and a math-italic m. This paper's extracted text is ligature-dense, which is why three of its five quotations failed at once. No code moves. See results/literature_audit/quote_repair_log.md."
+}

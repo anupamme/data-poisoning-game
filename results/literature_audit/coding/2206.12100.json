@@ -1,0 +1,32 @@
+{
+  "title": "zPROBE: Zero Peek Robustness Checks for Federated Learning",
+  "c_d_route": "hyperparameter-sweep",
+  "criteria": {
+    "C-a": {
+      "code": "NO",
+      "quote": "zPROBE comprises two main components, namely, secure aggregation, and robustness establishment.",
+      "locator": "§3.1 zPROBE Overview; the purpose of the first component is stated in the Abstract, \"The server only learns the final aggregation result, thereby preventing leakage of the users' (private) training data from the individual model updates\""
+    },
+    "C-b": {
+      "code": "NO",
+      "quote": "However, implementing privacy-preserving rank-based statistics, especially median-based, is nontrivial and unscalable in the secure domain, as it requires sorting of all individual updates.",
+      "locator": "Abstract; restated at §1 as \"By co-designing the robustness defense and cryptographic components of zPROBE, we are able to provide a scalable and low overhead solution for private and robust FL\""
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "zPROBE is robust against various Byzantine attacks with 0.5 − 2.8% higher accuracy compared to prior work on private and robust FL.",
+      "locator": "§1 Contributions; Table 1"
+    },
+    "C-d": {
+      "code": "YES",
+      "quote": "Figure 4: Ablation studies on zPROBE defense performance with varying (a) portion of compromised gradients, (b) attack magnitude, (c) number of clients, and (d) number of user clusters.",
+      "locator": "§4.2, Figure 4"
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "we believe can be attributed to 1) the use of rank-based statistics to establish dynamic thresholds, and 2) the use of all benign gradients in the aggregation, rather than replacing all values with a robust aggregator, e.g., as in KRUM.",
+      "locator": "§4.1, discussing Table 1"
+    }
+  },
+  "coder_note": "C-a = NO UNDER AMENDMENT 3, ON THE PAPER'S OWN TWO-COMPONENT ENUMERATION. Of zPROBE's two named components, only \"robustness establishment\" has resisting malicious updates as its stated purpose; secure aggregation is there to keep the server from seeing individual updates. Primary = NO.\n\nTHE BORDERLINE, RECORDED RATHER THAN HIDDEN. zPROBE's zero-knowledge proofs do resist adversarial behaviour -- they stop a malicious client lying about the masks and quantiles it submitted -- so a reader could argue the ZKP layer is a second defense mechanism and code C-a = YES. Two things decide it NO here. First, what the ZKP defends is PROTOCOL EXECUTION, not the model: a client whose proof verifies can still submit a poisoned gradient, and it is the rank-based check, not the proof, that removes it. Second, ambiguity rule 3 takes the reading that makes the paper not outcome-gated. The argument is close enough that it is written down here so a reader who disagrees can flip this one row and see what it does.\n\nC-d = YES, and panel (d) is why: number of user clusters is an upstream stage zPROBE introduced (clients are clustered so medians can be estimated on aggregates rather than on individuals), swept with the downstream rank-based robustness check and the attack held fixed. Panels (a)-(c) are attack-strength and scale sweeps and would not qualify on their own; rule 4's benefit of the doubt is not needed for (d), but would cover it if the clustering were read as part of the check rather than upstream of it.\n\nC-e is unusually explicit and is worth quoting in the shipped table even though the row is not primary: the attribution names two constituents and contrasts them with a third design (KRUM), on the strength of a table of composed-system accuracies. It is the attributional pattern the paper describes, arrived at without the composition C-a asks for."
+}

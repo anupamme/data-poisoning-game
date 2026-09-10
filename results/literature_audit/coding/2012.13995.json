@@ -1,0 +1,35 @@
+{
+  "title": "FLTrust: Byzantine-robust Federated Learning via Trust Bootstrapping",
+  "bibkey": "cao2021fltrust",
+  "c_d_route": "component-contrast",
+  "venue": "NDSS",
+  "year": 2021,
+  "criteria": {
+    "C-a": {
+      "code": "YES",
+      "quote": "Therefore, we further clip the cosine similarity score using the popular ReLU operation. The ReLU-clipped cosine similarity is our trust score. Then, FLTrust normalizes each local model update by scaling it to have the same magnitude as the server model update. ... Finally, FLTrust computes the average of the normalized local model updates weighted by their trust scores as the global model update",
+      "locator": "Introduction; the paper's own enumeration is at §VI-C: \"FLTrust has three key features: a root dataset, using ReLU to clip the cosine similarity scores, and normalizing each local model update.\""
+    },
+    "C-b": {
+      "code": "YES",
+      "quote": "However, the cosine similarity alone is insufficient because a local model update, whose cosine similarity score is negative, can still have a negative impact on the aggregated global model update. Therefore, we further clip the cosine similarity score using the popular ReLU operation.",
+      "locator": "Introduction; the normalization stage carries its own reason in the same paragraph, \"Our normalization limits the impact of malicious local model updates with large magnitudes.\""
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "a CNN global model learnt using FLTrust has a testing error rate of 0.04 under all the evaluated attacks on MNIST-0.1",
+      "locator": "Introduction, restating §VI; the composed system's own testing error rate and the Scaling attack's success rate are the reported outcomes throughout §VI"
+    },
+    "C-d": {
+      "code": "YES",
+      "quote": "FLTrust-NoReLU. In this variant, the server does not use ReLU to clip the cosine similarity scores of the local model updates when computing their trust scores. • FLTrust-NoNorm. In this variant, the server does not normalize the local model updates to have the same magnitude as the server model update. • FLTrust-ParNorm. In this variant, the server applies partial normalization, i.e., only normalizes the local model up[dates]",
+      "locator": "§VI-C \"Comparing different variants of FLTrust\", Table IV"
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "The fact that FLTrust outperforms FLTrust-NoReLU, FLTrust-NoNorm, and FLTrust-ParNorm indicates the necessity of our ReLU operation and normalization.",
+      "locator": "§VI-C, read off Table IV"
+    }
+  },
+  "coder_note": "ALL FIVE YES, SO PRIMARY = NO, AND THIS IS THE SECOND HALF OF THE CORRECTION main.tex:1654 NEEDS. That line asserts FLTrust is \"proposed and evaluated as a single stage\"; the paper names three features of its own accord and evaluates five variants of them in Table IV. Our own prose already knew this: main.tex:906 describes FLTrust as gating \"on the scale-invariant cos(u_i, g_srv) and then renormaliz[ing] every update to ||g_srv||\", which is two operations, and §VI-C's ParNorm arm is a THIRD level of that same stage.\n\nWHY THIS IS C-d ON THE STRICT READING AND NOT ONLY BY RULE 4. The rubric refuses a leave-one-out that changes the system rather than the upstream input to a fixed component. Here the downstream component -- the trust-score-weighted average -- is bit-for-bit the same in FLTrust, FLTrust-NoNorm and FLTrust-ParNorm, the attack set is held fixed, and the normalization stage feeding it takes three levels (full / partial / none). That is a graded variation of the upstream stage with the downstream mechanism held fixed, the same shape as FLAME's Table 1 (none / clustering / clustering+clipping with the noising fixed), and it is coded the same way for the same reason. FLTrust-NoReLU is a second instance with the roles swapped: the trust-score stage varies while normalization and the weighted average stay fixed.\n\nWHAT IS NOT THE BASIS FOR THE CODE. FLTrust-Server and FLTrust-withServer change WHO contributes an update, not the upstream input to a fixed downstream stage, and the paper's stated reason for their failure is a property of the root dataset (\"because the root dataset is small\"), not a suppression reading. Neither is counted.\n\nFLTrust was admitted to the frame precisely to decide this claim (see its screen_reason), and it decided it against us. That is the third of three named seeds to code C-d = YES."
+}

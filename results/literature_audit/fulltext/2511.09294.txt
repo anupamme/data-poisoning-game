@@ -1,0 +1,2159 @@
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+1
+
+GuardFed: A Trustworthy Federated Learning
+Framework Against Dual-Facet Attacks
+
+arXiv:2511.09294v1 [cs.LG] 12 Nov 2025
+
+Yanli Li, Yanan Zhou, Zhongliang Guo, Nan Yang, Yuning Zhang, Huaming Chen, Dong Yuan,
+Weiping Ding*, Senior Member, IEEE, Witold Pedrycz, Life Fellow, IEEE
+
+Abstract—Federated learning (FL) enables privacy-preserving
+collaborative model training but remains vulnerable to adversarial behaviors that compromise model utility or fairness
+across sensitive groups. While extensive studies have examined
+attacks targeting either objective, strategies that simultaneously
+degrade both utility and fairness remain largely unexplored.
+To bridge this gap, we introduce the Dual-Facet Attack (DFA),
+a novel threat model that concurrently undermines predictive
+accuracy and group fairness. Two variants, Synchronous DFA (SDFA) and Split DFA (Sp-DFA), are further proposed to capture
+distinct real-world collusion scenarios. Experimental results show
+that existing robust FL defenses, including hybrid aggregation
+schemes, fail to resist DFAs effectively. To counter these threats,
+we propose GuardFed, a self-adaptive defense framework that
+maintains a fairness-aware reference model using a small amount
+of clean server data augmented with synthetic samples. In each
+training round, GuardFed computes a dual-perspective trust
+score for every client by jointly evaluating its utility deviation
+and fairness degradation, thereby enabling selective aggregation
+of trustworthy updates. Extensive experiments on real-world
+datasets demonstrate that GuardFed consistently preserves both
+accuracy and fairness under diverse non-IID and adversarial
+conditions, achieving state-of-the-art performance compared with
+existing robust FL methods.
+Index Terms—Federated Learning, Adversarial Attack, Fairness, Robustness
+
+I. I NTRODUCTION
+The rapid advancement of deep learning (DL) has greatly
+accelerated the deployment of intelligent automation systems
+[1], providing smart services across diverse application domains. Alongside this evolution, there is an increasing emphasis on human-centered values such as privacy, fairness,
+and security, which extend beyond traditional performanceoriented objectives. Among the candidate technologies that address these concerns, Federated Learning (FL) has emerged as
+Yanli Li is with the School of Artificial Intelligence and Computer Science,
+Nantong University, Nantong, 226019, China, and also with the School of
+Electrical and Computer Engineering, The University of Sydney, Sydney,
+2006, Australia (e-mail: yanli.li@sydney.edu.au).
+Yanan Zhou, Nan Yang, Yuning Zhang, Huaming Chen, and Dong Yuan
+are the School of Electrical and Computer Engineering, The University
+of Sydney, Sydney, 2006, Australia (e-mail: yzho5556@uni.sydney.edu.au,
+{n.yang, yuning.zhang1, huaming.chen, dong.yuan }@sydney.edu.au).
+Zhongliang Guo is with the School of Computer Science, University of St
+Andrews, United Kingdom, KY16 9SX (e-mail: zg34@st-andrews.ac.uk).
+Weiping Ding (Corresponding author) is the School of Artificial Intelligence and Computer Science, Nantong University, Nantong, 226019, China,
+and also the Faculty of Data Science, City University of Macau, Macau
+999078, China (e-mail: dwp9988@163.com)
+Witold Pedrycz is with the Department of Electrical and Computer Engineering, University of Alberta, Edmonton, AB T6R 2V4, Canada (e-mail:
+wpedrycz@ualberta.ca).
+
+a privacy-preserving and decentralized paradigm [2], allowing
+multiple participants to collaboratively train models without
+sharing raw data.
+Under the FL architecture [3], participants operate with
+a certain degree of autonomy, each performing local model
+training and sharing only model gradients during the learning
+process. A trusted central server coordinates the training by
+distributing the global model, collecting client updates, and
+aggregating them to achieve global optimization. However, the
+distributed nature of FL also introduces a broader attack surface [4]. Malicious participants may intentionally manipulate
+their local data or gradient updates to inject poisoned contributions [5]–[8], thereby degrading global model performance
+or introducing a backdoor to the system.
+Besides model utility, the fairness of the global model has
+also been identified as an emerging vulnerable target for adversarial manipulation [9]. In the context of federated learning,
+group fairness refers to the requirement that individuals from
+different sensitive groups, such as those defined by race or gender, should receive similar treatment or prediction outcomes
+from the model [10], [11]. The recent study [9] has shown
+that adversaries can deliberately flip sensitive attributes in their
+local training data in order to induce significant disparities in
+model behavior across different groups. These vulnerabilities
+in both performance and fairness have hindered the full
+realization of federated learning’s potential for delivering trust
+worthy and intelligent services in real-world applications.
+To defend against malicious behaviors in FL, various robust
+aggregation algorithms have been proposed, typically relying
+on statistical techniques [12], [13] or trusted reference datasets
+[6], [9], [14] to assess client reliability and exclude adversarial updates. While these methods have shown effectiveness
+against isolated attacks on either performance or fairness, it is
+unrealistic to assume that adversaries would limit themselves
+to a single objective in practice [4], [15]. A more strategic
+and damaging threat involves simultaneously compromising
+both utility and fairness, yet such dual-objective attacks remain
+largely unexplored. To address this gap, we introduce the
+Dual-Facet Attack (DFA), a novel threat model that jointly
+degrades predictive accuracy and fairness through a combination of model perturbation and sensitive attribute manipulation.
+We consider two variants: Synchronous DFA (S-DFA), where
+all attackers perform both actions, and Split DFA (Sp-DFA),
+where different groups execute each component independently.
+In response, we propose GuardFed, a self-adaptive federated learning system designed to defend against both poisoning
+and fairness-harming attacks. GuardFed requires the server to
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+collect only a small amount of clean data, known as root data,
+which can be augmented using generative AI techniques to
+reach the desired volume. This synthetic dataset allows the
+server to train a fairness-aware reference model. During training, each client update is evaluated for its trustworthiness from
+two perspectives: its deviation from the reference model and
+its group fairness performance evaluated on the root data. A
+dual-perspective trust score is then computed accordingly, and
+only updates exceeding a predefined threshold are aggregated
+into the global model. GuardFed resists compound adversarial
+behaviors without relying on large-scale server-side data or
+strong trust assumptions, thereby enabling robust, fair, and
+privacy-preserving collaborative intelligence.
+Extensive experiments across multiple datasets and data
+distributions are conducted to assess the effectiveness of the
+proposed Dual-Facet Attack (DFA) and the robustness of
+the GuardFed system. The results demonstrate that DFA can
+significantly compromise either model utility or fairness when
+targeting existing robust FL methods or even hybrid defenses
+combining performance- and fairness-focused techniques. In
+contrast, GuardFed effectively mitigates both poisoning and
+fairness-harming attacks, including DFA. It provides reliable
+protection for both objectives and maintains strong performance in both adversarial and benign scenarios.
+To the best of our knowledge, this is the first work that
+simultaneously considers both performance and fairness vulnerabilities in federated learning systems. Our contributions
+are summarized as follows:
+• We propose Dual-Facet Attack (DFA), a novel threat
+strategy that simultaneously targets both model utility
+and fairness. DFA can effectively degrade learning performance and/or fairness, even in the presence of robust
+FL defenses, posing a significant threat to real-world FL
+systems.
+• We design GuardFed, a defense framework that evaluates trust through dual-perspective scoring and performs
+adaptive aggregation. GuardFed can effectively defend
+against conventional poisoning attacks and emerging
+fairness-compromising threats, including DFA.
+• We conduct extensive experiments on widely-used
+fairness-sensitive datasets under both IID and nonIID settings. The experimental results demonstrate that
+GuardFed outperforms existing robust FL methods in
+terms of accuracy, robustness, and fairness across both
+adversarial and benign environments.
+The rest of the paper is structured as follows: Section II
+reviews the existing FL poisoning, fair attacks and defense.
+Section III setups the federated learning system and group
+fairness. Section IV and V introduce the Dual-Facet Attack
+(DFA) and GuardFed system. Section VI presents the experimental results and analysis. Section VII concludes the paper.
+II. R ELATED W ORK AND R ESEARCH G AP
+In this section, we begin by reviewing the existing vulnerabilities of FL and their corresponding defense frameworks.
+We then examine recent developments in fairness-aware FL
+systems, and finally highlight the remaining research gaps
+identified from prior work.
+
+2
+
+A. Poisoning Attacks and Byzantine-resilient Aggregations for
+Federated Learning
+The distributed learning paradigm enables federated learning (FL) to preserve data privacy, allowing participants substantial autonomy to train models locally. However, this
+loosely coupled structure also exposes FL to a variety of
+attacks, particularly when the aggregation mechanism is based
+on linear operations. As demonstrated by Blanchard et al. [12],
+no linear combination of model updates can tolerate even a
+single Byzantine client, highlighting the inherent vulnerability
+of linear aggregation in adversarial settings.
+Poisoning attacks, as one of the most representative threats
+in federated learning aimed at degrading global model performance, have been extensively studied in recent years.
+Straightforward attack strategies include directly reversing
+model updates (Reverse Attack [8]) or replacing a predefined
+percentage of neural parameters with zeros (Drop Attack [7])
+or random values (Random Attack [7]). However, despite
+their simplicity and effectiveness, these attack strategies are
+relatively easy to detect and mitigate due to the large deviation
+they introduce from benign client behaviors [16].
+To enhance stealthiness, recent studies [5], [17], [18] have
+explored leveraging statistical insights to introduce subtle
+perturbations, aiming to achieve attack objectives while keeping malicious clients indistinguishable from benign ones. For
+instance, the Fall Of Empires (FOE) attack [5] first computes
+the coordinate-wise mean of benign gradients and then scales
+it by a factor slightly greater than 1 to craft the malicious
+update. Experimental results have demonstrated that the FOE
+attack can successfully bypass many defense mechanisms and
+degrade global model performance by up to 20%. A similar
+strategy has been explored by FedImp [19], which crafts
+perturbations based on the mean and standard deviation of
+the attacker’s own neural network parameters.
+In response, a variety of Byzantine-resilient aggregation
+methods have been proposed to replace the simple averaging
+used in vanilla FL and enhance its robustness. Notable early
+studies include Krum [12], Trimmed Mean [13], Median
+[13], and Bulyan [20], which aim to filter out suspicious
+client gradients based on statistical measures such as L2
+distance, coordinate-wise outliers, etc. While these methods
+demonstrate effectiveness under IID settings, their defensive
+performance significantly degrades in non-IID scenarios, particularly when attack strategies become more adaptive and
+stealthy [4]. This is because statistical methods rely on gradient similarity to detect outliers, an assumption that holds in IID
+settings but breaks down under non-IID distributions. In such
+cases, natural gradient divergence masks malicious behavior,
+especially when attackers employ small, stealthy perturbations.
+Recently, a new research paradigm centered on evaluationbased robust aggregation has emerged [6], [14], [21], [22],
+demonstrating enhanced resilience compared to traditional
+statistical methods. These methods typically rely on a clean
+evaluation dataset, which is usually curated by the server,
+to assess client gradients from multiple perspectives. For
+instance, FLTrust [14] requires the server to maintain a serverside model trained on trusted data, and measures the cosine
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+similarity between this reference model and each client update
+to determine whether the client is benign. Similarly, FLEvaluate [23] and Class-Balanced FL [6] utilize server-collected
+data to directly evaluate the learning performance of client
+models, with the shared goal of improving robustness against
+malicious manipulation.
+B. Fairness-aware Federated Learning
+Fairness is a critical requirement in human-centric smart
+services, where trained models are expected to deliver consistent performance across different demographic groups, particularly with respect to sensitive attributes such as gender and
+race [11], [24], [25]. To address this challenge, studies [10],
+[26] formulate fairness in federated learning as a constrained
+optimization problem, in which fairness requirements are
+incorporated as explicit constraints during the model training
+process. FairFed [27] introduces a reweighting technique,
+adapted from traditional machine learning, into the federated
+learning setting. The method restructures the loss function
+to promote fairness in the global model, particularly under
+training datasets that exhibit “equal sampling” across sensitive
+groups. FairEM [28] aims to ensure that clients obtain fair
+models while preserving the privacy of their sensitive feature information. Specifically, FairEM [28] decomposes each
+client’s training objective into fairness-aware sub-objectives
+based on the underlying data distribution, thereby improving
+both local fairness and overall model performance.
+While most prior studies [26]–[28] on fairness-aware
+federated learning assume a benign training environment, a
+recent work [9] is among the first to address this problem
+under adversarial conditions, where attackers can deliberately
+manipulate sensitive attributes, for example, flipping a client’s
+gender label from “female” to “male.” To defend against such
+fairness-harming attacks, FairGuard [9] has been proposed.
+By leveraging clustering results obtained from evaluations on
+a randomly generated dataset, FairGuard is able to restore
+model fairness to a level comparable to that of an unattacked
+system.
+Research Gap: Despite extensive studies on attacks and
+robust aggregation in federated learning, existing works predominantly focus on either degrading model utility or manipulating fairness, while overlooking the possibility of adversaries targeting both simultaneously. To the best of our
+knowledge, no prior work has investigated such dual-objective
+attacks, nor proposed effective defense mechanisms against
+them. In practice, however, it is unrealistic to assume that
+attackers would limit themselves to a single objective, especially when jointly harming model performance and fairness
+can yield greater systemic disruption. Furthermore, as we
+will show in our experiments, directly combining fairnessaware FL frameworks with robust aggregation techniques fails
+to provide sufficient protection under coordinated dual-facet
+attacks. These observations motivate the development of a new
+attack strategy, Dual-Facet Attack (DFA), and its dedicated
+defense framework GuardFed, both of which will be detailed
+in Sections IV and V.
+
+3
+
+We summarize this research gap in Table I, which contrasts
+the threat coverage of our proposed Dual-Facet Attack and
+GuardFed system with representative prior works.
+TABLE I: Comparison of the applicability scope of Dual-Facet
+Attack and GuardFed System (Per:performance, Fair:fairness).
+Attack Methods
+[18] NDSS’21
+[7] DisCom’22
+[29] TDSC’23
+[19] COSE’24
+[30] IJCAI’24
+[9]
+TDSC’25
+Dual-Facet
+
+Perf
+✓
+✓
+✓
+✓
+✗
+✗
+✓
+
+Fair
+✗
+✗
+✗
+✗
+✓
+✓
+✓
+
+Defense Methods
+[21] NeurIPS’21
+[14]
+NDSS’21
+[23] TruCom’23
+[6]
+InfoSci’24
+[31]
+TIFS’24
+[9]
+TDSC’25
+GuardFed
+
+Perf
+✓
+✓
+✓
+✓
+✓
+✗
+✓
+
+Fair
+✗
+✗
+✗
+✗
+✗
+✓
+✓
+
+III. P ROBLEM S ETUP
+A. Federated Learning
+We consider a standard cross-device Horizontal Federated
+Learning (HFL) setting (clients share the same feature space
+but have different samples) with a central server coordinating
+t
+∈ Rd
+N clients. The server maintains a global model MG
+at communication round t, while each client n ∈ {1, . . . , N }
+possesses a private dataset Dn drawn from a non-independent
+and identical distribution (non-IID).
+At the beginning of each round t, the server broadcasts the
+t
+global model MG
+to all selected clients. Each client initializes
+t
+and performs local training for E
+its local model with MG
+epochs using stochastic gradient descent or a similar optimizer.
+The local update process seeks to minimize the empirical risk
+over the client’s private dataset:
+Mnt = arg min Ln (M ) =
+M
+
+1
+|Dn |
+
+X
+
+L(M (x), y),
+
+(1)
+
+(x,y)∈Dn
+
+where L(·) is the loss function (e.g., cross-entropy). After local
+training, the model update is computed as:
+t
+gnt = Mnt − MG
+.
+
+(2)
+
+Upon receiving updates from the selected clients, the server
+performs aggregation to obtain the new global model. In
+standard FedAvg, the server performs a weighted average over
+all client updates, where η is the global learning rate.:
+t+1
+t
+MG
+= MG
++η·
+
+N
+X
+
+|Dn |
+· gnt ,
+PN
+|D
+|
+j
+n=1
+j=1
+
+(3)
+
+This decentralized training protocol allows collaborative
+learning without centralized access to raw data. However, this
+paradigm is vulnerable to unreliable or adversarial updates.
+Clients may submit poisoned or unfair models, either unintentionally due to local bias or deliberately to mislead the
+global model. Therefore, additional mechanisms are required
+to evaluate and filter client contributions based on their utility
+and fairness, which is the motivation behind the GuardFed
+framework.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+4
+
+B. Group Fairness
+To quantify group-level disparities, we adopt two absolute
+fairness metrics: Absolute Statistical Parity Difference (ASPD)
+and Absolute Equal Opportunity Difference (AEOD), which
+are widely used in FL context. These metrics capture the extent
+to which a model exhibits differing behaviors across sensitive
+groups.
+Definition 1 (Absolute Statistical Parity Difference (ASPD)
+[32]): Let a ∈ {0, 1} be a binary sensitive attribute (e.g.,
+gender), and let M (x) denote the model prediction. The
+Absolute Statistical Parity Difference is defined as:
+ASPD(M ) = Pr(M (x) = 1 | a = 0)
+− Pr(M (x) = 1 | a = 1) .
+
+(4)
+
+ASPD measures the absolute deviation in the likelihood of
+receiving a positive prediction between sensitive groups, irrespective of the true label. A smaller ASPD implies that the
+model makes group-independent predictions.
+Definition 2 (Absolute Equal Opportunity Difference
+(AEOD) [32]): Let y ∈ {0, 1} be the true label. The Absolute
+Equal Opportunity Difference is defined as:
+AEOD(M ) = Pr(M (x) = 1 | a = 0, y = 1)
+− Pr(M (x) = 1 | a = 1, y = 1) .
+
+(5)
+
+AEOD captures the absolute difference in true positive rates
+between sensitive groups. A lower AEOD value indicates that
+qualified individuals across groups are treated more equally
+by the model.
+IV. D UAL -FACET ATTACK
+In this section, we propose Dual-Facet Attack (DFA) to
+simultaneously target both the performance and fairness of
+federated learning systems. DFA comprises two adversarial
+operations: (1) flipping the sensitive attribute a in the client’s
+local dataset to disrupt group fairness, and (2) perturbing
+model updates with adversarial noise to degrade global accuracy.
+We consider a federated learning setting where a fixed
+proportion α of participating clients are malicious. These
+adversaries have complete control over their local training
+procedures and uploaded model updates, including flipping
+sensitive attributes or injecting noise into gradients. They are
+allowed to communicate and coordinate with each other to
+launch synchronized or role-divided attacks, including our
+proposed Dual-Facet Attack.
+Let gnt be the local update from client n at round t, and let
+Afair (·) and Aperf (·) represent the fairness attack and performance attack operators, respectively. Here, we use Gaussian
+noise injection (δ ∼ N (0, σ 2 I) [33]) to instantiate Aperf ,
+though other poisoning strategies may also be applied. By
+combining these in different ways, DFA results in two variant
+attack strategies, which are described as follows.
+Definition 3 (Synchronous Dual-Facet Attack (S-DFA)): In
+this variant, each malicious client simultaneously applies both
+the fairness and performance attack. That is, all adversarial
+clients manipulate their local dataset by flipping the sensitive
+attribute a ← 1 − a, retrain their local model on the perturbed
+
+data, and then inject noise into the resulting model update.
+Formally, the poisoned update is:
+
+gent = Aperf Afair (gnt ) = gnt + δ, δ ∼ N (0, σ 2 I),
+(6)
+Definition 4 (Split Dual-Facet Attack (Sp-DFA)): In this
+variant, the malicious clients are divided into two disjoint
+subgroups. One subgroup performs fairness attacks (Afair ) by
+flipping the sensitive attribute in their local dataset and training
+on the altered data. The other subgroup keeps the original data
+unchanged but injects Gaussian noise into the model updates
+(Aperf ). Formally, the poisoned updates are:
+(
+Afair (gnt ),
+if n ∈ Afair ,
+gent =
+t
+t
+2
+Aperf (gn ) = gn + δ, δ ∼ N (0, σ I), if n ∈ Aperf .
+(7)
+Sp-DFA represents a coordination strategy in which heterogeneous adversaries collaboratively compromise both utility and
+fairness objectives.
+V. G UARD F ED S YSTEM D ESIGN
+In this section, we introduce the design of the GuardFed
+system, which aims to defend both fairness and performance
+in adversarial federated learning environments. As phrased by
+study [12], traditional linear aggregation schemes are highly
+vulnerable, even a single Byzantine client can significantly
+degrade global performance. To address this issue, GuardFed
+dynamically evaluates the trustworthiness of each client to
+determine whether their update should be included in the
+aggregation process. A synthetic dataset maintained on the
+server is utilized to support the generation of fairness and
+deviation indices, which are jointly used to compute an
+honesty score for each client and guides the self-adaptive
+aggregation process. Fig. 1 illustrates an overview of the
+proposed GuardFed system.
+The next subsection begins with a detailed explanation of
+each core component of GuardFed, followed by a description
+of the complete learning pipeline.
+A. Synthetic Data Generation
+To evaluate the honesty of client models, a mainstream
+approach is to maintain a self-collected clean dataset on the
+server for performance assessment. While numerous studies
+[6], [14], [21] have confirmed the importance of a sufficiently
+large validation set for detecting malicious clients, relying on a
+single server to collect such data is often infeasible in practical
+federated learning deployments. To fully exploit the potential
+of the evaluation dataset in real-world scenarios, GuardFed
+leverages generative AI techniques to synthesize data on the
+server side based on a small number of existing samples.
+Considering that the most fairness-sensitive federated learning
+tasks utilize tabular data, we introduce a Gaussian Copulabased method [34], [35] for synthetic tabular data generation.
+This approach, however, can be extended to other generative
+techniques (e.g., LLM or GAN) when the training data is nontabular. As this study does not focus on generating high-quality
+synthetic data, other methods in this area are not discussed in
+detail here.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+5
+
+Synthetic data generation
+Gaussianize features
+Server data
+
+Learn dependency
+
+Local data
+
+Synthetic data
+
+Server
+
+S
+
+Participate institution A
+Deviation index
+
+Local data
+Participate institution B
+
+…
+
+𝑔𝑔𝑠𝑠
+
+𝑻𝑻𝑻𝑻𝑻𝑻𝑻𝑻𝑻𝑻𝒏𝒏
+
+Crafted data
+Participate institution (Attacker)
+
+Fairness index
+
+Trust score generation
+
+𝑇𝑇𝑇𝑇𝑇𝑇𝑇𝑇𝑇𝑇1
+
+𝑇𝑇𝑇𝑇𝑇𝑇𝑇𝑇𝑇𝑇2
+
+𝑇𝑇𝑇𝑇𝑇𝑇𝑇𝑇𝑇𝑇3
+
+Threshold Γ
+
+𝑔𝑔𝑛𝑛
+
+Reference model
+
+Self-Adaptive aggregation
+
+round: t+1
+
+Global model update
+
+Fig. 1: Overview of the GuardFed system. All participants, including potential attackers, perform local model training and
+upload their updates. The server applies a self-adaptive aggregation mechanism to ensure both fairness and robustness in the
+global model.
+
+Given a standalone table with r rows and d columns, let
+(i)
+(i)
+(i)
+x(i) = (x1 , x2 , ..., xd ) ∈ Rd denote the i-th sample in the
+original dataset D = {x(1) , ..., x(r) }. The Gaussian Copula
+model generates synthetic samples by decoupling the modeling of marginal distributions from inter-feature dependencies.
+Specifically, the generation process consists of the following
+steps:
+We first model the marginal and joint properties of the
+(i)
+tabular data separately. For each feature xd , we begin by
+(i)
+transforming it into a uniform variable ud ∈ [0, 1] using its
+empirical marginal cumulative distribution function Fd :
+(i)
+
+(i)
+
+ud = Fd (xd ).
+
+(8)
+
+To remove distributional biases and normalize the variables,
+we then apply the inverse standard Gaussian CDF Φ−1 (i.e.,
+(i)
+the probit function) to obtain a Gaussianized variable zd :
+(i)
+
+(i)
+
+(i)
+
+zd = Φ−1 (ud ) = Φ−1 (Fd (xd )),
+
+(9)
+
+which transforms the original data sample into z(i) =
+(i)
+(i)
+(z1 , ..., zd ). After mapping all n samples to the Gaussian
+space, we compute the empirical covariance matrix Σ ∈ Rd×d
+over {z(i) }ni=1 , which captures the inter-feature dependencies
+in a scale-invariant manner.
+Next, synthetic samples are drawn from the learned multivariate Gaussian distribution:
+ez = (e
+z1 , ..., zed ) ∼ N (0, Σ).
+Each sampled component zed is mapped back to the uniform
+space via the standard Gaussian CDF:
+u
+ed = Φ(e
+zd ),
+
+(10)
+
+and subsequently transformed into the original data space
+using the inverse marginal distribution Fd−1 :
+x
+ed = Fd−1 (e
+ud ),
+
+e
+x = (e
+x1 , ..., x
+ed ).
+
+(11)
+
+The resulting vector e
+x represents one synthetic sample that
+preserves the marginal distributions and correlation structure
+of the original dataset. Repeating this procedure yields a
+e that can be reused throughout the federated
+synthetic dataset D
+learning process.
+B. Trust Score Generation
+To detect whether clients have manipulated their model
+updates that undermines the performance or fairness of the
+global model, GuardFed computes a trust score for each
+e This trust score
+received update using the synthetic dataset D.
+integrates two components: a fairness index and a deviation
+index, which respectively assess the update’s potential harm
+from fairness and utility perspectives.
+Fairness Index: Upon receiving a client model Mn , the
+e =
+server evaluates its fairness using the synthetic dataset D
+(i) (i) (i) I
+{(e
+x ,e
+a , ye )}i=1 , where e
+a denotes the sensitive attribute
+and ye is the target label. Formally, the Fairness Index for client
+n is computed as:
+Fairn = Pr(Mn (e
+x) = 1 | a
+e = a, ye = 1)
+
+− Pr(Mn (e
+x) = 1 | a
+e = a′ , ye = 1) ,
+
+Fairn ∈ [0, 1].
+(12)
+
+Here, (a, a′ ) denotes two distinct values of the sensitive
+attribute (e.g., male/female). A higher Fairn indicates greater
+unfairness, i.e., a stronger disparity between subgroups with
+the same ground-truth label.
+Deviation Index: To guide the global model in a fair and
+correct learning direction, the server maintains a reference
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+6
+
+e using a reweightmodel Ms trained on the synthetic dataset D
+ing strategy [36]. The weight wi assigned to each training
+(i) (i) (i)
+sample (e
+x ,e
+a , ye ) is computed based on its joint and
+marginal group-label probabilities:
+wi =
+
+Pr(e
+a(i) ) · Pr(e
+y (i) )
+(i)
+(i)
+Pr(e
+a , ye )
+
+(13)
+
+I
+X
+
+n∈S
+
+t
+MG
+
+This reweighting ensures that the sensitive attribute e
+a becomes
+statistically independent of the label ye under the adjusted distribution, i.e., a
+e ⊥ ye, thereby mitigating group-level discrimination. Thus, the reference model is trained by minimizing
+the weighted empirical loss:
+Ms(t) = arg min
+M
+
+communication round t, only clients with Trustn > Γ are aggregated into the global model. The aggregation is performed
+according to the following rule:
+1 X t
+t+1
+t
+MG
+= MG
+gn ,
++η· t
+(17)
+|S |
+t
+where
+denotes the global model at round t, η is the
+learning rate, gnt is the model update from client n, and
+S t = {n | Trustn > Γ} is the set of selected clients. This
+strategy ensures that only those clients contributing both fair
+and reliable updates influence the global model learning.
+D. Full Learning Step of GuardFed
+
+(i)
+
+(i)
+
+wi · L(M (e
+x ), ye )
+
+(14)
+
+i=1
+
+During the t-th communication round, after collecting client
+(t)
+model Mn , the server compares its gradient update with that
+(t)
+(t)
+(t)
+(t−1)
+of the reference model Ms . Let gn = Mn − MG
+(t−1)
+(t)
+(t)
+denote the gradient vectors. The
+and gs = Ms − MG
+deviation index is calculated as the ReLU-activated cosine
+similarity:
+!
+(t) (t)
+⟨gn , gs ⟩
+(15)
+Devn = ReLU
+(t)
+(t)
+∥gn ∥ · ∥gs ∥
+This measures the alignment of the client’s update with the
+fair direction indicated by the reference model. A low (or zero,
+after ReLU clipping) similarity indicates potential deviation or
+poisoning behavior.
+Trust Score: The final trust score Trustn for client n is
+computed by combining the deviation index Devn and the
+fairness index Fairn as follows:
+Trustn = Devn · e−τ ·Fairn
+
+In each round of the GuardFed system, the server first
+broadcasts the current global model to all participating clients.
+Upon receiving the model, each client performs local training
+on its private dataset and uploads the model update to the
+server. The server then evaluates each client’s update using
+a synthetic validation set constructed via Gaussian Copula
+modeling. Specifically, it computes a fairness index that captures the group-level disparity in model predictions, and a
+deviation index that quantifies the alignment between the
+client’s update and a reference update trained under fairnessaware reweighting.
+These two indexes are combined into a unified trust score,
+and only clients whose trust scores exceed a predefined
+threshold are selected for aggregation. The global model is
+then updated by averaging the updates from these selected
+clients. This mechanism ensures that only updates aligned
+with both performance and fairness objectives contribute to the
+global model. The process is repeated iteratively over multiple
+communication rounds until convergence.
+The full learning steps are summarized in Algorithm 1.
+
+(16)
+
+where τ ≥ 0 is a tunable hyperparameter that controls the
+impact of fairness violations on the final score. The fairness
+index Fairn ∈ [0, 1] quantifies the degree of unfairness in the
+client’s model; a larger value indicates more severe grouplevel disparity. Since our goal is to penalize unfair updates, we
+apply a negative exponent to the fairness term so that higher
+unfairness leads to lower trust.
+Here, we adopt the exponential formulation to guarantee
+client trust should remain stable under small fairness fluctuations but decrease sharply when severe violations occur.
+The exponential decay term e−τ ·Fairn provides a smooth and
+bounded scaling factor within (0, 1], ensuring numerical stability during iterative aggregation. Mild fairness variations are
+tolerated since maintaining model usability and convergence
+takes precedence, whereas larger violations are strictly penalized through the tunable coefficient τ .
+
+VI. E XPERIMENTS
+This section presents a series of experiments to evaluate
+the effectiveness of the proposed Dual-Facet Attack and the
+GuardFed defense framework. The main experimental objectives are threefold: (i) to demonstrate that the Dual-Facet
+Attack can significantly degrade either model utility or fairness
+(or both) when applied to representative robust federated
+learning systems; (ii) to show that the GuardFed system can
+effectively defend against various threats, including Dual-Facet
+Attacks, and maintain both learning performance and fairness;
+and (iii) to validate that GuardFed also maintains competitive
+performance and fairness in non-adversarial settings.
+In addition, we conduct further investigations into the impact of key hyperparameters and deployment settings to gain
+deeper insights into the robustness and generalizability of the
+GuardFed framework.
+A. Experimental Settings
+
+C. Self-Adaptive Aggregation
+Based on the computed trust scores, the server performs self-adaptive aggregation by selectively including clients
+whose updates are deemed trustworthy. Specifically, in each
+
+We conduct our experiments on the COMPAS [37] and
+Adult [38] datasets, which are commonly adopted in fairnessaware federated learning studies [9], [11], [27], [39]. These
+datasets are associated with real-world applications such as
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+Algorithm 1: GuardFed Learning Step
+0
+Input: Initial global model MG
+, total rounds T , trust
+
+threshold Γ, balance factor τ , learning rate η
+T
+Output: Final global model MG
+e
+Generate synthetic dataset D via Gaussian Copula
+modeling;
+e with
+Train server-side reference model Ms on D
+fairness-aware reweighting;
+for t = 1 to T do
+t
+Broadcast global model MG
+to all clients;
+foreach client n ∈ {1, ..., N } do
+Local training to obtain updated model Mnt ;
+t
+Compute model update gnt = Mnt − MG
+;
+t
+t
+Send Mn or gn to server;
+foreach received client model Mnt do
+Compute fairness index Fairn on e
+D;
+Compute deviation index Devn by comparing
+gnt with gst ;
+Compute trust score: Trustn = Devn · e−τ ·Fairn ;
+Select trusted clients: S t = {n | Trustn > Γ};
+Update global model: P
+t+1
+t
++ η · |S1t | n∈S t gnt
+MG
+= MG
+T
+return MG
+
+recidivism prediction and income classification. Both datasets
+consist of thousands of samples, each described by multiple
+attributes, among which certain features are designated as
+sensitive attributes. These sensitive features divide individuals
+into demographic groups, such as race (e.g., African-American
+vs. Others) in COMPAS and gender (e.g., female vs. male)
+in Adult. A multi-layer perceptron (MLP) model is used for
+training, with a learning rate η = 0.005, learning round
+∈ [50, 100] and batch sizes ∈ [16, 256].
+We consider a federated learning setting where 20 clients
+are randomly selected from a pool of 100 candidates in each
+communication round. Among them, 20% are controlled by
+adversaries to perform attacks. The impact of varying the
+proportion of malicious clients will be further explored in
+Subsection 6.3. To control the degree of data heterogeneity
+across clients, we adopt the Dirichlet distribution, where
+α = 5000 corresponds to an IID scenario and α = 5 represents
+a highly non-IID distribution.
+To remain stealthy, Dual-Facet attackers adopt the FOE
+attack strategy (Aperf ) to degrade model performance, and
+manipulate (i.e., flip) sensitive attributes (Afair ) to impair
+fairness. Two variants, S-DFA and Sp-DFA, are simulated to
+evaluate the effectiveness of different coordination strategies.
+Following the GuardFed design, the server acts as the defender,
+holding 1% of the original training data and generating an
+additional 4% of synthetic samples, resulting in a total of 5%
+root data used for defense purposes.
+We use FedAvg and FairFed as baselines, and include
+Median, FLTrust, Class-Balance FL, and FairGuard as representative comparison methods. As introduced in Section 2,
+Median, FLTrust, and Class-Balance FL are the representative
+
+7
+
+and state-of-the-art Byzantine-resilient FL algorithms targeting
+performance robustness, while FairGuard focuses on fairness
+preservation under adversarial conditions. To ensure comparability across methods, we introduce Reweighting technology [36] for all the FL algorithms to ensure their fairness
+has been enhanced. We further consider a hybrid defense
+that directly combines FLTrust and FairGuard, in order to
+examine whether a simple integration of fairness-preserving
+and robust aggregation strategies can simultaneously address
+both performance and fairness threats. Specifically, the hybrid
+defense first employs FairGuard to select candidate clients
+for aggregation, followed by FLTrust to assign aggregation
+weights.
+B. Experimental Results
+In this subsection, we present experimental results to validate that the proposed Dual-Facet Attack strategy and the
+GuardFed system successfully achieve the three designated
+objectives. We use Accuracy (ACC), Absolute Equalized Odds
+Difference (AEOD), and Absolute Statistical Parity Difference
+(ASPD) as evaluation metrics to assess the global model’s
+learning performance and fairness across different groups.
+Higher accuracy and lower AEOD or ASPD values indicate
+better overall robustness and fairness of the model.
+It is important to emphasize that AEOD and ASPD cannot
+independently reflect fairness. These metrics should be interpreted alongside the model’s accuracy because models with
+low accuracy may appear deceptively fair. For instance, when
+a model completely fails and yields 50% accuracy for both
+groups in a binary classification task, the fairness metric may
+misleadingly report a perfect score, such as AEOD of zero.
+However, this model is entirely non-functional. To ensure a
+fair and meaningful evaluation, we set accuracy thresholds of
+60% for the COMPAS learning task and 80% for the ADULT
+learning task. The fairness of a model is considered valid only
+when its accuracy exceeds these thresholds.
+(i) DFA attacks can significantly degrade either the
+learning performance or fairness of existing robust FL
+algorithms, including hybrid methods. In terms of utility, DFA reduces the testing accuracy of fairness-enhanced
+approaches such as FedAvg, FairFed, and FairGuard from
+approximately 65% to 55% on the COMPAS dataset under
+both IID and non-IID settings. Notably, FairFed experiences
+the most severe degradation, with accuracy dropping to 50%
+in both scenarios, indicating a complete break. Additionally,
+both DFA variants (Sp-DFA and S-DFA) show comparable
+effectiveness in degrading model accuracy, with accuracy
+differences across most FL algorithms being less than 2%.
+Figure 2 illustrates the testing accuracy of existing FL methods
+under various settings on the COMPAS dataset, while full
+experimental results and on other datasets will be shown later
+in Tables II and III.
+On the other hand, DFA also proves effective in compromising fairness in robust FL algorithms such as Median, FLTrust,
+and Hybrid. In particular, Sp-DFA exhibits a stronger fairnesspoisoning effect than S-DFA. For example, in the IID setting,
+Sp-DFA increases the AEOD and ASPD of Median from
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+8
+
+Testing accuracy of COMPAS learning task (IID)
+65.55
+
+65.81
+
+65.43
+65.65
+
+55.51
+
+55.82
+
+64.52
+
+63.44
+
+60.15
+
+50
+
+50
+
+63.67
+
+65.81
+
+62.25
+
+65.35
+
+63.37
+54.48
+
+66.32
+
+65.5
+
+64.16
+54.58
+
+Benign
+Sp-DFA
+S-DFA
+
+51.69
+
+59.84
+
+64.62
+
+65.71
+
+65.32
+
+63.69
+
+63.65
+
+55.61
+
+Testing accuracy of COMPAS learning task (Non-IID)
+63.17
+
+61.14
+
+53.45
+
+65.55
+
+64.63
+
+63.36
+
+62.11
+
+65.5
+
+64.75
+
+64.23
+
+54.27
+
+50.82
+
+63.69
+
+Benign
+Sp-DFA
+S-DFA
+
+Fig. 2: Learning performance of fairness-enhanced, robust, and hybrid FL algorithms under benign and Dual-Facet Attack
+(DFA) scenarios in IID and non-IID settings on the COMPAS dataset.
+AEOD of COMPAS learning task (IID)
+
+AEOD of COMPAS learning task (non-IID)
+0.4
+
+0.25
+
+0.35
+
+0.2
+
+0.3
+
+0.15
+
+0.25
+
+0.1
+
+0.15
+
+0.2
+0.1
+
+0.05
+0
+
+0.05
+FedAvg
+
+FairFed
+
+Median
+
+FLTrust
+
+Class-B FL FariGuard
+
+0
+
+Hybrid
+
+FedAvg
+
+Median
+
+FLTrust
+
+Class-B FL FariGuard
+
+Hybrid
+
+ASPD of COMPAS learning task (non-IID)
+
+ASPD of COMPAS learning task (IID)
+0.3
+
+0.25
+
+0.25
+
+0.2
+
+0.2
+
+0.15
+
+0.15
+
+0.1
+
+0.1
+
+0.05
+0
+
+FairFed
+
+0.05
+0
+FedAvg
+
+FairFed
+
+Median
+
+Benign
+
+FLTrust
+
+Class-B FL FariGuard
+
+Sp-DFA
+
+S-DFA
+
+Hybrid
+
+Baseline
+
+FedAvg
+
+FairFed
+
+Median
+
+FLTrust
+
+Class-B FL FariGuard
+
+Hybrid
+
+Underline: Utility less than threshold
+
+Fig. 3: Fairness index (AEOD and ASPD) of fairness-enhanced, robust, and hybrid FL algorithms under benign and Dual-Facet
+Attack (DFA) scenarios on the COMPAS dataset, evaluated in both IID and non-IID settings. Underlines indicate models whose
+test accuracy falls below the predefined threshold, rendering the fairness metrics unreliable.
+
+0.127 to 0.211 and 0.160, respectively; in the non-IID setting,
+the metrics rise from 0.194 to 0.258 and 0.227. Notably,
+although the Hybrid algorithm integrates both fairness- and
+performance-oriented defenses and is expected to achieve
+robustness on both fronts, it still suffers from increased AEOD
+and ASPD under DFA. Furthermore, in various settings, it
+shows significant unfairness (bias around 0.15–0.2 across
+groups) compared to the baseline FairFed in benign scenarios.
+Figure 3 illustrates the fairness indices of existing FL methods
+under various settings on the COMPAS dataset, while full
+experimental results and on other datasets will be shown later
+in Tables II and III. The experimental results demonstrate that
+
+none of the existing fairness-enhanced or robust FL methods
+can effectively defend against the proposed DFA. Even when
+combining fairness- and performance-oriented defenses in the
+Hybrid approach, fairness remains vulnerable. These findings
+highlight the urgent need for a new robust FL system that can
+simultaneously ensure both model utility and fairness.
+(ii) The GuardFed system can effectively defend against
+both performance- and fairness-harming attacks, including
+the proposed DFA, and achieves SOTA results in terms
+of both learning performance and fairness. When fairnessharming (F Flip) attackers are involved, GuardFed achieves
+an AEOD of 0.004 on the COMPAS dataset, and 0.004 and
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+9
+
+TABLE II: Comparison of the learning performance of existing robust FL methods and GuardFed on the COMPAS dataset. Bold
+values indicate the best results, while underlines denote fairness scores when the accuracy exceeds the predefined threshold.
+Data distribution
+Category
+Methods
+FedAvg
+Fairness
+(debias)
+algorithms
+
+FairFed
+Median
+
+Robust FL
+algorithms
+for general
+adversarial
+attacks
+
+FLTrust
+Class-B FL
+
+Robust FL
+for fairness
+attacks
+
+FairGuard
+
+Robust FL
+(hybrid)
+
+FLTrust
++
+FairGuard
+
+Ours
+
+GuardFed
+
+Metric
+ACC
+AEOD
+ASPD
+ACC
+AEOD
+ASPD
+ACC
+AEOD
+ASPD
+ACC
+AEOD
+ASPD
+ACC
+AEOD
+ASPD
+ACC
+AEOD
+ASPD
+ACC
+AEOD
+ASPD
+ACC
+AEOD
+ASPD
+
+Benign
+65.55
+0.118
+0.113
+65.43
+0.081
+0.098
+65.81
+0.127
+0.133
+64.52
+0.103
+0.102
+63.37
+0.112
+0.118
+65.35
+0.116
+0.115
+64.16
+0.169
+0.147
+65.86
+0.044
+0.057
+
+F Flip
+65.01
+0.193
+0.187
+61.23
+0.268
+0.320
+65.65
+0.165
+0.152
+63.67
+0.196
+0.181
+62.54
+0.186
+0.198
+65.40
+0.126
+0.121
+63.65
+0.178
+0.164
+65.35
+0.004
+0.013
+
+IID
+FOE
+52.27
+0.056
+0.040
+50.00
+0.000
+0.000
+65.71
+0.186
+0.189
+64.18
+0.190
+0.170
+62.43
+0.194
+0.188
+51.91
+0.049
+0.038
+64.18
+0.190
+0.170
+65.81
+0.047
+0.059
+
+0.011 on the ADULT dataset under IID and non-IID settings,
+respectively. Similarly, the corresponding ASPD values remain
+at the lowest levels, with 0.013 and 0.001 on COMPAS, and
+0.059 and 0.079 on ADULT. These results indicate GuardFed’s
+strong capability in preserving fairness under adversarial conditions. GuardFed also demonstrates strong robustness against
+performance-harming attacks, achieving approximately 65%
+testing accuracy on the COMPAS dataset and 82% on the
+ADULT dataset when defending against FOE attacks.
+Furthermore, GuardFed consistently maintains state-of-theart performance in both fairness and utility under the proposed
+DFA. Regardless of the attack variant (S-DFA or Sp-DFA), it
+achieves high accuracy (above 65% on the COMPAS dataset
+and 82% on the ADULT dataset) while maintaining low
+fairness metrics (ASPD and AEOD generally below 0.1).
+Compared to the hybrid defense, GuardFed achieves approximately 1/10 the fairness index, demonstrating its superior
+protection against dual-objective attacks. Notably, GuardFed
+does not compromise between learning performance and fairness; instead, it simultaneously achieves both high utility
+and strong fairness. This dual advantage makes GuardFed a
+more practical and deployable framework for real-world smart
+intelligent compared to existing FL methods. Table II and
+Table III provide comparisons of the learning performance and
+fairness of the existing robust FL system and our proposed
+GuardFed in various adversarial environments.
+(iii) GuardFed achieves competitive performance and
+fairness in non-adversarial settings. Specifically, GuardFed
+achieves testing accuracies of 65.86% and 66.05% on the
+COMPAS dataset, and 83.74% and 82.12% on the ADULT
+dataset across two data distributions, representing the high-
+
+S-DFA
+55.82
+0.054
+0.073
+50.00
+0.000
+0.000
+65.81
+0.165
+0.154
+63.67
+0.196
+0.181
+60.15
+0.189
+0.196
+55.61
+0.037
+0.065
+63.65
+0.178
+0.174
+65.49
+0.044
+0.013
+
+Sp-DFA
+55.51
+0.103
+0.086
+50.00
+0.000
+0.000
+65.65
+0.211
+0.198
+63.44
+0.197
+0.186
+62.25
+0.172
+0.184
+54.48
+0.060
+0.056
+63.69
+0.194
+0.186
+65.81
+0.048
+0.067
+
+Benign
+65.50
+0.152
+0.163
+66.32
+0.066
+0.071
+65.71
+0.194
+0.186
+64.62
+0.200
+0.197
+63.36
+0.210
+0.197
+65.50
+0.144
+0.162
+64.23
+0.167
+0.148
+66.05
+0.047
+0.052
+
+F Flip
+64.87
+0.409
+0.393
+61.69
+0.330
+0.308
+65.35
+0.139
+0.150
+63.62
+0.196
+0.200
+62.21
+0.187
+0.211
+65.29
+0.116
+0.135
+63.75
+0.154
+0.159
+65.17
+0.004
+0.001
+
+non-IID
+FOE
+S-DFA
+53.30
+51.96
+0.021
+0.019
+0.051
+0.014
+50.00
+59.84
+0.000
+0.341
+0.000
+0.270
+65.37
+65.55
+0.262
+0.227
+0.264
+0.233
+64.62
+64.63
+0.240
+0.206
+0.222
+0.200
+61.47
+61.14
+0.192
+0.330
+0.215
+0.217
+50.41
+50.82
+0.020
+0.019
+0.018
+0.013
+64.77
+64.75
+0.280
+0.154
+0.281
+0.159
+65.62
+65.84
+0.055
+0.037
+0.071
+0.038
+
+Sp-DFA
+54.58
+0.034
+0.051
+53.45
+0.076
+0.061
+65.32
+0.258
+0.254
+63.17
+0.217
+0.217
+62.11
+0.211
+0.200
+54.27
+0.040
+0.061
+63.69
+0.239
+0.144
+65.83
+0.055
+0.071
+
+est or near-highest performance among all compared methods. On the other hand, GuardFed also demonstrates toptier fairness under benign settings. Except for slightly higher
+AEOD (0.022) and ASPD (0.096) values compared to FedAvg
+(AEOD 0.018) and FairFed (ASPD 0.093) in the ADULT IID
+scenario, GuardFed consistently achieves the lowest or nearzero fairness metrics (AEOD and ASPD) across most benign
+experimental settings. In contrast, the hybrid method exhibits
+the most significant bias and records the highest ASPD and
+AEOD values in most simulated benign scenarios, indicating
+that simply combining performance- and fairness-enhancing
+techniques does not necessarily improve fairness under nonadversarial conditions. These performances under the benign
+environment can be found in Tables II and III.
+C. Exploratory Study and Discussion
+To provide a more comprehensive understanding of
+GuardFed’s stability, we investigate the effects of key hyperparameters, including the balancing coefficient τ (from
+Formula 16) and the size of the server-side dataset. We also
+extend the experiments to evaluate GuardFed’s performance
+under different attacker ratios and configuration settings. In
+the end of this Section, we summarize the limitations of this
+work and discuss directions for future research. Given that the
+non-IID setting with Sp-DFA represents the most challenging
+scenario, we primarily monitor Accuracy and AEOD under
+this configuration using the ADULT dataset. The COMPAS
+dataset is additionally included when evaluating the impact of
+different attacker ratios.
+(i) Impact of τ on Trust Score computation. The parameter τ acts as a balancing coefficient between the fairness index
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+10
+
+TABLE III: Comparison of the learning performance of existing robust FL methods and GuardFed on the ADULT dataset. Bold
+values indicate the best results, while underlines denote fairness scores when the accuracy exceeds the predefined threshold.
+Data distribution
+Category
+Methods
+FedAvg
+Fairness
+(debias)
+algorithms
+
+FairFed
+Median
+
+Robust FL
+algorithms
+for general
+adversarial
+attacks
+
+FLTrust
+Class-B FL
+
+Robust FL
+for fairness
+attacks
+
+FairGuard
+
+Robust FL
+(hybrid)
+
+FLTrust
++
+FairGuard
+
+Ours
+
+GuardFed
+
+Metric
+ACC
+AEOD
+ASPD
+ACC
+AEOD
+ASPD
+ACC
+AEOD
+ASPD
+ACC
+AEOD
+ASPD
+ACC
+AEOD
+ASPD
+ACC
+AEOD
+ASPD
+ACC
+AEOD
+ASPD
+ACC
+AEOD
+ASPD
+
+Benign
+83.05
+0.018
+0.104
+83.19
+0.007
+0.093
+82.60
+0.028
+0.095
+82.39
+0.274
+0.196
+81.92
+0.298
+0.198
+82.93
+0.003
+0.107
+82.69
+0.313
+0.196
+83.74
+0.022
+0.096
+
+F Flip
+81.76
+0.216
+0.121
+81.76
+0.107
+0.066
+82.67
+0.072
+0.085
+82.56
+0.309
+0.281
+82.13
+0.294
+0.279
+82.45
+0.091
+0.073
+81.35
+0.442
+0.281
+83.83
+0.004
+0.059
+
+IID
+FOE
+76.63
+0.001
+0.011
+75.89
+0.004
+0.018
+83.18
+0.018
+0.105
+82.64
+0.298
+0.189
+81.41
+0.282
+0.194
+76.34
+0.002
+0.009
+82.80
+0.341
+0.189
+83.77
+0.053
+0.090
+
+and the deviation index in the trust score formulation. It determines the relative importance placed on fairness violations
+versus utility degradation, thereby influencing how the system
+evaluates and filters potentially harmful client updates. As τ
+decreases, the trust score increasingly relies on the deviation
+index alone, with fairness considerations diminishing; when
+τ = 0, the trust score depends solely on deviation.
+Experimental results (Figure 4, subplots-a) confirm that
+increasing τ from 0.1 to 50 leads to improved fairness (reflected by decreasing AEOD) but results in reduced learning performance. In extreme cases, such as when Sp-DFA
+attackers are present and τ = 50: the model completely
+breaks down, highlighting a clear trade-off between fairness
+and utility. Therefore, τ should be tuned according to taskspecific priorities: if fairness is critical, a relatively large τ
+is appropriate; otherwise, a smaller value may be preferred
+to preserve model performance. However, it is important to
+note that although τ introduces a trade-off between fairness
+and learning performance, this does not imply that GuardFed
+sacrifices both aspects, as observed in many existing FL methods. As illustrated in Figure 4 and Table III, the degradation
+in either dimension remains marginal. GuardFed consistently
+achieves the best overall performance across a wide range of
+τ settings, outperforming other FL methods.
+(ii) Impact of the server dataset size. To provide a
+better understanding of the impact of server dataset size, we
+conduct experiments using varying proportions of server data,
+ranging from 1% (manually collected root data only) to 10%
+of the overall dataset size. As shown in the subplots-b of
+Figure 4, both the testing accuracy and AEOD improve as
+the server dataset size increases, indicating enhanced learning
+
+S-DFA
+78.30
+0.003
+0.029
+77.00
+0.002
+0.022
+83.37
+0.049
+0.103
+82.73
+0.327
+0.252
+80.98
+0.318
+0.260
+78.97
+0.037
+0.026
+82.44
+0.377
+0.252
+83.73
+0.026
+0.071
+
+Sp-DFA
+78.44
+0.018
+0.037
+77.77
+0.004
+0.028
+83.35
+0.020
+0.109
+81.80
+0.214
+0.146
+80.02
+0.239
+0.133
+79.32
+0.023
+0.035
+82.00
+0.265
+0.146
+83.72
+0.051
+0.090
+
+Benign
+82.23
+0.055
+0.099
+82.05
+0.056
+0.101
+81.50
+0.065
+0.082
+81.98
+0.248
+0.161
+82.35
+0.254
+0.162
+83.33
+0.142
+0.141
+82.02
+0.267
+0.160
+82.12
+0.033
+0.081
+
+F Flip
+81.51
+0.082
+0.145
+80.63
+0.135
+0.001
+81.98
+0.133
+0.079
+82.14
+0.251
+0.152
+80.94
+0.260
+0.160
+82.64
+0.026
+0.081
+82.04
+0.244
+0.152
+81.99
+0.011
+0.079
+
+non-IID
+FOE
+S-DFA
+76.53
+78.15
+0.002
+0.007
+0.007
+0.034
+75.69
+77.41
+0.005
+0.012
+0.004
+0.011
+81.94
+81.96
+0.098
+0.065
+0.071
+0.078
+82.32
+82.23
+0.258
+0.267
+0.166
+0.172
+81.68
+79.45
+0.256
+0.271
+0.169
+0.187
+76.53
+79.16
+0.001
+0.006
+0.009
+0.033
+82.35
+82.46
+0.276
+0.275
+0.166
+0.172
+81.58
+82.53
+0.015
+0.006
+0.084
+0.093
+
+Sp-DFA
+78.34
+0.025
+0.040
+76.01
+0.001
+0.005
+82.09
+0.018
+0.088
+81.74
+0.220
+0.161
+78.72
+0.239
+0.168
+79.21
+0.023
+0.038
+81.92
+0.250
+0.161
+82.58
+0.015
+0.084
+
+performance and fairness under both benign and adversarial
+conditions.
+However, compared to accuracy, AEOD is less sensitive to
+the increase in server data size. While the overall trend of
+AEOD is downward, it reaches a relatively low level when
+the server data size exceeds 4%, and further increases only
+result in marginal gains. For instance, under the presence of
+Sp-DFA attackers, increasing the server data size from 4%
+to 10% reduces AEOD from approximately 0.07 to 0.01. In
+benign settings, AEOD decreases from around 0.04 to 0.025.
+Although these reductions demonstrate continued improvement, GuardFed already achieves significantly lower AEOD
+compared to existing FL methods, even with a smaller server
+dataset.
+(iii) Impact of the adversary ratio. In real-world federated
+learning scenarios, the proportion of adversarial participants
+can vary significantly. To evaluate the generalizability of
+GuardFed under varying threat levels, we conduct experiments
+with attacker ratios ranging from 0% to 50%. Here, 50%
+attacker ratio represents an extreme and challenging condition,
+while 20% is widely regarded as a realistic upper bound.
+As shown in Figure 4 (subplots-c), GuardFed consistently
+maintains strong performance in both accuracy and fairness.
+Even when half of the participants are Sp-DFA attackers,
+GuardFed achieves stable results on both the COMPAS and
+ADULT datasets. Specifically, the testing accuracy fluctuates
+by less than 1.5% as the attacker ratio increases. Although
+AEOD slightly rises when the adversary proportion exceeds
+30%, peaking at approximately 0.08 on ADULT and 0.05
+on COMPAS, these values remain lower than the fairness
+scores of existing FL methods even in benign settings. For
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+(a) Illustration of 𝜏𝜏 impact
+
+11
+
+(b) Illustration of data ratio impact
+
+(c) Illustration of attacker amount impact
+
+Fig. 4: Illustration of model accuracy and AEOD under different hyperparameters and adversarial settings
+
+instance, FairFed yields AEOD values of 0.066 on COMPAS
+and 0.056 on ADULT without any attacks. These results
+confirm GuardFed’s effectiveness in preserving both learning
+performance and fairness, even under high adversarial pressure.
+(iv) Limitations and Future Works. While DFA and
+GuardFed have demonstrated effectiveness in attacking and
+defending federated learning systems, several limitations remain that warrant further investigation. First, most existing
+studies on fairness-aware federated learning, including this
+work, focus primarily on tabular learning tasks. When extending to image-based or multimodal recognition tasks, the
+effectiveness of current attack and defense strategies remains
+largely unknown. Therefore, adapting the proposed framework
+to vision and multimodal federated learning represents an
+interesting and meaningful direction for future research.
+Second, the present study mainly considers binary sensitive
+attributes, such as gender (male/female). However, in realworld applications, sensitive variables are often multi-valued
+(e.g., age, income level) where fairness definitions and evaluation mechanisms for ternary or higher-order attributes have
+yet to be systematically explored. Investigating fairness-aware
+federated learning under such complex sensitive characteristics
+will thus be an important avenue for future work.
+VII. C ONCLUSION
+In this work, we introduce the Dual-Facet Attack (DFA),
+a novel threat model that simultaneously compromises both
+utility and fairness in federated learning. To counter this challenge, we propose GuardFed, a self-adaptive defense framework that leverages a small amount of clean server data to
+construct a fairness-aware reference model. GuardFed jointly
+evaluates client updates from utility and fairness perspectives
+and selectively aggregates those with high trust scores.
+Extensive experiments on real-world datasets across varying
+distributions and attacker ratios show that GuardFed robustly
+
+maintains both high accuracy and fairness, even under severe
+adversarial conditions. These findings demonstrate the strong
+robustness and practical value of GuardFed, highlighting its
+potential as a generalizable and trustworthy framework for
+secure and fair federated learning.
+R EFERENCES
+[1] T. Bangemann, S. Karnouskos, R. Camp, O. Carlsson, M. Riedl,
+S. McLeod, R. Harrison, A. W. Colombo, and P. Stluka, “State of
+the art in industrial automation,” Industrial Cloud-Based Cyber-Physical
+Systems: The IMC-AESOP Approach, pp. 23–47, 2014.
+[2] Q. Liu, Z. Wang, X. Zhou, Y. Zhang, X. Liu, and H. Lin, “Gsfl:
+A privacy-preserving grouping-split federated learning approach in
+resource-constrained edge computing scenarios,” ACM Trans. Auton.
+Adapt. Syst., Mar. 2025.
+[3] M. V. Luzón, N. Rodrı́guez-Barroso, A. Argente-Garrido, D. JiménezLópez, J. M. Moyano, J. Del Ser, W. Ding, and F. Herrera, “A tutorial
+on federated learning from theory to practice: Foundations, software
+frameworks, exemplary use cases, and selected trends,” IEEE/CAA
+Journal of Automatica Sinica, vol. 11, no. 4, pp. 824–850, 2024.
+[4] Y. Li, Z. Guo, N. Yang, H. Chen, D. Yuan, and W. Ding, “Threats and
+defenses in the federated learning life cycle: A comprehensive survey
+and challenges,” IEEE Transactions on Neural Networks and Learning
+Systems, 2025.
+[5] C. Xie, O. Koyejo, and I. Gupta, “Fall of empires: Breaking byzantinetolerant sgd by inner product manipulation,” in Uncertainty in Artificial
+Intelligence. PMLR, 2020, pp. 261–270.
+[6] Y. Li, W. Ding, H. Chen, W. Bao, and D. Yuan, “Contribution-wise
+byzantine-robust aggregation for class-balanced federated learning,”
+Information Sciences, vol. 667, p. 120475, 2024.
+[7] E.-M. El-Mhamdi, R. Guerraoui, A. Guirguis, L.-N. Hoang, and
+S. Rouault, “Genuinely distributed byzantine machine learning.” Distributed Computing, vol. 35, no. 4, 2022.
+[8] G. Damaskinos, E.-M. El-Mhamdi, R. Guerraoui, A. Guirguis, and
+S. Rouault, “Aggregathor: Byzantine machine learning via robust gradient aggregation,” Proceedings of Machine Learning and Systems, vol. 1,
+pp. 81–106, 2019.
+[9] X. Sheng, Z. Yang, and W. Bao, “Fairguard: A fairness attack and
+defense framework in federated learning,” IEEE Transactions on Dependable and Secure Computing, vol. 22, no. 3, pp. 2519–2532, 2025.
+[10] W. Du, D. Xu, X. Wu, and H. Tong, “Fairness-aware agnostic federated
+learning,” in Proceedings of the 2021 SIAM International Conference
+on Data Mining (SDM). SIAM, 2021, pp. 181–189.
+[11] T. H. Rafi, F. A. Noor, T. Hussain, and D.-K. Chae, “Fairness and privacy
+preserving in federated learning: A survey,” Information Fusion, vol.
+105, p. 102198, 2024.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+[12] P. Blanchard, E. M. El Mhamdi, R. Guerraoui, and J. Stainer, “Machine learning with adversaries: Byzantine tolerant gradient descent,”
+Advances in neural information processing systems, vol. 30, 2017.
+[13] D. Yin, Y. Chen, R. Kannan, and P. Bartlett, “Byzantine-robust distributed learning: Towards optimal statistical rates,” in International
+conference on machine learning. Pmlr, 2018, pp. 5650–5659.
+[14] X. Cao, M. Fang, J. Liu, and N. Z. Gong, “Fltrust: Byzantine-robust
+federated learning via trust bootstrapping,” in ISOC Network and Distributed System Security Symposium (NDSS), 2021.
+[15] P. Kairouz, H. B. McMahan, B. Avent, A. Bellet, M. Bennis, A. N.
+Bhagoji, K. Bonawitz, Z. Charles, G. Cormode, R. Cummings, R. G.
+D’Oliveira, H. Eichner, S. El Rouayheb, D. Evans, J. Gardner, Z. Garrett,
+A. Gascón, B. Ghazi, P. B. Gibbons, M. Gruteser, Z. Harchaoui,
+C. He, L. He, Z. Huo, B. Hutchinson, J. Hsu, M. Jaggi, T. Javidi,
+G. Joshi, M. Khodak, J. Konecnı́, A. Korolova, F. Koushanfar, S. Koyejo,
+T. Lepoint, Y. Liu, P. Mittal, M. Mohri, R. Nock, A. Özgür, R. Pagh,
+H. Qi, D. Ramage, R. Raskar, M. Raykova, D. Song, W. Song, S. U.
+Stich, Z. Sun, A. T. Suresh, F. Tramèr, P. Vepakomma, J. Wang,
+L. Xiong, Z. Xu, Q. Yang, F. X. Yu, H. Yu, and S. Zhao, “Advances
+and open problems in federated learning,” 2021.
+[16] P. Kairouz, H. B. McMahan, B. Avent, A. Bellet, M. Bennis, A. N.
+Bhagoji, K. Bonawitz, Z. Charles, G. Cormode, R. Cummings et al.,
+“Advances and open problems in federated learning,” Foundations and
+trends® in machine learning, vol. 14, no. 1–2, pp. 1–210, 2021.
+[17] G. Baruch, M. Baruch, and Y. Goldberg, “A little is enough: Circumventing defenses for distributed learning,” Advances in Neural Information
+Processing Systems, vol. 32, 2019.
+[18] V. Shejwalkar and A. Houmansadr, “Manipulating the byzantine: Optimizing model poisoning attacks and defenses for federated learning,” in
+NDSS, 2021.
+[19] X. Li, N. Wang, S. Yuan, and Z. Guan, “Fedimp: Parameter importancebased model poisoning attack against federated learning system,” Computers & Security, vol. 144, p. 103936, 2024.
+[20] R. Guerraoui, S. Rouault et al., “The hidden vulnerability of distributed
+learning in byzantium,” in International conference on machine learning.
+PMLR, 2018, pp. 3521–3530.
+[21] J. Park, D.-J. Han, M. Choi, and J. Moon, “Sageflow: Robust federated
+learning against both stragglers and adversaries,” Advances in neural
+information processing systems, vol. 34, pp. 840–851, 2021.
+[22] E. Kabir, Z. Song, M. R. U. Rashid, and S. Mehnaz, “Flshield: a validation based federated learning framework to defend against poisoning
+attacks,” in 2024 IEEE Symposium on Security and Privacy (SP). IEEE,
+2024, pp. 2572–2590.
+[23] C. Guo, B. Guo, T. Zhu, P. Liu, and C. Gong, “Flevaluate: Robust
+federated learning based on trust evaluate,” in 2023 IEEE 22nd International Conference on Trust, Security and Privacy in Computing and
+Communications (TrustCom). IEEE, 2023, pp. 2269–2274.
+[24] W. Huang, M. Ye, Z. Shi, G. Wan, H. Li, B. Du, and Q. Yang,
+“Federated learning for generalization, robustness, fairness: A survey
+and benchmark,” IEEE Transactions on Pattern Analysis and Machine
+Intelligence, 2024.
+[25] Z. He, Z. Wang, X. Dong, P. Sun, J. Ren, and K. Ren, “Towards fair
+federated learning via unbiased feature aggregation,” IEEE Transactions
+on Dependable and Secure Computing, 2025.
+[26] B. Ray Chaudhury, L. Li, M. Kang, B. Li, and R. Mehta, “Fairness
+in federated learning via core-stability,” Advances in neural information
+processing systems, vol. 35, pp. 5738–5750, 2022.
+[27] Y. H. Ezzeldin, S. Yan, C. He, E. Ferrara, and A. S. Avestimehr, “Fairfed:
+Enabling group fairness in federated learning,” in Proceedings of the
+AAAI conference on artificial intelligence, vol. 37, no. 6, 2023, pp. 7494–
+7502.
+[28] J. Zhang, Y. Li, D. Wu, Y. Zhao, and S. Palaiahnakote, “Sffl: Selfaware fairness federated learning framework for heterogeneous data
+distributions,” Expert Systems with Applications, vol. 269, p. 126418,
+2025.
+[29] K. Wei, J. Li, M. Ding, C. Ma, Y.-S. Jeon, and H. V. Poor, “Covert
+model poisoning against federated learning: Algorithm design and optimization,” IEEE Transactions on Dependable and Secure Computing,
+2023.
+[30] S. I. A. Meerza and J. Liu, “Eab-fl: exacerbating algorithmic bias through
+model poisoning attacks in federated learning,” in Proceedings of the
+Thirty-Third International Joint Conference on Artificial Intelligence,
+2024, pp. 458–466.
+[31] A. Yazdinejad, A. Dehghantanha, H. Karimipour, G. Srivastava, and
+R. M. Parizi, “A robust privacy-preserving federated learning model
+against model poisoning attacks,” IEEE Transactions on Information
+Forensics and Security, 2024.
+
+12
+
+[32] R. Zemel, Y. Wu, K. Swersky, T. Pitassi, and C. Dwork, “Learning
+fair representations,” in International conference on machine learning.
+PMLR, 2013, pp. 325–333.
+[33] M. T. Hossain, S. Badsha, H. La, S. Islam, and I. Khalil, “Exploiting
+gaussian noise variance for dynamic differential poisoning in federated
+learning,” IEEE Transactions on Artificial Intelligence, 2025.
+[34] N. Patki, R. Wedge, and K. Veeramachaneni, “The synthetic data vault,”
+in 2016 IEEE international conference on data science and advanced
+analytics (DSAA). IEEE, 2016, pp. 399–410.
+[35] M. Sklar, “Fonctions de répartition à n dimensions et leurs marges,” in
+Annales de l’ISUP, vol. 8, no. 3, 1959, pp. 229–231.
+[36] F. Kamiran and T. Calders, “Data preprocessing techniques for classification without discrimination,” Knowledge and information systems,
+vol. 33, no. 1, pp. 1–33, 2012.
+[37] J. Dressel and H. Farid, “The accuracy, fairness, and limits of predicting
+recidivism,” Science advances, vol. 4, no. 1, p. eaao5580, 2018.
+[38] F. Ding, M. Hardt, J. Miller, and L. Schmidt, “Retiring adult: New
+datasets for fair machine learning,” Advances in neural information
+processing systems, vol. 34, pp. 6478–6490, 2021.
+[39] Y. Zeng, H. Chen, and K. Lee, “Federated learning with local fairness
+constraints,” in 2023 IEEE International Symposium on Information
+Theory (ISIT). IEEE, 2023, pp. 1937–1942.
+
+

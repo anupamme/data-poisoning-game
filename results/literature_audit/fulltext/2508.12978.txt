@@ -1,0 +1,2480 @@
+1
+
+Beyond Trade-offs: A Unified Framework for
+Privacy, Robustness, and Communication Efficiency
+in Federated Learning
+
+arXiv:2508.12978v2 [cs.LG] 25 Dec 2025
+
+Yue Xia, Student Member, IEEE, Tayyebeh Jahani-Nezhad, Member, IEEE, Rawad Bitar, Member, IEEE
+
+Abstract—We propose F E D -DPR O C, a novel federated learning
+framework designed to jointly provide differential privacy (DP),
+Byzantine robustness, and communication efficiency. Central to
+our approach is the concept of robust-compatible compression,
+which allows reducing the bi-directional communication overhead
+without undermining the robustness of the aggregation. We
+instantiate our framework as R O B AJ O L, which integrates the
+Johnson-Lindenstrauss (JL)-based compression mechanism with
+robust averaging for robustness. Our theoretical analysis establishes the compatibility of JL transform with robust averaging,
+ensuring that R O B AJ O L maintains robustness guarantees, satisfies
+DP, and substantially reduces communication overhead. We
+further present simulation results on CIFAR-10, Fashion MNIST,
+and FEMNIST, validating our theoretical claims. We compare
+R O B AJ O L with a state-of-the-art communication-efficient and
+robust FL scheme augmented with DP for a fair comparison,
+demonstrating that R O B AJ O L outperforms existing methods in
+terms of robustness and utility under different Byzantine attacks.
+Index Terms—federated learning, Byzantine robustness, communication efficiency, differential privacy
+
+I. I NTRODUCTION
+Federated learning (FL) [2] enables training machine learning models over distributed, sensitive data held by multiple
+clients. The federator (or server) iteratively broadcasts a global
+model, collects locally computed updates from clients, and
+aggregates them to refine the model. While raw data remain
+local, this iterative process introduces several fundamental
+challenges: (a) privacy: local updates can leak information
+about the clients’ data, e.g., through gradient inversion attacks [3], [4]; (b) robustness: if care is not taken, malicious
+(Byzantine) clients may disrupt the training process by manipulating their updates [5]; and (c) communication efficiency:
+frequent exchange of high-dimensional model updates between
+the federator and the clients imposes a significant communication cost [6], [7]. A practical FL framework should address
+all three challenges simultaneously [6]–[9].
+Since the federator may be honest-but-curious, privacypreserving FL schemes can be split into two large categories
+Y. Xia and R. Bitar are with the School of Computation, Information and
+Technology, Technical University of Munich, Germany (e-mails: {yue1.xia,
+rawad.bitar}@tum.de), T. Jahani-Nezhad is with the Electrical Engineering
+and Computer Science Department, Technische Universität Berlin, Germany
+(e-mail: t.jahani.nezhad@tu-berlin.de).
+Y. Xia and R. Bitar are supported by the German Research Foundation
+(DFG) grant agreement number BI 2492/1-1. T. Jahani-Nezhad was supported
+by the Gottfried Wilhelm Leibniz Prize 2021 of the German Research
+Foundation (DFG).
+Preliminary results have been presented at IEEE FLTA25 [1].
+
+depending on what the federator is allowed to see: (a) using
+secure aggregation, or (b) using differential privacy (DP)
+mechanisms. Secure aggregation techniques ensure that the
+federator observes only an aggregation of the client updates,
+which is essential for the learning process to proceed [10]–
+[13]. DP-based approaches instead perturb the updates with
+noise [14] so that the semi-honest fedeartor observes either
+individual noisy updates, or a noisy version of the aggregated
+updates [15], i.e., using secure aggregation on top of DP. Although secure aggregation avoids explicit noise insertion and
+thus does not incur any utility loss as with DP mechanisms, it
+creates high communication overhead and remains vulnerable
+to membership inference attacks [16].
+Robustness against malicious clients is typically achieved
+through robust aggregation rules such as Krum [5], coordinatewise trimmed mean and median [17], Bulyan [18], and
+ProDiGy [19]. These aggregation rules detect and downweight
+or remove outlier updates based on certain statistical or
+geometric metrics. Other defenses, such as [20], [21], assign
+scores to clients or their updates before aggregating them;
+however, they require the federator to have an auxiliary clean
+dataset representative of clients’ data.
+Communication efficiency is typically addressed through
+compression methods including quantization, sparsification,
+and distillation [7], [22]–[28], which either reduce the dimension of the model updates or represent them using fewer bits.
+Many works address pairs of these challenges. For instance,
+privacy and robustness are jointly considered in [12], [13],
+[20], [29]–[34]; communication efficiency and privacy are
+studied in [15], [35]–[37]; and communication efficiency and
+robustness are explored in [38]–[41]. Among these, [40]
+proposed Byz-EF21 and Byz-EF21-BC, which utilize biased
+compressors, e.g., top-k sparsification, to improve uplink
+communication efficiency (i.e., reducing the size of clientto-federator communication cost) and bidirectional communication efficiency (i.e., reducing both client-to-federator and
+federator-to-client communication cost), respectively. Their
+approach carefully structures model updates so that, when robust aggregation rules are applied, the algorithm still converges
+in the presence of malicious clients.
+Despite these advances, addressing all three challenges
+simultaneously remains underexplored. The approaches [42]–
+[44] use sign-based compressors to achieve both robustness
+and communication efficiency. These sign-based compressors
+are also differentially private, thereby offering a degree of
+privacy protection. Similarly, [45] uses a lattice quantizer with
+
+2
+
+randomized response, and [46] applies a differentially private ternary-based compressor with majority voting. Although
+these methods unify the three objectives, they use aggressive
+compression mechanisms and lack proven robust aggregation
+rules, resulting in weaker robustness guarantees.
+In [47], the authors employ top-k sparsification, momentumdriven variance reduction, and DP. However, no convergence
+proof is provided, nor are the proven robust aggregation rules
+employed. In [48], the robust aggregation rule FLTrust [21] is
+integrated with compressive sensing. While the authors claim
+the scheme also preserves privacy, no formal privacy proof is
+given. Moreover, the approach assumes homogeneous client
+data, which is not realistic in FL scenarios.
+In this paper, we propose F E D -DPR O C, a unified framework
+that simultaneously ensures provable DP and robustness guarantees, and offers flexible communication compression. The
+core idea is the introduction of robust-compatible compression, i.e., compression methods that preserve the robustness
+guarantees of arbitrary robust aggregation rules.
+In each iteration of F E D -DPR O C, clients compute gradients
+based on the current global model, perturb them with DP noise,
+and apply a momentum-based update to strengthen robustness
+against malicious attacks [49]. The clients then apply a robustcompatible compression mechanism and send the compressed
+updates to the federator. The federator aggregates the updates using any robust aggregation protocol and obtains a
+compressed aggregation. To further reduce the communication
+cost, the federator delegates the decompression task to the
+clients. That is, the federator does not decompress the aggregation; instead, it broadcasts the compressed aggregation directly
+to the clients. The clients then decompress the aggregation,
+update the global model, and proceed to the next iteration.
+To instantiate F E D -DPR O C, we propose R O B AJ O L, which
+employs Gaussian noise as a DP mechanism, and the JohnsonLindenstrauss (JL) transform [50] as a compression method.
+We theoretically prove that the JL transform satisfies the
+robust-compatible property under the robust averaging criterion given in [9], i.e., the robustness guarantee that a robust
+aggregation holds in the original vector space is preserved in
+the compressed vector space resulting from the JL transform.
+We further show that R O B AJ O L ensures formal DP guarantees
+and substantially reduces bidirectional communication overhead while maintaining robustness.
+We provide extensive empirical evaluations validating the
+theoretical guarantees of R O B AJ O L across a range of compression rates, Byzantine attacks, and DP levels, using multiple
+benchmark datasets. We compare R O B AJ O L with Byz-EF21BC [40], to which we additionally incorporate DP for fair
+comparison. Byz-EF21-BC makes the non-robust-compatible
+compressor top-k sparsification “compatible” with robust aggregation by modifying the clients’ model updates. Both
+schemes reduce bidirectional communication costs; however,
+our results show that R O B AJ O L achieves superior robustness
+and utility across a wide range of malicious attacks.
+II. S YSTEM M ODEL AND P RELIMINARIES
+Notation: For an integer n, let [n] = {1, . . . , n}. Vectors
+and matrices are denoted by bold lowercase and uppercase
+
+letters, respectively. (X)i,j denotes the (i, j)-th entry of X,
+and ⟨x, y⟩ denotes the dot product of vectors x and y. For
+x1 , . . . , xn and S ⊆ [n], let xS = {xi : i ∈ S}. Unless stated
+otherwise, ∥ · ∥ denotes the ℓ2 norm.
+A. Problem Formulation
+We consider an FL setting with n clients and a federator.
+Each client i ∈ [n] holds a local dataset Di consisting of ρi
+data samples of the form (xj , yj ) ∈ Xi × Yi := Di , where x
+is the input
+y is the corresponding
+Sn vector and S
+Snlabel. We define
+n
+D := i=1 Di , X := i=1 Xi , and Y := i=1 Yi . The goal
+is to train a parameterized model f : X × Rd → Y (typically
+a neural network) defined by the parameter vector w ∈ Rd .
+This is done by optimizing the model parameter w such that
+for each input-label pair (xj , yj ) ∈ D, the model prediction
+f (xj , w) closely approximates the true label yj .
+The performance of the model is measured by a per-sample
+loss function ℓ : Rd × X × Y → R+ , often realized by mean
+squared error or cross-entropy. The local loss of client i is
+L(w; Di ) :=
+
+1 X
+ℓ(w; xj , yj ).
+(xj ,yj )∈Di
+ρi
+
+(1)
+
+The federator aims to address this optimization problem:
+1X
+min L(w) := min
+L(w; Di ).
+(2)
+w
+w n
+i∈[n]
+The optimization is carried out using an iterative stochastic
+gradient descent algorithm, starting with an initial global
+model w(0) . At each global iteration t, 0 ≤ t < T , the
+federator broadcasts the current global model w(t) to all
+clients. Each client computes a local update as follows:
+(t)
+
+gi
+
+(t)
+
+(t)
+
+= −ηi · ∇L(w(t) ; D̃i ),
+
+(t)
+
+where D̃i is a minibatch of size ϱ, randomly sampled
+(t)
+from Di via subsampling, and ηi is the local learning rate.
+Client i sends the local update to the federator. The federator
+aggregates all received updates using an aggregation rule AGG,
+(t)
+(t)
+i.e., u(t)= AGG(g1 , · · · , gn ) and updates the global model
+w(t+1)= w(t)−η (t)·u(t) , where η (t) is the global learning rate.
+In this setting, we assume that among n clients, b of them
+are malicious. Let B ⊆ {1, . . . , n} denote the set of malicious
+clients, with |B| = b, and H = [n] \ B denote the set of
+honest clients, with |H| = n − b. We assume an honestbut-curious federator that follows the protocol but attempts to
+infer clients’ data. Our goal is to design a federated learning
+scheme that simultaneously satisfies: (a) privacy, against both
+the federator and the clients; (b) Byzantine robustness, against
+up to b malicious clients; and (c) communication efficiency,
+i.e., reducing the bidirectional communication cost.
+B. Preliminaries
+1) Robustness (Convergence): In the presence
+Pnof malicious
+clients, minimizing the global average loss n1 i=1 L(w; Di )
+is generally not meaningful, as malicious clients can arbitrarily
+distort the optimization objective. Therefore, the goal changes
+to minimizing the average P
+loss over the set of honest clients [9]
+1
+defined as LH (w) := |H|
+i∈H L(w; Di ).
+
+3
+
+broadcast
++
+
+u(t−1)
+client 1
+
+w
+
+(t)
+
+(t)
+
+..
+.
+
+..
+.
+
+u
+
+(t−1)
+
++
+
+(1)
+
+(2)
+
+m1
+
+..
+.
+
+..
+.
+
+(t)
+
+w(t)
+
+client n
+
+gn
+(3)
+
+(4)
+
+(t)
+
+g1
+
+(t)
+
+m̂1
+
+(t)
+
+m̂AGG
+(t)
+
+m̂n federator
+
+(t)
+
+mn
+(5)
+
+(6)
+
+(7)
+
+(8)
+
+(9)
+
+Fig. 1: Illustration of F E D -DPR O C. Clients performs: (1) minibatch sampling; (2) decompression and model update; (3) gradient
+computation; (4) DP enhancement (Eq. (3)); (5) momentum computation (Eq. (4)); (6) compression; and (7) communication.
+Honest clients send their true compressed momenta to the federator, while malicious clients send arbitrarily manipulated vectors.
+The honest-but-curious federator: (8) applies robust aggregation; and (9) broadcasts the compressed aggregation.
+Definition 1 ((b, ν)-robust algorithm [9]). A distributed algorithm is called (b, ν)-robust if it outputs a model ŵ such that
+E[LH (ŵ) − L⋆ ] ≤ ν, where L⋆ := inf w∈Rd LH (w) is the
+optimal loss over the honest clients.
+
+m1 , · · · , mn
+m1 , · · · , mn
+
+Compression
+
+Robust Aggregation
+
+Robust Aggregation
+
+m̂1 , · · · , m̂n
+
+2) Differential Privacy: We consider the following.
+Definition 2 ((ϵDP , δDP )-Differential Privacy (DP) [51]). Let
+ϵDP ≥ 0, 0 ≤ δDP ≤ 1. A randomized mechanism f : X ρ 7→
+Y satisfies (ϵDP , δDP )-DP if, for any pair of adjacent datasets
+D, D′ ∈ X ρ and any measurable set S ⊆ Y, it holds that
+Pr[f (D) ∈ S] ≤ eϵDP · Pr[f (D′ ) ∈ S] + δDP ,
+where D and D′ differ in at most one element.
+Standard DP provides strong individual-level guarantees
+but can lead to loose bounds under composition. To address
+this, we use Rényi Differential Privacy (RDP), which offers a
+tighter analysis of cumulative privacy loss.
+Definition 3 (Rényi Differential Privacy (RDP) [52]). Let
+α > 1 and ϵRDP > 0. A randomized mechanism f : X ρ 7→ Y
+satisfies (α, ϵRDP )-RDP if, for any pair of adjacent datasets
+D, D′ ∈ X ρ , the Rényi divergence of order α between
+′
+the output distributions satisfies Dα (f (D)∥f
+RDP ,
+h(D )) ≤ ϵα i
+f (D)(z)
+′ := 1
+.
+where Dα(f (D)∥f (D )) α−1 log Ez∼f (D′ ) f (D′ )(z)
+Proposition 1 (RDP to DP conversion [52]). If a mechanism
+f satisfies (α, ϵRDP )-RDP, then it also satisfies (ϵDP , δDP )-DP
+DP )
+for any 0 < δDP < 1, where ϵDP = ϵRDP + log(1/δ
+.
+α−1
+III. T HE P ROPOSED F RAMEWORK : F E D -DPR O C
+We present F E D -DPR O C, a unified FL framework that
+jointly achieves privacy, Byzantine robustness, and communication efficiency. F E D -DPR O C protects individual data
+through DP and significantly reduces the communication cost
+between clients and the federator by leveraging gradient
+compression techniques—while maintaining model utility and
+robustness. We illustrate F E D -DPR O C in Fig. 1, and describe
+it in detail below. The algorithm is given in Algorithm 1.
+In each global iteration t, 1 ≤ t < T , the clients performs
+the following steps based on the current global model:
+• Minibatch Sampling and Gradients Computation.
+(t)
+Client i draws a minibatch D̃i of size ϱ from its local
+dataset. Different sampling techniques (e.g., with/without
+
+m̂AGG
+mAGG = AGG(m1 , · · · , mn )
+
+Decompression
+D ECOMPRESS(m̂AGG )
+
+Fig. 2: A robust-compatible compression ensures that if AGG
+is a robust aggregation rule, i.e., mAGG is faithful to the
+average of the benign vectors m1 , · · · , mn , the composition
+C OMPRESS ◦ AGG ◦ D ECOMPRESS also gives an output that
+is faithful to the average of those benign vectors.
+replacement or Poisson sampling) are possible and affect
+the privacy guarantees. Client
+ i then computes per-sample
+(t)
+gradients ∇ℓ w(t) ; xj , yj for all (xj , yj ) ∈ D̃i .
+• Differential Privacy Enforcement. Clip the per-sample
+gradients, average them, and add DP noise, i.e., compute
+X
+1
+(t)
+gi :=
+Clip(∇ℓ(w(t) ; xj , yj ); C) + nDP , (3)
+ϱ
+(t)
+(xj ,yj )∈D̃i
+
+n o
+where Clip(g; C):=g·min 1, Cg , C is the clipping norm
+for gradient vector, and nDP is a noise vector drawn
+according to a predetermined distribution, such as the
+Laplace or the Gaussian distribution. The choice of the
+distribution affects the privacy guarantees, e.g., [53], [54].
+(0)
+• Momentum Computation. For t ≥ 1 and mi := 0,
+update momentum using the noisy gradient [55] as
+(t)
+(t−1)
+(t)
+mi := β (t−1) mi
++ (1 − β (t−1) )gi ,
+
+(4)
+
+where 0 ≤ β (t−1) ≤ 1 is the momentum coefficient.
+• Compression. Apply a robust-compatible compression
+method C OMPRESS to reduce the uplink communication
+(t)
+(t)
+cost, resulting in m̂i := C OMPRESS (mi ).
+(t)
+• Communication. Send m̂i to the federator.
+After receiving the compressed momenta from the clients, the
+federator performs the following steps:
+• Robust aggregation. Use a robust aggregation rule AGG
+to aggregate the compressed momenta, i.e., compute
+(t)
+
+(t)
+
+m̂AGG = AGG(m̂1 , · · · , m̂(t)
+n ).
+
+(5)
+
+4
+
+Algorithm 1 F E D -DPR O C
+
+IV. R O B AJ O L: AN I NSTANTIATION OF F E D -DPR O C
+(0)
+
+Initialization: Initialize the model w(0) ; set initial momentum mi = 0;
+define mini-batch size ϱ, learning rates η, robust aggregation rule AGG, total
+number of global iterations T .
+1: for t = 1, · · · , T − 1 do
+2:
+for each honest client i ∈ H in parallel do
+(t)
+3:
+Sample a mini-batch D̃i of size ϱ from Di .
+X
+4:
+1
+(t)
+(t)
+gi :=
+; xj , yj ); C) + nDP
+(t)Clip(∇ℓ(w
+(xj ,yj )∈D̃i
+ϱ
+(t)
+(t−1)
+(t)
+(t−1)
+(t−1)
+5:
+mi := β
+mi
++ (1 − β
+)gi
+(t)
+(t)
+6:
+m̂i := C OMPRESS (mi )
+(t)
+7:
+Send m̂i to the federator.
+8:
+end for
+9:
+for each malicious client i ∈ B in parallel do
+(t)
+10:
+Generate an arbitrary vector m̂i ∈ Rk .
+(t)
+11:
+Send m̂i to the federator.
+12:
+end for
+(t)
+(t)
+(t)
+13:
+m̂AGG = AGG(m̂1 , · · · , m̂n )
+(t)
+14:
+Federator broadcasts m̂AGG to all clients.
+15:
+for each honest client i ∈ H in parallel do
+(t)
+16:
+u(t) = D ECOMPRESS(m̂AGG )
+17:
+w(t+1) = w(t) − η · u(t)
+18:
+end for
+19: end for
+20: return w̃ uniformly sampled from {w(0) , · · · , w(T ) }.
+
+(t)
+
+• Comunication. Broadcast m̂AGG to the clients.
+Upon receiving the compressed aggregation from the federator,
+the clients perform:
+• Decompression. Apply the corresponding decompression
+(t)
+(t)
+on m̂AGG , i.e., u(t) = D ECOMPRESS(m̂AGG ).
+• Update. Compute the global model for the next iteration
+w(t+1) = w(t) − η (t) u(t) .
+• Next Iteration.
+F E D -DPR O C introduces the concept of robust-compatible
+compression (Fig. 2) that allows us to integrate compression
+into robust aggregation while preserving robustness.
+Definition 4 (Robust-compatible Compression). Let AGG :
+(Rd )n → Rd be a robust aggregation rule that takes as input
+n vectors in Rd , out of which b < n/2 can be arbitrarily
+manipulated, and outputs an aggregation in Rd that is faithful
+to the average of the n − b benign vectors; where the faithfulness is measured according to a desired robustness criterion.
+Let C OMPRESS : Rd → Rk , with k ≪ d, be a compression
+mechanism that takes a vector in Rd and compresses it to
+a vector in Rk , and let D ECOMPRESS : Rk → Rd be the
+corresponding decompression rule.
+C OMPRESS is said to be robust-compatible according to
+the desired robustness criterion if the following holds: the
+composition C OMPRESS ◦AGG ◦D ECOMPRESS remains robust
+according to the desired robustness criterion. In other words,
+when AGG is applied on the compressed version of the n
+vectors (now in Rk ), it outputs an average vector (also in
+Rk ) that, after decompression to Rd , remains faithful to the
+average of the n − b benign original vectors.
+In FL, such compatibility ensures that the system remains
+robust to adversarial behavior even after dimensionality reduction, while significantly reducing communication costs.
+
+In this section, we present R O B AJ O L, one instantiation of
+F E D -DPR O C with a specific noise mechanism, robust aggregation, and compression scheme. The key idea of R O B AJ O L
+lies in its provably robust, private, and communication-efficient
+design, achieved by integrating the Johnson–Lindenstrauss
+(JL) transform [50] as the compression method and a (b, κ)robust averaging [9] to ensure Byzantine robustness. This
+instantiation demonstrates how F E D -DPR O C can be realized
+using principled components with theoretical guarantees.
+A. Johnson–Lindenstrauss (JL) Compression
+To reduce communication overhead, R O B AJ O L employs
+the JL transform as the compression method C OMPRESS. JL
+transform is the compression method satisfying JL lemma
+with high probability. The JL lemma guarantees that highdimensional vectors can be projected into a lower-dimensional
+subspace with only a small distortion in pairwise distances.
+Definition 5 (JL Lemma [50], [56]). For a given real number
+ϵJL ∈ (0, 1), for every set V ⊂ Rd , let there be a positive
+integer k such that k = O(ϵ−2
+JL log |V|), there exists a Lipschitz
+mapping f : Rd → Rk , such that for all u, v ∈ V, we have
+(1 − ϵJL )∥u − v∥2 ≤ ∥f (u) − f (v)∥2 ≤ (1 + ϵJL )∥u − v∥2 .
+The JL Lemma states that any subset V ⊂ Rd can be
+embedded into Rk , with k ≪ d, while preserving pairwise
+Euclidean distances within a distortion of ϵJL . Importantly,
+for a given ϵJL , the required dimension k is independent of d
+and scales logarithmically with |V|. Among all variants of JL
+transforms [57]–[61], we provide the following example.
+Example 1 (Count-Sketch JL Transform [15], [61]). Consider
+a set V ⊂ Rd . Let k, s ∈ N such that s divides k, i.e., k = s · p
+for some integer p. A matrix R ∈ Rk×d is constructed as
+follows to serve as a JL transform:
+• Construct p independent block matrices R1 , . . . , Rp ∈
+{−1, 0, 1}s×d , where each entry of Ri is generated using
+(Ri )j,l = ζi (l) · 1{hi (l)=j}
+for j ∈ [s], l ∈ [d]. Here, hi : [d] → [s] and ζi : [d] →
+{−1, +1} are independent hash functions.
+• Stack the p blocks vertically and scale to construct R:
+1
+R = √ [R1T , · · · , RpT ]T .
+p
+This construction yields a sparse random projection matrix
+that satisfies the JL lemma with high probability, i.e., for a
+set V ⊂ Rd of cardinality |V|, the random projection matrix
+1
+[61].
+satisfies the JL lemma with probability 1 − |V|
+In R O B AJ O L, the compression method is implemented as
+(t)
+(t)
+m̂i = C OMPRESS(mi ) := Rmi , where R is a random
+JL transform matrix generated as in Example 1. We denote
+the compression rate by kd . The decompression is defined
+as D ECOMPRESS(m̂AGG ) := RT m̂AGG . Since RT R is not
+necessarily equal to the identity matrix, but behaves like it
+in expectation, this decompression approximates the original
+
+5
+
+result. The expected decompression error can be bounded as in
+Lemma 1, which states useful properties of the JL transform.
+Lemma 1. Consider a set V ⊂ Rd and k = O(ϵ−2
+JL log |V|) ≪
+d. A JL transform matrix R ∈ Rk×d constructed randomly
+satisfies the following properties for all vectors v ∈ Rd :
+1) ∥Rv∥2 is an unbiased estimator of ∥v∥2 [59], [61], [62],
+i.e., ER [∥Rv∥2 ] = ∥v∥2 ;
+2) the expected decompression error ER [∥RT Rv − v∥2 ] is
+bounded as [15], [63], ER [∥RT Rv − v∥2 ] ≤ τkd ∥v∥2 ,
+where τ is a small constant, typically in the range τ ∈
+[1, 3] depending on the distribution of R; and
+3) the decompression error satisfies
+∥RT Rv − v∥2 ≤ ϵ2JL ∥v∥2
+1
+with probability 1 − |V|
+. Here, the probability is over the
+random choice of the JL transform matrix R. However,
+for a given matrix that is known to satisfy the JL lemma,
+i.e., Definition 5, the above statement is deterministic.
+1
+, the matrix R satisfies
+4) With probability 1 − |V|
+
+∥R∥2 = ∥RT ∥2 ≤ 1 + ϵJL .
+Here, the probability is also over the random choice of
+the JL transform matrix R as explained above.
+The proof of properties 3) and 4) is given in Appendix A.
+B. Robust Averaging and Compatibility of JL
+To ensure Byzantine robustness, we employ an aggregation rule AGG that satisfies (b, κ)-Robust Averaging [9],
+i.e., Definition 6. We extend the definition of (b, κ)-robust
+averaging to (b, κ, δRA )-robust averaging, i.e., Definition 7,
+with 0 ≤ δRA ≤ 1. We prove that, with a constraint
+on the range of δRA , (b, κ, δRA )-robust averaging provides
+convergence guarantees. We also prove that given a robust
+aggregation which is (b, κ)-robust averaging, the composition
+C OMPRESS ◦ AGG ◦ D ECOMPRESS, with JL transform as the
+compressor, is (b, κ′ , δRA )-robust averaging.
+Definition 6 ((b, κ)-Robust Averaging [9]). For a non-negative
+integer b < n/2, an aggregation rule AGG: (Rd )n → Rd is
+a (b, κ)-robust averaging aggregation if there exists a (nonnegative) real valued κ such that, for any set of n vectors
+v1 , · · · , vn ∈ Rd and any subset S ∈ [n] of sizePn − b, the
+κ
+following holds: ∥AGG(v1 , · · · , vn )− v̄S ∥2 ≤ |S|
+i∈S ∥vi −
+P
+1
+2
+v̄S ∥ , where v̄S := |S| i∈S vi . The parameter κ is referred
+to as the robustness coefficient.
+We extend the definition of (b, κ)-robust averaging by
+allowing an extra error term.
+Definition 7 ((b, κ, δRA )-Robust Averaging). For a nonnegative integer b < n/2, an aggregation AGG: (Rd )n → Rd
+is (b, κ, δRA )-robust averaging if there exists a (non-negative)
+real valued κ and a real valued 0 ≤ δRA ≤ 1 such that, for
+any set of n vectors v1 , · · · P
+, vn ∈ Rd and any subset S ∈ [n]
+1
+of size n − b, let v̄S := |S|
+i∈S vi , the following holds:
+κ X
+∥AGG(v1 , · · · , vn )− v̄S ∥2 ≤
+∥vi − v̄S ∥2 +δRA ·∥v̄S ∥2.
+|S|
+i∈S
+
+Notice that for δRA = 0, (b, κ, δRA )-robust averaging reduces
+to (b, κ)-robust averaging.
+In R O B AJ O L, the robust aggregation rule works as follows.
+Client i’s momentum update mi ∈ Rd (we omit the notation of
+global iteration t for brevity) is compressed to m̂i ∈ Rk using
+a JL transform random matrix R. The compressed vectors
+are aggregated using a (b, κ)-robust averaging rule AGG to
+obtain m̂AGG ∈ Rk . Then, D ECOMPRESS(m̂AGG ) = RT m̂AGG
+is computed. In Proposition 2, we show that given a matrix
+that satisfies the JL lemma, see Definition 5, and an aggregation rule that is (b, κ)-robust-averaging, see Definition 6,
+the composition C OMPRESS ◦ AGG ◦ D ECOMPRESS satisfies
+the (b, κ′ , δRA )-robust averaging criterion, where κ′ is close
+to κ and δRA is small, hence implying that the JL transform
+is robust-compatible under the robust averaging criterion,
+according to Definition 4.
+Proposition 2. Given a matrix R that satisfies the JL lemma,
+which we call a JL matrix, with distortion parameter ϵJL ,
+and a (b, κ)-robust averaging rule AGG, the composition
+C OMPRESS ◦ AGG ◦ D ECOMPRESS with the JL matrix as
+the compressor is (b, κ′ , δRA )-robust averaging, with κ′ =
+(1+ϵJL )2 ·κ and δRA = ϵ2JL . In other words, with small ϵJL ,
+any JL matrix yields a robust-compatible compression under
+the robust averaging criterion.
+Proof. Let AGG be a robust aggregation rule that satisfies
+(b, κ)-robust averaging. We consider the case where AGG is
+combined with a JL matrix as the compression.
+Given momenta vectors m1 , · · · , mn . Let R be a JL
+matrix, i.e., a linear map satisfying Definition 5. Let m̂i =
+Rmi , for i ∈ [n], denote the compressed inputs, and let
+m̂AGG = AGG(m̂1 , · · · , m̂n ) be the aggregation of AGG.
+Following the definition of (b, κ)-robust averaging, we have
+κ X
+∥m̂i − m̄′S ∥2 ,
+(6)
+∥m̂AGG − m̄′S ∥2 ≤
+|S|
+i∈S
+P
+P
+1
+1
+m̂i = |S|
+=
+where m̄′S := |S|
+i∈S
+i∈S Rmi
+P
+1
+Rm̄S and m̄S := |S| i∈S mi . Let decompression be
+D ECOMPRESS(m̂AGG ) = RT · m̂AGG . The goal is to prove:
+κ′ X
+∥RT · m̂AGG − m̄S ∥2 ≤
+∥mi − m̄S ∥2 + δRA ·∥m̄S ∥2,
+|S|
+i∈S
+
+with κ′ being close to the original coefficient κ, and δRA being
+small. To evaluate the distortion in the decompressed output
+and find the robustness parameter κ′ , we bound:
+∥RT · m̂AGG − m̄S ∥2
+(a)
+
+≤ ∥RT · m̂AGG −RT Rm̄S ∥2 +∥RT Rm̄S − m̄S ∥2
+
+(b)
+
+≤ ∥RT ∥2 ·∥m̂AGG − m̄′S ∥2 +∥RT Rm̄S − m̄S ∥2
+(c)
+κ X
+≤ ∥RT ∥2 ·
+∥m̂i − m̄′S ∥2 + ∥RT Rm̄S − m̄S ∥2
+|S|
+i∈S
+
+(d)
+
+≤ ∥RT ∥2 ·∥R∥2 ·
+
+κ X
+∥mi − m̄S ∥2 +∥RT Rm̄S − m̄S ∥2
+|S|
+i∈S
+
+(e)
+
+κ X
+≤ (1 + ϵJL )2 ·
+∥mi − m̄S ∥2 + ϵ2JL ∥m̄S ∥2 ,
+|S|
+i∈S
+
+6
+
+where (a) uses the triangle inequality, (b) and (d) use the submultiplicative property of the matrix norm, (c) follows from
+Eq. (6), and (e) follows from Property 3) and 4) in Lemma 1.
+Therefore, C OMPRESS ◦ AGG ◦ D ECOMPRESS with a JL
+matrix as the compressor is (b, κ′ , δRA )-robust averaging,
+where κ′ = (1 + ϵJL )2 · κ, δRA = ϵ2JL , and ϵJL is the small
+distortion parameter introduced by the JL transform. Hence,
+any matrix satisfying the JL lemma yields a robust-compatible
+compression under the robust averaging criterion.
+Observation 1 states the robustness guarantees obtained by
+using any randomized construction that outputs a JL matrix
+with high probability, i.e., one that satisfies the properties of
+Lemma 1; see the construction in Example 1.
+d
+
+Observation 1. Consider a set V ⊂ R , k =
+O(ϵ−2
+JL log |V|) ≪ d, and a random JL transform matrix R ∈
+1
+. This
+Rk×d that satisfies Definition 5 with probability 1 − |V|
+transform yields a robust-compatible compression under the
+robust averaging criterion with the same probability. Specifically, let AGG be a robust aggregation rule that is (b, κ)-robust
+averaging. Let mi be the input vectors in the original space,
+and let the compressed vectors be m̂i = Rmi . Then with
+1
+, C OMPRESS ◦ AGG ◦ D ECOMPRESS is a
+probability 1 − |V|
+′
+(b, κ , δRA )-robust averaging rule with a robustness coefficient
+κ′ = (1 + ϵJL )2 · κ and error δRA = ϵ2JL .
+C. Privacy
+In R O B AJ O L, we enforce DP using the Gaussian mechanism [54], which achieves privacy by adding noise drawn
+2
+from a Gaussian distribution with zero mean and variance σDP
+,
+2
+i.e., nDP ∼ N (0, σDP Id ), where Id is the identity matrix of
+dimension d × d and σDP is the noise scale.
+D. Theoretical Guarantees
+We formally state the theoretical guarantees of R O B AJ O L in
+terms of DP, convergence, and communication efficiency. The
+analysis requires the following standard assumptions [34]:
+Assumption 1. We assume bounded variance and gradient
+norms for honest clients, i.e,
+1) Bounded Variance: there exists parameters 0 < σmin ≤
+σmax < ∞ such that for P
+each honest client i ∈ H and
+2
+all w ∈ Rd , σmin
+≤ ρ1 (xj ,yj )∈Di ∥∇ℓ(w; xj , yj ) −
+2
+∇L(w; Di )∥2 ≤ σmax
+.
+2) Bounded Gradient: there exists 0 < C < ∞ such that
+for all honest client i ∈ H, and for all w ∈ Rd and
+(xj , yj ) ∈ Di , ∥∇ℓ(w; xj , yj )∥ ≤ C.
+σ2
+
+Similar to [34], we define L0 :=LH (w(0))−L⋆, σb = 2(1−ϱρ) max
+ϱ ,
+
+
+2
+σ 2 + dσDP
+d
+2
+σ̄ 2 := b
++ 4κ σb2 + 36σDP
+(1 +
+) , and
+n−b
+n−b
+X
+Gcov := sup sup
+⟨v, ∇L(w; Di ) − ∇LH (w)⟩2 /|H|.
+w∈Rd ∥v∥≤1 i∈H
+
+where Gcov is a metric for quantifying the heterogeneity
+between the gradients of honest clients’ loss functions.
+
+Proposition 3 provides the convergence guarantee for any
+robust aggregation that satisfies (b, κ, δRA )-robust averaging
+(Definition 7), with a constraint on δRA .
+Proposition 3. Consider a DP mechanism with noise scale
+σDP and parameters ϵDP ≥ 0, 0 ≤ δDP ≤ 1. Suppose
+LH is L-smooth and the assumptions in Assumption 1 hold.
+Let AGG be a (b, κ)-robust averaging rule, where b < n/2
+and κ > 0, C OMPRESS be a robust-compatible compressor,
+and D ECOMPRESS be the corresponding decompressor. Suppose F E D -DPR O C with C OMPRESS ◦ AGG ◦ D ECOMPRESS is
+(b, κ′ , δRA )-robust averaging, 0 ≤ δRA ≤ 1. We prove that the
+following holds.
+1) Strongly convex: If LH is µ-strongly convex, let η (t) =
+10
+, β (t) = 1 − 24Lη (t) and a1 = 240. If we let
+µ(t+a L )
+1µ
+
+3
+, then
+δRA ≤ 125
+
+4a1 dκ′ G2cov 2a21 Lσ̄ 2 2a21 L2 L0
+.
++ 2
++
+µ
+µ T
+µ2 T 2
+q
+L0
+1
+1
+2) Non-convex: Let η t = η = min{ 24L
+, 8σ̄
+8LT } and
+1
+β (t) = β = 1 − 24Lη. If we let δRA < 15
+, then
+E[LH (w(T ) )−L⋆ ] ≤
+
+E [∇LH (w̃)]
+√
+
+
+36σ̄ 2LL0
+3
+1
+27LL0
+√
++
++ dκ′ G2cov ,
+≤
+A − 2CδRA
+T
+2
+T
+
+where A := 12 (1 − 4ηL) − 21 (1 + ηL)β 2 , C := 1 +
+ηL + 81 (1 + ηL)β 2 , and 0 < A − 2CδRA ≤ 12 always holds.
+Proof. The proof is provided in Section B.
+For R O B AJ O L, we prove the following theorem in terms of
+DP, convergence, and communication efficiency.
+Theorem 1. Consider a federated learning setting with n
+clients out of which b < n/2 are malicious, where R O B AJ O L
+is used. Suppose LH is L-smooth and the assumptions in
+Assumption 1 hold. Consider a DP mechanism with noise scale
+σDP and parameters ϵDP ≥ 0, 0 < δDP < 1. Let AGG be
+a (b, κ)-robust averaging rule, C OMPRESS be a random JL
+transform matrix R ∈ Rk×d , and D ECOMPRESS be RT . Let
+ϱ and ρ be the mini-batch size and dataset size, respectively.
+The following guarantees are satisfied:
+1) Differential Privacy: There exists a constant χ >
+0 such that, for a sufficiently small batch size
+ϱ and the total  global
+> 1, if
+√ iteration T
+σDP ≥ χ 2C
+ϱ max 1,
+
+ϱ
+
+T log(1/δDP )
+ρϵDP
+
+, R O B AJ O L sat-
+
+isfies (ϵDP , δDP )-differential privacy;
+1
+2) Convergence: Since with probability 1 − |V|
+, the composition C OMPRESS ◦ AGG ◦ D ECOMPRESS forms a
+(b, κ′ , δRA )-robust averaging rule with a robustness coefficient κ′ = (1+ϵJL )2 ·κ and error δRA = ϵ2JL , R O B AJ O L
+satisfies the convergence guarantees in Proposition 3 with
+the same κ′ and δRA . To satisfy the required conditions
+on the error term δRA , we need
+r
+3
+0 ≤ ϵJL ≤
+≈ 0.15,
+125
+
+7
+
+Fig. 3: Test accuracy (unit: %) on non-i.i.d. CIFAR-10 under various attacks. We set σNM = 0.1 and compression rate kd = 10.
+Krum
+TM
+Med
+
+σNM
+0.1
+1
+0.1
+1
+0.1
+1
+
+LF Attack
+83.6 ± 0.5
+59.4 ± 3.0
+83.6 ± 0.5
+60.3 ± 1.7
+83.6 ± 0.5
+59.8 ± 2.1
+
+ALIE Attack
+83.0 ± 0.3
+73.2 ± 0.4
+83.2 ± 0.2
+73.2 ± 0.4
+83.2 ± 0.2
+73.1 ± 0.4
+
+SF Attack
+82.1 ± 0.1
+72.1 ± 0.6
+82.4 ± 0.2
+72.9 ± 0.6
+82.4 ± 0.2
+73.0 ± 0.7
+
+Min-Max Attack
+83.6 ± 0.4
+73.1 ± 0.5
+83.6 ± 0.4
+73.4 ± 0.5
+83.6 ± 0.4
+73.5 ± 0.5
+
+Min-Sum Attack
+75.1 ± 2.6
+73.7 ± 0.5
+75.7 ± 2.6
+74.7 ± 0.3
+75.1 ± 2.5
+74.5 ± 0.4
+
+FoE Attack
+83.6 ± 0.5
+73.6 ± 0.7
+83.6 ± 0.4
+73.6 ± 0.8
+83.7 ± 0.6
+73.6 ± 0.7
+
+TABLE I: Test accuracy (unit: %) on non-i.i.d. Fashion MNIST under various attacks and different noise multipliers. We set
+the compression rate kd = 10. The baseline reaches an accuracy of 84.0 ± 0.2% for σNM = 0.1 and 75.8 ± 0.2% for σNM = 1.
+
+Krum
+
+TM
+
+Med
+
+Compression Rate
+10
+30
+50
+10
+30
+50
+10
+30
+50
+
+LF Attack
+61.2 ± 0.8
+59.6 ± 1.5
+57.3 ± 1.0
+59.6 ± 1.8
+58.7 ± 1.0
+57.2 ± 0.6
+59.4 ± 2.3
+59.0 ± 1.2
+57.2 ± 0.8
+
+ALIE Attack
+63.7 ± 0.3
+62.0 ± 0.8
+60.0 ± 0.4
+63.8 ± 0.4
+61.9 ± 0.5
+60.3 ± 0.4
+63.8 ± 0.4
+62.1 ± 0.7
+60.4 ± 0.2
+
+SF Attack
+60.6 ± 0.6
+59.2 ± 0.9
+57.5 ± 0.7
+60.7 ± 1.5
+59.5 ± 1.1
+57.6 ± 1.0
+60.4 ± 1.4
+59.2 ± 1.2
+57.8 ± 1.3
+
+Min-Max Attack
+62.1 ± 1.0
+61.3 ± 1.0
+60.1 ± 1.3
+62.2 ± 0.8
+61.4 ± 1.2
+60.2 ± 1.3
+62.2 ± 1.0
+61.5 ± 1.1
+60.0 ± 1.1
+
+Min-Sum Attack
+55.1 ± 0.4
+54.1 ± 0.5
+53.4 ± 0.5
+56.1 ± 1.3
+55.4 ± 0.6
+54.2 ± 0.6
+56.3 ± 1.1
+55.3 ± 0.8
+54.3 ± 0.7
+
+FoE Attack
+62.3 ± 1.3
+60.8 ± 1.1
+60.1 ± 1.0
+62.4 ± 0.8
+60.5 ± 0.7
+60.0 ± 1.0
+61.8 ± 1.4
+61.0 ± 0.9
+60.0 ± 0.7
+
+TABLE II: Test accuracy (unit: %) on non-i.i.d. CIFAR-10 under various attacks at compression rates 10, 30, and 50. Baselines
+for these rates are 63.8 ± 0.4%, 62.2 ± 0.5%, and 61.7 ± 0.2%, respectively. We set the noise multiplier σNM = 0.1.
+σNM
+0.2
+
+LF Attack
+54.6 ± 0.1
+
+ALIE Attack
+59.5 ± 0.2
+
+SF Attack
+56.8 ± 1.1
+
+Min-Max Attack
+57.9 ± 0.9
+
+Min-Sum Attack
+53.5 ± 0.9
+
+FoE attack
+57.8 ± 1.2
+
+TABLE III: We set noise multiplier σNM = 0.2. We report the test accuracy (unit: %) on non-i.i.d. CIFAR-10 under various
+attacks and use Trimmed Mean (TM) as the robust aggregation. Baseline for noise multiplier = 0.2 is 59.6 ± 0.3%.
+
+for the strongly convex case, and
+r
+1
+0 ≤ ϵJL <
+≈ 0.25,
+15
+for the non-convex case.
+3) Communication Efficiency: The bidirectional communication cost, i.e., from each client to the federator and
+from the federator to each client, is reduced from O(d)
+to O(k) per round.
+Proof. The proof is provided in Appendix C.
+Remark 1. Regarding convergence (robustness), a smaller
+ϵJL means that (a) the κ′ provided by the composition
+C OMPRESS◦AGG◦D ECOMPRESS is closer to the κ guaranteed
+by AGG, i.e., the resulting scheme is as robust as AGG; and
+(b) the additional error term δRA is smaller. This indicates
+a trade-off between communication efficiency and robustness.
+A larger compression rate results in a higher ϵJL , which in
+turn makes κ′ deviate further from the original κ and yields a
+larger δRA . Conversely, a smaller compression rate increases
+the communication overhead but allows κ′ to remain closer
+to κ, and also leads to a smaller error term δRA .
+
+V. E XPERIMENTS
+We evaluate the practical performance of R O B AJ O L by conducting experiments on three datasets: Fashion MNIST [64]
+and CIFAR-10 [65], both distributed across n = 15 clients,
+and FEMNIST [66] distributed across n = 50 clients.
+A. Training Parameters and Data Distribution
+For Fashion MNIST, we set minibatch size ϱ = 60, total
+global iterations T = 2000, and learning rate η = 0.25. We
+train a neural network consisiting of three fully connected
+layers (in total 535818 parameters). For CIFAR-10, we set
+minibatch size ϱ = 128, total global iterations T = 10000,
+and learning rate η (t) = 0.25 for t ≤ 8000, and η (t) = 0.025
+afterward. We use a convolutional neural network composed
+of two convolutional blocks followed by a linear classifier (in
+total 789706 parameters). For FEMNIST, we set minibatch
+size ϱ = 128, total global iterations T = 1000, and learning
+rate η (t) = 0.2 for t ≤ 800, and η (t) = 0.02 afterward.
+We use a convolutional neural network consisting of two
+convolutional layers and a two-layer fully connected classifier
+(in total 1690046 parameters).
+All experiments are conducted with a fixed momentum
+coefficient β = 0.9. We use the Rectified Linear Unit (ReLU)
+
+8
+
+as the activation function and Cross-Entropy as the loss function. In each iteration, clients randomly sample a minibatch
+from their local training dataset using subsampling without
+replacement and perform local training on the minibatch.
+To simulate non-IID data, for Fashion MNIST and CIFAR10, we randomly divide the clients into 10 groups. A training
+sample with label j is assigned to group j w.p. a > 0,
+and to each of the remaining groups w.p. 1−a
+9 . Within each
+group, data is uniformly distributed among the clients. In our
+experiments, we set a = 0.5 to reflect a heterogeneous setting.
+FEMNIST is inherently heterogeneous. FEMNIST consists of
+3500 clients with a varying number of samples per client,
+with a mean 226.83. We filter the clients having at least 380
+samples, and randomly sample n = 50 clients from them.
+B. Compression Method
+For communication efficiency, we use the Count
+Sketch [61], cf. Example 1, to construct the JL transform
+matrix R. The number of block matrices is set to be
+p = 10. For Fashion MNIST, the compression rate kd = 10.
+Compression rates are varied across {10, 30, 50} for CIFAR10, and across {10, 50, 100, 500, 1000, 2000} for FEMNIST.
+C. Byzantine Robustness
+We assume that 20% of the clients are malicious, i.e.,
+b = 3 for Fashion MNIST and CIFAR-10 and b = 10 for
+FEMNIST. Since R O B AJ O L supports arbitrary robust aggregation rules satisfying (b, κ)-robust averaging, we test it with
+the following rules: Krum [5], Trimmed Mean (TM) [17]
+and Median (Med) [17]. These robust aggregations rules are
+proved to be (b, κ)-robust averaging [9], [67]. We also use the
+Nearest Neighbor Mixing (NNM) [67], where each client’s
+update is averaged with those of a subset of its neighbors to
+enhance the robustness under heterogeneity. Combining Krum,
+TM, or Med with NNM improves the robustness coefficient
+κ of the (b, κ)-robust averaging rule [67]. The malicious
+clients perform one of the following attacks: Label Flipping
+(LF) attack [68], a-little-is-enough (ALIE) attack [69], Sign
+Flipping (SF) attack [68], Min-Max attack [70], Min-Sum
+attack [70] and FoE attack [71].
+D. Differential Privacy
+To implement DP, we set the Gaussian noise scale as
+σDP = 2C
+ϱ × σNM with the clipping threshold C = 2 for
+Fashion MNIST, C = 3 for FEMNIST, and C = 4 for CIFAR10, and σNM is the noise multiplier. Since the DP guarantee
+(ϵDP , δDP ) is sensitive to the choice of sampling strategy,
+e.g., Poisson sampling and sampling with(out) replacement,
+we report the noise multiplier σNM instead. We use Opacus [72] to compute the privacy budget (ϵDP , δDP ) via RDP
+accounting. Note that Opacus assumes Poisson subsampling,
+whereas our simulation uses sampling without replacement
+(fixed-size minibatches). Since Poisson subsampling leads to
+a looser privacy bound under RDP analysis than fixed-size
+sampling [73], the ϵDP reported by Opacus is a conservative
+upper bound on the actual privacy loss incurred in our setting.
+
+Fig. 4: Test accuracy (unit: %) on FEMNIST under various
+attacks and different compression rates 1, 10, 100, 500, 1000
+and 2000. We set the noise multiplier σNM = 0.1 and use
+Trimmed Mean as the robust aggregation rule.
+For Fashion MNIST, we choose noise multipliers σNM =
+{0.1, 1}. The relatively large noise multiplier, i.e., σNM = 1,
+corresponds to privacy budget (ϵDP , δDP ) = (4.5, 10−5 ).
+For CIFAR-10, we choose relatively small noise multipliers,
+e.g., σNM = {0.1, 0.2}, which correspond to large privacy
+budgets ϵDP > 300 and δDP = 10−5 . For FEMNIST, we
+choose σNM = {0.1, 0.5, 1}, where σNM = 1 corresponds to
+(ϵDP , δDP ) = (36.8, 10−5 ). These configurations allow us to
+study the interaction between DP, robustness, and communication efficiency in a regime where utility is preserved.
+E. Numerical Results
+Each experiment is repeated using 3 different random seeds.
+All baselines are run with the respective DP enforcement, i.e.,
+noise multiplier, the compression rate, using FedAvg [2] as
+the aggregation rule, and without any malicious attacks.
+Fig. 3 shows the test accuracy of R O B AJ O L on non-i.i.d.
+CIFAR-10 under various attacks, compared to the baseline,
+with σNM = 0.1 and kd = 10. The experimental results
+in Fig. 3 indicate that, given robust aggregation rules satisfying the robust averaging criterion, the use of the JL
+transform as the compression method preserves robustness
+against malicious attacks. Table I shows the test accuracy
+on non-i.i.d. Fashion MNIST under various attacks and noise
+multipliers. It demonstrates the robustness of using robustcompatible compression and shows that as the noise multiplier
+increases, utility decreases while stronger privacy guarantees
+are achieved. Table II summerizes the performance of different
+robust aggregation rules aggregating with count sketch under
+various attacks on non-i.i.d. CIFAR-10, at increasing compression rate, and noise multiplier σNM = 0.1. It suggests
+that a higher compression rate introduces greater distortion,
+and therefore, while improving communication efficiency, can
+lead to performance loss. Table III gives the test accuracy
+on non-i.i.d. CIFAR-10 under various attacks, with a slightly
+higher noise multiplier, i.e., σNM = 0.2, which also leads to
+a decrease in the utility.
+We conduct simulations on FEMNIST under various attacks
+and across different compression rates, see Fig. 4, and across
+different robust aggregation rules, see Table IV.
+We also compare R O B AJ O L with Byz-EF21-BC [40], to
+which we additionally incorporate differential privacy. Byz-
+
+9
+
+Krum
+TM
+Med
+
+LF Attack
+75.0 ± 1.62
+75.2 ± 2.27
+75.3 ± 2.38
+
+ALIE Attack
+73.5 ± 1.16
+73.9 ± 0.21
+73.8 ± 1.18
+
+SF Attack
+70.0 ± 1.13
+70.4 ± 1.12
+70.2 ± 1.14
+
+Min-Max Attack
+73.7 ± 1.81
+73.5 ± 0.81
+72.3 ± 0.65
+
+Min-Sum Attack
+57.0 ± 1.10
+59.9 ± 0.25
+59.5 ± 0.49
+
+FoE Attack
+29.9 ± 4.97 ⋆
+75.0 ± 1.47
+75.1 ± 1.57
+
+TABLE IV: Test accuracy (unit: %) on FEMNIST under various attacks and different robust aggregations. We set the
+compression rate kd = 10 and σNM = 0.1. The baseline reaches an accuracy of 75.3 ± 1.25%.
+⋆ We also report the test accuracy on FEMNIST under FoE attack and with Krum as the robust aggregation rule without DP and compression (σNM = 0
+and kd = 1). The accuracy reached a maximum of 78.6%, but was ultimately defeated by the FoE attack, achieving a final accuracy of 6.26 ± 0.59%.
+
+Fig. 5: Test accuracy (unit: %) on FEMNIST. We compare
+R O B AJ O L (on the left of each dotted line) with Byz-EF21-BC
+augmented with DP (on the right of each dotted line) under
+varying noise multipliers; Here, σNM = 0 indicates that no DP
+is applied. Both schemes use TM as the robust aggregation.
+EF21-BC allows any robust aggregation combined with any
+biased compressor (we use top-k sparsification in the simulation) to remain robust by carefully modifying the updates.
+To allow a fair comparison, we clip the gradients and add
+noise directly to the averaged gradient, and use the NNM
+before aggregation to enhance robustness under heterogeneity.
+The comparison with varying noise multipliers is shown in
+Fig. 5, demonstrating that, even though Byz-EF21-BC keeps
+any robust aggregation robust when combining with the biased
+compressor, i.e., top-k sparsification (σNM = 0), however,
+enforcing DP is not straightforward and leads to a large drop
+in accuracy (σNM = {0.1, 0.5, 1}).
+VI. C ONCLUSION
+In this work, we propose F E D -DPR O C, a unified approach
+ensuring differential privacy, Byzantine robustness, and communication efficiency. We introduce the concept of robustcompatible compression, instantiated as R O B AJ O L, which uses
+the JL transform for compression, robust averaging to guarantee robustness, and the Gaussian DP mechanism to ensure
+privacy. Theoretical analysis and experiments show that our
+approach preserves robustness and privacy while significantly
+reducing communication overhead.
+R EFERENCES
+[1] Y. Xia, T. Jahani-Nezhad, and R. Bitar, “Fed-DPRoC: Communicationefficient differentially private and robust federated learning,” IEEE Int.
+Conf. FLTA, 2025.
+[2] B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A. y Arcas,
+“Communication-efficient learning of deep networks from decentralized
+data,” in Proc. AISTATS, 2017.
+[3] J. Geiping, H. Bauermeister, H. Dröge, and M. Moeller, “Inverting
+gradients—how easy is it to break privacy in federated learning?,”
+NeurIPS, 2020.
+[4] L. Zhu, Z. Liu, and S. Han, “Deep leakage from gradients,” NeurIPS,
+2019.
+
+[5] P. Blanchard, E. M. El Mhamdi, R. Guerraoui, and J. Stainer, “Machine
+learning with adversaries: Byzantine tolerant gradient descent,” NeurIPS,
+2017.
+[6] P. Kairouz et al., “Advances and open problems in federated learning,”
+Found. Trends Mach. Learn., 2021.
+[7] J. Konečný, H. B. McMahan, F. X. Yu, P. Richtárik, A. T. Suresh, and
+D. Bacon, “Federated learning: Strategies for improving communication
+efficiency,” arXiv:1610.05492, 2016.
+[8] K. Daly, H. Eichner, P. Kairouz, H. B. McMahan, D. Ramage, and Z. Xu,
+“Federated learning in practice: Reflections and projections,” in Proc.
+Int. Conf. TPS-ISA, 2024.
+[9] R. Guerraoui, N. Gupta, and R. Pinot, Robust Machine Learning. 2024.
+[10] K. Bonawitz et al., “Practical secure aggregation for privacy-preserving
+machine learning,” in Proc. ACM CCS, 2017.
+[11] T. Jahani-Nezhad, M. A. Maddah-Ali, S. Li, and G. Caire, “SwiftAgg+:
+Achieving asymptotically optimal communication loads in secure aggregation for federated learning,” IEEE J. Sel. Areas Commun., 2023.
+[12] Y. Xia, C. Hofmeister, M. Egger, and R. Bitar, “Byzantine-resilient
+secure aggregation for federated learning without privacy compromises,”
+in Proc. IEEE ITW, 2024.
+[13] S. Hou, S. Li, T. Jahani-Nezhad, and G. Caire, “PriRoAgg: Achieving
+robust model aggregation with minimum privacy leakage for federated
+learning,” IEEE Trans. Inf. Forensics Security, 2025.
+[14] C. Dwork, “Differential privacy,” in Proc. ICALP, 2006.
+[15] W.-N. Chen et al., “The fundamental price of secure aggregation in
+differentially private federated learning,” in Proc. ICML, 2022.
+[16] K.-H. Ngo, J. Östman, G. Durisi, and A. Graell i Amat, “Secure
+aggregation is not private against membership inference attacks,” in
+Proc. ECML PKDD, 2024.
+[17] D. Yin, Y. Chen, R. Kannan, and P. Bartlett, “Byzantine-robust distributed learning: Towards optimal statistical rates,” in Proc. ICML,
+2018.
+[18] E. M. E. Mhamdi, R. Guerraoui, and S. Rouault, “The hidden vulnerability of distributed learning in byzantium,” in Proc. ICML, 2018.
+[19] S. Ergisi, L. Maßny, and R. Bitar, “ProDiGy: Proximity-and
+dissimilarity-based byzantine-robust federated learning,” IEEE Int. Conf.
+FLTA, 2025.
+[20] M. Xhemrishi, J. Östman, A. Wachter-Zeh, and A. Graell i Amat,
+“FedGT: Identification of malicious clients in federated learning with
+secure aggregation,” IEEE Trans. Inf. Forensics Secur., 2025.
+[21] X. Cao, M. Fang, J. Liu, and N. Gong, “FLTrust: Byzantine-robust
+federated learning via trust bootstrapping,” in Proc. NDSS, 2021.
+[22] W. Wen, C. Xu, F. Yan, C. Wu, Y. Wang, Y. Chen, and H. Li, “Terngrad:
+Ternary gradients to reduce communication in distributed deep learning,”
+NeurIPS, 2017.
+[23] J. Bernstein, Y.-X. Wang, K. Azizzadenesheli, and A. Anandkumar,
+“signSGD: Compressed optimisation for non-convex problems,” in Proc.
+ICML, 2018.
+[24] S. P. Karimireddy, Q. Rebjock, S. Stich, and M. Jaggi, “Error feedback
+fixes signSGD and other gradient compression schemes,” in Proc. ICML,
+2019.
+[25] A. Reisizadeh, A. Mokhtari, H. Hassani, A. Jadbabaie, and R. Pedarsani,
+“FedPAQ: A communication-efficient federated learning method with
+periodic averaging and quantization,” in Proc. AISTATS, 2020.
+[26] D. Rothchild et al., “FetchSGD: Communication-efficient federated
+learning with sketching,” in Proc. ICML, 2020.
+[27] C. Wu, F. Wu, L. Lyu, Y. Huang, and X. Xie, “Communication-efficient
+federated learning via knowledge distillation,” Nat. Commun., 2022.
+[28] M. Egger, R. Bitar, A. Wachter-Zeh, N. Weinberger, and D. Gündüz,
+“BICompFL: Stochastic federated learning with bi-directional compression,” in Proc. NeurIPS, 2025.
+[29] J. So, B. Güler, and A. S. Avestimehr, “Byzantine-resilient secure
+federated learning,” IEEE J. Sel. Areas Commun., 2020.
+[30] T. Jahani-Nezhad, M. A. Maddah-Ali, and G. Caire, “ByzSecAgg: A
+byzantine-resistant secure aggregation scheme for federated learning
+
+10
+
+based on coded computing and vector commitment,” IEEE Trans. Inf.
+Theory, 2025.
+[31] Y. Xia, C. Hofmeister, M. Egger, and R. Bitar, “LoByITFL: Low
+communication secure and private federated learning,” in Proc. Int.
+Workshop on Secure and Efficient Federated Learning, 2025.
+[32] R. Guerraoui, N. Gupta, R. Pinot, S. Rouault, and J. Stephan, “Differential privacy and byzantine resilience in SGD: Do they add up?,” in
+Proc. PODC, 2021.
+[33] X. Ma, X. Sun, Y. Wu, Z. Liu, X. Chen, and C. Dong, “Differentially
+private byzantine-robust federated learning,” IEEE Trans. Parallel Distrib. Syst., 2022.
+[34] Y. Allouah, R. Guerraoui, N. Gupta, R. Pinot, and J. Stephan, “On
+the privacy-robustness-utility trilemma in distributed learning,” in Proc.
+ICML, 2023.
+[35] N. Agarwal, A. T. Suresh, F. X. Yu, S. Kumar, and B. McMahan,
+“cpSGD: Communication-efficient and differentially-private distributed
+SGD,” NeurIPS, 2018.
+[36] T. Li, Z. Liu, V. Sekar, and V. Smith, “Privacy for free:
+Communication-efficient learning with differential privacy using
+sketches,” arXiv:1911.00972, 2019.
+[37] R. Liu, Y. Cao, M. Yoshikawa, and H. Chen, “FedSel: Federated SGD
+under local differential privacy with top-k dimension selection,” in Proc.
+DASFAA, 2020.
+[38] J. Bernstein, J. Zhao, K. Azizzadenesheli, and A. Anandkumar,
+“signSGD with majority vote is communication efficient and fault
+tolerant,” arXiv:1810.05291, 2018.
+[39] D. Data and S. Diggavi, “Byzantine-resilient SGD in high dimensions
+on heterogeneous data,” in Proc. IEEE ISIT, 2021.
+[40] A. Rammal, K. Gruntkowska, N. Fedin, E. Gorbunov, and P. Richtárik,
+“Communication compression for byzantine robust learning: New efficient algorithms and improved rates,” in Proc. AISTATS, 2024.
+[41] M. Egger, M. Bakshi, and R. Bitar, “Byzantine-resilient zero-order optimization for communication-efficient heterogeneous federated learning,”
+arXiv:2502.00193, 2025.
+[42] M. Li et al., “Communication-efficient and byzantine-robust differentially private federated learning,” IEEE Commun. Lett., 2022.
+[43] H. Zhu and Q. Ling, “Bridging differential privacy and byzantinerobustness via model aggregation,” arXiv:2205.00107, 2022.
+[44] M. Xiang and L. Su, “Distributed non-convex optimization with one-bit
+compressors on heterogeneous data: Efficient and resilient algorithms,”
+arXiv:2210.00665, 2022.
+[45] N. Lang, N. Shlezinger, R. G. L. D’Oliveira, and S. El Rouayheb,
+“Compressed private aggregation for scalable and robust federated
+learning over massive networks,” arXiv:2308.00540, 2023.
+[46] R. Jin, Y. Gu, K. Yue, X. He, Z. Zhang, and H. Dai, “TernaryVote:
+Differentially private, communication efficient, and byzantine resilient
+distributed optimization on heterogeneous data,” arXiv:2402.10816,
+2024.
+[47] Z. Zhang and R. Hu, “Byzantine-robust federated learning with variance
+reduction and differential privacy,” in Proc. IEEE CNS, 2023.
+[48] G. Hu, H. Li, T. Wu, W. Fan, and Y. Zhang, “Efficient byzantine-robust
+and privacy-preserving federated learning on compressive domain,”
+IEEE Internet Things J., 2023.
+[49] S. Farhadkhani, R. Guerraoui, N. Gupta, R. Pinot, and J. Stephan,
+“Byzantine machine learning made easy by resilient averaging of
+momentums,” in Proc. ICML, 2022.
+[50] W. B. Johnson, J. Lindenstrauss, et al., “Extensions of lipschitz mappings into a hilbert space,” Contemp. Math., 1984.
+[51] C. Dwork, K. Kenthapadi, F. McSherry, I. Mironov, and M. Naor,
+“Our data, ourselves: Privacy via distributed noise generation,” in Proc.
+EUROCRYPT, 2006.
+[52] I. Mironov, “Rényi differential privacy,” in Proc. IEEE CSF, 2017.
+[53] C. Dwork, F. McSherry, K. Nissim, and A. Smith, “Calibrating noise
+to sensitivity in private data analysis,” in Proc. Theory of Cryptography
+Conf. (TCC), 2006.
+[54] C. Dwork, A. Roth, et al., “The algorithmic foundations of differential
+privacy,” Found. Trends Theor. Comput. Sci., 2014.
+[55] B. T. Polyak, “Some methods of speeding up the convergence of iteration
+methods,” USSR Comput. Math. Math. Phys., 1964.
+[56] S. Dasgupta and A. Gupta, “An elementary proof of a theorem of johnson
+and lindenstrauss,” Random Structures & Algorithms, 2003.
+[57] P. Indyk and R. Motwani, “Approximate nearest neighbors: Towards
+removing the curse of dimensionality,” in Proc. ACM STOC, 1998.
+[58] P. Frankl and H. Maehara, “The Johnson-Lindenstrauss lemma and the
+sphericity of some graphs,” J. Comb. Theory, Ser. B, 1988.
+[59] D. Achlioptas, “Database-friendly random projections: JohnsonLindenstrauss with binary coins,” J. Comput. Syst. Sci., 2003.
+
+[60] N. Ailon and B. Chazelle, “Approximate nearest neighbors and the fast
+Johnson-Lindenstrauss transform,” in Proc. ACM STOC, 2006.
+[61] D. M. Kane and J. Nelson, “Sparser Johnson-Lindenstrauss transforms,”
+J. ACM, 2014.
+[62] S. S. Vempala, The Random Projection Method. 2005.
+[63] Z. Song, Z. Yu, and L. Zhang, “Iterative sketching and its application
+to federated learning,” 2021.
+[64] H. Xiao, K. Rasul, and R. Vollgraf, “Fashion-MNIST: A novel
+image dataset for benchmarking machine learning algorithms,”
+arXiv:1708.07747, 2017.
+[65] A. Krizhevsky and G. Hinton, “Learning multiple layers of features from
+tiny images,” tech. rep., Univ. Toronto, 2009.
+[66] S. Caldas, S. M. K. Duddu, P. Wu, T. Li, J. Konečnỳ, H. B. McMahan,
+V. Smith, and A. Talwalkar, “Leaf: A benchmark for federated settings,”
+arXiv:1812.01097, 2018.
+[67] Y. Allouah, S. Farhadkhani, R. Guerraoui, N. Gupta, R. Pinot, and
+J. Stephan, “Fixing by mixing: A recipe for optimal byzantine ML under
+heterogeneity,” in Proc. AISTATS, 2023.
+[68] Z. Allen-Zhu, F. Ebrahimian, J. Li, and D. Alistarh, “Byzantine-resilient
+non-convex stochastic gradient descent,” arXiv:2012.14368, 2020.
+[69] G. Baruch, M. Baruch, and Y. Goldberg, “A little is enough: Circumventing defenses for distributed learning,” NeurIPS, 2019.
+[70] V. Shejwalkar and A. Houmansadr, “Manipulating the byzantine: Optimizing model poisoning attacks and defenses for federated learning,” in
+Proc. NDSS, 2021.
+[71] C. Xie, O. Koyejo, and I. Gupta, “Fall of empires: Breaking byzantinetolerant SGD by inner product manipulation,” in Proc. UAI, 2020.
+[72] A. Yousefpour et al., “Opacus: User-friendly differential privacy library
+in PyTorch,” arXiv:2109.12298, 2021.
+[73] Y.-X. Wang, B. Balle, and S. P. Kasiviswanathan, “Subsampled Rényi
+differential privacy and analytical moments accountant,” in Proc. AISTATS, 2019.
+[74] R. A. Horn and C. R. Johnson, Matrix analysis. Cambridge university
+press, 2012.
+[75] C. D. Meyer, Matrix Analysis and Applied Linear Algebra. 2023.
+[76] Y. Zhu and Y.-X. Wang, “Poisson subsampled Rényi differential privacy,” in Proc. ICML, 2019.
+
+A PPENDIX
+A. Proof Lemma 1
+Since the first and second properties are proved in the references, we prove the third and fourth properties of Lemma 1.
+(i) Bound on the decompression error: We first rewrite the
+decompression error as
+∥RT Rv − v∥2 = ∥(RT R − Id )v∥2 ≤ ∥RT R − Id ∥2 · ∥v∥2 ,
+where Id ∈ Rd×d is an identity matrix. For a random JL
+transform matrix R, which satisfies JL lemma (Definition 5)
+T
+T
+1
+w.p. 1 − |V|
+, we have 1 − ϵJL ≤ v vRT vRv ≤ 1 + ϵJL
+with the same probability. Thanks to Rayleigh quotient [74],
+the middle term of this inequality is lower bounded by the
+smallest eigenvalue of RT R and upper bounded by its largest
+eigenvalue. Thus, we have 1 − ϵJL ≤ λi ≤ 1 + ϵJL , where
+1
+.
+λi ’s are the eigenvalues of the matrix RT R, w.p. 1 − |V|
+T
+Therefore, the eigenvalues of the matrix R R − Id are in
+[−ϵJL , ϵJL ], and the eigenvalues of the matrix (RT R − Id )2
+1
+are in [0, ϵ2JL ] w.p. 1 − |V|
+. Since the spectral norm of a matrix
+M is the square root of the largest eigenvalue of the matrix
+M T M [75], we have
+q
+∥RT R − Id ∥ = λmax ((RT R − Id )T (RT R − Id )) ≤ ϵJL .
+1
+Therefore, ∥RT Rv − v∥2 ≤ ϵ2JL ∥v∥2 holds w.p. 1 − |V|
+.
+(ii) Bound on the squared spectral norm: We aim to bound
+the spectral norm of the matrix R and its transpose RT , i.e.,
+the matrix norm induced by the Euclidean vector norm, denoted ∥R∥ and ∥RT ∥. We can express the spectral norm [75]
+
+11
+
+σ2
+
+2
+σb2 +dσDP
++
+n−b
+
+p
+p
+as ∥R∥ = λmax (RT R) = λmax (RRT ) = ∥RT ∥, where
+the second equality holds because the matrices RT R and
+RRT share the same non-zero eigenvalues.
+Since the eigenvalues of RTR are upper bounded by 1+ϵJL
+1
+, thus ∥RT ∥2=∥R∥2=λmax (RT R) ≤ 1+ϵJL w.p.
+w.p. 1− |V|
+1
+1− |V| , which concludes the proof.
+
+2
+2
+:= σ̄b2 +d·σDP
+σ̄b2 := 2(1− ϱρ ) max
+, and σ̄ :=
+ϱ , σ̄DP
+
+
+d
+2
+2
+4dκ σb + 36σDP (1 + n−b ) . We also define
+
+B. Proof Proposition 3
+
+and C := 1 + η (t) L + 2z1 (1 + η (t) L)β (t) . We denote t̂ =
+t + a1 L
+µ . Thus, we have
+
+V (t+1)−V (t)= (t̂ +1)2 (W (t+1)−W (t) )+ 2t̂+1 W (t) , and
+
+
+2
+1
+(1 − 4η (t) L) − 8z1 (1 + η (t) L)β (t) ,
+2
+2
+2
+1
+1
+1
+B :=− (1+2η (t) L)− (t) β (t) (1+5η (t) L+4η (t) L2 )+ (t) ,
+z1
+η L
+η L
+A :=
+
+2
+
+In the convergence proof of [34], the authors analyze the
+(t)
+algorithm with aggregation AGG, where the inputs are mi
+(t)
+(t)
+(t)
+for i ∈ n, and the output is Ψ = AGG(m1 , · · · , mn ), and
+AGG is (b, κ)-robust averaging. In R O B AJ O L, the composition
+C OMPRESS ◦AGG ◦D ECOMPRESS provides a (b, κ, δRA )-robust
+averaging aggregation rule, with a different κ value.
+1) Strongly convex: Assume that LH is L-smooth and µstrongly convex, and the composition C OMPRESS ◦ AGG ◦
+D ECOMPRESS is (b, κ, δRA )-robust averaging. Throughout the
+proof, we adopt the same definitions of the learning rate
+10
+and the momentum parameter, i.e., η (t) = µ(t+a
+L , and
+)
+1µ
+
+β = 1 − 24Lη (t) , where a1 = 240, as [34]. We also have
+1
+10
+η (t) ≤ η (0) = 240µ
+L = 24L .
+µ
+
+We bound the error E (t) between the output Ψ(t) =
+T
+R AGG(m̂(t) , · · · , m̂(t) ) and the average honest momentum
+P
+(t)
+1
+m̄(t) := |H|
+mi , i.e., E (t) := Ψ(t) − m̄(t) . Define
+i∈H
+
+
+P
+(t)
+(t)
+1
+(t)
+(t) T
+∆(t) = λmax |H|
+(m
+−
+m̄
+)(m
+−
+m̄
+)
+,
+i
+i
+i∈H
+(t) :=
+
+(t)
+
+where λmax is the maximum eigenvalue, and δ
+m̄ −
+∇LH (w(t) ). Since
+κ X
+(t)
+∥mi − m̄(t) ∥2
+(7)
+|S|
+i∈S
+!
+1 X (t)
+(t)
+(t)
+(t) T
+(mi − m̄ )(mi − m̄ )
+≤ d∆(t) ,
+=tr
+|H|
+i∈H
+
+where the last inequality is due to the trace of a matrix being
+the sum of its eigenvalues. We can bound the error between
+the output and the average honest momentum,
+h
+i
+E[∥E (t) ∥2 ] = E ∥Ψ(t) − m̄(t) ∥2
+(8)
+"
+#
+(a)
+κ X
+(t)
+≤E
+∥mi − m̄(t) ∥2 + δRA ∥m̄(t) ∥2
+|H|
+i∈H
+h
+i
+h
+i
+(b)
+≤dκE ∆(t) + δRA E ∥m̄(t) ∥2
+h
+i
+h
+i
+h
+i
+(c)
+≤ dκE ∆(t) + 2δRA E ∥δ (t) ∥2 + 2δRA E ∥∇LH (w(t) )∥2 ,
+where (a) uses Definition 7, (b) is obtained by plugging
+Eq. (7) and rearranging the terms, (c) is because of the
+definition of δ (t) , and the fact that ∥δ (t) + ∇LH (w(t) )∥2 ≤
+2∥δ (t) ∥2 + 2∥∇LH (w(t) )∥2 . As in [34], we define
+
+2 h
+i
+L
+z1
+z2
+(t)
+V := t + a1
+E LH (w(t))−L⋆ + ∥δ (t) ∥2+dκ · ∆(t) ,
+µ
+L
+L
+1
+where z1 = 16
+, z2 = 2,
+i
+h
+z1
+z2
+W (t) := E LH (w(t) ) − L⋆ + ∥δ (t) ∥2 +dκ · ∆(t) ,
+L
+L
+
+W (t+1) −W (t)
+(9)
+i
+i
+h
+h
+(a)
+≤ − η (t) A · E ∥∇LH (w(t) )∥2 − z1 η (t) B · E ∥δ (t) ∥2
+i
+h
+z2
++η (t) C · E ∥E (t) ∥2 + dκ (1 − β (t) )G2cov
+L
+z2
+z1
+σ̄ 2
+(t)
+(t)
+−dκ (1 − β )E[∆ ] + (1 − β (t) )2 DP
+L
+L
+n−
+b
+
+z2
+d
+2
++2dκ (1 − β (t) )2 σ̄b2 + 36σDP
+(1 +
+)
+L
+n−b
+h
+i
+(b)
+2CδRA h (t) 2i
+)·E ∥δ ∥
+≤ −η(A−2CδRA)·E ∥∇LH(w(t))∥2 −z1η(B −
+z1
+
+ h i
+2
+1−β C
+z2
+(1 − β) 2
+−dκz2 η
+−
+σ̄ +dκ (1−β)G2cov
+·E ∆(t) +
+ηL
+z2
+L
+L
+(c)
+
+≤ − 2η (t) µE[(A − 2CδRA ) · (LH (w(t) ) − L⋆ )
+
+1
+2
+z1
+1 1 − β (t) 1
+dκz2 (t)
+∆ ]
++ (B− CδRA )· ∥δ (t) ∥2+ ( (t) − C)
+2
+z1
+L
+2 η L
+z2
+L
+z2
+1
++ (1 − β (t) )2 σ̄ 2 + dκ (1 − β (t) )G2cov ,
+L
+L
+where (a) is from [34], (b) uses Eq. (8) to substitute
+2
+σ̄DP
+2
+E[∥E (t)∥2 ], rearranges the terms,
+and
+uses
+σ̄
+≥
+z
++
+1
+n−b
+
+
+d
+2
+2dκz2 σ̄b2 + 36σDP
+) , (c) comes from the fact that
+(1 + n−b
+LH is µ-strongly convex, i.e., for any w ∈ Rd , ∥∇LH (w)∥2 ≥
+2µ(L(w) − L⋆ ) and L ≥ µ.
+We want to make sure that the following constraints
+
+hold: (a) A − 2CδRA > 0; (b)
+(t)
+
+(c)
+
+1/2( 1−β
+(t)
+η
+
+L
+
+− z1 C)
+
+A−2CδRA
+
+2
+
+1/2(B− z2 CδRA )
+2
+A−2CδRA
+
+≥ 1; and
+
+≥ 1. We require the first term
+
+
+2
+1
+1 − 4η (t) L − 8z1 (1 + η (t) L)β (t)
+2
+2
+− 2δRA (1 + η (t) L + 2z1 (1 + η (t) L)β (t) )
+2
+5
+= − 2(1 + δRA )(1 + η (t) L)(1 + 2z1 β (t) ) > 0,
+2
+
+A − 2CδRA =
+
+1
+1
+since η (t) L ≤ 24
+, z1 = 16
+, and β 2 ≤ 1, we obtain
+
+1
+.
+(10)
+15
+For the second term, since A − 2CδRA > 0 and z2 = 2, we
+require 21 (B − z22 CδRA ) − (A − 2CδRA ) = − 21 (2A − 3CδRA −
+B) ≥ 0. By substituting A, B and C and rearranging the terms,
+we require
+δRA <
+
+2A− 3CδRA− B= 21−(4+3δRA )(1 + η (t) L)+32η (t) L −
+
+1
+η (t) L
+
+12
+
+−β (t)
+
+
+
+1
+1
+(4 + 3δRA )(1 + η (t) L)− (t) −5−4η (t) L ≤ 0.
+8
+η L
+
+where (a) is by rearranging the terms and uses 1 − β (t) =
+10
+24Lη (t) and η (t) = µ(t+a
+L , and (b) is from the result that
+)
+
+2
+
+1
++
+By looking into the term 18 (4 + 3δRA )(1 + η (t) L) + η(t)
+L
+(t)
+5 + 4η L, and due to the fact that 0 ≤ δRA ≤ 1, we realize
+1
+that the term is always positive when η (t) L ≤ 24
+. Thus, the
+maximum of 2A − 3CδRA − B is achieved when β (t) = 0.
+Thus, we instead require
+
+21 − (4 + 3δRA )(1 + η (t) L) + 32η (t) L −
+
+1
+η (t) L
+
+(t)
+
+−20(A − 2CδRA ) ≤ 0,
+
+− z1 C)
+
+2
+η
+L
+≥ 1. Using the
+The third term requires
+A−2CδRA
+1
+(t)
+(t)
+(t)
+, and
+facts that 0 ≤ β ≤ 1, 1 − β = 24η L, η (t) ≤ 24L
+A − 2CδRA > 0, we obtain
+2
+
+1 − β (t) 1
+1 − β (t) 1+η (t)L+2z1(1+η (t) L)β (t)
+−
+−
+C
+=
+z2
+z2
+η (t) L
+η (t) L
+(t)
+1
+1
+1−β
+1
++ 32(1 + )) = 24 − 18 = 6
+≥ (t)
+− (1 +
+2
+24
+24
+η L
+Thus, we only require A − 2CδRA ≤ 12 × 6 = 3. Since
+
+2
+5
+A − 2CδRA = − 2(1 + δRA )(1 + η (t) L)(1 + 2z1 β (t) )
+2
+1
+5
+≤ − 2(1 + δRA ) ≤ ,
+2
+2
+thus, A − 2CδRA ≤ 3 always holds. By combining the above
+1
+1
+constraints, we require δRA < 15
+. Let δRA < 15
+, we obtain
+
+(a)
+
+W (t+1) − W (t) ≤ −2η (t) µ(A − 2CδRA )E[LH (w(t) ) − L⋆
+1
+2
+2 (B − z1 CδRA ) z1
+
++
+
+A − 2CδRA
+
+L
+
+∥δ
+
+(t) 2
+
+∥+
+
+(t)
+1
+1 1−β
+2 ( η (t) L − z2 C) dκz2
+
+A − 2CδRA
+
+L
+
+∆(t)]
+
+1
+z2
+(1 − β (t) )2 σ̄ 2 + dκ (1 − β (t) )G2cov
+L
+L
+
++
+(b)
+
+≤ −2η (t) µ(A − 2CδRA )E[LH (w(t) ) − L⋆ +
+
+z1 (t) 2
+∥δ ∥
+L
+
+1
+z2
+dκz2 (t)
+∆ ] + (1 − β (t) )2 σ̄ 2 + dκ (1 − β (t) )G2cov
+L
+L
+L
+(t) 2 2
+2dκ(1−β (t))G2cov
+(1−β
+)
+σ̄
+(c)
++
+,
+=−2η (t)µ(A−2CδRA)W (t)+
+L
+L
+where (a) and (b) are obtained by satisfying the constraints,
+and (c) is due to the definition of W (t) . Therefore,
++
+
+V (t+1) − V (t)
+2
+
+≤(t̂ + 1) (−2η
+
+(t)
+
+(t)
+
+1
++ (1 − β (t) )2 σ̄ 2
+L
+
+µ(A − 2CδRA )W
+
+2
++dκ (1 − β (t) )G2cov ) + 2t̂ + 1 W (t)
+ L
+
+20(t̂ + 1)2 (A − 2CδRA )
+(a)
+= −
++ (2t̂ + 1) W (t)
+t̂
+t̂ + 1 2 2
+(t̂ + 1)2 2
++La21 (
+) σ̄ + 2a1 dκ
+Gcov
+µt̂
+µt̂
+(b)
+t̂ + 1 2 2
+(t̂ + 1)2 2
+≤La21 (
+) σ̄ + 2a1 dκ
+Gcov
+µt̂
+µt̂
+
+2
+
+RA )
+sure − 20(t̂+1) (A−2Cδ
++ (2t̂ + 1) ≤ 0, for t̂ ≥ 240, is
+t̂
+equivalent to ensuring
+
+(2 − 20(A − 2CδRA ))t̂2 + (1 − 40(A − 2CδRA ))t̂
+
+≤ 0.
+
+Since η (t) L > 0, this implies (28 − 3δRA )(η (t) L)2 + (17 −
+1
+, we require δRA ≥ − 28
+3δRA )η (t) L−1 ≤ 0. Since η (t) L ≤ 24
+15 ,
+which always holds.
+1/2( 1−β
+(t)
+
+1µ
+
+2
+
+RA )
+− 20(t̂+1) (A−2Cδ
++ (2t̂ + 1) ≤ 0 for all possible t̂ = t +
+t̂
+3
+≥
+t
++
+240
+≥
+240
+if δRA < 125
+. This is because making
+a1 L
+µ
+
+for t̂ ≥ 240. Therefore, we require the coefficient of t̂2 to be
+1
+negative, i.e., A − 2CδRA > 10
+, and the larger root of the
+function to be greater than 240, or the coefficient of t̂2 to be
+1
+, and the remaining terms result in
+zero, i.e., A − 2CδRA = 10
+a non-positive value when t̂ ≥ 240. Taking these into account,
+1
+we require A − 2CδRA ≥ 10
+, i.e.,
+3
+.
+(11)
+125
+Now we obtain two constraints on δRA , i.e., Eqs. (10) and (11),
+3
+.
+integrating these gives us δRA ≤ 125
+Then, by following the proving techniques in [34], we are
+3
+able to show that, when δRA ≤ 125
+,
+δRA ≤
+
+E[LH (w(T ) ) − L⋆ ] ≤
+
+4a1 dκG2cov
+2a2 Lσ̄ 2
+2a2 L2 L0
++ 12
++ 12 2 ,
+µ
+µ T
+µ T
+
+where L0 := LH (w(0) ) − L⋆ .
+2) Non-convex: Then, we prove the
+convergence for the
+q
+LH (w(0) )−L⋆
+1
+1
+, 8σ̄
+},
+non-convex case. We set η = min{ 24L
+8LT
+1
+(t)
+(t)
+β = 1 − 24Lη , where a1 = 240. We have η
+≤ 24L .
+Suppose β (t) = β and η (t) = η, from Eq. (9) we have
+W (t+1) − W (t)
+h
+i
+2CδRA h (t) 2i
+≤−η(A−2CδRA)·E ∥∇LH(w(t))∥2 −z1η(B −
+)·E ∥δ ∥
+z1
+
+ h i
+1−β C
+z2
+(1 − β)2 2
+−
+σ̄ +dκ (1−β)G2cov .
+−dκz2 η
+·E ∆(t) +
+ηL
+z2
+L
+L
+From the proof for the strongly-convex setting, we know
+(t)
+that 21 (B − z22 CδRA ) ≥ (A − 2CδRA ) > 0 and 1/2( 1−β
+−
+η (t) L
+1
+1
+z2 C) ≥ A − 2CδRA > 0 always hold if δRA < 15 , thus
+h
+i
+W (t+1) − W (t) ≤ − η(A − 2CδRA ) · E ∥∇LH (w(t) )∥2
++
+
+1
+z2
+(1 − β)2 σ̄ 2 + dκ (1 − β)G2cov ,
+L
+L
+
+1
+with δRA < 15
+. By rearranging terms, we have
+h
+i
+η(A − 2CδRA ) · E ∥∇LH (w(t) )∥2
+
+1
+z2
+(1 − β)2 σ̄ 2 + dκ (1 − β)G2cov .
+L
+L
+Since β = 1 − 24ηL, after averaging over t ∈ {0, · · · , T−1},
+≤W (t) − W (t+1) +
+
+T −1
+i
+1 X h
+E ∥∇LH (w(t) )∥2
+T t=0
+
+≤
+
+W (0) − W (T )
+(1 − β)2 σ̄ 2
+dκz2 (1 − β)G2cov
++
++
+η(A − 2CδRA )T Lη(A − 2CδRA ) Lη(A − 2CδRA )
+
+13
+
+(a)
+
+W (0) − W (T )
+242 ηL
+24dκz2
++
+σ̄ 2 +
+G2 ,
+η(A − 2CδRA )T
+A − 2CδRA
+A − 2CδRA cov
+
+privacy analysis, we use subsampling without replacement
+as our sampling method. Other sampling methods, such as
+where (a) is by plugging in 1 − β = 24ηL. By following subsampling with replacement or Poisson subsampling, can
+(0)
+the argument in [34] and initializing mi = 0, we know also be used, but they require separate analyses. We use the
+∆(0) = 0, ∥δ (0) ∥2 = ∥∇LH (w(0) )∥2 , and ∥∇LH (w(0) )∥2 ≤ following proposition.
+Post-processing is another important property guaranteed by
+2L(LH (w(0) )−L⋆ ) since LH is L-smooth. Thus, by plugging
+1
+differential privacy, including RDP. Let f be a mechanism
+, we obtain
+in z1 = 16
+that satisfies (α, ϵRDP )-RDP, and let g be a randomized
+z1
+z2
+W (0)−W (T ) ≤ W (0) ≤ LH (w(0) )−L⋆ + ∥δ (0) ∥2 +dκ · ∆(0) mapping. Then RDP is preserved under post-processing [52],
+L
+L
+ i.e., g(f (·)) also satisfies (α, ϵRDP )-RDP.
+z1
+9
+(0)
+(0)
+⋆
+(0) 2
+LH (w ) − L⋆ . Now we are ready to prove Theorem 1
+= LH (w )−L + ∥∇LH (w )∥ ≤
+L
+8
+Privacy. In each iteration, we apply Gaussian noise to the
+(0)
+⋆
+Let L0 := LH (w ) − L . By plugging this bound, we obtain gradients, which are directly computed from the corresponding
+datasets. All operations- including momentum computation,
+T −1
+i
+1 X h
+(t) 2
+compression, robust aggregation, decompression, and model
+E ∥∇LH (w )∥
+T t=0
+update- are considered post-processing of the perturbed gra3
+2
+dients. Thanks to the post-processing and the composition
+9L0
+24 ηL
+2 dκ
+≤
++
+σ̄ 2 +
+G2cov .
+property of differential privacy, it suffices to compute the DP
+8T η(A − 2CδRA ) A − 2CδRA
+A − 2CδRA
+guarantee up to the noise addition step for a single iteration,
+We notice that only the first two terms depend on η, and the
+and then apply composition to obtain the overal DP guarantee
+9L0
++
+optimal balance is obtained by minimizing 8T η(A−2Cδ
+)
+RA
+for the full algorithm.
+q
+242 ηL
+L0
+2
+Consider two adjacent datasets D and D′ . Two minibatches
+A−2CδRA σ̄ . Thus, we choose η =q 83 LT σ̄ 2 .
+(t)
+′(t)
+D̃i ⊆ D and D̃i ⊆ D′ are sampled without replacement,
+L0
+1
+1
+, 8σ̄
+},
+thus,
+we
+obtain
+Since we set η = min{ 24L
+(t)
+′(t)
+8LT
+such that D̃i and D̃i differ by at most one element. Let
+(t)
+′(t)
+T −1
+i
+gi and gi , denote the averaged clipped gradients computed
+1 X h
+E ∥∇LH (w(t) )∥2
+from the respective minibatches. From the proof for Theorem
+T t=0
+(t)
+′(t)
+= ∆2 ,
+C.1 in [34], we know that ∥gi − gi ∥ ≤ 2C
+√
+ϱ
+(a)
+P
+3
+36σ̄ 2LL0
+1
+27LL0
+(t)
+′(t)
+1
+(t)
+2
+where gi = ϱ x∈D̃(t) Clip(∇ℓ(w ; x, y), C) and gi =
+√
++ dκGcov ),
++
+≤
+(
+i
+P
+A − 2CδRA
+T
+2
+T
+1
+(t)
+; x, y), C). Therefore, by Proposi′(t) Clip(∇ℓ(w
+q
+ϱ
+x∈D̃i
+L0
+1
+1
+2 α
+where (a) uses the facts that η ≤ 8σ̄ 8LT , and η = tion 6, a single iteration of R O B AJ O L is (α, ( 2C
+)-RDP.
+2
+ϱ ) 2σDP
+8LT
+1
+8LT
+max{24L, 8σ̄ L0 } ≤ 24L+8σ̄ L0 , and 0 < A−2CδRA ≤ 2 . Following the ideas from Theorem C.1 and 4.1 in [34], we
+0
+(t)
+can prove that, there exists a constant χ > 0 such that, for
+Since w̃ is randomly
+chosen
+ from {w(t), · ·2·, w }, we have
+PT −1
+1
+size ϱ ( i.e., ϱρ is sufficiently small),
+E [∇LH (w̃)] = T t=0 E ∥∇LH (w )∥ . Hence, if 0 < sufficiently small batch 
+
+√
+1
+ϱ T log(1/δDP )
+δRA < 15 , we obtain the above bound.
+2C
+when σ
+≥ χ max 1,
+, R O B AJ O L sat=
+
+DP
+
+C. Proof of Theorem 1
+First, we present some important preliminaries.
+Proposition 4 (Composition of RDP [52]). Let f be an
+(α, ϵRDP )-RDP mechanism that takes a dataset as input, and
+f ′ be an (α, ϵ′RDP )-RDP mechanism that takes both the dataset
+and the output of f as input. Then, their composition satisfies
+(α, ϵRDP + ϵ′RDP )-RDP.
+Proposition 5 (l2 -sensitivity [54]). For a given randomized
+mechanism f , the l2 -sensitivity of f is defined as ∆2 :=
+max ∥f (D) − f (D′ )∥, where D and D′ are adjacent datasets.
+Proposition 6 (RDP for Gaussian Mechanisms [52]). Let f be
+a mechanism with l2 -sensitivity at most ∆2 . Then the Gaussian
+∆2
+2
+mechanism f + N (0, σDP
+Id ) satisfies (α, 2σ22 α)-RDP.
+DP
+
+Subsampling is a privacy amplification method and is a
+popular mechanism in machine learning, e.g., SGD. Since we
+perform subsampling before computing gradients and adding
+noise, we must analyze RDP under subsampled mechanisms.
+Different subsampling methods give different privacy amplification guarantees [73], [76]. For the clarity in the differential
+
+ϱ
+
+ρϵDP
+
+isfies (ϵDP , δDP )-DP.
+Convergence. From the proof of Proposition 2 and Observation 1, we know that, given AGG being (b, κ)-robust averaging,
+1
+w.p. 1− |V|
+, the composition C OMPRESS ◦AGG ◦D ECOMPRESS
+provides a (b, κ′ , δRA )-robust averaging, with κ′ = (1+ϵJL )2 κ
+and δRA = ϵ2JL . By plugging this result in Proposition 3, we
+obtain the conditions on the additional error term δRA for the
+strongly convex case and the non-convex case.
+Communication. Due to the use of the Johnson-Lindenstrauss
+transform as the compression method C OMPRESS, with the
+compression rate kd , the noisy momentum vectors mi ∈ Rd ,
+for i ∈ [n], are compressed to m̂i = Rmi , where m̂i ∈ Rk ,
+before being sent to the federator for robust aggregation. The
+federator then returns a compressed aggregated vector, also in
+Rk , to the clients. Hence, the communication cost is reduced
+proportionally to the compression rate in both the uplink and
+downlink directions.
+
+

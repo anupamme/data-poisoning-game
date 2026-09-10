@@ -1,0 +1,32 @@
+{
+  "title": "Identify Backdoored Model in Federated Learning via Individual Unlearning",
+  "c_d_route": "hyperparameter-sweep",
+  "criteria": {
+    "C-a": {
+      "code": "NO",
+      "quote": "reducing inconsistencies in unlearning behavior caused by non-IID data and effectively exposing backdoored models during the unlearning process. Finally, MASA filters out model updates with unusually large unlearning losses using a novel hyperparameterefficient anomaly detectio[n]",
+      "locator": "§1; the mechanism is individual unlearning as a backdoor detector, and the two other stages exist to serve it -- pre-unlearning model fusion produces the input on which unlearning behaves consistently, and the anomaly detector reads the unlearning loss the detector produces. The fusion parameter lambda interpolates between the local model and the aggregated update (§4), which is the detector's own machinery rather than a second defense against poisoned updates"
+    },
+    "C-b": {
+      "code": "NO",
+      "quote": "reducing inconsistencies in unlearning behavior caused by non-IID data and effectively exposing backdoored models during the unlearning process.",
+      "locator": "§1; the reason given is that fusion makes the unlearning signal legible, i.e. a serve-the-detector reason for a stage of one mechanism, not a reason for pairing two defenses each independently effective or covering complementary threats. No such pairing reason appears in the paper"
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "Performance of different methods in cross-device FL settings on CIFAR-10 dataset under DBA and Lie attacks. DBA Lie Method MA↑ BA↓ RA↑ MA↑ BA↓ RA↑ Avg. BA↓ Avg. RA↑",
+      "locator": "Table 3 caption and header; the evidence is the assembled system's own main accuracy, backdoor accuracy and robust accuracy, read against FedAvg and defense baselines under Badnet, DBA, PGD and Lie attacks"
+    },
+    "C-d": {
+      "code": "YES",
+      "quote": "when λ = 0.3, the TPR is relatively lower compared to cases with higher λ values. This suggests that the aggregated model update predominates in the local models, compromising their unique features excessively. Therefore, we recommend selecting the value of λ between just above 0.5 and 1.0.",
+      "locator": "§5 / Table 4, \"TPR and FPR of MASA with different λ and δ on non-IID CIFAR-10 datasets under Badnet, DBA, and PGD attacks\"; lambda parameterizes the upstream pre-unlearning fusion and delta the downstream anomaly filter's strictness, and the lambda sweep varies the upstream stage with the unlearning step and the filter held fixed, read off the detector's own TPR/FPR"
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "This suggests that the aggregated model update predominates in the local models, compromising their unique features excessively.",
+      "locator": "§5, explaining the low-lambda TPR; a second attributional claim about the same stage's endpoint follows in the same passage, \"It is important to note that when λ = 1.0, where pre-unlearn[ing fusion is effectively absent]\""
+    }
+  },
+  "coder_note": "C-a = NO ON THE FedZZ AND 2207.01982 READING: ONE MECHANISM REALIZED IN THREE STAGES. MASA is individual unlearning used as a backdoor detector. Pre-unlearning fusion exists so that unlearning behaves consistently under non-IID data, and the paper's own words for its purpose are exposing backdoored models DURING the unlearning process; the anomaly detector consumes the unlearning loss that the detector itself produces. Neither stage resists poisoned updates on its own, so under Amendment 3's purpose test neither counts toward C-a's \"two or more\", and C-a codes NO on one mechanism. PRIMARY = NO. This is the third paper in the frame to code NO on this reading and the three are consistent: a preparation stage feeding a single detector is not a composition, and C-a's exclusion of \"a single mechanism with hyperparameters\" is what keeps the criterion from swallowing every staged detector.\n\nC-d = YES AND THE ROUTE IS THE FRAME'S SIXTH HYPERPARAMETER ACCIDENT. Table 4 sweeps lambda and delta jointly, but only the lambda half is admissible: lambda governs the upstream fusion, delta the downstream filter, and it is the lambda sweep -- downstream unlearning and detector fixed -- that satisfies C-d. The paper then reads a mechanism explanation off it, in the rubric's own direction: at low lambda the aggregated update dominates and the detector's true positive rate falls. So this row is C-d = YES on the strict reading, without rule 4.\n\nThe recurrence is now the audit's most stable secondary finding. Six coded papers reach C-d through a parameter of a stage they introduced -- SHARE (cluster size, reclustering rounds), zPROBE (number of user clusters), G2uardFL (graph-construction coefficients), FedZZ (number of zones), MASA (fusion weight lambda) and LASA's Appendix 7.6-7.7 (sparsification level) -- and not one presents the sweep as identification. In every case the sweep exists because the authors had to recommend a value: MASA's sentence ends \"Therefore, we recommend selecting the value of λ between just above 0.5 and 1.0.\" The contrast our own Prop. prop:identification_full asks for arrives in this literature as a by-product of hyperparameter guidance, and BRFL, which has the same kind of knob and never sweeps it, shows how easily it does not arrive at all. A5 should say exactly this: where the identifying contrast exists it is usually incidental, which is a weaker claim than \"it is absent\" and a more defensible one.\n\nNO COMPONENT ABLATION EXISTS IN THIS PAPER. A targeted search for a w/o-fusion or fusion-removed arm returns nothing; Table 4's parameter sweep is the only within-defense variation, which is why the route is hyperparameter-sweep and not component-contrast. Had lambda = 1.0 been reported as an arm of an ablation the route would be the same either way, and the paper notes that endpoint in prose without treating it as one."
+}

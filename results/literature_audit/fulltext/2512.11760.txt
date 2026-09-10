@@ -1,0 +1,1095 @@
+arXiv:2512.11760v1 [cs.LG] 12 Dec 2025
+
+SpectralKrum: A Spectral-Geometric Defense
+Against Byzantine Attacks in Federated Learning
+Aditya Tripathi
+
+Karan Sharma
+
+Rahul Mishra
+
+Tapas Kumar Maiti
+
+DA-IICT
+Gandhinagar, India
+202318046@dau.ac.in
+
+DA-IICT
+Gandhinagar, India
+202318018@dau.ac.in
+
+IIT Patna
+Patna, India
+rahul mishra@iitp.ac.in
+
+DA-IICT
+Gandhinagar, India
+tapas kumar@dau.ac.in
+
+Abstract—Federated Learning (FL) distributes model training
+across clients who retain their data locally, but this architecture
+exposes a fundamental vulnerability: Byzantine clients can inject
+arbitrarily corrupted updates that degrade or subvert the global
+model. While robust aggregation methods (including Krum,
+Bulyan, and coordinate-wise defenses) offer theoretical guarantees under idealized assumptions, their effectiveness erodes
+substantially when client data distributions are heterogeneous
+(non-IID) and adversaries can observe or approximate the
+defense mechanism.
+This paper introduces SpectralKrum, a defense that fuses
+spectral subspace estimation with geometric neighbor-based selection. The core insight is that benign optimization trajectories, despite per-client heterogeneity, concentrate near a lowdimensional manifold that can be estimated from historical
+aggregates. SpectralKrum projects incoming updates into this
+learned subspace, applies Krum selection in the compressed
+coordinates, and filters candidates whose orthogonal residual
+energy exceeds a data-driven threshold. The method requires no
+auxiliary data, operates entirely on model updates, and preserves
+FL’s privacy properties.
+We evaluate SpectralKrum against eight robust baselines
+across seven attack scenarios on CIFAR-10 with Dirichletdistributed non-IID partitions (α = 0.1). Our experiments,
+spanning over 56,000 training rounds, reveal a nuanced picture: SpectralKrum demonstrates competitive robustness against
+directional and subspace-aware attacks (adaptive-steer, bufferdrift) but provides limited advantage over simpler statistical
+methods under label-flip and min-max perturbations where malicious updates remain spectrally indistinguishable from benign
+ones. Rather than claiming universal superiority, we characterize
+precisely when spectral geometry aids Byzantine defense and
+document failure modes that inform future research directions.
+
+I. I NTRODUCTION
+Federated Learning (FL) partitions model training across
+a network of clients, each holding private data that never
+leaves its device [12]. The server aggregates locally computed
+updates (typically gradients or parameter deltas) to refine a
+shared global model. This paradigm powers applications from
+mobile keyboard prediction [21] to cross-institutional medical
+imaging [22], but it introduces a critical security challenge:
+the server cannot verify the provenance or correctness of any
+individual update.
+A Byzantine client, whether compromised by an adversary
+or simply malfunctioning, may submit arbitrary vectors as
+its contribution. With even a modest fraction of Byzantine
+Code is available at: https://github.com/EdddTri/Spectral Krum
+
+participants, naive averaging fails catastrophically: the global
+model can diverge, suffer degraded accuracy, or acquire targeted backdoor behaviors that activate only on adversarychosen inputs.
+A. The Geometric Problem Under Non-IID Data
+Most robust aggregation guarantees assume that honest
+clients’ updates cluster tightly around a shared mean. This
+assumption rarely holds in practice [11]. Real FL deployments
+exhibit pronounced data heterogeneity: a user’s smartphone
+reflects their particular app usage patterns; a hospital’s imaging
+data skews toward its regional patient demographics. Formally,
+when client data follows a Dirichlet distribution with concentration α ≪ 1, individual clients may observe only a subset of
+classes, producing gradients that point in legitimately different
+directions.
+This heterogeneity fundamentally complicates Byzantine
+defense:
+• Benign gradients spread across parameter space, potentially
+spanning multiple distinct modes.
+• Distance-based methods like Krum, designed to select the
+update nearest its neighbors, may oscillate between benign
+subgroups or mistake a centrally-positioned attack for the
+honest consensus.
+• Coordinate-wise defenses (trimmed mean, median) ignore
+correlations between parameters, allowing adversaries to
+craft perturbations that are small in each coordinate but large
+in aggregate.
+The geometric intuition behind classical defenses thus
+breaks down precisely when it is most needed.
+B. Spectral Structure as a Defense Signal
+Despite this heterogeneity, FL optimization exhibits a remarkable regularity: aggregated updates from honest clients,
+viewed across multiple rounds, trace a trajectory that lies
+near a low-dimensional manifold [23]. The dominant principal
+components of this trajectory capture directions of shared
+descent, while noise and client-specific variation concentrate
+in the residual subspace.
+This observation suggests a complementary defense signal.
+An update that deviates substantially from the historical subspace, measured by its orthogonal energy, is geometrically
+anomalous, regardless of how close it may appear to any single
+
+neighbor. Spectral methods like DnC-PMF exploit this insight,
+but they remain vulnerable to adversaries who deliberately
+project their malicious updates into the benign subspace,
+matching the spectral signature while steering the model in
+a harmful direction.
+C. Contributions and Scope
+We propose SpectralKrum, a defense that integrates spectral subspace estimation with Krum’s neighbor-based selection. The method:
+1) Maintains a rolling buffer of past aggregated updates and
+constructs a trimmed PCA subspace capturing benign optimization dynamics.
+2) Projects incoming client updates into this subspace and
+applies Krum selection in the compressed, low-dimensional
+coordinates where benign clustering is tighter.
+3) Filters the Krum-selected candidates using an orthogonal
+energy threshold calibrated from the historical distribution
+of residuals.
+Crucially, SpectralKrum operates without access to client
+data, labels, or any trusted root dataset, preserving FL’s core
+privacy guarantees.
+Our evaluation on CIFAR-10 with highly non-IID Dirichlet
+partitions (α = 0.1) reveals both the promise and the limits
+of this approach. SpectralKrum matches or exceeds baseline
+robustness against directional attacks (sign-flip) and subspaceaware adversaries (adaptive-steer, buffer-drift) that introduce
+detectable spectral anomalies. However, it provides no consistent advantage over simpler statistical aggregators when
+malicious updates remain spectrally indistinguishable from
+benign ones, as occurs with label-flip poisoning and carefully
+calibrated min-max perturbations.
+Rather than claiming a universal solution, we contribute:
+• A principled algorithm combining spectral and geometric
+robustness.
+• A rigorous empirical study across seven attack families and
+eight robust baselines.
+• A characterization of when spectral defenses succeed, when
+they fail, and what gaps remain for future work.
+II. R ELATED W ORK
+The challenge of robust aggregation in distributed learning
+intersects several research threads: Byzantine-tolerant distributed optimization, robust statistics, adversarial machine
+learning, and dimensionality reduction. We review these areas
+with attention to how each informs, and where each falls short
+of, the non-IID FL setting.
+A. Byzantine-Tolerant Distributed Optimization
+The theoretical foundations of Byzantine robustness trace to
+distributed consensus problems, where the goal is to compute
+a function of honest participants’ inputs despite arbitrary
+failures. Lamport’s original formulation [1] established that
+tolerating f Byzantine nodes requires at least 3f + 1 total
+participants under certain communication models. In the ML
+setting, the analogous question is whether robust gradient
+descent can converge despite corrupted updates.
+
+1) Coordinate-wise Aggregation: The simplest robust estimators operate independently on each parameter coordinate.
+Coordinate Median [27] replaces averaging with the median;
+Trimmed Mean [9] discards the largest and smallest fraction of
+values before averaging. Both inherit the breakdown point [19]
+of their scalar counterparts: they tolerate up to ⌊n/2⌋ − 1
+adversarial values per coordinate. Recent work on robust mean
+estimation [10] further refines these guarantees.
+The limitation is fundamental. By treating coordinates independently, these methods ignore correlations in the gradient
+structure. An adversary can construct an attack vector that
+is small in every coordinate yet large in norm, escaping
+coordinate-wise detection while significantly perturbing the
+aggregate. Under non-IID conditions, this vulnerability is
+amplified: legitimate coordinate-wise variation already approaches the detection threshold, leaving little margin for
+filtering attacks.
+2) Geometric
+Median: The geometric median µ̂ =
+P
+arg minv i ∥v − di ∥2 provides a dimension-independent robustness guarantee [4] and is a natural choice when coordinate
+independence is untenable. Weiszfeld’s algorithm [18] gives an
+efficient iterative solution in most cases.
+In practice, however, the geometric median suffers from
+two drawbacks in FL. First, when benign updates form multiple clusters (as under non-IID data), the geometric median
+converges to a “compromise” point that may represent no
+client’s actual descent direction, slowing convergence. Second,
+iterative computation is expensive for the high-dimensional
+parameter vectors typical of modern neural networks.
+3) Krum and Multi-Krum: Blanchard et al. [2] introduced
+Krum as a selection-based alternative: rather than averaging,
+choose the single update whose sum of distances to its
+n − f − 2 nearest neighbors is smallest. The intuition is that
+honest updates cluster, while Byzantine updates are isolated
+or collusive outliers. Multi-Krum generalizes this by selecting
+the top-k candidates and averaging them.
+Krum’s guarantees assume tight benign clustering, precisely
+the condition violated under non-IID data. When benign
+updates spread across multiple modes, Krum may oscillate between modes or select an adversary positioned at the geometric
+center of the dispersed benign set. Our experiments confirm
+this instability: FullKrum achieves only 26–28% mean accuracy across attacks (Table II), worse than simple coordinate
+medians.
+4) Bulyan: Mhamdi et al. [3] proposed Bulyan as a twophase defense: iteratively apply Krum to select n − 2f
+candidates, then apply coordinate-wise trimmed mean to the
+selection. This composition inherits some robustness from both
+components, but also their limitations: Krum’s sensitivity to
+non-IID dispersion and trimmed mean’s coordinate independence. Bulyan additionally requires n ≥ 4f + 3 participants,
+a constraint that may not hold in small cohorts.
+B. Spectral and Subspace Methods
+A distinct line of work observes that benign gradient
+trajectories occupy a low-dimensional subspace, motivating
+
+defenses that detect anomalies in spectral coordinates.
+1) DnC-PMF and DnC-Cluster:
+Shejwalkar and
+Houmansadr [5] introduced Divide-and-Conquer defenses
+that project updates into a PCA subspace, cluster them
+(DnC-Cluster) or filter by projection magnitude (DnC-PMF),
+and aggregate only the selected subset. These methods can
+reject attacks that introduce variance orthogonal to the benign
+subspace.
+The vulnerability is equally clear: an adversary with knowledge of the subspace can project its malicious update into
+that subspace, evading detection. Our adaptive-steer attack
+explicitly implements this strategy, demonstrating that spectral
+consistency alone is insufficient.
+2) Historical Subspace Estimation: Rather than estimating
+the subspace from the current round’s updates (which may
+include adversaries), SpectralKrum uses a rolling buffer of
+past aggregates, each presumably less contaminated because
+it is itself the output of robust aggregation. This temporal
+smoothing yields a more stable subspace estimate, though it
+introduces latency: the subspace adapts slowly to legitimate
+distributional shifts.
+C. Model Poisoning and Backdoor Attacks
+Byzantine attacks in FL fall into two broad categories. Untargeted (or model-poisoning) attacks aim to degrade overall
+accuracy [8]; examples include sign-flip, where the adversary
+submits −γ · g for honest gradient g, and min-max [6], where
+the adversary computes the worst-case perturbation within the
+benign variance envelope.
+Targeted (or backdoor) attacks [7] seek to implant behavior
+triggered by specific inputs while preserving accuracy on
+clean data. A semantic backdoor embeds a visual trigger
+(e.g., a pixel patch) in training images, relabeling them to a
+chosen target class. Because the resulting gradient points in a
+legitimately useful direction for the trigger distribution, it may
+exhibit low orthogonal energy and evade spectral filters.
+D. Defenses Requiring Trusted Data
+Several recent defenses assume access to a small, clean
+“root” dataset held by the server. FLTrust [13] computes a
+trusted gradient on this root data and re-weights client updates
+by their cosine similarity to the trusted direction. While
+effective, this assumption is often impractical in cross-device
+FL [20], where the server has no labeled data and acquiring
+such data undermines the privacy motivation of federation.
+SpectralKrum avoids this assumption entirely: it operates
+solely on the model updates, requiring no auxiliary data or
+labels.
+E. Positioning SpectralKrum
+Existing defenses each address part of the Byzantine problem:
+• Coordinate-wise methods handle scalar outliers but ignore
+directionality.
+• Geometric methods (Krum, median) exploit clustering but
+fail under non-IID dispersion.
+
+Spectral methods detect orthogonal anomalies but succumb
+to subspace-aware imitation.
+SpectralKrum combines spectral projection (to tighten benign clustering and detect orthogonal anomalies) with Krum
+selection (to exploit neighbor structure in the compressed
+space). Our experiments test whether this combination yields
+benefits beyond its components, and under what conditions it
+does not.
+•
+
+III. M ETHOD : S PECTRAL K RUM
+SpectralKrum addresses a fundamental tension in
+Byzantine-robust FL: geometric defenses like Krum assume
+tight clustering of honest updates, while spectral defenses
+like DnC assume anomalies introduce orthogonal variance.
+Neither assumption holds reliably under non-IID data with
+sophisticated adversaries. Our approach combines both
+signals: applying Krum in a learned spectral subspace where
+clustering is tighter, while filtering by orthogonal energy to
+catch updates that evade geometric selection.
+A. Problem Setting
+Each FL round, the server receives updates {di }ni=1 ⊂ Rd
+from n clients, of which up to f may be Byzantine. The goal is
+to compute an aggregate a that approximates the honest mean.
+SpectralKrum achieves this through four stages: (1) estimate a
+benign subspace from historical aggregates, (2) project current
+updates into this subspace, (3) run Krum selection in the
+compressed coordinates, and (4) filter by orthogonal energy
+before averaging.
+B. Historical Subspace Estimation
+A key design choice in SpectralKrum is estimating the
+benign subspace from past aggregates rather than currentround updates. Let B = {g (t−B+1) , . . . , g (t) } denote the
+rolling buffer of the B most recent aggregated updates. Since
+each g (·) is itself the output of robust aggregation, the buffer
+is less contaminated than raw client submissions.
+Stacking the buffer as X ∈ RB×d , we center by subtracting
+the coordinate-wise mean (or median for additional robustness)
+and trim rows by ℓ2 norm to reduce the influence of any
+past aggregates that may have been adversarially biased.
+Specifically, we discard the α-fraction of rows with the largest
+and smallest norms, retaining the central (1 − 2α) fraction.
+C. PCA Subspace Construction
+On the trimmed, centered buffer Xk , we compute a rank-r
+PCA [15]:
+U = PCA(Xk , r) ∈ Rd×r ,
+
+U ⊤ U = Ir .
+
+The columns of U span the estimated benign subspace, and
+P = U U ⊤ is the corresponding projection operator. The
+trimming step follows robust estimation principles [14]. If the
+buffer is too small (|Xk | < 2) or r exceeds the available rank,
+we fall back to coordinate-wise median aggregation for that
+round.
+
+D. Orthogonal Energy and Threshold Calibration
+For any update d, define its orthogonal energy as the norm
+of its component outside the benign subspace:
+⊤
+
+ρ(d) = ∥d − U U d∥2 .
+Intuitively, ρ(d) measures how much of d lies in directions
+not captured by benign optimization history. We calibrate
+a threshold τ as the q-th quantile (default q = 0.98) of
+orthogonal energies computed over the buffer:
+
+τ = quantileq {ρ(g (j) )}B
+j=1 .
+E. Projection and Selection
+Given incoming updates {di }, we project each to spectral
+coordinates zi = U ⊤ di ∈ Rr . In this compressed space, we
+compute pairwise distances and apply Krum: select the k =
+n − f − 2 updates whose sum of distances to their n − f − 2
+nearest neighbors is smallest. Denote this set as S.
+F. Krum in Spectral Coordinates
+Instead of running Krum on full-dimensional updates, SpectralKrum applies Krum selection to the low-dimensional projections {zi }:
+S = KrumSelect({zi }, f ).
+In low dimensions, benign updates cluster more tightly,
+adversarial directionality is suppressed, and distance computations avoid the pathologies of high-dimensional concentration [24]. Reliability depends on the accuracy of the learned
+subspace and the adversary’s sophistication.
+
+Algorithm 1 SpectralKrum Algorithm
+1: Input: updates d1 , . . . , dn , buffer X, PCA dimension r,
+
+trim fraction α, quantile q, Krum Byzantine parameter f
+2: Output: aggregated update a
+3: procedure B UILD S UBSPACE(X)
+4:
+if |X| = 0 then
+5:
+return (∅, 0)
+6:
+end if
+7:
+Center X using mean or median to get Xc
+
+Compute norms ηt = ∥Xc,t ∥2
+Trim α fraction to get Xk
+if |Xk | < 2 then
+return (∅, 0)
+end if
+Compute PCA with rank r to obtain basis U
+14:
+Compute residuals ρ(g (t) )
+15:
+τ ← quantileq (ρ)
+16:
+return (U, τ )
+17: end procedure
+8:
+9:
+10:
+11:
+12:
+13:
+
+18: (U, τ ) ← B UILD S UBSPACE (X)
+19: for i = 1 to n do
+
+if U ̸= ∅ then
+zi ← U ⊤ di
+ρi ← ∥di − U zi ∥2
+else
+zi ← di
+25:
+ρi ← 0
+26:
+end if
+27: end for
+20:
+21:
+22:
+23:
+24:
+
+G. Guard Filtering
+
+28: S ← KrumSelect({zi }, f )
+
+We filter S by orthogonal energy: G = {i ∈ S : ρ(di ) ≤ τ }.
+If G becomes too small (e.g., attackers positioned themselves in subspace), we retain the minimal-residual candidates:
+X
+G = arg min
+ρ(di ),
+
+29: G ← {i ∈ S : ρi ≤ τ }
+30: if |G| = 0 then
+31:
+G ← {arg mini ρi }
+32: end if
+
+T ⊆S
+|T |=k i∈T
+
+where k = guard min kept.
+This fallback ensures aggregation continues even when
+Krum selects suspicious candidates. Adaptive subspace-aware
+adversaries may still construct updates whose orthogonal
+energy lies within the benign threshold, limiting the filter’s
+effectiveness.
+H. Aggregation
+Finally, compute:
+a=
+
+1 X
+di .
+|G|
+i∈G
+
+This aggregated update is appended to the buffer (evicting
+the oldest entry), closing the loop.
+I. Full Algorithm Pseudocode
+J. Hyperparameter Analysis
+Key hyperparameters:
+
+1
+33: a ← |G|
+
+▷ fallback
+
+▷ retain smallest residual
+
+P
+
+i∈G di
+
+34: Append a to buffer X (evict oldest if needed)
+35: return a
+
+a) r (subspace dimension).: Larger r captures more
+benign variation but reduces spectral contrast with malicious
+updates. Range: 20 to 100 for CNNs.
+b) B (buffer size).: Larger buffers improve stability but
+slow adaptation. B = 50 balances these.
+c) trim frac.: Trimming 5 to 15% of extremes stabilizes
+PCA.
+d) q (orthogonal energy quantile).: Higher q tightens the
+guard. q = 0.98 works well.
+e) warmup rounds.: Early rounds use median aggregation before enough history exists.
+f) f byzantine.: Krum’s assumed adversary count.
+K. Why SpectralKrum Works
+SpectralKrum addresses existing weaknesses:
+
+Non-IID drift: projection aligns benign updates in spectral
+space.
+• Directional attacks: spectral projection suppresses adversarial innovation directions.
+• Subspace-aware attacks: orthogonal energy guard detects
+spectral mimicry failures.
+• Geometric stability: Krum benefits from reduced dimensionality.
+However, adaptive adversaries can mimic both spectral coordinates and orthogonal energy profiles, limiting effectiveness.
+This reveals fundamental limitations of spectral defenses.
+•
+
+C. Min-Max Attack
+The min-max attack [6] maximizes deviation under norm
+constraints from benign statistics. With µ and σ as the mean
+and variance of benign updates:
+dminmax = µ − cσ,
+for constant c > 0. The attack stays within benign variation
+range, often evading trimming and spectral guards.
+This tests whether SpectralKrum can distinguish adversarial
+updates operating entirely inside the benign subspace.
+
+IV. ATTACK M ODEL AND A DVERSARIAL S TRATEGIES
+Byzantine clients aim to corrupt the aggregated update. We
+consider a strong adversary: up to f clients per round behave
+arbitrarily, constrained only to submit vectors of the correct
+dimensionality. Attacks may be adaptive (responding to the
+defense) or agnostic (fixed manipulations).
+We study two attack families:
+• Classical model-poisoning: simple heuristics like sign-flip,
+label-flip, min-max.
+• Spectrally informed: attacks that exploit or mimic benign
+spectral structure, challenging PCA-based defenses.
+We also evaluate a semantic backdoor attack.
+We adopt a standard Byzantine threat setting in which up to
+f out of n clients per round are malicious. Malicious clients
+may collude and share information, possess white-box access
+to the global model, and attempt to reverse-engineer or estimate defense features such as PCA subspaces or orthogonalenergy thresholds; however, they do not have access to private
+client data from benign users. The adversary’s goal varies by
+attack type: maximizing global loss (untargeted poisoning),
+forcing misclassification on certain classes (label-flip poisoning), implanting a targeted backdoor, steering the global model
+along controlled adversarial directions, or evading spectral
+and geometric outlier detection. SpectralKrum aims to provide
+robustness against this broad range of adversaries, including
+those that manipulate the spectral geometry of their updates.
+We now describe each attack in detail.
+A. Sign-Flip Attack
+The simplest attack negates the benign gradient [28]: for
+benign update b, submit d = −b. This disrupts naive averaging
+and slows learning. Coordinate-wise defenses resist it, but
+Krum can be destabilized under non-IID dispersion.
+Sign-flip is a baseline, not a sophisticated attack.
+
+D. Buffer-Drift Attack (Subspace-Aware)
+This attack exploits SpectralKrum’s historical buffer X =
+{g (1) , . . . , g (B) }. The adversary gradually shifts the PCA
+subspace toward an adversarial direction by injecting small
+perturbations:
+(t)
+
+dmal = b(t) + ϵ · vadv ,
+where b(t) is the benign update, vadv is the adversarial
+direction, and ϵ increases slowly. By keeping ϵ below τ ,
+updates pass the guard while biasing the trajectory over time.
+This challenges defenses relying on historical PCA structure.
+E. Adaptive-Steer Attack (Subspace-Aware)
+Adaptive-steer is the strongest attack in our suite and is
+specifically crafted to exploit spectral defenses. It follows a
+multi-step construction:
+a) Step 1: Estimate the benign PCA subspace.: The
+adversary computes or approximates the PCA basis Ub from
+previously observed server broadcasts. Even partial or noisy
+estimates suffice.
+b) Step 2: Proposed malicious direction.: Let vadv denote
+the intended poisoning direction (e.g., negative benign mean
+direction or targeted class-steering direction).
+c) Step 3: Projection into benign subspace.: Compute:
+v∥ = Ub Ub⊤ vadv ,
+
+v⊥ = vadv − v∥ .
+
+d) Step 4: Orthogonal-energy matching.: Scale the orthogonal component to ensure it remains below the τ inferred
+from historical benign residuals:
+
+B. Label-Flip Attack
+Malicious clients permute local labels [29] (e.g., y ← (y +
+1) mod 10) and train normally. The resulting gradients deviate
+from benign ones but may not produce large orthogonal
+energy, since they can remain aligned with benign principal
+components.
+This attack tests spectral geometry limits: if malicious
+updates lie within the benign subspace, spectral filtering fails.
+
+′
+v⊥
+=
+
+τ
+v⊥ ,
+∥v⊥ ∥2 + ϵ
+
+where ϵ prevents division by zero.
+e) Step 5: Final malicious update.: Construct:
+′
+dadv = v∥ + v⊥
+.
+
+f) Why this evades spectral defenses.: Because v∥ lies
+′
+inside the benign PCA subspace and v⊥
+is carefully scaled to
+imitate benign orthogonal energy, the malicious update:
+appears spectrally consistent,
+matches benign orthogonal-energy statistics,
+• evades PCA filtering in DnC-PMF, DnC-Cluster, and others.
+•
+•
+
+This attack inspired SpectralKrum’s guard mechanism,
+which applies Krum selection after projection and orthogonal
+energy filtering in the original space, combining geometric and
+spectral checks.
+F. Semantic Backdoor Attack
+Backdoor attacks modify behavior only on inputs with a
+trigger pattern. An adversary inserts trigger patches into local
+training images, relabels them to a target class, and trains
+gradients that associate trigger with target.
+This is realistic for edge-device FL (e.g., stickers in phone
+images). Backdoors challenge aggregation defenses because
+gradients remain low-norm, orthogonal energy stays small, and
+the attack is task-specific rather than purely directional.
+SpectralKrum provides partial resilience through geometric
+filtering but backdoors remain difficult.
+G. Why We Omit the Full DnC Attack
+The original DnC attack [5] requires high coordination:
+malicious updates must be jointly optimized to form coherent
+clusters that confuse clustering-based detection. This needs
+synchronized adversaries, iterative optimization, and shared
+gradients, which is unrealistic for cross-device FL.
+We instead evaluate a subspace-inspired stress-test capturing
+the key spectral properties: projection into benign subspace,
+orthogonal energy matching, and directional steering. This
+preserves the relevant geometric structure for evaluating SpectralKrum and DnC variants. Extending evaluation to the full
+DnC attack is an important direction for future research.
+H. Summary of Attack Suite
+We summarize all attacks and their properties in Table I.
+TABLE I: Summary of Attacks Evaluated
+Attack
+
+Description / Key Property
+
+sign-flip
+
+Negates benign gradient; high-norm, high
+variance
+Trains on corrupted labels; small orthogonal energy
+Worst-case variance-based perturbation
+Steers PCA subspace over time
+Subspace-aware,
+orthogonal-energymatched
+Trigger-based targeted misclassification
+Baseline for comparison
+
+label-flip
+min-max
+buffer-drift
+adaptive-steer
+semantic backdoor
+none (reference)
+
+The diversity of this suite ensures that SpectralKrum is evaluated under classical, directional, spectral, and task-specific
+adversarial conditions.
+
+V. E XPERIMENTAL S ETUP
+This section details our evaluation environment, including datasets, model architectures, client sampling, non-IID
+partitioning, baselines, attacks, metrics, and implementation
+details. Our setup is designed to stress-test SpectralKrum under
+realistic and adversarial FL conditions.
+A. Datasets
+We use CIFAR-10 [16] (60,000 images, 10 classes), standard in FL research for its moderate difficulty and suitability
+for both shallow and deep models.
+We partition data across N = 100 clients using Dirichlet
+sampling [17] with α = 0.1, creating highly skewed distributions where some clients see only a few classes. This non-IID
+setting amplifies geometric instability in benign gradients and
+stresses clustering-based defenses.
+B. Client Sampling
+Each round samples n = 10 clients uniformly without
+replacement from 100 total. Up to f ≤ 3 may be Byzantine,
+representing typical cross-device FL.
+C. Model Architecture
+We use a lightweight CNN (TinyCNN) with two convolutional layers, max-pooling, and two fully connected layers.
+This architecture serves as a fast proxy for edge-device training
+while producing parameter vectors of moderate dimension
+(d ≈ 104 ), sufficient to stress geometric and spectral defenses
+without the computational overhead of larger models.
+D. Baselines
+We compare against:
+Trimmed Mean: discards extreme coordinates.
+• Coordinate Median: robust coordinate-wise estimator.
+• Geometric Median: robust vector aggregation.
+• FullKrum: classical single-update selection.
+• MultiKrum: multi-update selection then averaging.
+• Bulyan: iterated Krum with trimming.
+• DnC-PMF: spectral divide-and-conquer with mixture filtering.
+• DnC-Cluster: spectral clustering before aggregation.
+These span coordinate-wise, geometric, and spectral defense
+philosophies.
+•
+
+E. Hyperparameter Configuration
+SpectralKrum defaults:
+• PCA dimension r = 50.
+• Buffer size B = 50.
+• Centering: mean.
+• Trim mode: two-sided.
+• Trim fraction: 0.1.
+• Warmup rounds: 3.
+• PCA refresh interval: 1.
+• Orthogonal-energy quantile: q = 0.98.
+• Minimum guard survivors: 1.
+• Krum parameter f : assumed number of Byzantine clients.
+
+These values are derived from empirical stability tests and
+provide a robust balance between PCA estimation quality and
+computational efficiency.
+F. Training Procedure
+Clients perform E = 1 or E = 2 local epochs with minibatch SGD [25] (learning rate 0.01, weight decay 5×10−4 ) and
+data augmentation (random crop, horizontal flip) for benign
+clients. Malicious clients modify training or updates per attack.
+
+B. Adaptive-Steer (accuracy curve)
+Adaptive-steer is a subspace-aware attack that tries to remain spectrally consistent with benign updates while steering
+the global model. The accuracy curve in Figure 1 shows
+how different defenses evolve over time under this attack
+(attacker count = 2).
+
+G. Evaluation Metrics
+Per-Round Accuracy: global model accuracy during training.
+PT
+AUC: T1 t=1 Acc(t), measuring stability across rounds.
+Best/Final Accuracy: peak and convergence accuracy.
+Computation Overhead: PCA, projection, Krum, and
+guard filtering times.
+H. Implementation Details
+SpectralKrum is implemented in Python with NumPy and
+scikit-learn [26]. Experiments run on an NVIDIA RTX 4090
+GPU (training) and CPU (aggregation). PCA overhead is
+negligible relative to forward/backward passes. We use fixed
+random seeds for reproducibility.
+I. Summary
+Our setup evaluates SpectralKrum under highly non-IID
+data, diverse attacks, strong adversaries, and eight robust
+baselines.
+VI. R ESULTS
+We evaluate SpectralKrum across seven adversarial settings
+and nine aggregation methods (eight baselines plus SpectralKrum). Our focus is on understanding robustness under
+challenging scenarios, especially when benign gradients are
+non-IID and adversarial updates intentionally exploit spectral
+structure.
+We present a compact AUC summary (mean accuracy across
+rounds) to rank defenses, followed by per-attack accuracy
+curves that illustrate the temporal behavior underlying those
+summary scores. For backdoor attacks we also discuss attack
+success dynamics qualitatively.
+A. AUC summary (mean accuracy across rounds)
+Table II reports the mean accuracy across rounds (an AUClike summary) at attacker count = 2 for each (algorithm,
+attack) pair. These values are computed by averaging accuracy
+across training rounds and then averaging across experimental repeats and seeds. Higher values indicate better average
+robustness during training.
+The table provides a concise ranking: methods such as
+GeometricMedian, MultiKrum, DnC-PMF, and TrimmedMean
+achieve high average accuracy across many attacks, while
+FullKrum consistently yields low accuracy for these non-IID
+settings. However, averages obscure temporal dynamics: the
+following subsections show round-by-round accuracy curves
+that reveal stability, oscillation, and convergence behavior that
+explain the AUC scores.
+
+Fig. 1: Accuracy across rounds under adaptive steer (attacker count = 2).
+From the curve we observe that SpectralKrum and DnCPMF / MultiKrum achieve higher accuracy quickly and remain
+relatively stable, whereas methods such as FullKrum and
+DnC-Cluster show pronounced oscillation or persistently lower
+accuracy. This temporal pattern aligns with the AUC entries
+in Table II.
+C. Buffer-Drift (accuracy curve)
+
+Fig. 2: Accuracy across rounds under buffer drift (attacker count = 2).
+Buffer-drift targets the historical PCA buffer and attempts
+gradual subspace manipulation. The curves show that GeometricMedian, TrimmedMean, and several median-like aggregators remain robust and converge to high accuracy. Krum-based
+variants that do not leverage robust spectral filtering (e.g.,
+
+TABLE II: Mean accuracy across rounds (AUC-like) at attacker count = 2. (Each cell is the mean accuracy across rounds for
+the given (algorithm, attack) pair.)
+Algorithm
+
+adaptive steer
+
+buffer drift
+
+label flip
+
+min max
+
+none
+
+semantic backdoor
+
+sign flip
+
+Grand Total
+
+Bulyan
+CoordMedian
+DnC-Cluster
+DnC-PMF
+FullKrum
+GeometricMedian
+MultiKrum
+SpectralKrum
+TrimmedMean
+
+40.7727
+35.7364
+24.7427
+51.1427
+26.3655
+39.5818
+50.9555
+49.7164
+45.2473
+
+33.7527
+44.8918
+47.1036
+49.8391
+27.3945
+54.6645
+47.4682
+47.5145
+53.1673
+
+37.2818
+47.7245
+50.3664
+50.4727
+27.2727
+57.1027
+50.4355
+38.9818
+55.7927
+
+41.4727
+45.4373
+47.1200
+50.8836
+26.4182
+56.4127
+50.8391
+48.7055
+51.7682
+
+38.9691
+47.9509
+46.5409
+51.6400
+26.7818
+57.8000
+51.6655
+44.4955
+55.1891
+
+42.5200
+48.4664
+52.4809
+51.1864
+27.8309
+57.5309
+50.6691
+47.1764
+55.4691
+
+41.3651
+43.5873
+19.7309
+50.9018
+26.3891
+52.0718
+50.8864
+49.7318
+49.0585
+
+39.4596
+44.8273
+39.7654
+50.8673
+26.3793
+53.1380
+50.4170
+46.4317
+52.3549
+
+Grand Total (mean over algos)
+
+41.6739
+
+45.0885
+
+46.2052
+
+48.5798
+
+46.7258
+
+48.1478
+
+41.6505
+
+47.6238
+
+FullKrum) lag behind. SpectralKrum tracks the top performers
+closely, illustrating its temporal resilience to drift.
+
+E. Min-Max (accuracy curve)
+
+D. Label-Flip (accuracy curve)
+
+Fig. 3: Accuracy across rounds under label flip (attacker count = 2).
+
+Label-flip poisoning changes local labels and therefore
+injects semantically meaningful but spectrally subtle gradients.
+Many coordinate-robust or median-based methods (TrimmedMean, GeometricMedian) obtain strong final accuracy because
+their coordinate-level robustness mitigates systematic label
+noise. SpectralKrum performs well on average but is less
+dominant here because label-flip updates can remain largely
+inside the benign subspace, reducing the orthogonal-energy
+signal.
+
+Fig. 4: Accuracy across rounds under min max (attacker count = 2).
+
+The min-max attacker attempts worst-case perturbations
+within benign variation. Accuracy curves show that spectral
+defenses offer modest advantage, but the attack remains hard
+to detect solely via orthogonal energy. DnC-PMF, MultiKrum,
+and trimmed/median methods remain highly competitive.
+
+F. Semantic Backdoor (accuracy curve)
+
+H. Computational Overhead
+Table III reports the measured mean total computation time
+per training round for each aggregation rule. These values were
+collected under identical hardware and software conditions
+and therefore provide a fair comparison of relative cost across
+methods.
+TABLE III: Mean total computation time per round for each
+aggregation rule.
+
+Fig. 5: Accuracy across rounds under semantic backdoor
+(attacker count = 2).
+Backdoor attacks produce gradients targeted toward a
+trigger-based task manipulation and often exhibit low orthogonal energy. Consequently, most aggregation-only defenses,
+including SpectralKrum, reduce but do not fully eliminate
+backdoor ASR. The AUC table highlights which defenses
+maintain high overall accuracy in the presence of backdoor
+clients, while Figure 5 shows that some defenses converge
+more smoothly than others.
+G. Sign-Flip (accuracy curve)
+
+Aggregation Rule
+
+Mean Time (ms)
+
+FullKrum
+MultiKrum
+CoordMedian
+GeometricMedian
+DnC-PMF
+DnC-Cluster
+Bulyan
+TrimmedMean
+SpectralKrum
+
+7.111224
+8.240192
+29.384039
+76.383777
+167.312114
+368.234553
+401.891775
+406.241334
+1311.667696
+
+Krum-based methods introduce modest overhead from distance computations. Median-based approaches (CoordMedian,
+GeometricMedian) are significantly more expensive. DnCstyle methods incur very high costs due to clustering or matrix
+factorization. SpectralKrum is the most expensive because
+each round performs PCA-based subspace construction, projection, and orthogonal-energy filtering, but the cost remains
+practical in server-side federated learning deployments.
+VII. D ISCUSSION
+The experimental results paint a nuanced picture that resists
+simple conclusions. SpectralKrum neither dominates existing
+methods nor fails completely; its effectiveness depends critically on the attack’s geometric signature.
+A. When Spectral Geometry Helps
+SpectralKrum performs competitively against attacks that
+introduce detectable spectral anomalies. Under adaptive-steer
+and buffer-drift, SpectralKrum matches or exceeds DnC-PMF
+and MultiKrum. Even subspace-aware adversaries often introduce residual orthogonal energy from imperfect subspace
+estimation or inherent attack constraints.
+B. When Spectral Geometry Fails
+
+Fig. 6: Accuracy across rounds under sign flip (attacker count
+= 2).
+Sign-flip is a high-magnitude but geometrically simple
+untargeted attack, and most robust aggregation rules detect
+it effectively. Methods such as GeometricMedian, MultiKrum,
+TrimmedMean, DnC-PMF, and SpectralKrum rise steadily to
+high accuracy, whereas cluster-based defenses such as DnCCluster collapse early and remain stuck at chance level. Spectral projection helps stabilize variance, and in combination
+with median-style robustness keeps the global model accurate
+despite the attack.
+
+Label-flip and min-max attacks produce gradients that
+remain within the benign subspace. Their malicious effect
+comes from direction, not orthogonal deviation. Against such
+attacks, SpectralKrum’s guard provides no signal. Table II
+shows GeometricMedian and TrimmedMean outperforming
+SpectralKrum on label-flip by substantial margins. Coordinatewise methods succeed because they aggregate each parameter
+independently, diluting systematic perturbations.
+C. The Semantic Gap
+Semantic backdoors present an even deeper challenge:
+their gradients are geometrically indistinguishable from benign training on a modified distribution. No aggregationonly defense can fully neutralize well-crafted backdoors. This
+
+suggests robust FL requires layered defenses: gradient-level
+filtering for geometric anomalies combined with activationlevel analysis for semantic manipulations.
+D. Limitations
+Several directions emerge:
+a) Robust or Incremental PCA.: Under non-IID conditions, standard PCA becomes unstable. Robust PCA or
+streaming variants could maintain cleaner subspace estimates.
+b) Adaptive Rank Selection.: Automatically choosing
+PCA dimension r based on eigengaps or variance retention
+may prevent underfitting or overfitting the spectral subspace.
+c) Hybrid Spectral-Median Aggregation.: Coordinatewise statistics (Trimmed Mean, Geometric Median) outperform spectral filters on label-flip and min-max. A hybrid
+combining spectral projection with coordinate-wise median
+may inherit complementary strengths.
+d) Layer-wise SpectralKrum.: Deep networks have heterogeneous layers with different geometric structures. Layerwise or multi-subspace PCA may capture richer variation.
+Our evaluation has inherent limitations. We tested only
+CIFAR-10 with a TinyCNN; real deployments involve diverse modalities where gradient spectral structure may differ
+substantially. We evaluated fixed adversary fractions (f ≤ 3
+of n = 10); higher fractions and larger pools could reveal
+different dynamics. Our adversaries are static; fully adaptive
+adversaries tracking the server’s PCA in real-time might defeat
+SpectralKrum more effectively.
+VIII. C ONCLUSION
+SpectralKrum combines spectral subspace estimation with
+Krum’s geometric selection, aiming to exploit the lowdimensional structure of benign FL trajectories while filtering
+spectrally anomalous updates. Our extensive evaluation across
+seven attack families and eight robust baselines reveals a
+clear pattern: spectral defenses help when attacks introduce
+orthogonal variance but provide no advantage when malicious
+gradients lie within the benign subspace.
+This finding has broader implications for Byzantine-robust
+FL. No single defense philosophy (coordinate-wise, geometric,
+or spectral) addresses all attack families. The path forward
+likely involves hybrid architectures that combine complementary signals, perhaps applying spectral filtering to detect
+geometric anomalies while using activation-level analysis for
+semantic attacks that evade gradient-based detection.
+We release our code and experimental logs to facilitate
+reproducibility and encourage further investigation into the
+interplay between spectral structure and Byzantine robustness
+in federated optimization.
+R EFERENCES
+[1] L. Lamport, R. Shostak, and M. Pease, “The Byzantine Generals
+Problem,” ACM Transactions on Programming Languages and Systems,
+vol. 4, no. 3, pp. 382–401, 1982.
+[2] P. Blanchard, E. El Mhamdi, R. Guerraoui, and J. Stainer, “Machine
+learning with adversaries: Byzantine tolerant gradient descent,” Advances in Neural Information Processing Systems (NeurIPS), 2017.
+
+[3] E. El Mhamdi, R. Guerraoui, and S. Rouault, “The hidden vulnerability
+of distributed learning in Byzantium,” International Conference on
+Machine Learning (ICML), 2018.
+[4] L. Chen, H. Xu, and J. Xu, “Distributed statistical machine learning
+in adversarial settings,” International Conference on Machine Learning
+(ICML), 2017.
+[5] V. Shejwalkar and A. Houmansadr, “Byzantine-robust federated learning
+via adversarially-robust clustering,” International Conference on Learning Representations (ICLR), 2021.
+[6] M. Fang, X. Cao, J. Jia, and N. Gong, “Local model poisoning attacks
+to Byzantine-robust federated learning,” USENIX Security, 2020.
+[7] E. Bagdasaryan, A. Veit, Y. Hua, D. Estrin, and V. Shmatikov, “How
+to backdoor federated learning,” International Conference on Artificial
+Intelligence and Statistics (AISTATS), 2020.
+[8] Z. Sun, P. Kairouz, A. T. Suresh, and H. B. McMahan, “Can you really
+backdoor federated learning?,” arXiv:1911.07963, 2019.
+[9] D. Yin, Y. Chen, R. Kannan, and P. Bartlett, “Byzantine-robust distributed learning: Towards optimal statistical rates,” International Conference on Machine Learning (ICML), 2018.
+[10] K. Pillutla, Y. Xu, and S. Kakade, “Robust aggregation for federated
+learning via median-of-means,” NeurIPS, 2022.
+[11] T. Li, A. K. Sahu, M. Zaheer, M. Sanjabi, A. Talwalkar, and V. Smith,
+“Federated optimization in heterogeneous networks,” Proceedings of
+Machine Learning and Systems (MLSys), 2020.
+[12] H. Brendan McMahan et al., “Communication-efficient learning of deep
+networks from decentralized data,” AISTATS, 2017.
+[13] X. Cao, M. Fang, J. Liu, and N. Z. Gong, “FLTrust: Byzantine-robust
+Federated Learning via Trust Bootstrapping,” Network and Distributed
+System Security Symposium (NDSS), 2021.
+[14] D. F. Andrews, “A robust method for multiple linear regression,”
+Technometrics, vol. 16, no. 4, pp. 523–531, 1974.
+[15] I. Johnstone, “On the distribution of the largest eigenvalue in principal
+component analysis,” Annals of Statistics, 2001.
+[16] A. Krizhevsky, “Learning multiple layers of features from tiny images,”
+Technical Report, University of Toronto, 2009.
+[17] T.-M. H. Hsu, H. Qi, and M. Brown, “Measuring the effects of
+non-identical data distribution for federated visual classification,”
+arXiv:1909.06335, 2019.
+[18] E. Weiszfeld, “Sur le point pour lequel la somme des distances de n
+points donnés est minimum,” Tohoku Mathematical Journal, vol. 43,
+pp. 355–386, 1937.
+[19] D. L. Donoho and P. J. Huber, “The notion of breakdown point,” in A
+Festschrift for Erich L. Lehmann, Wadsworth, pp. 157–184, 1983.
+[20] P. Kairouz et al., “Advances and open problems in federated learning,”
+Foundations and Trends in Machine Learning, vol. 14, no. 1–2, pp. 1–
+210, 2021.
+[21] A. Hard et al., “Federated learning for mobile keyboard prediction,”
+arXiv:1811.03604, 2018.
+[22] N. Rieke et al., “The future of digital health with federated learning,”
+NPJ Digital Medicine, vol. 3, no. 119, 2020.
+[23] C. Li, H. Farkhoor, R. Liu, and J. Yosinski, “Measuring the intrinsic dimension of objective landscapes,” International Conference on Learning
+Representations (ICLR), 2018.
+[24] K. Beyer, J. Goldstein, R. Ramakrishnan, and U. Shaft, “When is
+‘nearest neighbor’ meaningful?,” International Conference on Database
+Theory (ICDT), pp. 217–235, 1999.
+[25] L. Bottou, “Large-scale machine learning with stochastic gradient descent,” International Conference on Computational Statistics (COMPSTAT), pp. 177–186, 2010.
+[26] F. Pedregosa et al., “Scikit-learn: Machine learning in Python,” Journal
+of Machine Learning Research, vol. 12, pp. 2825–2830, 2011.
+[27] J. W. Tukey, “A survey of sampling from contaminated distributions,”
+in Contributions to Probability and Statistics, Stanford University Press,
+pp. 448–485, 1960.
+[28] Z. Allen-Zhu, F. Li, J. Li, and Y. Zhu, “Byzantine-resilient non-convex
+stochastic gradient descent,” International Conference on Learning
+Representations (ICLR), 2021.
+[29] B. Biggio, B. Nelson, and P. Laskov, “Poisoning attacks against support vector machines,” International Conference on Machine Learning
+(ICML), pp. 1467–1474, 2012.
+
+

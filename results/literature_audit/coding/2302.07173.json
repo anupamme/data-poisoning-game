@@ -1,0 +1,32 @@
+{
+  "title": "An Experimental Study of Byzantine-Robust Aggregation Schemes in Federated Learning",
+  "c_d_route": "absent",
+  "criteria": {
+    "C-a": {
+      "code": "NO",
+      "quote": "Table 2 shows the overall comparison of the robust aggregation schemes",
+      "locator": "§5, Table 2; the schemes are evaluated as alternatives to one another, which C-a's exclusion list names: \"a menu of alternative defenses compared against each other\""
+    },
+    "C-b": {
+      "code": "NO",
+      "quote": "There are two reasons of choosing the median update norm as the clipping threshold: First, prior work [34] has demonstrated that adaptive clipping to median norm works well across a range of general federated learning tasks without the need to tune any clipping hyper-parameter.",
+      "locator": "§4 Aggregation Schemes for Evaluation; this is a hyperparameter justification inside one scheme, not a reason for pairing two mechanisms"
+    },
+    "C-c": {
+      "code": "NO",
+      "quote": "Overall, the attacks make varying degrees of impact on the aggregation schemes as the fraction of Byzantine clients increases.",
+      "locator": "§5, Table 2; the reported outcome belongs to each scheme separately, and there is no composed pipeline whose outcome could be read"
+    },
+    "C-d": {
+      "code": "NO",
+      "quote": "Overall, the attacks make varying degrees of impact on the aggregation schemes as the fraction of Byzantine clients increases.",
+      "locator": "§5; the experimental axes are the attack, the Byzantine fraction, the dataset and the IID/non-IID split, and the aggregation scheme itself -- never an upstream stage against a fixed downstream one"
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "This is because all of the aggregation schemes considered in this paper are based on an assumption that less than half of the updates for aggregation are malicious on each round.",
+      "locator": "§3; the study's conclusion is at §6, \"we conclude that the robustness of all the aggregation schemes is limited, highlighting the need for new defense strategies, in particular for Non-IID datasets\""
+    }
+  },
+  "coder_note": "THIS IS A BENCHMARK STUDY, AND IT CODES C-a = NO ON C-a's OWN EXCLUSION LIST. It evaluates robust aggregation schemes as substitutes for one another; nothing is composed. The screen admitted it because its title and abstract carry three mechanism families (clipping, clustering, robust aggregation) and joint language, which is exactly the borderline-include rule working as designed: a wrongly included paper codes C-a = NO and lowers the primary rate, whereas a wrongly excluded one is invisible. It stays in the denominator, since non-negotiable 7 forbids dropping a paper for how it coded.\n\nC-c = NO is the unusual code here and it follows from C-a = NO rather than from any shortage of numbers: the paper reports plenty of robust accuracies, but each belongs to a single scheme, so there is no composed system whose own outcome could be the evidence offered for a combination. Coding C-c = YES off a table of single-scheme accuracies would drain the criterion of its meaning.\n\nC-e = YES, and the quotation is a real mechanism claim -- it explains the observed failures by the majority assumption every scheme shares. It attributes to a shared PROPERTY of the schemes rather than to a constituent of a pipeline, which is why this row is C-e = YES with C-a = NO: a combination that does not exist cannot have its success attributed. Rows of this shape are why the pre-registration reports the C-e = NO count only among papers that have the design.\n\nUseful for the appendix's prose, not for any rate: this study reaches, by benchmarking alone, the conclusion that the schemes' robustness is limited on non-IID data, which is adjacent to but weaker than the identification claim -- it says the defenses do not work, not that the evidence cannot say which stage did the work."
+}

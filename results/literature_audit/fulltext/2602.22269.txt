@@ -1,0 +1,728 @@
+arXiv:2602.22269v1 [cs.LG] 25 Feb 2026
+
+CQSA: Byzantine-robust Clustered Quantum Secure Aggregation
+in Federated Learning
+Arnab Nath
+
+Harsh Kasyap
+
+Indian Institute of Technology (BHU)
+Varanasi, India
+
+Indian Institute of Technology (BHU)
+Varanasi, India
+
+Abstract
+
+1
+
+Federated Learning (FL) enables collaborative model training without sharing raw data. However, shared local model updates remain vulnerable to inference and poisoning attacks. Secure aggregation schemes have been proposed to mitigate these attacks. In
+this work, we aim to understand how these techniques are implemented in quantum-assisted FL. Quantum Secure Aggregation
+(QSA) has been proposed, offering information-theoretic privacy
+by encoding client updates into the global phase of multipartite
+entangled states. Existing QSA protocols, however, rely on a single
+global Greenberger–Horne–Zeilinger (GHZ) state shared among
+all participating clients. This design poses fundamental challenges:
+fidelity of large-scale GHZ states deteriorates rapidly with the increasing number of clients; and (ii) the global aggregation prevents
+the detection of Byzantine clients. We propose Clustered Quantum
+Secure Aggregation (CQSA), a modular aggregation framework
+that reconciles the physical constraints of near-term quantum hardware along with the need for Byzantine-robustness in FL. CQSA
+randomly partitions the clients into small clusters, each performing local quantum aggregation using high-fidelity, low-qubit GHZ
+states. The server analyzes statistical relationships between clusterlevel aggregates employing common statistical measures such as
+cosine similarity and Euclidean distance to identify malicious contributions. Through theoretical analysis and simulations under depolarizing noise, we demonstrate that CQSA ensures stable model
+convergence, achieves superior state fidelity over global QSA.
+
+Federated Learning (FL) has established itself as a promising paradigm for collaborative privacy-preserving learning, enabling distributed clients to train a global model without sharing raw data [12].
+By keeping data local and exchanging only model updates, FL mitigates direct privacy risks. However, recent studies have demonstrated that raw model updates can also leak sensitive information
+through reconstruction attacks such as model inversion and gradient leakage [6, 7, 14, 15], where an adversary can recover pixelperfect training data. To mitigate this, Secure Aggregation (SA)
+protocols [3, 11] have been developed to ensure that the central
+server receives only the algebraic sum of local updates, theoretically
+blinding it to individual contributions.
+While classical SA approaches based on Multi-Party Computation (MPC) or Homomorphic Encryption (HE) provide strong
+privacy guarantees, they suffer from critical limitations in both
+efficiency and security integrity [3, 5, 8, 10]. First, they incur high
+communication overhead and computational latency, scaling poorly
+with the number of clients (𝑁 ) and model dimension (𝑑). Second,
+classical SA is inherently fragile against Byzantine attacks. This is
+because the protocol mathematically blinds the server to individual
+inputs; it simultaneously blinds the server to detect malicious activity. A “poisoned” update injected by a malicious client is aggregated
+indistinguishably from honest updates, corrupting the global model.
+Classical methods [1, 17, 18] to detect such attacks often require
+complex, heavy cryptographic proofs (e.g., Zero-Knowledge Proofs)
+that can be impractical for resource-constrained edge devices.
+Quantum Secure Aggregation (QSA) has recently emerged as
+an alternative to address these bottlenecks [22]. Leveraging the
+principles of quantum mechanics, specifically entanglement and
+the no-cloning theorem [20], QSA provides information-theoretic
+security of individual updates under ideal quantum channels, with
+communication complexity independent of model dimension. Protocols utilizing Greenberger–Horne–Zeilinger (GHZ) states allow
+for the encoding of classical parameters into quantum phases, enabling the server to measure the global aggregate directly without
+ever accessing individual values [22].
+Despite this promise, existing QSA frameworks face two critical
+issues that make their FL deployment difficult in the current Noisy
+Intermediate-Scale Quantum (NISQ) era:
+–The Fidelity Constraint. State-of-the-art QSA protocols typically
+assume a global entanglement scheme where all 𝑁 clients share a
+single 𝑁 -qubit GHZ state. In practice, the fidelity of such large-scale
+entangled states decays exponentially with 𝑁 due to environmental
+decoherence and imperfect gate operations. Maintaining a stable
+entangled state across a large federated network (e.g., 𝑁 > 50) is
+physically infeasible, resulting in noisy aggregates that degrade
+model convergence.
+
+CCS Concepts
+• Computing methodologies → Distributed artificial intelligence; • Security and privacy;
+
+Keywords
+Federated Learning, Quantum Secure Aggregation, Byzantine-robust.
+ACM Reference Format:
+Arnab Nath and Harsh Kasyap. 2018. CQSA: Byzantine-robust Clustered
+Quantum Secure Aggregation in Federated Learning. In Proceedings of Make
+sure to enter the correct conference title from your rights confirmation email
+(Conference acronym ’XX). ACM, New York, NY, USA, 6 pages. https://doi.
+org/XXXXXXX.XXXXXXX
+Permission to make digital or hard copies of all or part of this work for personal or
+classroom use is granted without fee provided that copies are not made or distributed
+for profit or commercial advantage and that copies bear this notice and the full citation
+on the first page. Copyrights for components of this work owned by others than the
+author(s) must be honored. Abstracting with credit is permitted. To copy otherwise, or
+republish, to post on servers or to redistribute to lists, requires prior specific permission
+and/or a fee. Request permissions from permissions@acm.org.
+Conference acronym ’XX, Woodstock, NY
+© 2018 Copyright held by the owner/author(s). Publication rights licensed to ACM.
+ACM ISBN 978-1-4503-XXXX-X/2018/06
+https://doi.org/XXXXXXX.XXXXXXX
+
+Introduction
+
+Conference acronym ’XX, June 03–05, 2018, Woodstock, NY
+
+–The Verification Blind Spot. After aggregation, the server learns
+only the final sum, but lacks the visibility to detect “poisoned”
+updates injected by malicious clients. If a subset of clients uploads
+updates designed to corrupt the global model, the server has no
+mathematical basis to identify or reject them, as the constituent
+parts of the sum are hidden by quantum superposition.
+Our work. In this paper, we propose Clustered Quantum Secure
+Aggregation (CQSA), a novel aggregation scheme in FL, that bridges
+the gap between NISQ limitations and robust security requirements.
+Instead of relying on a fragile global entangled state, we partition
+the client network into small, manageable clusters (e.g., of sizes
+4 or 5). This modular approach offers two key advantages: (1) it
+respects physical hardware constraints, generating high-fidelity
+GHZ states for small clusters, which is well within the coherence
+limits of current quantum processors; (2) By aggregating partial
+sums at the cluster level, the server can perform Inter-Cluster Verification, employing existing Byzantine-robust aggregation schemes
+(utilising statistical operations such as Euclidean norm or cosine
+similarity) among cluster aggregated updates to identify and reject
+malicious groups before they impact the global model.
+The key contributions of this paper are as follows:
+• NISQ-Compatible Architecture: We introduce a clustered
+aggregation protocol that replaces large-𝑁 GHZ states with
+small-𝑘 GHZ states, significantly improving state fidelity
+and aggregation accuracy on near-term quantum devices.
+• Inter-Cluster Verification: We propose a hybrid verification mechanism where the server can employ existing
+Byzantine-robust aggregation to compare cluster-level aggregates to detect poisoned updates, a capability absent in
+existing QSA.
+• Theoretical Analysis and Simulation: We propose a hybrid verification mechanism that allows the server to employ
+Byzantine-robust aggregation to audit cluster-level aggregates. Further, we demonstrate through simulations that
+CQSA achieves superior state fidelity compared to globalaggregation protocols in NISQ environments.
+
+2 Preliminaries and Related Work
+2.1 Federated Learning
+Federated Learning (FL) is a distributed machine learning paradigm, where multiple clients collaboratively train a shared global
+model, keeping the data on-premises [12]. Let 𝐷𝑖 denote the private
+dataset of client 𝑖 ∈ 𝑁 . In each communication round 𝑡, the server
+broadcasts the current global model parameters 𝑤𝑡 ∈ R𝑑 to a subset of clients S𝑡 ⊆ {1, . . . , 𝑁 }. Each participating client performs
+local model training and computes a model update Δ𝑤𝑖𝑡 . The server
+updates the global model by aggregating the received updates as
+
+𝑤𝑡 +1 = 𝑤𝑡 + A {Δ𝑤𝑖𝑡 }𝑖 ∈ S𝑡 ,
+(1)
+where A (·) denotes an aggregation function, commonly a weighted
+average as in FedAvg [13].
+2.1.1 Secure Aggregation. Although FL avoids direct data sharing,
+the shared local model updates may still leak sensitive information.
+Secure Aggregation protocols are designed to protect client privacy
+by ensuring that the server learns only the aggregated update. Given
+local updates {Δ𝑤𝑖𝑡 }𝑖 ∈ S𝑡 , a secure aggregation protocol guarantees
+
+Arnab et al.
+
+Í
+that the server obtains 𝑖 ∈ S𝑡 Δ𝑤𝑖𝑡 , while each individual update
+remains hidden.
+Secure aggregation schemes are designed using Multi-Party Computation (MPC) [3, 17, 18], Homomorphic Encryption (HE) [5, 8, 10],
+differential privacy (DP) [19] and other encoding mechanisms.
+While these techniques effectively mitigate inference and reconstruction attacks, they also introduce significant computational and
+communication overhead. Moreover, secure aggregation can also
+blind the server to individual updates, thereby limiting the server’s
+ability to detect Byzantine behavior.
+
+2.2
+
+Quantum States and Qubits
+
+The fundamental unit of quantum information is the qubit. Unlike
+a classical bit that exists in a state of either 0 or 1, a qubit exists in
+a superposition of two orthogonal basis states, denoted as |0⟩ and
+|1⟩ (Dirac notation). A single-qubit state |𝜓 ⟩ is defined as a linear
+combination of these basis vectors:
+|𝜓 ⟩ = 𝛼 |0⟩ + 𝛽 |1⟩,
+where 𝛼, 𝛽 ∈ C are probability amplitudes satisfying the normalization condition |𝛼 | 2 + |𝛽 | 2 = 1. The state of the system collapses
+to |0⟩ or |1⟩ upon measurement with probabilities |𝛼 | 2 and |𝛽 | 2 ,
+respectively.
+For a system of 𝑁 qubits, the state space grows exponentially,
+represented by the tensor product of individual Hilbert spaces.
+A general 𝑁 -qubit state can be written as a superposition of 2𝑁
+computational basis states.
+
+2.3
+
+Greenberger–Horne–Zeilinger State
+
+Greenberger–Horne–Zeilinger (GHZ) state is a maximally entangled quantum state that exhibits strong non-local correlations. For
+a system of 𝑁 parties, the 𝑁 -qubit GHZ state is defined as an equal
+superposition of the “all-zero” and “all-one” states:
+
+1 
+|GHZ⟩𝑁 = √ |0⟩ ⊗𝑁 + |1⟩ ⊗𝑁 ,
+2
+where |0⟩ ⊗𝑁 ≡ |00 . . . 0⟩ and |1⟩ ⊗𝑁 ≡ |11 . . . 1⟩. The crucial property of the GHZ state for secure aggregation is its sensitivity to
+local phase operations. An operation applied to any single qubit
+in the entangled system affects the global phase of the entire state,
+allowing for the aggregation of distributed information without
+collapsing the state into individual components.
+2.3.1 GHZ-Based Architecture: Mathematical States and Protocol.
+We utilize a Quantum Secure Aggregation (QSA) protocol, which
+relies on the properties of GHZ states to perform blind summation.
+The protocol evolves the quantum system through three stages:
+initialization, encoding, and decoding.
+–Initialization and Distribution. The protocol begins with the
+aggregation server generating an 𝑁 -qubit GHZ state, i.e., an equal
+superposition of the “all-zero” and “all-one” computational basis
+states:
+
+1 
+|Φ⟩ = √ |00 . . . 0⟩ + |11 . . . 1⟩ .
+2
+The server distributes these qubits such that each of the 𝑁 participants holds exactly one qubit of the entangled system.
+–Private Encoding. To submit a local update, each participant
+applies a phase gate (specifically an 𝑅𝑧 rotation) to their individual
+
+CQSA: Byzantine-robust Clustered Quantum Secure Aggregation in Federated Learning
+
+qubit using their private normalized parameter 𝜃 𝑖 . Because the
+qubits are entangled, these local rotations accumulate in the global
+relative phase of the system. After all 𝑁 participants have encoded
+their values, the global state becomes
+
+Í𝑁
+1 
+|Ψ⟩ = √ |00 . . . 0⟩ + 𝑒 𝑖 𝑛=1 𝜃𝑛 |11 . . . 1⟩ .
+2
+Í𝑁
+𝜃 𝑛 is locked into the relative phase beThen, the aggregate 𝑛=1
+tween the two basis states, while the individual values 𝜃 𝑖 remain
+hidden.
+–Decoding and Measurement. The participants return their qubits
+to the server. To extract the sum, the server applies a decoding circuit consisting of a cascade of CNOT gates followed by a Hadamard
+gate on the first qubit, which disentangles the system and transfers
+the phase information into measurable probability amplitudes.
+When the server measures the first qubit, the probabilities of
+observing outcomes 0 and 1 are determined by the aggregated phase
+Í𝑁
+Σ = 𝑛=1
+𝜃𝑛 :
+𝑃 (𝑞 1 = 0) =
+
+
+1
+1 + cos(Σ) ,
+2
+
+𝑃 (𝑞 1 = 1) =
+
+
+1
+1 − cos(Σ) .
+2
+
+By repeating this measurement multiple times and calculating the
+frequency of “0”s versus “1”s, the server can invert these probability formulas to estimate the sum of the model updates with high
+precision.
+
+2.4
+
+Related Work
+
+2.4.1 Byzantine-Robust Aggregation. Byzantine-robust aggregation techniques have been proposed to defend against malicious
+clients that submit poisoned updates. State-of-the-art approaches
+include Krum and Multi-Krum [2], which select updates that are
+closest to the majority by minimizing pairwise distances and are
+provably robust under bounded Byzantine assumptions. Coordinatewise methods, such as the Median and Trimmed Mean [21], operate
+independently on each model parameter, thereby limiting the influence of extreme values. FLTrust [4] is another defense in line, which
+uses cosine similarity w.r.t. a trusted root update to detect malicious
+updates. More recent approaches, such as MESAS [9], combine
+multiple statistical indicators, including Euclidean distance, Cosine
+similarity, Variance, Min, Max, and Count. While these methods
+improve robustness against poisoning attacks, they rely on the
+server’s access to individual client updates in plaintext, making
+them incompatible with secure or privacy-preserving aggregation
+mechanisms.
+2.4.2 Quantum Secure Aggregation (QSA). To address classical bottlenecks, Quantum Secure Aggregation has been introduced [22].
+Protocols utilizing GHZ states allow the server to measure the
+global aggregate of model parameters directly via entanglement,
+achieving information-theoretic security [22]. Unlike classical HE,
+QSA can be computationally efficient and can detect eavesdropping on the quantum channel due to measurement disturbance [20].
+However, existing QSA frameworks rely on a global GHZ state
+involving all participants. This architecture faces challenges regarding NISQ fidelity (due to decoherence in large states) and lacks
+intrinsic mechanisms to verify the integrity of the aggregated data
+against active Byzantine faults within the logical layer.
+
+Conference acronym ’XX, June 03–05, 2018, Woodstock, NY
+
+3
+
+Threat Model
+
+We consider an FL system under a comprehensive threat model
+that addresses privacy leakage, data integrity, and system reliability.
+We define the security assumptions for the three key entities: the
+central server, the participating clients, and external adversaries.
+–Semi-honest Server. We assume the central aggregation server
+(S) is honest-but-curious. The server strictly follows the established
+quantum aggregation protocol (e.g., preparing GHZ states and performing the prescribed measurements) but attempts to infer sensitive information about individual client gradients (w𝑖 ) from the
+aggregated outcomes or quantum residues.
+–Malicious (Byzantine) Clients. We assume a subset of clients
+B ⊂ U may be active adversaries. These malicious clients may
+deviate from the protocol by injecting random noise or specifically
+crafted poisoned gradients to prevent global model convergence.
+–External Adversaries. We assume external entities may intercept
+communication channels. These adversaries may engage in passive
+eavesdropping on quantum states or in active Man-in-the-Middle
+(MitM) attacks. The protocol relies on the no-cloning theorem and
+entanglement decoherence to detect such intrusions.
+
+4
+
+CQSA: Our Proposed Aggregation Scheme
+
+Clustered Quantum Secure Aggregation (CQSA) is an advanced
+architectural approach to privacy-preserving Federated Learning
+(FL) that bridges the gap between theoretical quantum security and
+the practical constraints of the Noisy Intermediate-Scale Quantum
+(NISQ) era. Unlike traditional global Quantum Secure Aggregation
+(QSA), which attempts to entangle all 𝑁 participating clients into
+a single, fragile high-order GHZ state, CQSA partitions the network into smaller, manageable sub-clusters. Now, we discuss each
+component of CQSA in detail below.
+Encoding the weights into the phase. Let 𝑤𝑖,𝑗 denote the 𝑖-th
+coordinate of the 𝑑-dimensional model update of client 𝑗, which is
+mapped into the quantum phase domain. To ensure that aggregated
+phase values remain within the valid range [−𝜋, 𝜋], we introduce
+a scaling factor 𝑆 based on the maximum magnitude of the updates.
+Each client 𝑗 locally computes
+(𝑗)
+𝑤 max
+= max |𝑤𝑖,𝑗 |.
+1≤𝑖 ≤𝑑
+
+and transmits this scalar value to the server over a classical channel.
+(𝑗)
+The server then computes the global bound 𝑤 max = max{𝑤 max
+},
+which is broadcast back to all clients. This procedure reveals only
+a global magnitude bound and does not expose individual model
+updates or feature-level information. The scaling factor is defined
+as:
+𝜋
+𝑆=
+.
+𝑘 · 𝑤 max
+The encoded quantum parameter (phase angle) 𝜃 𝑖,𝑗 for the 𝑗-th
+client is:
+𝜋 · 𝑤𝑖,𝑗
+𝜃 𝑖,𝑗 = 𝑆 · 𝑤𝑖,𝑗 =
+.
+𝑘 · 𝑤 max
+Note: The inclusion of 𝑘 in the denominator of 𝜃 𝑖,𝑗 is a necessary
+condition to prevent integer overflow (phase wrapping modulo
+2𝜋) during the aggregation of 𝑘 clients. This linear mapping preserves the geometric properties (such as Euclidean norm and Cosine
+similarity) of the original weight space.
+
+Conference acronym ’XX, June 03–05, 2018, Woodstock, NY
+
+Arnab et al.
+
+CQSA Federated Server
+Global Aggregation
+Í
+Θ = Θ𝑗
+
+Byzantine-robust
+Aggregation
+(malicious weights not aggregated)
+
+Verified
+
+Max Weight Broadcast
+& Coordination
+
+Θ1 (Clean)
+Secure Upload
+
+Θ̃𝑀 (Poisoned)
+
+...
+
+𝐶 1,1
+
+Attack
+
+Θ2
+
+Legend:
+Quantum Channel (Secure Aggregation)
+- - - Classical Channel (General Comm.)
+• Honest Client • Malicious Client
+
+𝐶 1,𝑘
+
+𝐶 2,1
+
+Cluster 1 (Honest)
+
+...
+
+𝐶 2,𝑘
+
+...
+
+𝐶𝑀,1
+
+Cluster 2 (Honest)
+
+𝐶𝑀,𝑘
+Adv.
+
+Cluster M (Compromised)
+
+Figure 1: Comprehensive Architecture of the CQSA-FL System.
+Geometric Preservation in Quantum Phase Encoding. We
+demonstrate that this linear mapping preserves the fundamental
+geometric properties of the weight space. Let 𝜽𝒋 be the mapped
+weight vector of client j.
+–Proportionality of Euclidean Norm. The Euclidean norm of the
+encoded phase vector is strictly proportional to the norm of the
+classical weight vector.
+||𝜽 𝑗 || 2 =
+
+√︄∑︁
+
+(𝑆 · 𝒘𝒋 ) 2
+
+= |𝑆 |
+
+√︄∑︁
+
+𝑗
+
+𝒘𝒋 2 .
+
+(2)
+
+𝑗
+
+∴ ||𝜽 𝑗 || 2 = 𝑆 · ||w 𝑗 || 2 .
+
+(3)
+
+Thus, the magnitude of the parameter vector in the quantum domain is directly proportional to the classical vector.
+–Invariance of Cosine Similarity The direction of the vector, measured by Cosine Similarity, is invariant under the scalar multiplication 𝑆. Let v be any reference vector (e.g., global model) and 𝝓 = 𝑆 ·v
+be its encoded form.
+CosSim(𝜽 𝑗 , 𝝓) =
+
+𝜽𝑗 · 𝝓
+.
+||𝜽 𝑗 || 2 · ||𝝓|| 2
+
+(4)
+
+Substituting the mapping:
+=
+
+(𝑆w 𝑗 ) · (𝑆v)
+,
+(𝑆 ||w 𝑗 || 2 )(𝑆 ||v|| 2 )
+
+𝑆 2 (w 𝑗 · v)
+.
+= 2
+𝑆 (||w 𝑗 || 2 · ||v|| 2 )
+∴ CosSim(𝜽 𝑗 , 𝝓) = CosSim(w 𝑗 , v).
+
+(5)
+
+(6)
+
+Theoretically, the directional alignment of the gradients is preserved
+in the quantum domain.
+Client Partitioning and Randomization. To circumvent the
+fidelity constraints of global entanglement, we partition the set of
+𝑁 clients, denoted as U = {𝐶 1, 𝐶 2, . . . , 𝐶 𝑁 }, into 𝑀 disjoint clusters
+{𝐺 1, 𝐺 2, . . . , 𝐺 𝑀 }. Each cluster 𝐺 𝑗 consists of a small subset of 𝑘
+clients. The partitioning is dynamic and randomized at the start of
+each training round to prevent adversaries from predicting cluster
+composition and colluding. We employ the Fisher–Yates shuffle
+
+algorithm to generate a random permutation of client indices, which
+are then sequentially sliced into groups of size 𝑘.
+Intra-Cluster Aggregation. Within each cluster 𝐺 𝑗 , the clients
+perform the standard GHZ-based QSA protocol. Let 𝒘 𝒊 denote the
+local gradient weight of client 𝐶𝑖 . This vector is normalized and
+encoded into a quantum phase angle 𝜽 𝒊 ∈ [−𝜋, 𝜋]. The aggregation server prepares a 𝑘-qubit GHZ state and distributes it to the
+members of 𝐺 𝑗 .
+After encoding, the server decodes the state to obtain the cluster
+aggregate, denoted as Θj . Mathematically, this corresponds to the
+superposition of individual phases:
+∑︁
+𝚯𝒋 =
+𝜽𝒊.
+𝐶𝑖 ∈𝐺 𝑗
+
+Privacy Guarantee. It is important to note that the server only
+measures the aggregated value 𝚯𝒋 . The individual contributions
+𝜽 𝒊 remain locked in the entangled state and are destroyed upon
+measurement. Thus, the privacy of individual clients is preserved
+against the server.
+Inter-Cluster Verification. Since the server possesses the set of
+cluster aggregates {𝚯1 , 𝚯2 , . . . , 𝚯𝑴 }, it can perform Inter-Cluster
+Verification to detect malicious (Byzantine) participation.
+From existing state-of-the-art Byzantine-robust aggregation schemes,
+it can be inferred that most schemes utilise statistical operations,
+such as Euclidean distance and cosine similarity, to detect outliers.
+Thus, we show that these metrics can also be calculated across
+aggregated clusters.
+(1) Cosine Similarity (𝑆 cos ): measures the directional alignment between two cluster aggregates 𝚯𝑎 and 𝚯𝑏 ,
+𝑆 cos (𝚯𝑎 , 𝚯𝑏 ) =
+
+𝚯𝑎 · 𝚯𝑏
+.
+∥𝚯𝑎 ∥ ∥𝚯𝑏 ∥
+
+(2) Euclidean Distance (𝐷 Euc ): measures the magnitude of difference between cluster aggregates,
+√︁
+𝐷 Euc (𝚯𝑎 , 𝚯𝑏 ) = (𝚯𝑎 − 𝚯𝑏 ) 2 = |𝚯𝑎 − 𝚯𝑏 |.
+Outlier Rejection Logic. The CQSA framework can be tailored
+with existing state-of-the-art Byzantine-robust aggregation schemes
+(e.g., Krum, Multi-Krum, Median, Trimmed Mean, FLTrust, MESAS,
+
+CQSA: Byzantine-robust Clustered Quantum Secure Aggregation in Federated Learning
+
+and more). Distance-based methods such as Krum and Multi-Krum
+can be instantiated by computing pairwise Euclidean distances between cluster-level updates and selecting those that are closest to
+the majority. Similarly, coordinate-wise robust statistics, including
+Median and Trimmed Mean, can be applied independently to each
+model parameter across clusters, limiting the influence of anomalous aggregates while preserving convergence behavior. CQSA also
+supports trust-aware and multi-statistic defenses such as FLTrust
+and MESAS. In this setting, the server evaluates cluster-level updates using similarity metrics (e.g., cosine similarity with a trusted
+reference update in FLTrust) and combined statistical indicators
+(e.g., Euc, Cos, Count, Variance, Min and Max measures in MESAS).
+Architectural Benefits. The proposed CQSA architecture offers
+distinct physical and computational advantages over the standard
+global QSA approach.
+–Increased State Fidelity. Quantum state fidelity decays exponentially with the number of qubits due to environmental noise.
+For a global GHZ state of size 𝑁 , the fidelity 𝐹 𝑁 is approximately
+𝐹 𝑁 ≈ (1 − 𝜖) 𝑁 , where 𝜖 is the error rate per qubit. By reducing the
+entanglement size to 𝑘, we achieve a significantly higher fidelity:
+𝐹 cluster ≈ (1 − 𝜖)𝑘 ≫ (1 − 𝜖) 𝑁 .
+–Reduced Coherence Time Requirements. The coherence time 𝑇2
+is the window during which a quantum state remains viable. Global
+aggregation requires all 𝑁 clients to encode and return their qubits
+within this window (𝑇op < 𝑇2 ). As 𝑁 grows, the transmission and
+wait times (often 𝑇op ∝ 𝑁 ) inevitably exceed 𝑇2 , destroying the state.
+In our clustered approach, 𝑇op ∝ 𝑘. Since 𝑘 is small and constant, the
+operation fits comfortably within the coherence limits (𝑇op ≪ 𝑇2 ).
+–Parallelization and Latency Reduction. Global QSA is sequential
+in its preparation and measurement complexity. CQSA allows for
+parallelization. The 𝑀 clusters can be processed simultaneously
+by the server (assuming sufficient quantum hardware ports) or in
+rapid pipelined batches. The latency for a global round is reduced
+from O (𝑁 ) to O (𝑘).
+–Localized Dropout Resilience. In a global GHZ scheme, if a single
+client 𝐶𝑖 drops out (due to connectivity loss), the entire 𝑁 -qubit
+entanglement is broken and the whole round must be restarted. In
+CQSA, a dropout only invalidates the specific cluster 𝐺 𝑗 . The server
+proceeds with the aggregation of the remaining 𝑀 − 1 clusters.
+
+5
+
+Evaluation
+
+Simulation Setup. GHZ State Fidelity under Depolarizing Noise.
+We evaluated the fidelity of distributed GHZ state generation using
+the NVIDIA CUDA-Q platform [16]. To simulate realistic hardware
+imperfections, we utilized a local depolarizing noise model. A twoqubit depolarizing channel with probability (𝑝 = 0.5% for Figure 2,
+and range of 0 to 2% for Figure 3) was applied exclusively to all
+CNOT gates in the circuit. Fidelity was defined as the population
+overlaps with the ideal computational basis states (|0 . . . 0⟩ and
+|1 . . . 1⟩). We employed a hybrid simulation technique to estimate
+scaling for large system sizes (𝑁 = 100). For system sizes 𝑛 ≤ 20,
+fidelity was calculated via direct noisy simulation. For 𝑛 > 20,
+fidelity was extrapolated based on the gate error rate using the
+recurrence relation 𝐹𝑛 = 𝐹𝑛−1 · (1 − 𝑝) 2 . The CQSA metric models
+the system as 𝑀 = 𝑁 /𝑘 independent clusters of size 𝑘. The total
+system fidelity is calculated as the product of the individual cluster
+
+Conference acronym ’XX, June 03–05, 2018, Woodstock, NY
+
+fidelities, 𝐹 total = (𝐹 cluster (𝑘)) 𝑁 /𝑘 , representing the joint probability
+that all distributed clusters simultaneously achieve the target state.
+We do not simulate FL with Byzantine-robust aggregation schemes
+explicitly, due to limited space. However, theoretical analysis proved
+that the statistical relationships are preserved; hence, CQSA can be
+tailored to existing schemes.
+Simulation Result. Figure 2 demonstrates a clear inverse relationship between cluster size (𝑘) and state fidelity: as the cluster
+size increases, the overall system fidelity significantly decreases.
+The Clustered QSA (CQSA) approach (solid lines) consistently outperforms the Global baseline (dashed lines) for almost all cluster
+sizes, but the gain is most significant at small 𝑘 (e.g., 𝑘 = 5). Higher
+hardware noise (𝑝 = 0.01, cyan line) suppresses fidelity much faster
+than lower noise (𝑝 = 0.005, blue line), reducing the viable range
+of cluster sizes. Therefore, breaking a large network into smaller,
+independent entangled groups yields a much higher probability of
+success than attempting global entanglement.
+Although the plot confirms that smaller clusters yield higher
+fidelity, this fragmentation theoretically lowers the security threshold, as fewer cooperating parties are needed to reconstruct a secret
+compared to a global state. However, this risk is effectively mitigated by the protocol’s design:
+–Randomized Clustering: The formation of clusters is stochastic, preventing adversaries from predicting which clients will be
+entangled together in any given round.
+–Client Anonymity: Participants in a cluster remain "blind" to
+one another; they possess their own measurement data but have
+no knowledge of the identities or locations of the other members
+in their specific group.
+–Dynamic Reconfiguration: By rapidly reshuffling cluster assignments for every key generation round, the system prevents
+any static group from being targeted, ensuring that even if a small
+group is compromised, the overall network security remains intact.
+In Figure 3, the global model (red surface) illustrates a sharp,
+non-linear collapse in state fidelity as both the depolarizing noise
+probability (𝑝) and the number of qubits (𝑁 ) increase, dropping
+to almost zero at higher noise and client levels. The CQSA model
+(green surface) consistently maintains higher fidelity than the global
+model across the entire parameter space.
+However, the CQSA approach does not eliminate decoherence;
+as the noise probability 𝑝 increases, the green surface clearly tends
+toward lower fidelity. However, we argue that these results are far
+more actionable than those of the global model. Because the CQSA
+framework breaks the problem into independent submodules, the
+resulting errors are localized rather than systemic.
+Discussion. CQSA has two inherent limitations arising from its
+clustered design. First, malicious detection is performed at the
+level of clusters, and thus, the protocol cannot directly identify
+or isolate malicious participants within a cluster. However, since
+cluster formation is randomized across communication rounds, a
+persistent adversary is unlikely to be grouped with the same set
+of honest clients repeatedly. Second, CQSA reveals cluster-level
+aggregated updates to the server, which may introduce privacy
+leakage when clusters are small. However, this leakage is bound
+to aggregated information rather than individual updates, and the
+
+Conference acronym ’XX, June 03–05, 2018, Woodstock, NY
+
+Arnab et al.
+
+References
+
+Figure 2: State Fidelity vs. Cluster size. The knobs in the solid
+line denote cluster size (factors of 60), starting from 1.
+
+Figure 3: Comparative Fidelity Analysis across Noise and
+Scaling Dimensions (here cluster size k=4).
+
+random reassignment of clients to clusters across rounds further
+prevents consistent exposure of the same subset of clients.
+
+6
+
+Conclusion
+
+CQSA demonstrates that Byzantine-robust secure aggregation can
+be made practical for federated learning by replacing global entanglement with randomized, dynamically reconfigured clusters. Our
+evaluation under depolarizing noise shows that clustering substantially improves the probability of success (fidelity) by localizing
+decoherence, while the anonymity and reshuffling of the protocol
+mitigate the reduced risk of privacy (due to the small, limited size
+of the cluster) that would otherwise arise from fragmentation. Although noise still degrades performance as 𝑝 increases, the modular
+structure makes errors more amenable to mitigation techniques
+that are infeasible at a global scale. Future work can focus on comparing computational overload between the proposed CQSA and
+present classical secure aggregation protocols, optimizing cluster
+sizing under heterogeneous hardware, integrating explicit errormitigation and purification steps, and validating CQSA on real
+quantum backends and end-to-end FL workloads.
+
+[1] James Bell, Adrià Gascón, Tancrède Lepoint, Baiyu Li, Sarah Meiklejohn, Mariana
+Raykova, and Cathie Yun. { ACORN } : input validation for secure aggregation. In
+32nd USENIX Security Symposium (USENIX Security 23), pages 4805–4822, 2023.
+[2] Peva Blanchard, El Mahdi El Mhamdi, Rachid Guerraoui, and Julien Stainer.
+Machine learning with adversaries: Byzantine tolerant gradient descent. In
+Proceedings of the 31st International Conference on Neural Information Processing
+Systems, pages 118–128, 2017.
+[3] Keith Bonawitz, Vladimir Ivanov, Ben Kreuter, Antonio Marcedone, H Brendan
+McMahan, Sarvar Patel, Daniel Ramage, Aaron Segal, and Karn Seth. Practical
+secure aggregation for privacy-preserving machine learning. In proceedings of
+the 2017 ACM SIGSAC Conference on Computer and Communications Security,
+pages 1175–1191, 2017.
+[4] Xiaoyu Cao, Minghong Fang, Jia Liu, and Neil Gong. Fltrust: Byzantine-robust
+federated learning via trust bootstrapping. In NDSS, 2021.
+[5] Weidong Du, Min Li, Liqiang Wu, Yiliang Han, Tanping Zhou, and Xiaoyuan
+Yang. A efficient and robust privacy-preserving framework for cross-device
+federated learning. Complex & Intelligent Systems, 9(5):4923–4937, 2023.
+[6] Chong Fu, Xuhong Zhang, Shouling Ji, Jinyin Chen, Jingzheng Wu, Shanqing
+Guo, Jun Zhou, Alex X Liu, and Ting Wang. Label inference attacks against
+vertical federated learning. In 31st USENIX security symposium (USENIX Security
+22), pages 1397–1414, 2022.
+[7] Hongsheng Hu, Zoran Salcic, Lichao Sun, Gillian Dobbie, and Xuyun Zhang.
+Source inference attacks in federated learning. In 2021 IEEE International Conference on Data Mining (ICDM), pages 1102–1107. IEEE, 2021.
+[8] Weizhao Jin, Yuhang Yao, Shanshan Han, Jiajun Gu, Carlee Joe-Wong, Srivatsan Ravi, Salman Avestimehr, and Chaoyang He. Fedml-he: An efficient
+homomorphic-encryption-based privacy-preserving federated learning system.
+arXiv preprint arXiv:2303.10837, 2023.
+[9] Torsten Krauß and Alexandra Dmitrienko. Mesas: Poisoning defense for federated
+learning resilient against adaptive attackers. In Proceedings of the 2023 ACM
+SIGSAC Conference on Computer and Communications Security, pages 1526–1540,
+2023.
+[10] Jing Ma, Si-Ahmed Naas, Stephan Sigg, and Xixiang Lyu. Privacy-preserving
+federated learning based on multi-key homomorphic encryption. International
+Journal of Intelligent Systems, 37(9):5880–5901, 2022.
+[11] Mohamad Mansouri, Melek Önen, Wafa Ben Jaballah, and Mauro Conti. Sok:
+Secure aggregation based on cryptographic schemes for federated learning. Proceedings on Privacy Enhancing Technologies, 2023.
+[12] Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and
+Blaise Aguera y Arcas. Communication-efficient learning of deep networks
+from decentralized data. In Artificial Intelligence and Statistics, pages 1273–1282.
+PMLR, 2017.
+[13] H. Brendan McMahan, Eider Moore, Daniel Ramage, and Blaise Agüera y Arcas. Federated learning of deep networks using model averaging. CoRR,
+abs/1602.05629, 2016.
+[14] Viraaji Mothukuri, Reza M Parizi, Seyedamin Pouriyeh, Yan Huang, Ali Dehghantanha, and Gautam Srivastava. A survey on security and privacy of federated
+learning. Future Generation Computer Systems, 115:619–640, 2021.
+[15] Milad Nasr, Reza Shokri, and Amir Houmansadr. Comprehensive privacy analysis
+of deep learning: Passive and active white-box inference attacks against centralized and federated learning. In 2019 IEEE symposium on security and privacy (SP),
+pages 739–753. IEEE, 2019.
+[16] NVIDIA. CUDA-Q: A platform for integrated quantum-classical computing.
+arXiv preprint, 2024.
+[17] Mayank Rathee, Conghao Shen, Sameer Wagh, and Raluca Ada Popa. Elsa: Secure
+aggregation for federated learning with malicious actors. In 2023 IEEE Symposium
+on Security and Privacy (SP), pages 1961–1979. IEEE, 2023.
+[18] Amrita Roy Chowdhury, Chuan Guo, Somesh Jha, and Laurens van der Maaten.
+Eiffel: Ensuring integrity for federated learning. In Proceedings of the 2022 ACM
+SIGSAC Conference on Computer and Communications Security, pages 2535–2549,
+2022.
+[19] Kang Wei, Jun Li, Ming Ding, Chuan Ma, Howard H Yang, Farhad Farokhi, Shi
+Jin, Tony QS Quek, and H Vincent Poor. Federated learning with differential
+privacy: Algorithms and performance analysis. IEEE transactions on information
+forensics and security, 15:3454–3469, 2020.
+[20] William K. Wootters and Wojciech H. Zurek. A single quantum cannot be cloned.
+Nature, 1982.
+[21] Dong Yin, Yudong Chen, Ramchandran Kannan, and Peter Bartlett. Byzantinerobust distributed learning: Towards optimal statistical rates. In International
+Conference on Machine Learning, pages 5650–5659. PMLR, 2018.
+[22] Yichi Zhang, Chao Zhang, Cai Zhang, Lixin Fan, Bei Zeng, and Qiang Yang. Federated learning with quantum secure aggregation. arXiv preprint arXiv:2207.07444,
+2022.
+
+Received 20 February 2007; revised 12 March 2009; accepted 5 June 2009
+
+

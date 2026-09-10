@@ -1,0 +1,36 @@
+{
+  "title": "Hammer and Anvil: Toward a Theory of Backdoors in Federated Learning",
+  "bibkey": "fenaux2025hammer",
+  "c_d_route": "component-contrast",
+  "venue": "arXiv",
+  "year": 2025,
+  "criteria": {
+    "C-a": {
+      "code": "YES",
+      "quote": "Our theory dictates the principled combination of defenses: combining Type 1 and Type 2 defenses to yield a robust principled combined defense, HA.",
+      "locator": "§4, restated in the §1 contributions list"
+    },
+    "C-b": {
+      "code": "YES",
+      "quote": "We demonstrate that defenses of a single type and non-principled combined defenses inherently leave an exploitable gap for adaptive attackers.",
+      "locator": "§1 contributions; the complementary-coverage argument is formal in §4, where a Type 1 defense removes the backdoor for any attack magnitude above a threshold and a Type 2 defense for any magnitude below one"
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "The results demonstrate that our principled approach successfully closes the exploitable gap in three configurations",
+      "locator": "§6.1, Table 3, which reports the composed defenses' ASR and benign accuracy"
+    },
+    "C-d": {
+      "code": "YES",
+      "quote": "Conversely, pairing CSFT with MoM or Rob-MoM yields little improvement, indicating that the success of our defense approach ultimately relies on selecting a Type 1 defense restrictive enough to overlap with CSFT’s effective 𝛿-range.",
+      "locator": "§6.1, read off Table 3"
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "the success of our defense approach ultimately relies on selecting a Type 1 defense restrictive enough to overlap with CSFT’s effective 𝛿-range.",
+      "locator": "§6.1"
+    }
+  },
+  "coder_note": "C-d IS SATISFIED STRICTLY, NOT ONLY BY RULE 4, AND THIS OVERTURNS main.tex:1658. Table 3 holds the downstream mechanism fixed -- CSFT is the Type 2 removal stage in every variant -- and varies the UPSTREAM Type 1 defense across Flame, Krum, Multi-Metrics, Norm, MoM and Rob-MoM, then reads CSFT's requirement off that variation ('a Type 1 defense restrictive enough to overlap with CSFT's effective δ-range'). That is the intervention of prop:identification_full, performed on the upstream stage with the downstream fixed, which is exactly what the rubric asks for and what main.tex claims is absent outside our own screen. Note what is NOT the basis for this code: Table 3's parenthesised 'original m values ... without HA' vary the DOWNSTREAM (CSFT on/off) with the upstream fixed, and the rubric explicitly declines that as a component drop that 'changes the system, not the upstream input to a fixed component'. The code rests on the across-row comparison, not the parentheses.",
+  "overturns_claim_at": "main.tex:1658 and :1664, which name this paper as the one external instance of the outcome-gated design"
+}

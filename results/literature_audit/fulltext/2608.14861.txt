@@ -1,0 +1,1231 @@
+arXiv:2608.14861v1 [cs.CR] 14 Aug 2026
+
+STAR-FL: Secure Federated Learning with
+Spatial-Temporal Analysis and Robust Aggregation
+Nawrin Tabassum
+
+Yanzhao Wu
+
+Department of Computer Science and Engineering
+Ahsanullah University of Science and Technology
+Dhaka, Bangladesh
+nawrin.cse@aust.edu
+
+Knight Foundation School of Computing and Information Sciences
+Florida International University
+Miami, FL, USA
+yawu@fiu.edu
+
+Abstract—Data poisoning attacks pose serious security threats
+to Federated Learning (FL) systems in Computer Vision. Despite growing research attention, two key challenges remain
+for existing defense techniques: (1) accurately distinguishing
+between benign and malicious model updates and (2) effectively
+mitigating the influence of poisoned model updates during
+model aggregation. To address these challenges, we propose
+a novel defense framework against targeted poisoning attacks
+with Spatial-Temporal Analysis and Robust aggregation for
+FL (STAR-FL). First, we employ spatial-temporal clustering to
+identify and remove potentially malicious updates from the FL
+training process. Second, we adjust the learning rate during
+aggregation to mitigate the impact of any malicious updates that
+evade detection. Third, we conduct extensive experiments across
+multiple benchmark datasets to evaluate the spatial-temporal
+analysis and robust aggregation in STAR-FL. Experimental results demonstrate their synergistic effect in enabling STAR-FL to
+effectively protect FL and consistently outperform state-of-the-art
+defenses against targeted poisoning attacks, significantly reducing
+Attack Success Rates (ASRs). The source code is available at
+https://github.com/mlsysx/STAR-FL.
+Index Terms—Federated Learning, Targeted Poisoning Attack,
+Backdoor Defense, Spatial-Temporal Analysis, Robust Aggregation.
+
+I. I NTRODUCTION
+Federated Learning (FL) [1] is a distributed Machine Learning (ML) paradigm that is widely used for privacy-preserving
+model training. FL enables decentralized training across multiple clients, where each client owns a local dataset. At each
+communication round, a subset of clients is selected to participate in the FL training. The selected client receives the current
+global model, performs local training on its private data, and
+returns model updates to the central server for aggregation.
+Despite several advantages, FL remains vulnerable to a wide
+range of adversarial attacks [2]–[9]. These attacks not only
+compromise the privacy of client data but also degrade model
+performance by disrupting the learning process. In data poisoning attacks, malicious clients modify their local data samples
+and send poisoned updates to the server. During aggregation,
+these poisoned updates are combined with the benign updates
+from the honest clients. In untargeted poisoning attacks [3],
+[10], adversaries aim to degrade the global model performance
+by sending poisoned updates. These updates deviate from the
+correct optimization direction and cause the global model to
+
+misclassify input samples. Consequently, the model accuracy
+decreases as the server aggregates both honest and poisoned
+updates. In contrast, targeted poisoning attacks [2], [11], [12]
+cause the model to misclassify specific inputs while maintaining high accuracy on benign data, making these attacks
+particularly difficult to detect.
+Several defenses have been proposed to mitigate these
+adversarial threats in FL. One line of work focuses on preaggregation defenses, which aim to identify and exclude
+malicious client updates before aggregation. These approaches
+typically leverage unsupervised learning techniques to distinguish between benign and malicious updates by analyzing
+spatial characteristics, such as gradient similarities or distance
+measures [13]–[15]. Some methods detect malicious clients
+based on temporal behaviors and exclude their updates from
+the aggregation process [16]. Another line of work employs
+robust aggregation techniques [17]–[19], which attempt to
+mitigate the influence of adversarial updates by reweighting
+client contributions during aggregation. Although these defenses can improve robustness, they often mistakenly discard
+benign updates, resulting in the loss of useful information and
+degraded model performance. These limitations highlight the
+pressing need for a holistic defense framework that jointly
+performs reliable attack detection and robust aggregation.
+In this study, we propose STAR-FL, a defense framework
+that integrates spatial-temporal analysis with robust aggregation to secure FL systems against targeted poisoning attacks.
+We specifically focus on backdoor attacks where malicious
+clients implant a trigger pattern into specific training samples and alter their labels. Our key insight is that malicious
+client updates often exhibit abnormal spatial relationships with
+benign updates and temporal inconsistencies with their own
+historical behavior. Leveraging this observation, STAR-FL
+jointly analyzes the spatial similarity of client updates and
+their temporal consistency across training rounds to identify
+suspicious behaviors. Updates flagged as malicious are excluded prior to aggregation. To further mitigate the influence
+of adversarial updates that evade spatial-temporal detection,
+STAR-FL incorporates a robust aggregation strategy that
+adaptively adjusts the server learning rate to reweight client
+contributions during each round. This mechanism preserves
+effective learning on the main task while suppressing the
+
+impact of poisoned updates. By combining spatial-temporal
+analysis with robust aggregation, STAR-FL provides a unified
+defense against backdoor attacks in FL. We evaluate STAR-FL
+on three benchmark datasets: Fashion-MNIST (FMNIST) [20],
+CIFAR-10 [21], and CIFAR-100 [21] under multiple poisoning attacks, including Backdoor Attack, Model Replacement
+Attack, Distributed Backdoor Attack, and Adaptive Attack.
+Experimental results show that STAR-FL significantly reduces
+attack success rates while maintaining high model utility and
+outperforms state-of-the-art defenses. The main contributions
+of our work can be summarized as follows:
+• We propose STAR-FL, a novel defense framework that
+effectively detects malicious client updates and mitigates
+backdoor attacks in federated learning.
+• We design a spatial-temporal analysis mechanism that
+examines the similarity among client updates and their
+temporal consistency across rounds to identify poisoned
+updates. We further integrate a robust aggregation strategy that suppresses the influence of malicious updates
+while preserving the contributions of benign clients.
+• We conduct extensive experiments on multiple benchmark datasets and attack scenarios, demonstrating that
+STAR-FL significantly reduces attack success rates while
+maintaining high model utility.
+II. R ELATED W ORK
+In targeted poisoning attacks, adversaries manipulate local
+training data to implant hidden behaviors into the global
+model. A common strategy is to insert trigger patterns into
+training samples and associate them with a target label to
+inject a backdoor, which causes the model to misclassify
+triggered inputs while maintaining high accuracy on clean
+data [15], [22], [23]. Typically, attackers inject the same trigger
+pattern into targeted inputs [24]. Another attack variant is
+the distributed backdoor attack (DBA) [4], which distributes
+trigger patterns across multiple malicious clients to evade
+detection. Label-flipping attacks [5], [25] modify the labels of
+samples from a source class to a target class, thereby poisoning
+the learning process without introducing explicit triggers.
+Various defense mechanisms have been proposed to mitigate
+the impact of poisoned updates in federated learning [26], [27].
+One line of work focuses on update filtering, where malicious
+updates are detected and excluded before aggregation. Several
+studies cluster model updates based on distance measures,
+such as cosine distance, to separate benign and malicious
+clients [13], [14]. Dimensionality reduction techniques, such
+as PCA, have been investigated to improve clustering performance [5]. In [16], a client is flagged as malicious if its updates
+are inconsistent with those predicted by the server based on its
+historical behavior. However, these defense approaches often
+tend to misclassify and discard benign updates, harming global
+model utility. Robust aggregation techniques [17], [19] have
+also been studied to reduce the influence of adversarial clients
+during FL training. Robust Learning Rate (RLR) [18] adjusts
+the server learning rate based on the signs of client updates to
+suppress adversarial contributions. Nevertheless, such methods
+
+(a)
+
+(b)
+
+(c)
+
+(d)
+
+(e)
+
+(f)
+
+Fig. 1: Poisoned image examples from FMNIST (top) and
+CIFAR-10 (bottom) datasets. A plus pattern is inserted as a
+trigger in the top left of the images.
+are typically effective only when the number of malicious
+clients is very small, and residual poisoned updates may still
+degrade global model performance.
+III. P ROBLEM S TATEMENT
+A. Threat Model
+The goal of the attack is to manipulate the model in such
+a way that it correctly classifies benign samples. However,
+poisoned samples are misclassified into the attacker-specified
+target class, resulting in a high attack success rate. The attacker
+aims to ensure that the global model achieves high accuracy
+on both the main task and the backdoor task. The attackers do
+not manipulate the global model directly. Rather, they exploit
+the local datasets by inserting a trigger pattern into specific
+samples and altering their labels. We assume that the attackers
+have partial knowledge about the FL system, i.e., local training
+data. However, they have no knowledge about the aggregator
+or central server.
+Let a model f be trained on (x, y) where x is the input
+sample and y is the ground truth label. The trained model
+predicts the output f (x) for clean input x. When the attacker
+poisons the input x by adding some trigger µ, the model
+misclassifies the poisoned sample x + µ into a specific target
+label y ′ such that f (x+µ) = y ′ . We consider a backdoor attack
+where the attacker’s goal is to retain the model’s behavior on
+benign data while modifying its behavior on poisoned data in
+the presence of a trigger. The following objective is optimized
+by the attacker.
+X
+X
+θ∗ = min
+L1 (xi , yi ) +
+L2 (xi + µ, yi′ )
+(1)
+θ
+
+i∈DH
+
+i∈DP
+
+where the loss functions L1 and L2 are simultaneously minimized for clean dataset DH and poisoned dataset DP .
+B. Defense Goals
+Let Mt ⊆ Kt be the set of malicious clients at round
+t, and DH and DP represent the honest and poisoned data
+distributions respectively. Given a global model fW with
+weights W and a loss function ℓ, the defense goal is to
+
+optimize the objective defined in Eq. (2) by minimizing the
+main task loss while maximizing the backdoor task loss.
+LW = min E(x,y)∼DH [ℓ(fW (x), y)]+
+W
+
+max E(x,y)∼DP [ℓ(fW (x), y)]
+
+(2)
+
+W
+
+Our goal is to design an effective defense method in which
+the global model would demonstrate good performance on the
+main task by accurately classifying benign samples. At the
+same time, when attackers are present, the model would not
+learn the backdoor task or misclassify poisoned samples into
+the target label. It would correctly classify both benign and
+poisoned samples into their true labels.
+
+dataset. Our problem formulation, threat model, attack, and
+defense are all implemented within the HFL setting.
+Algorithm 2 DetectMaliciousClients
+Input: Local model updates {∆Wti }, historical updates {Rit−1 }, decay
+parameter β.
+Output: Honest clients {ht }.
+1: // Spatial Analysis
+2: for each client i = 1 to N do
+3:
+Extract last layer gradients ∇Wti
+4:
+Apply PCA to obtain dimensionality reduced gradient Vit
+5: end for
+6: Apply K-means clustering on {Vit } to obtain clusters C1 , C2
+7: Compute average cosine similarity SCp for each cluster:
+SCp = avg
+
+Algorithm 1 STAR-FL Framework
+Input: Number of rounds T , number of clients N , server learning rate
+η, decay parameter β, sign threshold δ, local datasets Di for each client
+i.
+Output: Final global model WG .
+Initialize: Global model W0 , historical updates Ri0 = 0 for each client
+i.
+1: for each round t = 1 to T do
+2:
+for each client i = 1 to N do
+3:
+Receive global model Wt−1
+4:
+Perform local training and send ∆Wti
+5:
+end for
+6:
+// Spatial-Temporal Analysis
+7:
+{ht } ← D ETECT M ALICIOUS C LIENTS({∆Wti }, {Rit−1 }, β)
+8:
+// Robust Aggregation
+9:
+for each dimension k ∈ {1, 2, 3, ...., K} do
+10:
+Compute sum of signs:
+X
+sign (∆Wtik )
+Mtk =
+i∈ht
+
+11:
+
+Adjust learning rate:
+(
+ηkt =
+
+12:
+13:
+
+η,
+if |Mtk | > δ
+−η, otherwise
+
+end for
+Update global model:
+Wt = Wt−1 +
+
+|Di |
+
+X
+P
+i∈ht
+
+j∈ht |Dj |
+
+· (η t ⊙ ∆Wti )
+
+14: end for
+15: return Final model WG
+
+IV. OVERVIEW OF STAR-FL
+Our proposed defense framework STAR-FL consists of
+the following steps. First, we take the final layer model
+updates and reduce their dimensionality. Then we separate
+these updates into two clusters. Second, we predict each
+client’s updates in a specific round using their historical updates. Then we compare the predicted updates with the actual
+updates received from the clients after local training. Updates
+that are identified as malicious by both spatial and temporal
+analyses are removed from that round. Third, we aggregate the
+remaining model updates while adjusting the server learning
+rate based on the sum of update signs. Algorithms 1 and
+2 demonstrate the detailed steps of STAR-FL. Our work is
+conducted entirely within the Horizontal Federated Learning
+(HFL) setting, where each client holds a distinct subset of the
+
+Vi · V j
+;
+∥Vi ∥ ∥Vj ∥
+
+∀ i, j ∈ Cp , i ̸= j
+
+8: if SC1 > SC2 then
+9:
+Clients in C1 are potentially malicious
+10: else
+11:
+Clients in C2 are potentially malicious
+12: end if
+13: // Temporal Analysis
+14: for each client i = 1 to N do
+15:
+Predict update:
+Rit = βRit−1 + (1 − β)∆Wt
+16:
+
+Compute similarity:
+γit =
+
+Rit · ∆Wti
+∥Rit ∥ ∥∆Wti ∥
+
+17: end for
+18: Apply KDE on {γit } to detect temporal outliers
+19: {ht } ← clients detected as honest in both analyses
+20: return {ht }
+
+A. Spatial Analysis
+In this step, we first analyze the final layer updates ∇Wti of
+the local models trained by each client i ∈ {1, 2, 3, ...., N } at
+the current round t. The honest clients h ⊂ i primarily focus
+on increasing the main task accuracy, and train local models
+on diverse datasets Di to improve global model performance.
+Consequently, the benign updates diverge significantly from
+one another and demonstrate higher variance. In contrast, the
+poisoned updates show higher similarity, as the malicious
+clients m ⊂ i \ h share a common goal of increasing the
+backdoor task accuracy. Therefore, the model updates received
+from benign and malicious clients follow different gradient
+distributions. We apply Principal Component Analysis (PCA)
+on the last layer updates ∇Wti to utilize this difference
+for detecting poisoned updates. PCA highlights the principal
+directions of data variation, which facilitates the detection of
+patterns in the model updates. We observe that the updates tend
+to form different clusters after reducing the dimensionality
+to two using PCA. The poisoned updates exhibit higher
+uniformity while the benign updates exhibit higher variance,
+as demonstrated in Fig. 2. We focus on the final layer updates
+because the final layer provides a computationally efficient yet
+compact representation that captures the essential behavioral
+differences between honest and malicious clients. Moreover,
+in targeted poisoning attacks, adversaries primarily manipulate
+
+(a) FMNIST
+
+(b) CIFAR-10
+
+(a) m=10%
+
+(b) m=20%
+
+(c) m=20%
+
+(d) m=30%
+
+Fig. 2: PCA visualization of benign (green) and malicious
+(red) updates over all communication rounds with m=10%.
+the final classification layer to associate triggers with target
+labels while preserving benign behavior in earlier layers to
+evade detection [7], [28].
+V ar (∇Wti )i⊂h > V ar (∇Wtj )j⊂m
+
+(3)
+
+Next, we apply K-Means Clustering to separate the lowdimensional update vectors {V1 , V2 , V3 , ...., VN } into two clusters, C1 and C2 . As the smaller cluster is not guaranteed to
+contain malicious updates [29], we further analyze each cluster
+to avoid misclassifying the updates. We compute the pairwise
+Cosine Similarity S among the model updates within each
+cluster as follows.
+Vi · V j
+(4)
+S(Vi , Vj ) =
+∥Vi ∥∥Vj ∥
+The malicious clients demonstrate similar behavior and
+produce similar updates, resulting in a higher average Cosine
+Similarity within their cluster. We calculate the average similarity SCp (5) for each cluster and identify the cluster with
+the higher similarity value as the malicious cluster. Finally,
+we perform outlier detection as proposed in [30]. We calculate
+the Euclidean distance of each client update from its assigned
+cluster centroid. Any update that lies outside the distance
+threshold is flagged as an outlier and removed.
+SCp = avg S(Vi , Vj );
+
+∀ i, j ∈ Cp , i ̸= j
+
+(5)
+
+B. Temporal Analysis
+We apply the fixed-frequency attack [2], where attackers poison their local datasets only in some communication
+rounds. By sending poisoned updates less frequently, the
+attackers become stealthy while still being able to influence the
+global model [12]. In our work, the attackers insert a trigger
+into the training samples once every third round.
+To identify attackers based on the patterns of their historical
+updates, we perform per-client temporal analysis. We compute
+the predicted gradients Rit for each client i in the current round
+t based on its gradients from previous rounds. Specifically,
+we utilize the exponential moving average of past updates to
+predict the expected updates in the current round, as given by
+the following equation.
+Rit = βRit−1 + (1 − β)∆Wt
+
+(6)
+
+where β is a decay parameter that balances the contributions
+of the predicted and actual updates. This method allows us
+
+Fig. 3: Kernel Density Estimation plots at round 30 and 15
+for the FMNIST dataset (top), and at round 90 and 45 for the
+CIFAR-10 dataset (bottom).
+to capture the temporal behavior of malicious clients, which
+is inconsistent over consecutive rounds. Next, we compare the
+predicted update Rit with the actual update ∆Wti sent by client
+i in the current round t. To measure the similarity γit between
+these two update vectors, we utilize Cosine Similarity (7).
+A lower similarity implies that the client’s current behavior
+is inconsistent with its past behavior, which flags it as a
+potentially malicious client.
+γit =
+
+Rit · ∆Wti
+∥Rit ∥ ∥∆Wti ∥
+
+(7)
+
+Then we apply Kernel Density Estimation (KDE) to the
+Cosine Similarity values {γ1 , γ2 , γ3 , ...., γN }. This technique
+helps us identify the malicious clients based on the density of
+the Cosine Similarity values. The key idea is that the benign
+clients’ behavior remains consistent over time. Therefore, they
+form a dense cluster around high similarity scores. In contrast,
+malicious clients form a separate and smaller cluster as shown
+in Fig. 3. Finally, we flag the cluster with fewer clients as
+the malicious cluster since the number of malicious clients is
+generally smaller than the number of benign clients.
+C. Robust Aggregation
+In this step, we employ an additional defense mechanism
+by utilizing adaptive server learning rates. Unlike traditional
+approaches that maintain a fixed learning rate during aggregation, we dynamically adjust the learning rates across different
+training rounds. This approach further enhances the robustness
+of the global model by mitigating the influence of malicious
+updates. The per-client learning rate tuning strategy is not a
+practical approach, as malicious clients might manipulate the
+training process to exploit such a learning rate tuning strategy
+and enhance their influence on the global model. We adopt a
+more realistic defense setting, which involves modifying the
+
+server learning rate based on the aggregated signs of updates
+in a particular dimension.
+Let △Wti denote the updates received at round t from client
+i ∈ ht , where ht is the set of clients identified as honest.
+We analyze the signs of updates and aggregate them across
+clients. Specifically, we compute the sum of signs Mtk for
+each parameter dimension k ∈ {1, 2, 3, ...., K} as (8) shows.
+X
+sign (△Wtik )
+Mtk =
+(8)
+i∈ht
+
+If the absolute value of the aggregated signs Mtk exceeds
+a threshold δ, it indicates that the majority of updates are
+consistent along the dimension k. This also indicates that
+the benign updates are dominant along that dimension, as
+the number of benign clients is higher than the number of
+malicious clients in our setting. In this case, the server learning
+rate η is multiplied by 1, which allows the global model to
+effectively learn from these updates. However, if |Mtk | is less
+than δ, it implies that the updates do not agree along that
+dimension. As a result, positive and negative updates tend
+to cancel each other out. We attribute this inconsistency to
+the stronger influence of poisoned updates. In such a case,
+we multiply the learning rate η by -1, which minimizes the
+contribution of malicious updates to the global model. δ is
+empirically set to 3 or 4 to achieve a balance between accuracy
+and attack success rate.
+(
+η,
+if |Mtk | > δ
+t
+ηk =
+(9)
+−η, otherwise
+Here, the goal is to mitigate the impact of poisoned updates
+that evade spatial-temporal detection. By utilizing adaptive
+learning rates, the influence of these updates is significantly
+reduced while ensuring that the global model remains strong
+and robust against adversarial attacks.
+V. E XPERIMENTAL A NALYSIS
+A. Experimental Setup
+Datasets. We conduct experiments on three benchmark
+datasets, Fashion-MNIST (FMNIST) [20], CIFAR-10 [21],
+and CIFAR-100 [21]. The FMNIST dataset consists of 60,000
+training and 10,000 testing images, and the CIFAR-10 and
+CIFAR-100 datasets consist of 50,000 training and 10,000
+testing images. Both FMNIST and CIFAR-10 datasets consist
+of 10 classes, and CIFAR-100 consists of 100 classes.
+Model Architectures. For the FMNIST dataset, we use
+a Convolutional Neural Network (CNN) consisting of two
+convolutional layers, one max pooling layer, and two fully
+connected layers with dropout. For CIFAR-10, we use a CNN
+with three convolutional layers, one max pooling layer, and
+three fully connected layers with dropout. Finally, we use a
+ResNet-18 architecture to train the CIFAR-100 dataset.
+Attack Method. We consider 20 clients in our setting, with
+50% of the clients randomly chosen in each round to participate in the FL process. The attackers insert a plus pattern as a
+trigger (Fig. 1) into all samples of a specific class (base class)
+to poison the local datasets following the BadNets [24] attack.
+
+TABLE I: Main task accuracy, base class accuracy, and attack
+success rate with different percentages of malicious clients. ↑
+denotes better performance with higher values, and ↓ denotes
+better performance with lower values.
+Dataset
+FMNIST
+
+CIFAR-10
+
+% of Malicious
+Clients
+10
+20
+30
+10
+20
+30
+
+MA (%)(↑)
+
+BA (%)(↑)
+
+ASR (%)(↓)
+
+91.49
+90.94
+89.96
+74.63
+74.61
+72.58
+
+97.50
+97.10
+96.80
+57.70
+59.40
+52.60
+
+2.30
+2.90
+3.60
+3.20
+3.90
+4.10
+
+Then they perform the following label flipping: class sandal
+→ sneaker (FMNIST), class dog → horse (CIFAR-10), and
+class bed → beetle (CIFAR-100).
+Hyperparameters. We run the FL training for 30, 100, and
+100 rounds on FMNIST, CIFAR-10, and CIFAR-100 datasets,
+respectively. The learning rate for local training is set to 0.1,
+and the server learning rate is initially set to 1.0. The batch size
+is set to 256 for FMNIST and CIFAR-10, and 128 for CIFAR100. The number of epochs is 5 for the FMNIST dataset and
+2 for the CIFAR-10 and CIFAR-100 datasets. The FMNIST
+and CIFAR-10 experiments are performed in an IID setting,
+while the CIFAR-100 experiments are performed in a non-IID
+setting with Dirichlet parameter α = 0.7. All experiments are
+conducted using the PyTorch framework.
+Evaluation Metrics. We use three evaluation metrics: main
+task accuracy (MA), base class accuracy (BA), and attack
+success rate (ASR), to assess the performance of the global
+model in our adversarial setting. MA and BA are measured on
+a clean validation set (without trigger), while ASR is measured
+on a poisoned validation set containing only poisoned samples
+from the base class. The goal of our defense is to maximize
+MA and BA while minimizing ASR.
+a) Main Task Accuracy: the overall accuracy, which indicates
+how accurately the model classifies clean samples.
+b) Base Class Accuracy: the accuracy on the base class,
+which indicates how well the model classifies clean samples
+from the base class.
+c) Attack Success Rate: the percentage of base class samples
+that are classified into the attacker-specified target class in the
+presence of a trigger.
+B. Effectiveness of STAR-FL
+To evaluate the effectiveness of the proposed STAR-FL
+framework, we conducted experiments under varying proportions of malicious clients (m = 10%/20%/30%). Table I
+presents the experimental results under different attack fractions. On the FMNIST dataset, STAR-FL demonstrated strong
+resilience against adversarial manipulation. With 10% malicious clients, the framework achieved a main task accuracy of
+91.49%, maintaining a high base class accuracy of 97.50%
+while limiting the ASR to only 2.30%. As the percentage
+of malicious clients increased to 20% and 30%, there was
+a gradual decline in overall accuracy. However, the degradation remained moderate. Even with 30% malicious client
+participation, the framework sustained a main task accuracy of
+
+TABLE II: Effectiveness of our proposed defense compared to existing defenses. ↑ denotes better performance with higher
+values, and ↓ denotes better performance with lower values.
+Defense
+No Attack
+FedAvg [1]
+RFA [17]
+Trimmed Mean [19]
+Median [19]
+RLR [18]
+FoolsGold [15]
+STAR-FL
+
+FMNIST
+Main Task
+Attack Success
+Accuracy (%)(↑)
+Rate (%)(↓)
+92.52
+N/A
+92.33
+100.0
+92.41
+100.0
+92.29
+99.50
+91.31
+77.40
+90.98
+48.60
+91.88
+39.50
+89.96
+3.60
+
+CIFAR-10
+Main Task
+Attack Success
+Accuracy (%)(↑)
+Rate (%)(↓)
+78.63
+N/A
+78.11
+77.50
+78.40
+78.80
+77.02
+68.90
+72.38
+66.00
+74.68
+43.60
+74.98
+71.30
+72.58
+4.10
+
+89.96% with an ASR of 3.60%. This highlights the robustness
+of STAR-FL in mitigating adversarial influence while maintaining main task performance.
+The experiments on the CIFAR-10 dataset present a more
+challenging scenario due to the increased complexity of the
+data. With 10% malicious clients, the framework obtained
+a main task accuracy of 74.63% and a base class accuracy
+of 57.70%, with the ASR remaining as low as 3.20%. The
+main task accuracy was preserved when the proportion of
+malicious clients increased. However, a sharper decline in base
+class accuracy was observed. With 30% malicious clients, the
+base class accuracy dropped to 52.60%, while the ASR rose
+slightly to 4.10%. These results indicate that while STARFL is effective in constraining the success rate of backdoor
+attacks, it incurs some trade-offs in maintaining accuracy on
+complex datasets.
+In summary, the results demonstrate that STAR-FL achieves
+a balance between robustness and accuracy across different attack fractions. The framework consistently restricted the ASR
+to below 5% for both datasets. This suggests that STAR-FL
+provides a significant advantage in isolating malicious updates,
+thereby enhancing the security of federated learning systems in
+adversarial environments. We further evaluate the effectiveness
+of STAR-FL against advanced attacks. The results shown in
+Section V-D demonstrate that STAR-FL provides a resilient
+and flexible defense against diverse attack strategies.
+C. Comparison to Existing Defenses
+We compare STAR-FL with RFA [17], Trimmed Mean
+[19], Median [19], RLR [18], and FoolsGold [15]. Table II
+shows the experimental results with 30% malicious clients.
+The CIFAR-100 experiments are conducted in a continuous
+attack [4] setting where attackers poison datasets in every
+round. Moreover, they scale their updates to amplify the attack.
+For all non-IID experiments, we determine the optimal number
+of clusters in spatial analysis using the Gap Statistics [31]
+method instead of fixing the setup to two clusters, and we omit
+the outlier-rejection step used in the IID experiments. These
+changes ensure that under non-IID settings, the framework
+does not mistakenly exclude honest updates while isolating
+malicious clients.
+On FMNIST, CIFAR-10, and CIFAR-100 datasets, FedAvg
+achieves high main task accuracy but completely fails as a
+defense, with an ASR of 100% on FMNIST, 77.50% on
+
+CIFAR-100
+Main Task
+Attack Success
+Accuracy (%)(↑)
+Rate (%)(↓)
+59.31
+N/A
+59.25
+52.00
+55.68
+47.00
+57.90
+44.00
+42.81
+34.00
+51.73
+21.00
+57.83
+43.00
+53.62
+7.00
+
+CIFAR-10, and 52% on CIFAR-100. RFA aggregates updates
+using the geometric median to reduce the effect of outliers.
+It preserves accuracy almost as well as FedAvg. However, it
+offers low robustness, with ASR values of 100%, 78.80%, and
+47% on FMNIST, CIFAR-10, and CIFAR-100, which indicates
+that geometric median based aggregation is ineffective against
+carefully designed malicious updates. Trimmed Mean discards
+the largest and smallest coordinate updates before averaging. It
+shows marginal improvement compared to FedAvg and RFA
+in terms of ASR. However, the effect remains negligible as
+accuracy is nearly unchanged.
+Median is another coordinate-wise aggregation method that
+selects the middle updates at each dimension. It provides
+stronger robustness by lowering ASR to 77.40% on FMNIST,
+66% on CIFAR-10, and 34% on CIFAR-100. However, it
+achieves low accuracy, especially on CIFAR-100, which reflects how discarding benign information can degrade model
+performance. RLR is an adaptive defense that adjusts the
+server learning rate according to client update consistency. It
+achieves stronger defense results by lowering ASR to 48.60%,
+43.60%, and 21% on FMNIST, CIFAR-10, and CIFAR-100.
+However, RLR depends entirely on sign consistency of updates, which makes it vulnerable when malicious updates
+are crafted to mimic benign updates. FoolsGold partially
+eliminates the effect of poisoned updates compared to other
+baselines. On FMNIST, it achieves high main task accuracy
+(91.88%) and a relatively low ASR (39.50%), which indicates
+that it can effectively preserve main task accuracy while
+reducing ASR on simpler datasets. However, on CIFAR-10
+and CIFAR-100, FoolsGold exhibits higher ASRs of 71.30%
+and 43%, which suggests that the attack can still succeed in
+more complex feature spaces.
+In contrast, STAR-FL demonstrates higher robustness, reducing ASR to 3.60%, 4.10%, and 7% on FMNIST, CIFAR10, and CIFAR-100. Although STAR-FL incurs a modest
+reduction in accuracy, its drastic improvement in ASR clearly
+outweighs this trade-off. By integrating spatial–temporal filtering with robust aggregation, STAR-FL establishes a more
+reliable and stronger defense framework for federated learning.
+D. Ablation Studies
+Effectiveness of Spatial-Temporal Analysis. We examined
+the effectiveness of spatial and temporal filtering, both individually and in combination. These experiments were conducted
+
+TABLE III: Main task accuracy, base class accuracy, and
+attack success rate under different combinations of spatial and
+temporal filtering. ↑ denotes better performance with higher
+values, and ↓ denotes better performance with lower values.
+Dataset
+FMNIST
+
+CIFAR-10
+
+Defense
+Spatial
+Temporal
+Spat.+Temp.
+Spatial
+Temporal
+Spat.+Temp.
+
+MA (%)(↑)
+92.10
+92.18
+92.19
+78.22
+78.26
+78.01
+
+BA (%)(↑)
+98.29
+98.79
+98.19
+69.20
+67.69
+63.80
+
+ASR (%)(↓)
+2.00
+1.90
+2.60
+4.60
+6.50
+4.20
+
+TABLE IV: Main task accuracy, base class accuracy, and
+attack success rate under different combinations of spatialtemporal filtering and robust aggregation. ↑ denotes better performance with higher values, and ↓ denotes better performance
+with lower values.
+Dataset
+FMNIST
+
+CIFAR-10
+
+Defense
+Spat.+Robust
+Temp.+Robust
+Robust
+Spat.+Robust
+Temp.+Robust
+Robust
+
+MA (%)(↑)
+91.34
+91.29
+91.32
+73.95
+73.97
+75.32
+
+BA (%)(↑)
+97.60
+97.89
+96.79
+53.10
+58.99
+57.40
+
+ASR (%)(↓)
+2.80
+2.70
+1.30
+4.60
+6.10
+4.70
+
+with 10% malicious clients. Table III highlights the results for
+these three defense settings.
+On the FMNIST dataset, spatial and temporal filtering
+individually achieved comparable performance, with main task
+accuracies of 92.10% and 92.18%, respectively. Temporal
+filtering offered the lowest ASR (1.90%) and the highest base
+class accuracy (98.79%), demonstrating its efficacy in mitigating adversarial behavior. The combined spatial+temporal
+defense achieved the highest main task accuracy (92.19%) with
+a marginal increase in ASR. These results indicate that both
+defenses are highly effective on simpler datasets, with temporal filtering providing a small advantage in terms of robustness.
+On the more complex CIFAR-10 dataset, spatial filtering
+outperformed temporal filtering, achieving a lower ASR and
+higher base class accuracy. The combined spatial+temporal
+defense reduced the ASR further to 4.20%, though at the cost
+of a noticeable drop in base class accuracy. This trade-off highlights the difficulty of distinguishing malicious updates from
+benign updates in high-dimensional settings, where stricter
+filtering improves robustness but reduces accuracy.
+Overall, the results confirm that STAR-FL effectively constrains backdoor attack success, consistently keeping ASR
+below 7%. While temporal filtering is slightly more effective
+on simpler data, the combined approach provides stronger
+robustness in complex scenarios, validating the effectiveness
+of spatial and temporal filtering components of STAR-FL.
+Effectiveness of Robust Aggregation. We further examined the performance of STAR-FL by incorporating robust
+aggregation with spatial and temporal filtering. Table IV highlights the results for these defense settings. On the FMNIST
+dataset, all defense combinations maintained stable performance, with main task accuracy around 91%. Spatial+robust
+and temporal+robust achieved comparable results, with temporal+robust slightly outperforming in terms of base class
+
+accuracy (97.89%) and ASR (2.70%). Robust aggregation
+alone reduced the ASR most effectively to 1.30%, though
+at the cost of a lower base class accuracy. These findings
+indicate that the integration of robust aggregation suppresses
+ASR, though sometimes at the cost of accuracy.
+On the CIFAR-10 dataset, spatial+robust and temporal+robust yielded main task accuracies of 73.95% and
+73.97%, respectively, with temporal+robust achieving the
+highest base class accuracy (58.99%) and the highest ASR
+(6.10%). Robust aggregation alone provided the best balance, achieving the highest main task accuracy (75.32%)
+and keeping the ASR low (4.70%), while also maintaining
+a competitive base class accuracy (57.40%). Therefore, robust
+aggregation demonstrates a favorable trade-off by maintaining
+high accuracy while keeping ASR under control.
+Overall, these findings highlight that STAR-FL benefits
+from the complementary strengths of spatial-temporal filtering and robust aggregation, while offering flexible defense
+depending on dataset complexity. On simpler datasets such
+as FMNIST, spatial-temporal filtering provides limited benefit
+and robust aggregation alone outperforms STAR-FL in terms
+of ASR. In contrast, the full framework provides greater
+benefits on complex datasets such as CIFAR-10.
+Effectiveness on Non-IID Data. To further evaluate the performance of STAR-FL in non-IID settings, we experimented
+with 30% malicious clients and varied the parameter α of the
+Dirichlet partitioning to control data heterogeneity. In a Dirichlet distribution, lower α means more skewed (non-IID) data,
+while higher α approaches an IID distribution. The results in
+Table V show that greater heterogeneity degrades accuracy
+and increases ASR. At α=0.5, the accuracies drop and ASRs
+rise substantially compared to α=1.0. For example, with 30%
+malicious clients on FMNIST, the main task accuracy is ≈79%
+at α=0.5 and ≈88% at α=1.0, and the ASR jumps from
+≈9% (α=1.0) to ≈20% (α=0.5). On CIFAR-10, the accuracy
+improves from ≈43% to ≈56% when moving from α=0.5 to
+1.0, while ASR remains moderate (≈10–13%). These results
+indicate that our defense is still effective when client data
+distributions are imbalanced.
+In summary, increased heterogeneity makes it slightly
+harder for STAR-FL to separate malicious updates from benign
+ones, since malicious updates also become highly diverse.
+However, the results in non-IID settings show that STAR-FL
+can maintain robustness even under data heterogeneity through
+spatial-temporal filtering and robust aggregation.
+Effectiveness on Different Attacks. We measured the
+performance of STAR-FL against different types of attacks:
+Model Replacement Attack (MRA) [11], Distributed Backdoor
+Attack (DBA) [4], a combined MRA+DBA attack, and an
+adaptive attack. These experiments were conducted with 30%
+malicious clients to simulate stronger attack scenarios. For the
+MRA attack, malicious updates are multiplied by a scaling
+factor before sending to the server. For the DBA attack, the
+backdoor trigger is distributed among three attackers, who
+jointly form a pattern as the trigger. Table VI summarizes the
+experimental results under these attacks.
+
+TABLE V: Main task accuracy and attack success rate under various data heterogeneity. ↑ denotes better performance with
+higher values, and ↓ denotes better performance with lower values.
+α
+
+0.5
+
+1.0
+
+% of
+malicious
+clients
+10
+20
+30
+10
+20
+30
+
+FMNIST
+Main Task
+Attack Success
+Accuracy (%)(↑)
+Rate (%)(↓)
+79.32
+2.50
+78.16
+6.10
+79.24
+20.10
+88.91
+2.10
+86.56
+4.10
+88.24
+9.10
+
+TABLE VI: Main task accuracy, base class accuracy, and
+attack success rate under different attacks. ↑ denotes better
+performance with higher values, and ↓ denotes better performance with lower values.
+Attack
+MRA
+DBA
+MRA+DBA
+Adaptive
+Attack
+
+Dataset
+FMNIST
+CIFAR-10
+FMNIST
+CIFAR-10
+FMNIST
+CIFAR-10
+FMNIST
+CIFAR-10
+
+MA (%)(↑)
+89.32
+74.40
+89.62
+73.43
+89.39
+75.54
+89.48
+75.86
+
+BA (%)(↑)
+96.10
+58.89
+96.70
+55.10
+95.49
+58.79
+92.80
+62.80
+
+ASR (%)(↓)
+3.60
+3.30
+3.20
+5.10
+3.63
+4.30
+3.40
+4.30
+
+On the FMNIST dataset, STAR-FL demonstrated consistent resilience against all types of attacks. Under the MRA
+attack, STAR-FL maintained a main task accuracy of 89.32%
+and base class accuracy of 96.10%, while keeping the ASR
+relatively low at 3.60%. Under the DBA attack, ASR was
+reduced to 3.20%, with a slight increase in main task accuracy
+and base class accuracy. When the MRA and DBA attacks
+were combined, ASR slightly increased to 3.63%, reflecting
+the cumulative challenge posed by concurrent attack strategies.
+The base class accuracy also decreased moderately to 95.49%.
+These results indicate that spatial-temporal filtering and robust
+aggregation effectively mitigate backdoor threats, although
+complex simultaneous attacks may have a measurable impact
+on model performance.
+On the CIFAR-10 dataset, the impact of the attacks was
+more noticeable. The MRA attack resulted in a main task
+accuracy of 74.40% and base class accuracy of 58.89%, with
+an ASR of 3.30%. The DBA attack resulted in a main task
+accuracy of 73.43% and an ASR of 5.10%, which implies
+that DBA is more effective in high-dimensional datasets.
+Interestingly, the MRA+DBA caused the main task accuracy
+to increase to 75.54%, while keeping the ASR relatively low at
+4.30%. This indicates that the combination of different attacks
+can produce non-trivial effects on model performance.
+The robustness of STAR-FL is further evaluated under
+an adaptive attack where adversaries modify the attack to
+bypass detection. The adaptive attack consists of three steps:
+1) Gaussian noise is added to poisoned updates, 2) the
+attack is performed in every communication round, and 3)
+multiple triggers are injected by each malicious client. Despite
+these attacks, STAR-FL maintains strong robustness, achieving
+89.48% accuracy with 3.40% ASR on FMNIST and 75.86%
+accuracy with 4.30% ASR on CIFAR-10. These results demonstrate that STAR-FL can effectively detect adaptive adversaries
+
+CIFAR-10
+Main Task
+Attack Success
+Accuracy (%)(↑)
+Rate (%)(↓)
+46.15
+3.20
+42.19
+7.80
+42.68
+13.00
+58.05
+8.40
+52.43
+11.60
+56.33
+10.60
+
+even when they attempt to bypass the defense.
+In summary, while sophisticated attacks may slightly affect
+accuracy and ASR, the combination of spatial-temporal filtering and robust aggregation enables reliable suppression of
+attacks while maintaining stable model performance.
+E. Computation and Communication Overhead of STAR-FL
+We evaluate the computational overhead of STAR-FL to
+assess its feasibility. Specifically, we measure the training time
+and GPU memory usage on CIFAR-10 as shown in Fig. 4.
+The spatial-temporal analysis and learning rate adjustments
+introduce some overhead at the server. STAR-FL requires
+≈44 minutes and ≈1 GB, which is close to the training
+time and GPU usage of RLR. Trimmed Mean and FoolsGold
+incur the highest training time and GPU usage respectively.
+The coordinate-wise sorting operations in Trimmed Mean and
+the history-based similarity checking in FoolsGold introduce
+significant computational complexity. Overall, STAR-FL is
+10-15% faster than Trimmed Mean and Median. Regarding
+GPU usage, STAR-FL utilizes 10-18% less memory than
+RFA, Trimmed Mean, and FoolsGold. The results indicate that
+while STAR-FL performs additional clustering and learning
+rate tuning, these steps are efficiently implemented and do not
+substantially increase computational costs.
+STAR-FL does not introduce any additional communication
+overhead. In each round, clients transmit model updates of size
+s (bytes), and the server sends the aggregated global model
+back to the clients. Let c denote the number of participating
+clients per round and r the number of rounds. The total
+communication cost is 2·s·c·r bytes. The spatial and temporal
+analyses are performed entirely on the received updates at the
+server side and do not require any additional information from
+clients. Consequently, the per-round communication cost of
+STAR-FL remains identical to FedAvg.
+VI. C ONCLUSION
+In this paper, we present STAR-FL, a novel defense framework that enhances the security and robustness of federated learning systems against backdoor attacks. First, we
+utilize spatial-temporal analysis to jointly examine the similarity among client updates and their historical consistency
+across training rounds, distinguishing benign from malicious
+behaviors. Second, we develop a clustering-based detection
+mechanism that identifies malicious updates based on their
+spatial characteristics while leveraging temporal patterns of
+client updates to detect abnormal behaviors that evolve over
+
+Fig. 4: Training time and GPU usage overhead of STAR-FL
+compared to baseline methods on CIFAR-10.
+time. Third, we integrate a robust aggregation strategy that
+adaptively adjusts the learning rates for client updates to
+mitigate the influence of adversarial contributions that evade
+detection. By combining spatial-temporal analysis with robust
+aggregation, STAR-FL provides a unified defense framework
+that improves robustness against backdoor attacks. Extensive
+experiments demonstrate that STAR-FL outperforms state-ofthe-art defense methods, while maintaining high model utility
+and significantly reducing attack success rates.
+R EFERENCES
+[1] B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A. y Arcas,
+“Communication-efficient learning of deep networks from decentralized
+data,” in Artificial intelligence and statistics, pp. 1273–1282, PMLR,
+2017.
+[2] H. Wang, K. Sreenivasan, S. Rajput, H. Vishwakarma, S. Agarwal, J.y. Sohn, K. Lee, and D. Papailiopoulos, “Attack of the tails: Yes, you
+really can backdoor federated learning,” Advances in neural information
+processing systems, vol. 33, pp. 16070–16084, 2020.
+[3] X. Cao and N. Z. Gong, “Mpaf: Model poisoning attacks to federated
+learning based on fake clients,” in Proceedings of the IEEE/CVF
+conference on computer vision and pattern recognition, pp. 3396–3404,
+2022.
+[4] C. Xie, K. Huang, P.-Y. Chen, and B. Li, “Dba: Distributed backdoor
+attacks against federated learning,” in International conference on learning representations, 2019.
+[5] V. Tolpegin, S. Truex, M. E. Gursoy, and L. Liu, “Data poisoning attacks
+against federated learning systems,” in 25th European symposium on
+research in computer security, ESORICs 2020, guildford, UK, September
+14–18, 2020, proceedings, part i 25, pp. 480–501, Springer, 2020.
+[6] B. C. Das, M. Hadi Amini, and Y. Wu, “Privacy risks analysis and
+mitigation in federated learning for medical images,” in 2023 IEEE
+International Conference on Bioinformatics and Biomedicine (BIBM),
+pp. 1870–1873, 2023.
+[7] S. Sun, S. Sugrim, A. Stavrou, and H. Wang, “Partner in crime:
+Boosting targeted poisoning attacks against federated learning,” IEEE
+Transactions on Information Forensics and Security, 2025.
+[8] W. Wei, K.-H. Chow, F. Ilhan, Y. Wu, and L. Liu, “Model cloaking
+against gradient leakage,” in 2023 IEEE International Conference on
+Data Mining (ICDM), pp. 1403–1408, 2023.
+[9] N. Tabassum, K.-H. Chow, X. Wang, W. Zhang, and Y. Wu, “On the
+efficiency of privacy attacks in federated learning,” in Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern Recognition,
+pp. 4226–4235, 2024.
+[10] M. Fang, X. Cao, J. Jia, and N. Gong, “Local model poisoning attacks
+to {Byzantine-Robust} federated learning,” in 29th USENIX security
+symposium (USENIX Security 20), pp. 1605–1622, 2020.
+[11] E. Bagdasaryan, A. Veit, Y. Hua, D. Estrin, and V. Shmatikov, “How to
+backdoor federated learning,” in International conference on artificial
+intelligence and statistics, pp. 2938–2948, PMLR, 2020.
+
+[12] Z. Zhang, A. Panda, L. Song, Y. Yang, M. Mahoney, P. Mittal, R. Kannan, and J. Gonzalez, “Neurotoxin: Durable backdoors in federated
+learning,” in International Conference on Machine Learning, pp. 26429–
+26446, PMLR, 2022.
+[13] P. Rieger, T. D. Nguyen, M. Miettinen, and A.-R. Sadeghi, “Deepsight:
+Mitigating backdoor attacks in federated learning through deep model
+inspection,” arXiv preprint arXiv:2201.00763, 2022.
+[14] T. D. Nguyen, P. Rieger, R. De Viti, H. Chen, B. B. Brandenburg,
+H. Yalame, H. Möllering, H. Fereidooni, S. Marchal, M. Miettinen,
+et al., “{FLAME}: Taming backdoors in federated learning,” in 31st
+USENIX Security Symposium, pp. 1415–1432, 2022.
+[15] C. Fung, C. J. Yoon, and I. Beschastnikh, “Mitigating sybils in federated
+learning poisoning,” arXiv preprint arXiv:1808.04866, 2018.
+[16] Z. Zhang, X. Cao, J. Jia, and N. Z. Gong, “Fldetector: Defending
+federated learning against model poisoning attacks via detecting malicious clients,” in Proceedings of the 28th ACM SIGKDD conference
+on knowledge discovery and data mining, pp. 2545–2555, 2022.
+[17] K. Pillutla, S. M. Kakade, and Z. Harchaoui, “Robust aggregation for
+federated learning,” IEEE Transactions on Signal Processing, vol. 70,
+pp. 1142–1154, 2022.
+[18] M. S. Ozdayi, M. Kantarcioglu, and Y. R. Gel, “Defending against backdoors in federated learning with robust learning rate,” in Proceedings of
+the AAAI conference on artificial intelligence, vol. 35, pp. 9268–9276,
+2021.
+[19] D. Yin, Y. Chen, R. Kannan, and P. Bartlett, “Byzantine-robust distributed learning: Towards optimal statistical rates,” in International
+conference on machine learning, pp. 5650–5659, PMLR, 2018.
+[20] H. Xiao, K. Rasul, and R. Vollgraf, “Fashion-mnist: a novel image
+dataset for benchmarking machine learning algorithms,” arXiv preprint
+arXiv:1708.07747, 2017.
+[21] A. Krizhevsky, G. Hinton, et al., “Learning multiple layers of features
+from tiny images,” 2009.
+[22] P. Fang and J. Chen, “On the vulnerability of backdoor defenses for
+federated learning,” in Proceedings of the AAAI Conference on Artificial
+Intelligence, vol. 37, pp. 11800–11808, 2023.
+[23] T. Zhao, N. Wang, Y. Wu, W. Zhang, and X. Wang, “Backdoor attacks
+against low-earth orbit satellite fingerprinting,” in IEEE INFOCOM
+2024 - IEEE Conference on Computer Communications Workshops
+(INFOCOM WKSHPS), pp. 01–06, 2024.
+[24] T. Gu, B. Dolan-Gavitt, and S. Garg, “Badnets: Identifying vulnerabilities in the machine learning model supply chain,” arXiv preprint
+arXiv:1708.06733, 2017.
+[25] R. Jha, J. Hayase, and S. Oh, “Label poisoning is all you need,”
+Advances in Neural Information Processing Systems, vol. 36, pp. 71029–
+71052, 2023.
+[26] L. Muñoz-González, K. T. Co, and E. C. Lupu, “Byzantine-robust
+federated machine learning through adaptive model averaging,” arXiv
+preprint arXiv:1909.05125, 2019.
+[27] C. Wu, X. Yang, S. Zhu, and P. Mitra, “Mitigating backdoor attacks in
+federated learning,” arXiv preprint arXiv:2011.01767, 2020.
+[28] A. Shafahi, W. R. Huang, M. Najibi, O. Suciu, C. Studer, T. Dumitras,
+and T. Goldstein, “Poison frogs! targeted clean-label poisoning attacks
+on neural networks,” Advances in neural information processing systems,
+vol. 31, 2018.
+[29] W. Wei, K.-H. Chow, Y. Wu, and L. Liu, “Demystifying data poisoning
+attacks in distributed learning as a service,” IEEE Transactions on
+Services Computing, vol. 17, no. 1, pp. 237–250, 2023.
+[30] B. G. Amidan, T. A. Ferryman, and S. K. Cooley, “Data outlier detection
+using the chebyshev theorem,” in 2005 IEEE Aerospace Conference,
+pp. 3814–3819, IEEE, 2005.
+[31] R. Tibshirani, G. Walther, and T. Hastie, “Estimating the number of
+clusters in a data set via the gap statistic,” Journal of the royal statistical
+society: series b (statistical methodology), vol. 63, no. 2, pp. 411–423,
+2001.
+
+

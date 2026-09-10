@@ -1,0 +1,2840 @@
+arXiv:2101.02281v5 [cs.CR] 5 Aug 2023
+
+FLAME: Taming Backdoors in Federated Learning (Extended Version 1)
+Thien Duc Nguyen1 , Phillip Rieger1 , Huili Chen2 , Hossein Yalame1 , Helen Möllering1 ,
+Hossein Fereidooni1 , Samuel Marchal3 , Markus Miettinen1 , Azalia Mirhoseini4 ,
+Shaza Zeitouni1 , Farinaz Koushanfar2 , Ahmad-Reza Sadeghi1 , and Thomas Schneider 1
+1 Technical University of Darmstadt, Germany∗
+; 2 University of California San Diego, USA; 3 Aalto
+University and F-Secure, Finland; 4 Google, USA
+
+Abstract
+
+1
+
+Federated Learning (FL) is a collaborative machine learning
+approach allowing participants to jointly train a model without sharing their private, potentially sensitive local datasets
+with others. Despite its benefits, FL is vulnerable to so-called
+backdoor attacks, in which an adversary injects manipulated
+model updates into the federated model aggregation process
+so that the resulting model will provide targeted false predictions for specific adversary-chosen inputs. Proposed defenses
+against backdoor attacks based on detecting and filtering out
+malicious model updates consider only very specific and limited attacker models, whereas defenses based on differential
+privacy-inspired noise injection significantly deteriorate the
+benign performance of the aggregated model. To address these
+deficiencies, we introduce FLAME, a defense framework that
+estimates the sufficient amount of noise to be injected to ensure the elimination of backdoors. To minimize the required
+amount of noise, FLAME uses a model clustering and weight
+clipping approach. This ensures that FLAME can maintain
+the benign performance of the aggregated model while effectively eliminating adversarial backdoors. Our evaluation
+of FLAME on several datasets stemming from application
+areas, including image classification, word prediction, and
+IoT intrusion detection, demonstrates that FLAME removes
+backdoors effectively with a negligible impact on the benign
+performance of the models.
+Furthermore, following the considerable attention that our
+research has received after its presentation at USENIX SEC
+2022, FLAME has become the subject of numerous investigations proposing diverse attack methodologies in an attempt to
+circumvent it. As a response to these endeavors, we provide a
+comprehensive analysis of these attempts. Our findings show
+that these papers (e.g., 3DFed [36]) have not fully comprehended nor correctly employed the fundamental principles
+underlying FLAME. Moreover, their evaluations appear to be
+incomplete, with handpicked results chosen selectively. Consequently, in succinct terms, our defense mechanism, FLAME,
+effectively repels these attempted attacks.
+
+Introduction
+
+Federated learning (FL) is an emerging collaborative machine
+learning trend with many applications, such as next-word
+prediction for mobile keyboards [43], medical imaging [54],
+and intrusion detection for IoT [48] to name a few. In FL,
+clients locally train models based on local training data and
+then provide these model updates to a central aggregator that
+combines them into a global model. The global model is then
+propagated back to the clients for the next training iteration.
+FL promises efficiency and scalability as the training is
+distributed among many clients and executed in parallel. In
+particular, FL improves privacy by enabling clients to keep
+their training data locally [42].
+Despite its benefits, FL has been shown to be vulnerable to
+so-called poisoning attacks where the adversary manipulates
+the local models of a subset of clients participating in the
+federation so that the malicious updates get aggregated into
+the global model. Untargeted poisoning attacks merely aim
+at deteriorating the performance of the global model and
+can be defeated by validating the performance of uploaded
+models [14]. In this paper, we, therefore, focus on the more
+challenging problem of backdoor attacks [9, 50, 62, 64], i.e.,
+targeted poisoning attacks in which the adversary seeks to
+stealthily manipulate the resulting global model in a way
+that attacker-controlled inputs result in incorrect predictions
+chosen by the adversary.
+Deficiencies of existing defenses. Existing defenses against
+backdoor attacks can be roughly divided into two categories: The first one comprises anomaly detection-based approaches [6, 11, 25, 56] for identifying and removing potentially poisoned model updates. However, these solutions are
+effective only under very specific adversary models, as they
+make detailed assumptions about the attack strategy of the
+adversary and/or the underlying distribution of the benign
+or adversarial datasets. If these very specific assumptions do
+not hold, the defenses may fail. The second category is inspired by differential privacy (DP) techniques [9, 61], where
+
+∗ Emails: {ducthien.nguyen, ahmad.sadeghi}@trust.tu-darmstadt.de
+
+1
+
+individual weights1 of model updates are clipped to a maximum threshold and random noise is added to the weights for
+diluting/reducing the impact of potentially poisoned model
+updates on the aggregated global model. In contrast to the first
+category, DP techniques [9, 61] are applicable in a generic adversary model without specific assumptions about adversarial
+behavior and data distributions and are effective in eliminating
+the impact of malicious model updates. However, straightforward application of DP approaches severely deteriorates the
+benign performance of the aggregated model because the
+amount of noise required to ensure effective elimination of
+backdoors also results in significant modifications of individual weights of benign model updates [9, 62].
+In this paper, we develop a resilient defense against backdoors by combining the benefits of both defense types without
+suffering from the limitations (narrow attacker model, assumptions about data distributions) and drawbacks (loss of benign
+performance) of existing approaches. To this end, we introduce an approach in which the detection of anomalous model
+updates and tuned clipping of weights are combined to minimize the amount of noise needed for backdoor removal of the
+aggregated model while preserving its benign performance.
+Our Goals and Contributions. We present FLAME, a resilient aggregation framework for FL that eliminates the impact of backdoor attacks while maintaining the benign performance of the aggregated model. This is achieved by three
+modules: DP-based noising of model updates to remove backdoor contributions, automated model clustering approach to
+identify and eliminate potentially poisoned model updates,
+and model weight clipping before aggregation to limit the
+impact of malicious model updates on the aggregation result.
+The last two modules can significantly reduce the amount of
+random noise required by DP noising for backdoor elimination. In particular, our contributions are as follows:
+• We present FLAME, a defense framework against backdoor attacks in FL that is capable of eliminating backdoors without impacting the benign performance of the
+aggregated model. Contrary to earlier backdoor defenses,
+FLAME is applicable in a generic adversary model, i.e.,
+it does not rely on strong assumptions about the attack
+strategy of the adversary, nor about the underlying data
+distributions of benign and adversarial datasets (§4.1).
+
+DP) to eliminate backdoor contributions (§5).
+• We extensively evaluate our defense framework on realworld datasets from three very different application areas.
+We show that FLAME reduces the amount of required
+noise so that the benign performance of the aggregated
+model does not degrade significantly, providing a crucial
+advantage over state-of-the-art defenses using a straightforward injection of DP-based noise (§7).
+• We revisit recent attacks claiming to undermine FLAME
+[36, 65]. Our analysis establishes that these attempts
+are flawed, failing to take into account the nuances of
+FLAME’s defense mechanism and, regrettably, propagating inaccuracies, as elaborated upon in Section 10.
+As an orthogonal aspect, we also consider how the privacy of
+model updates against an honest-but-curious aggregator can
+be preserved and develop a secure multi-party computation
+approach that can preserve the privacy of individual model
+updates while realizing our backdoor defense approach (§8).
+
+2 Background and Problem Setting
+2.1 Federated Learning
+Federated Learning [42, 55] is a concept for distributed machine learning that links n clients and an aggregator to collaboratively build a global model G. In a training iteration
+t ∈ {1, . . . , T }, each client i ∈ {1, . . . , n} locally trains a local
+model Wi with p parameters (indicating both weights and
+p
+biases) w1i , . . . , wi based on the previous global model Gt−1
+using its local data Di and sends it to the aggregator which
+aggregates the received models Wi into the global model Gt .
+Several aggregation mechanisms have been proposed recently: 1) Federated Averaging (FedAvg) [42], 2) Krum [11],
+3) Adaptive Federated Averaging [46], and 4) Trimmed mean
+or median [67]. Although we evaluate FLAME’s effectiveness on several aggregation mechanisms in §7.1, we generally
+focus on FedAvg in this work as it is commonly applied in
+FL [23, 24, 31, 43, 48, 52, 55, 59] and related work on backdoor attacks [9, 25, 56, 62, 64]. In FedAvg, the global model
+is updated by averaging the weighted models as follows:
+Gt = Σni=1 si ×Wi/s, where si = ∥Di ∥, s = Σni=1 si . However, in
+practice, a malicious client might provide falsified information about its dataset size (i.e., a large number) to amplify
+the relative weight of its updates [62]. Previous works often
+employed equal weights (si = 1/n) for the contributions of all
+clients [9,56,64]. We adopt this approach in this paper, i.e., we
+set Gt = Σni=1Wi/n. Further, other state-of-the-art aggregation
+rules, e.g., Krum [11], Adaptive Federated Averaging [46],
+and Trimmed mean or median [67] also do not consider the
+sizes of local training datasets by design.
+
+• We show that the amount of required Gaussian noise
+can be radically reduced by: a) applying our clustering
+approach to remove potentially malicious model updates
+and b) clipping the weights of local models at a proper
+level to constrain the impact of individual (especially
+malicious) models on the aggregated model. (§4.3)
+• We provide a noise boundary proof for the amount of
+Gaussian noise required by noise injection (inspired by
+
+2.2
+
+Backdoor Attacks on Federated Learning
+
+In backdoor attacks, the adversary A manipulates the local
+models Wi of k compromised clients to obtain poisoned models Wi′ that are then aggregated into the global model Gt and
+
+1 Parameters of neural network models typically consist of ’weights’ and
+’biases’. For the purposes of this paper, however, these parameters can be
+treated identically and we will refer to them as ’weights’ for brevity.
+
+2
+
+Stealthiness: To make the poisoned model G′ hard to detect
+by aggregator A, it should closely mimic the behavior of G
+on all other inputs not in IA , i.e.:
+ ′
+c ̸= f (G, x) ∀x ∈ IA
+′
+f (G , x) =
+(1)
+f (G, x)
+∀x ∈
+/ IA
+
+Benign clients
+
+𝐷𝑗
+𝐺𝑡−1
+
+SGW
+SGW
+SGW
+Train
+
+𝑊𝑗
+Federated
+Averaging
+
+Compromised clients
+𝐷𝑖′
+
+Data poisoning
+
+SGW
+SGW
+Train
+
+𝐺𝑡
+
+𝑊𝑖′
+
+Additionally, to make poisoned models as indistinguishable
+as possible from benign models, the distance (e.g., euclidean)
+between a poisoned model W ′ and a benign model W must be
+smaller than a threshold η denoting the distinction capability
+of the anomaly detector of aggregator A, i.e., dist(W,W ′ ) < η.
+The adversary can estimate this distance by comparing the
+local malicious model to the global model or to a local model
+trained on benign data.
+
+Constraining Scaling
+Model poisoning
+
+Figure 1: An overview of backdoor attacks.
+thus affect its properties. In particular, A wants the poisoned
+model Gt′ to behave normally on all inputs except for specific attacker-chosen inputs x ∈ IA (where IA denotes the
+so-called trigger set) for which attacker-chosen (incorrect)
+predictions should be output. Figure 1 shows common techniques used in FL backdoor attacks, including 1) data poisoning, e.g., [50,56,64], where A manipulates training datasets of
+models, and 2) model poisoning, e.g., [9, 62] where A manipulates the training process or the trained models themselves.
+Next, we will briefly discuss these attack techniques.
+Data Poisoning. In this attack, A adds manipulated data
+DA to the training datasets of compromised clients i by flipping data labels, e.g., by changing the labels of a street sign
+database so that pictures showing a 30 km/h speed limit
+are labeled as 80 km/h [56], or, by adding triggers into data
+samples (e.g., a specific pixel pattern added to images [64])
+in combination with label flipping. We denote the fraction
+of injected poisoned data DA
+i in the overall poisoned training dataset D′i of client i as Poisoned Data Rate (PDR), i.e.,
+
+Adversarial Capabilities. In this paper, we make no specific assumptions about the adversary’s behavior. We assume
+that the adversary A has full control over k < n2 clients and
+their training data, processes, and parameters [9, 64]. We denote the fraction of compromised clients as Poisoned Model
+Rate PMR = nk . Furthermore, A has full knowledge of the
+aggregator’s operations, including potentially applied backdoor defenses. However, A has no control over any processes
+executed at the aggregator nor over the honest clients.
+
+2.4
+
+HDBSCAN [13] is a density-based clustering algorithm
+that uses the distance of data points in n-dimensional space
+to group data points that are located near each other together
+into a cluster. Hereby the number of clusters is determined
+dynamically. Data points that do not fit to any cluster are
+considered outliers. However, while HDBSCAN’s predecessor DBSCAN [21] uses a predefined maximal distance to
+determine whether two points belong to the same cluster,
+HDBSCAN determines this maximal distance for each cluster independently, based on the density of points. Thus, in
+HDBSCAN, neither the maximal distance nor the total number of clusters need to be predefined.
+
+|DA |
+
+PDRi = |Di′ | .
+i
+
+Model Poisoning. This attack technique requires that A can
+fully control a number of clients. A poisons the training
+datasets of these clients and manipulates how they execute
+the training process by modifying parameters and scaling
+the resulting model update to maximize the attack impact
+while evading the aggregator’s anomaly detector [9, 62]. This
+is done by (1) scaling up the weights of malicious model
+updates to maximize attack impact (e.g., model-replacement
+attack [9], or, projected gradient descent (PGD) attack with
+model replacement [62]), or, scaling down model updates to
+make them harder to detect (e.g., train-and-scale [9] ) and
+(2) constraining the training process itself to minimize the
+deviation of malicious models from benign models to evade
+anomaly detection (e.g., constrain-and-scale attack [9]).
+
+2.3
+
+Preliminaries
+
+Differential Privacy (DP). DP is a privacy technique that
+aims to ensure that the outputs do not reveal individual data
+records of participants. DP is formally defined as follows:
+Definition 1 ((ε, δ)-differential privacy). A randomized algorithm M is (ε, δ)-differentially private if for any datasets
+D1 and D2 that differ on a single element, and any subset of
+outputs S ∈ Range(M ), the following inequality holds:
+
+Adversary Goals and Capabilities
+
+The goals of the adversary are two-fold:
+Impact: The adversary A aims to manipulate the global
+model G so that the modified model G′ provides incorrect predictions f (G′ , x) = c′ ̸= f (G, x) for any inputs x ∈ IA , where
+IA is the so-called trigger set consisting of specific attackerchosen inputs and c′ denotes the incorrect prediction chosen
+by the adversary.
+
+Pr[M (D1 ) ∈ S ] ≤ eε · Pr[M (D2 ) ∈ S ] + δ.
+Here, ε denotes the privacy bound and δ denotes the probability of breaking this bound [20]. Smaller values of ε and
+δ indicate stronger privacy. A commonly used approach to
+enforce differential privacy is adding random Gaussian noise
+N(0, σ2 ) to the output of the algorithm [5, 20].
+3
+
+−
+→
+W1′
+
+- Benign models
+- Backdoored models
+- Deviations of
+Backdoored models
+−
+→
+W2′
+
+−
+→ −−→
+W1′ − Gt−1
+
+a large magnitude to amplify the impact of the attack. Such
+models can be crafted by the adversary by scaling up the
+model weights to boost its effect on the global model (cf.
+Model-replacement attack in [9]). The third backdoor type
+W3′ has a similar weight vector as benign models, the angular
+difference and the magnitude are not substantially different
+compared to benign models and, thus less distinguishable
+from benign models. Such stealthy backdoored models can
+be crafted by the adversary by carefully constraining the training process or scaling down the poisoned model’s weights (cf.
+Constrain-and-scale attack [9] or FLIoT attack [50]).
+Defense Objectives. A generic defense that can effectively
+mitigate backdoor attacks in the FL setting needs to fulfill
+the following objectives: (i) Effectiveness: To prevent the
+adversary from achieving its attack goals, the impact of backdoored model updates must be eliminated so that the aggregated global model does not demonstrate backdoor behavior.
+(ii) Performance: Benign performance of the global model
+must be preserved to maintain its utility. (iii) Independence
+from data distributions and attack strategies: The defense
+method must be applicable to generic adversary models, i.e.,
+it must not require prior knowledge about the backdoor attack
+method, or make assumptions about specific data distributions
+of local clients, e.g., whether the data are iid or non-iid.
+
+−
+→
+W3′
+
+−
+→ −−→
+W2′ − Gt−1
+−
+→′ −−→
+−−→ W3 − Gt−1
+Gt−1
+
+Figure 2: Weight vectors of benign and backdoored models.
+
+3
+
+Problem Setting and Objectives
+
+Backdoor Characterization. Following common practice
+in FL-related papers (e.g., [9, 14, 25]), we represent Neural
+Networks (NNs) using their weight vectors, in which the
+extraction of weights is done identically for all models by
+flattening/serializing the weight/bias matrices in a predetermined order. Figure 2 shows an abstract two-dimensional
+representation of the weight vectors of local models compared to the global model Gt−1 of the preceding aggregation
+round. Each model Wi can be characterized with two factors:
+direction (angle) and magnitude (length) of its weight vector
+(w1 , w2 , . . . , w p ). The angle between two updates Wi and W j
+can be measured, e.g., by using the cosine distance metric ci j
+as defined in (2) while their magnitude difference is measured
+by the L2 -norm ei j as defined in (3).
+p
+
+ci j = 1 −
+
+∑k=1 wki wkj
+WiW j
+(2)
+= 1− q
+q
+p
+p
+∥Wi ∥ W j
+∑k=1 (wki )2 ∑k=1 (wkj )2
+s
+ei j = Wi −W j =
+
+p
+
+2
+
+∑ (wki − wkj )
+
+4
+
+FLAME Overview and Design
+
+We present the high-level idea of FLAME and the associated
+design challenges to fulfill the objectives identified in §3.
+
+4.1
+
+(3)
+
+High-level Idea
+
+Motivation. Earlier works (e.g., Sun et al. [61]) use differential privacy-inspired noising of the aggregated model for eliminating backdoors. They determine the sufficient amount of
+noise to be used empirically. In the FL setting this is, however,
+challenging, as one cannot in general assume the aggregator to
+have access to training data, in particular to poisoned datasets.
+What is therefore needed is a generic method for determining
+how much noise is sufficient to remove backdoors effectively.
+On the other hand, the more noise is injected into the model,
+the more its benign performance will be impacted.
+FLAME Overview. FLAME estimates the noise level required for backdoor removal in the FL setting without extensive empirical evaluation and having access to training data
+(this noise bound is formally proven in §5). In addition, to
+effectively limit the amount of required noise, FLAME uses a
+novel clustering-based approach to identify and remove adversarial model updates with high impact and applies a dynamic
+weight-clipping approach to limit the impact of models that
+the adversary has scaled up to boost their performance. As
+discussed in §3, one cannot guarantee that all backdoored
+models can be detected since the adversary can fully control
+both the angular and magnitude deviation to make the models
+arbitrarily hard to detect. Our clustering approach therefore
+aims to remove models with high attack impact (having larger
+
+k=1
+
+Benign and backdoored local models are shown in blue and
+red colors and are labeled with Wi or Wi′ , respectively. Note
+that the benign models are typically not identical due to the
+potentially partially non-iid nature of their training data.
+The impact of the adversarial goal (injection of a backdoor)
+causes a deviation in the model parameters that manifests
+itself as a difference in the direction and/or magnitude of the
+backdoored model’s weight vector in comparison to benign
+models, e.g., the deviations among local models and to the
+global model Gt−1 of the previous aggregation round. Since
+the adversary has full control over the training process of
+compromised clients, he can fully control these distances, e.g.,
+by changing the direction (in the case of W1′ ) or magnitude
+(in the case of W2′ ) of the backdoored models’ weight vectors.
+Figure 2 also shows three kinds of backdoored models resulting from different types of backdoor attacks. The first type
+W1′ has a similar weight vector, but a large angular deviation
+from the majority of local models and the global model. This
+is because such models are trained to obtain high accuracy
+on the backdoor task, which can be achieved by using a large
+poisoned data rate (PDR) or a large number of local training
+epochs (cf. Distributed Backdoor Attack (DBA) [64]). The
+second backdoor type W2′ has a small angular deviation but
+4
+
+−
+→
+W1′
+
+- Benign models
+- Backdoored models
+
+Clipping bound S
+
+2 Clipping
+
+Aggregated global model 𝐺𝑡∗
+𝐺
+Adaptive Clipping 𝑡 Adaptive Noising
+Admitted local models 𝑊𝑏1 , … , 𝑊𝑏𝐿
+Dynamic Clustering
+
+−
+→
+W2′
+
+−
+→
+W3′
+
+𝑊1
+Client 1
+
+−−→
+Gt−1
+
+(a) Applying clustering and clipping.
+σ: Noise level
+
+S
+−
+→
+Gt
+−−→
+Gt−1
+
+𝑊𝑛
+Client 𝑛
+
+∗
+Global model 𝐺𝑡−1
+
+3 Noising
+
+Figure 4: Illustration of FLAME’s workflow in round t.
+C2 -Limiting the impact of scaled-up backdoors. To limit
+the impact of backdoored models that the adversary artificially
+scales up to boost the attack (e.g., W2′ in Fig. 2), the weight
+vectors of models with high magnitudes can be clipped [61].
+The effect of clipping is shown in Fig. 3a where the weight
+vectors of all models with a magnitude beyond the clipping
+bound S (in particular, backdoored model W2′ ) are clipped to
+S by scaling down the weight vectors. The resulting clipped
+weight vectors are shown on the left side of Fig. 3b. The
+challenge here is how to select a proper clipping bound without empirically evaluating its impact on the training datasets
+(which are not available in the FL setting). If the applied clipping bound is too large, an adversary can boost its model W ′
+by scaling its weights up to the clipping bound, thereby maximizing the backdoor impact on the aggregated global model
+G. However, if the applied clipping bound is too small, a large
+fraction of benign model updates W will be clipped, thereby
+leading to performance deterioration of the aggregated global
+model G on the main task. We tackle this challenge in §4.3.2,
+where we show how to select a clipping bound that can not
+be influenced by the adversary and that effectively limits the
+impact of scaled-up backdoored models.
+
+σ
+
+−
+→
+Gt
+−−→
+Gt−1
+
+(b) Applying noising
+
+Figure 3: High-level idea of FLAME defense.
+angular deviation) rather than all malicious models. Fig. 3
+illustrates the high-level idea of FLAME consisting of the
+above three components: filtering, clipping, and noising. We
+emphasize, however, that each of these components needs
+to be applied with great care, since, a naïve combination of
+noising with clustering and clipping leads to poor results as
+it easily fails to mitigate the backdoor and/or deteriorates the
+benign performance of the model, as we show in §C. We detail the design of each component and its use in the FLAME
+defense approach in §4.3.
+
+4.2
+
+𝑊𝑖
+Client i
+
+Aggregator
+
+1 Filtering
+
+Design Challenges
+
+To realize the high-level idea presented above, we need to
+solve the following technical challenges.
+C1 - Filtering out backdoored models with large angular
+deviations in dynamic scenarios. As discussed in §3, the
+weight vector of a well-trained backdoored model, W ′ , has a
+higher angular difference in comparison to weight vectors of
+benign models W . FLAME deploys a clustering approach to
+identify such poisoned models and remove them from FL aggregation (detailed in §4.3.1). The effect of clustering-based
+filtering is shown in Fig. 3a where model W1′ is removed from
+the aggregated model as it does not align with the directions
+of benign models. In contrast to existing clustering-based defenses, we need an approach that can also work in a dynamic
+attack setting, i.e., the number of injected backdoors is unknown and may vary between training rounds. To this end, we
+make a key observation: clustering approaches using a fixed
+number of clusters ncluster for identifying malicious models
+are inherently vulnerable to attacks with varying numbers of
+backdoors2 nbackdoor . This is because the adversary can likely
+cause at least one backdoor model to be clustered together
+with benign models due to the pigeonhole principle by simultaneously injecting nbackdoor ≥ ncluster backdoors. We seek
+to solve this challenge by employing a clustering solution
+that dynamically determines the clusters for model updates,
+thereby allowing it to adapt to dynamic attacks.
+
+C3 -Selecting suitable noise level for backdoor elimination.
+As mentioned in §4.1, FLAME uses model noising that applies Gaussian noise with noise level σ to mitigate the adversarial impact of backdoored models (e.g., W3′ in Fig. 2).
+Similar to the clipping bound, however, also here the noise
+level σ must be carefully selected, as it has a direct impact on
+the effectiveness of the defense and the model’s benign performance. If it is too low, the aggregated model might retain
+backdoor behavior after model noising, rendering the defense
+ineffective, while excessive noise will degrade the utility of
+the aggregated model. To address this challenge, we develop
+an approach for reliably estimating a sufficient but minimal
+bound for the applied noise in §5.
+
+4.3
+
+FLAME Design
+
+As discussed in §4.1, our defense consists of three main components: filtering, clipping, and noising. Figure 4 shows these
+components and the workflow of FLAME during training
+round t. Algorithm 1 outlines the procedure of FLAME. In
+the rest of this section, we detail the design of these components to resolve the challenges in §4.2.
+
+2We consider two backdoors to be independent if they use different trig-
+
+gers.
+
+5
+
+Random
+
+Algorithm 1 FLAME
+Input: n, G0 , T ▷ n is the number of clients, G0 is the initial
+global model, T is the number of training iterations
+∗
+∗
+2: Output: G ▷ G is the updated global model after T iterations
+T
+T
+3: for each training iteration t in [1, T ] do
+4:
+for each client i in [1, n] do
+∗ )
+5:
+Wi ← C LIENT U PDATE(Gt−1
+▷ The aggregator
+∗
+∗ using its data D locally
+sends Gt−1 to Client i who trains Gt−1
+i
+to achieve local modal Wi and sends Wi back to the aggregator.
+6:
+(c11 , . . . , cnn ) ← C OSINE D ISTANCE(W1 , . . . ,Wn )
+▷
+∀i, j ∈ (1, . . . , n), ci j is the cosine distance between Wi and W j
+7:
+(b1 , . . . , bL ) ← C LUSTERING(c11 , . . . , cnn )
+▷ L is the
+number of admitted models, bl is the index of the l th model
+8:
+(e1 , . . . , en )
+←
+E UCLIDEAN D IS ∗ , (W , . . . ,W ))
+TANCES(Gt−1
+▷ ei is the Euclidean distance
+n
+1
+∗ and W
+between Gt−1
+i
+9:
+St ← M EDIAN(e1 , . . . , en )
+▷ St is the adaptive clipping
+bound at round t
+10:
+for each client l in [1, L] do
+11:
+Wbcl ← Gt−1 + (Wbl − Gt−1 ) · M IN(1, γ)
+▷ Where γ
+(= St /ebl ) is the clipping parameter, Wbcl is the admitted model
+after clipped by the adaptive clipping bound St
+12:
+Gt ← ∑Ll=1 Wbcl /L
+▷ Aggregating, Gt is the plain global
+model before adding noise q
+
+Backdoored
+
+Rejected
+
+1:
+
+13:
+
+σ ← λ · St where λ = 1ε ·
+
+14:
+
+Gt∗ ← Gt + N(0, σ2 )
+
+4.3.1
+
+Benign
+
+(a) Ground truth
+Cluster C
+
+Cluster B
+
+Accepted
+
+(b) K-means
+Rejected (Outliers)
+
+Accepted
+
+Cluster A
+
+(c) HDBSCAN
+
+(d) FLAME
+
+Figure 5: Comparison of clustering quality for (a) ground truth, (b)
+using K-means with 2 clusters as in Auror [56], (c) straightforward
+applied HDBSCAN and (d) our approach as in FLAME.
+
+To overcome the limitations of existing defenses, we design our clustering solution and ensure that: (i) it is able to
+handle dynamic attack scenarios where multiple backdoors
+are injected simultaneously, and (ii) it minimizes false positives of poisoned model identification. In contrast to existing
+approaches that try to place poisoned models into one cluster,
+our approach considers each poisoned model individually as
+an outlier, so that it can gracefully handle multiple simultaneous backdoors and thus address challenge C1 .
+FLAME uses pairwise cosine distances to measure the
+angular differences between all model updates and applies the
+HDBSCAN clustering algorithm [13]. The advantage here is
+that cosine distances are not affected even if the adversary
+scales up model updates to boost their impact as this does not
+change the angle between the updates’ weight vectors. Since
+the HDBSCAN algorithm clusters the models based on their
+density of the cosine distance distribution and dynamically
+determines the required number of clusters, we leverage it for
+our dynamic clustering approach. We describe HDBSCAN
+and how we apply it in detail in §E.
+In particular, HDBSCAN labels models as outliers if they
+do not fit into any cluster. This allows FLAME to effectively
+handle multiple poisoned models with different backdoors by
+labeling them as outliers. To realize this, we set the minimum
+cluster size to be at least 50% of the clients, i.e., n2 + 1, so
+that the resulting cluster will contain the majority of updates
+(which we assume to be benign, cf. §2.3). All remaining
+(potentially poisoned) models are marked as outliers. This
+behavior is depicted in Fig. 5d where all the models from
+Clusters B and C from Fig. 5c are considered as outliers.
+Hence, to the best of our knowledge, our approach is the first
+FL backdoor defense that is able to gracefully handle also
+dynamic attacks in which the number of injected backdoors
+may vary. The clustering step is shown in lines 6-7 of Alg. 1
+where L models are retained after clustering.
+
+2ln 1.25
+▷ Adaptive noising level
+δ
+▷ Adaptive noising
+
+Dynamic Model Filtering
+
+The Model Filtering component of FLAME utilizes a dynamic clustering technique based on HDBSCAN [13] that
+identifies poisoned models with high angular deviations
+from the majority of updates (e.g., W1′ in Fig. 3a). Existing
+clustering-based defenses [11, 56] identify potentially malicious model updates by clustering them into two groups
+where the smaller group is always considered malicious and
+thus removed. However, if no malicious models are present
+in the aggregation, this approach may lead to many models
+being incorrectly removed and thus a reduced accuracy of
+the aggregated model. These approaches also do not protect
+against attacks in which adversary A simultaneously injects
+multiple backdoors by using different groups of clients to
+inject different backdoors. If the number of clusters is fixed,
+there is the risk that poisoned and benign models end up in the
+same cluster, in particular, if models with different backdoors
+differ significantly. Consequently, existing model clustering
+methods do not adequately address challenge C1 (§4.2). Fig. 5
+shows the behavior of different clustering methods on a set of
+model updates’ weight vectors. Fig. 5a shows the ground truth
+of an attack scenario where A uses two groups of clients: one
+group is used to inject a backdoor, whereas the other group
+provides random models with the goal of fooling clusteringbased defenses. Fig. 5b shows how in this setting, K-means
+(as used in Auror [56]) fails to successfully separate benign
+and poisoned models as all poisoned models end up in the
+same cluster with the benign models.
+
+4.3.2
+
+Adaptive Clipping and Noising
+
+As discussed in §4.2 (challenges C2 and C3 ), determining
+a proper clipping bound and noise level for model weight
+clipping and noising is not straightforward. We present our
+new approach for selecting an effective clipping bound and
+6
+
+L2 Norms
+
+30
+20
+10
+0
+
+soned samples (special cases of outliers) used in backdoor
+injection. The more noise is added to the model during the
+training process, the less responsive the model will be to the
+poisoned samples. Thus, increasing model robustness against
+backdoors. Eliminating backdoors utilizing noise addition
+is conceptually the same in a centralized or federated setting (e.g., [9, 19]): In both cases, noise is added to the model
+weights to smooth out the effect of poisoned data (cf. Eq. 5).
+The challenge is to determine as small a noise level as possible
+to eliminate backdoors and at the same time not deteriorate
+the benign performance of the model. As we discuss in detail
+in §5.1, the amount of noise is determined by estimating the
+sensitivity based on the differences (distances) among local
+models, which can be done without access to training data.
+We then add Gaussian noise to the global model Gt to yield
+a noised global model Gt∗ as follows: Gt∗ = Gt + N(0, σ2 ),
+see Lines 13-14 of Alg. 1 for more details. This ensures
+that backdoor contributions are effectively eliminated from
+the aggregated model. In particular, we show in §5.1 how
+the noise-based backdoor elimination technique can be transferred from a centralized to a federated setting by analysing
+the relationship between aggregated Gaussian noise applied to
+the global model and individual noising of each local model.
+
+NIDS
+Images Classification
+Word Prediction
+
+1
+
+2
+
+3
+
+4
+5
+Round
+
+6
+
+7
+
+Figure 6: L2 -norms of model updates depending on the number of training rounds for different datasets.
+reliably estimating a sufficient noise level that can effectively
+eliminate backdoors while preserving the performance of the
+main task. Furthermore, our defense approach is resilient to
+adversaries that dynamically adapt their attacks.
+Adaptive Clipping. Fig. 6 shows the variation of the average
+L2 -norms of model updates of benign clients in three different datasets (cf. §6) over subsequent training rounds. We can
+observe that the L2 -norms of benign model updates become
+smaller in later training rounds. To effectively remove backdoors while minimizing the impact on benign updates, the
+clipping bound S needs to be dynamically adapted to this
+decreasing trend of the L2 -norm. Recall that clipping is performed after clustering by scaling down model weights so that
+the L2 -norm of the scaled model becomes smaller or equal
+to the clipping threshold. We describe how FLAME determines a proper scaling factor for each model update Wi in
+t th training round as follows: Given the index set (b1 , . . . bL )
+of the models admitted by the clustering method (line 7 of
+Alg. 1), the aggregator first computes the clipping bound
+St as the median of the L2 -norms of all n model updates:
+St = M EDIAN(e1 , . . . , en ). It should be noted that for determining the clipping bound, the rejected models are also considered to ensure that even if benign models were filtered,
+the computed median St is still determined based on benign
+values. However, after determining the clipping bound, only
+the admitted models W1 , . . . ,WL are considered for later processing. The scaling factor for the l th admitted model is computed as γ = eSbt where ebl is the L2 -norm of the model upl
+date Wbl . Clipping scales down model updates as follows:
+Wbcl = Gt−1 + (Wbl − Gt−1 ) · M IN(1, γ) (detailed in line 8-11
+of Alg. 1) where the multiplication is computed coordinatewise. It is worth noting that weighting contributions (i.e.,
+adjusting scaling factor) based on client data sizes is insecure.
+As we point out in §2.1, the reported dataset sizes by clients
+cannot be trusted, i.e., the adversary can lie about their dataset
+sizes to maximize attack impact [62]. Hence, we follow common practice in literature and weight the contributions of all
+clients equally regardless of their dataset size [9, 11, 14, 64].
+By using the median as the clipping bound St , we ensure
+that St is always in the range of the L2 -norms between benign models and the global model since we assume that more
+than 50% of clients are benign (cf. §2.3). We evaluate the
+effectiveness of the clipping approach in §B.2.
+
+5
+5.1
+
+Security Analysis
+Noise Boundary Proof of FLAME
+
+In this section, we provide a proof to corroborate that
+FLAME can neutralize backdoors in the FL setting by applying strategical noising with bound analysis on the noise level.
+We first formulate the noise boundary guarantee of FLAME
+in Theorem 1. Subsequently, we explain related parameters
+and prove how the noise level bound for σ can be estimated.
+This is done by generalizing theoretical results from previous
+works [19,20] to the FL setting. Then, we show how the filtering and clipping component of FLAME helps to effectively
+reduce the noise level bound in Theorem 2. We provide a
+formal proof for linear models and extend the proof to DNNs
+using empirical evaluation. This is because providing formal
+proof for DP-based backdoor security for DNN models is still
+an open research problem even for centralized settings.
+Theorem 1. A (ε, δ)-differentially private model with parameters G and clipping bound St is backdoor-free if random
+Gaussian noise is added to the model parameters yielding a
+noised version G∗ of the model: G∗ ← G + N(0, σ2G ) where
+the noise scale σG is determined by the clippingq
+bound St and
+a noise level factor λ: σG ← λ · St and λ = 1ε ·
+
+2ln 1.25
+δ .
+
+We explore the key observation that an ML model with a
+sufficient level of differential privacy is backdoor-free. With
+this new definition of backdoor-free models in the DP domain,
+the main challenge to defeat backdoors in the FL setting is
+to decide a proper noise scale for the global model without
+knowledge of the training datasets. Furthermore, we need
+
+Adaptive Noising. It has been shown that by adding noise
+to a model’s weights, the impact of outlier samples can be
+effectively mitigated [19]. Noise can also be added to poi7
+
+to minimize the amount of noise added to the global model
+to preserve its performance on the main task. None of the
+prior DP-based FL backdoor defense techniques provide a
+solution to the noise determination problem [61]. For the first
+time, FLAME presents an approach to estimate the proper
+noise scale that ensures the global model is backdoor-free.
+The noise boundary proof in Theorem 1 consists of two steps:
+Step 1 (S1). By introducing the data hiding property of DP
+(Def. 1) and its implication as the theoretical guarantee for
+backdoor-free models. We also discuss function sensitivity
+(Def. 2) which is an important factor for selection of the DP
+parameters (ε, δ).
+Step 2 (S2). We show how FLAME generalizes backdoor
+elimination from centralized setting to federated setting with
+theoretical analysis of the noise boundary (Eq. 5 and 6).
+FLAME is the first FL defense against backdoors that provides noise level proof with bounded backdoor effectiveness.
+(S1) DP foundations and re-interpretation as Backdoorfree. As discussed in §2.4, by definition, DP makes the difference between data points indistinguishable. FLAME leverages this property of DP for backdoor elimination. In particular, we can consider D1 and D2 in Def. 1 as the benign
+and backdoored dataset. The inequality of DP suggests that
+algorithm M has a high probability of producing the same
+outputs on the benign and the poisoned dataset, meaning that
+the backdoor is eliminated. The noise level σ is determined
+based on the DP parameters (ε, δ) and the sensitivity of the
+function f defined below:
+
+(i.e., backdoor-free), then it is obvious that the aggregated
+global model will also be backdoor-free. This intuition can
+be formally proven if the FL aggregation rule is Byzantinetolerant. To ensure that any backdoor potentially present in
+the model is eliminated and the aggregated model is benign,
+a sufficient DP noise level is added to individual local models. However, since the local models are independent, adding
+noise to each local model is mathematically equivalent to
+the case where aggregated noise is added to the global model.
+This is conceptually equivalent to the conventional centralized
+setting, for which it has been formally shown that DP noise
+can eliminate backdoors [19]. In the following, we therefore
+show that adding DP noise to local models is equivalent to
+adding ‘aggregated’ DP noise to the global model.
+We write the standard q
+deviation of noise for the local mod∆i
+els in the form σi ← αiε·ei · 2ln 1.25
+δ where αi = ei , ∆i and ei
+is the sensitivity and the L2 norm of the model Wi , respectively.
+Mathematically, the FL system with FLAME has:
+1
+1
+G∗ = Σni=1Wi∗ = [ Σni=1 Wi + N(0, σ2i )]
+n
+n
+1 2
+1 n
+= Σi=1Wi + Σi=1 N(0, σ2i )
+n
+n
+(5)
+1 n 2
+1 2
+= Σi=1Wi + N(0, Σi=1 σi )
+n
+n
+= G + N(0, σ2G )
+in which Wi∗ are local models and G∗ the global model after
+adding noise N(0, σ2i ). Equation 5 represents the fact that
+adding DP noise to each local model (i.e., Wi + N(0, σ2i )) is
+equivalent to adding an ‘aggregated’ DP noise on the global
+model (i.e., G + N(0, σ2G )). More specifically, this equivalent
+Gaussian noise on the global model is the sum of Gaussian noise applied on each local model with a scaling factor
+NG = 1n Σni=1 Ni . Here, NG and Ni are random variables with
+distribution N(0, σ2G ) and N(0, σ2i ), respectively. As such, we
+can compute the equivalent noise scale for the global model:
+r
+1
+1 n 2
+1.25 2 1 n 2
+2
+σG = 2 Σi=1 σi = (
+2ln
+) · 2 Σi=1 ∆i
+n
+ε
+δ
+n
+r
+1
+1.25 2 1 n 2 2
+=(
+(6)
+2ln
+) · 2 Σi=1 αi ei .
+ε
+δ
+n
+
+Definition 2 (Sensitivity). Given the function f : D → Rd
+where D is the data domain and d is the dimension of the
+function output, the sensitivity of the function f is defined as:
+∆ = max || f (D1 ) − f (D2 )||2 ,
+(4)
+D1 , D2 ∈ D
+
+where D1 and D2 differs on a single element ||D1 − D2 ||1 = 1.
+As shown in Lemma 1 [20], this definition can be extended
+to datasets differing by more than one element, i.e., can be
+generalized to the DP in the multiple-point-difference setting.
+(S2) Generalizing backdoor resilience from centralized to
+federated setting (FLAME). In the centralized setting, the
+defender has access to the model to be protected, the benign
+dataset, and the outlier (backdoored) samples. As such, he
+can estimate the sensitivity ∆ for (ε, δ)-DP.qWhen applying
+
+Equation 6 describes the relation between the DP noise added
+on FLAME’s global model and the DP noise added on each
+local model. This noise scale relation in Eq. 6 together with
+the transformation in Eq. 5 enable FLAME to provide guaranteed security for the global model against backdoors, thereby
+addressing Challenge C3 .
+In Alg. 1, we use the median of Euclidean distances ei as the
+upper bound St to clip the admitted local models (line 9-11).
+We hypothesize that the sensitivity of a model Wi is positively
+correlated with its weight magnitude |Wi | (see Theorem 2
+for details). In the case of linear models, the sensitivity ∆
+→
+has a linear relation with the model weight |−
+w | (see Eq. 8).
+Therefore, we use the following approximation:
+
+Gaussian noise with the noise scale σ = ∆ε 2ln 1.25
+δ , the defender can enforce a lower bound on the prediction loss of the
+model on the backdoored samples for backdoor elimination
+[28]. However, this robustness rationale cannot be directly
+transferred from the centralized setting to the FL setting since
+the defender in the federated scenario (i.e., aggregator) only
+has access to received model updates, but not the datasets to
+estimate the sensitivity ∆ for the global model.
+FLAME extends DP-based noising for backdoor elimination to the federated setting based on the following observation: if one can ensure that all aggregated models are benign
+
+8
+
+1
+1 n 2 2
+Σi=1 αi ei = 2 Σni=1 ∆2i ≈ St2 ,
+2
+n
+n
+where St is the weight clipping bound. Having substituted the
+above approximation into Eq. 6, we can compute the noise
+scale of DP that FLAME deploys on the global model NG :
+r
+St
+1.25
+σG ≈
+2ln
+(7)
+ε
+δ
+This concludes the proof of Theorem 1.
+FLAME’s adaptive noising step applies the Gaussian noise
+with the noise scale computed in Eq. 7 on the global model
+for backdoor elimination as shown in Alg. 1, line 13-14. Note
+that FLAME’s noising scheme is adaptive since the clipping
+bound St is obtained dynamically in each t th epoch.
+Next, we present Theorem 2 and justify how FLAME design reduces the derived noise level with step 3 (S3) below.
+(S3) Clustering and clipping components in FLAME help
+to reduce the DP noise boundary. Recall that FLAME protects the FL system against backdoor attacks using three steps:
+clustering, clipping, and adding DP noise. The overall workflow of FLAME is shown in Fig. 4. If multiple backdoors
+exist in the FL system, the first two steps (clustering and clipping) can remove a subset of backdoors as shown in Fig. 3a.
+Note that the remaining backdoors are ‘closer’ to the benign
+model updates in terms of both magnitude and direction. This
+gives us the intuition that removing the remaining backdoors
+by adding DP noise becomes easier (i.e., the noise scale σG
+is smaller) after the first two steps of FLAME.
+We can see from Theorem 1 that the Gaussian noise scale σ
+required for backdoor resilience increases with the sensitivity
+of each local model ∆i . We describe two characteristics of the
+model parameter W , i.e., direction and magnitude in §4. We
+discuss how these two factors impact the sensitivity of the
+model defined in Eq. 4 below.
+Theorem 2. Backdoor models with large angular deviation
+from benign ones, or with large parameter magnitudes have
+high sensitivity values ∆.
+Proving DP-based backdoor security for DNN models is
+still an open problem, even in the centralized setting. We,
+therefore, adopt a common approach in literature (e.g., [19])
+by providing theoretical proof for linear models and validating
+it for DNNs empirically.
+Proof : for a linear model f where the function output is
+→
+determined by the inner product of model weight vector −
+w
+→
+−
+and the data vector x , we have
+→
+→
+f (w; x) = −
+w ·−
+x = |w| · |x| · cosθ,
+(8)
+
+Table 1: Effect of clustering and clipping in FLAME on
+minimal Gaussian noise level σ for backdoor elimination in
+the NIDS scenario, in terms of Backdoor Accuracy (BA) and
+Main Task Accuracy (MA).
+σ
+0.01
+0.08
+0.10
+
+Only
+Noising
+BA
+MA
+100.0% 100.0%
+3.5%
+66.7%
+0.0%
+54.2%
+
+After
+Clustering
+BA
+MA
+0.0% 80.5%
+0.0% 66.7%
+0.0% 66.1%
+
+After Clustering
+& Clipping
+BA
+MA
+0.0%
+100.0%
+0.0%
+100.0%
+0.0%
+87.6%
+
+clustering (§4.3.1) to remove poisoned models with large
+cosine distances, and employs adaptive clipping (§4.3.2) to
+remove poisoned models with large magnitudes. Therefore,
+the sensitivity of the remaining backdoor models is lower
+compared to the one before applying these two steps. As a result, FLAME can use a small Gaussian noise to eliminate the
+remaining backdoors after applying clustering and clipping,
+which is beneficial for preserving the main task accuracy.
+We empirically show how the noise scale for backdoor
+elimination changes after applying each step of FLAME. Particularly, we measure the smallest Gaussian noise scale σ
+required to defeat all backdoors (i.e., BA = 0%) in three settings: i) No defense components applied (which is equivalent
+to the previous DP-based defense [9, 20]); ii) After applying
+dynamic clustering; iii) After applying both dynamic clustering and adaptive clipping (which is the setting of FLAME).
+We conduct this comparison experiment on the IoT-Traffic
+dataset (cf. §6). For each communication round, 100 clients
+are selected where k = 40 are adversaries. We remove the
+backdoor by adding Gaussian noise N(0, σ2 ) to the aggregated model. Table 1 summarizes the evaluation results in the
+above three settings. We can observe from the comparison
+results that the noise scale required to eliminate backdoors decreases after individual deployment of clustering and clipping.
+This corroborates the correctness of Theorem 2.
+
+5.2 Attack and Data Distribution Assumption
+In FLAME, we do not make specific assumptions about
+the attack and data distribution compared to the existing
+clustering-based defenses. Let X = (X1 , . . . , Xb ) be a set of distributions of benign models (W1 , . . . ,Wn−k ) where b ≤ n − k.
+The deviation in X is caused by the diversity of the data.
+Let X ′ = (X1′ , . . . , Xa′ ) be a set of distributions of poisoned
+models (W1′ , . . . ,Wk′ ) where a ≤ k. The deviation in X ′ is
+caused by the diversity of the benign data and backdoors
+(e.g., poisoned data or model crafting). Existing works assume that Xi′ ≈ X j′ (∀i, j : 1 ≤ i, j ≤ a) (see e.g., [25] or
+X ′ ̸= X [11, 56]). However, this assumption does not hold in
+many situations because (i) there can be one or multiple attackers injecting multiple backdoors [9], or (ii) the adversary
+can inject one or several random (honeypot) models having a
+distribution Xr′ that is significantly different from X ∪(X ′ \Xr′ ),
+and (iii) the adversary can control how much the backdoored
+models deviate from benign ones as discussed in §3. Therefore, approaches that purely divide models into two groups,
+
+→
+→
+where θ =< −
+w ,−
+x > is the angle between two vectors. In this
+case, it is straightforward to see that if the backdoor attack
+changes the parameter magnitude |w| or the direction θ of
+the model f , the resulting poisoned model f ′ has a large
+sensitivity value based on the definition in Eq. 4.
+This analysis suggests that backdoor models with large angular deviations or with large weight magnitudes have a high
+sensitivity value ∆. Recall that FLAME deploys dynamic
+9
+
+Table 2: Datasets used in our evaluations.
+
+e.g., K-means [56] will incorrectly classify models having
+distribution Xr′ into the malicious group and all remaining
+models (having distributions drawn from (X ∪ (X ′ \ Xr′ )) into
+the benign group. As a result, all backdoored models having
+distributions drawn from (X ′ \ Xr′ ) are classified as benign,
+as demonstrated in Fig. 5b. In contrast, FLAME does not
+rely on such specific assumptions (the adversary can arbitrarily choose X ′ ). If the distribution Xi′ of a poisoned model
+is similar to benign distributions in X, FLAME will falsely
+classify Xi′ as being. But if the distribution X j′ of a poisoned
+model is different from the distributions in X, FLAME will
+identify X j′ as an outlier and classify the associated model
+as malicious. To identify deviating and thus potentially malicious models, FLAME leverages the HDBSCAN algorithm
+to identify regions of high density in the model space. Any
+models that are not located in the dense regions will be categorized as outliers, as shown in Fig. 5d. As discussed in
+§3, FLAME aims to remove models with distributions X j′
+that have a higher attack impact compared to models with
+distribution Xi′ . It is worth noting, however, that the impact of
+such remaining backdoored models will be eliminated by the
+noising component as shown in §5.1
+
+Application
+WP
+NIDS
+IC
+
+6
+
+Datasets
+Reddit
+IoT-Traffic
+CIFAR-10
+MNIST
+Tiny-ImageNet
+
+#Records
+20.6M
+65.6M
+60k
+70k
+120k
+
+Model
+LSTM
+GRU
+ResNet-18 Light
+CNN
+ResNet-18
+
+#params
+∼20M
+∼507k
+∼2.7M
+∼431k
+∼11M
+
+Experimental Setup
+
+We conduct all the experiments using the PyTorch deep learning framework [3] and use the source code provided by Bagdasaryan et al. [9], Xie et al. [64] and Wang et al. [62] to
+implement the attacks. We reimplemented existing defenses
+to compare them with FLAME.
+Datasets and Learning Configurations. Following recent
+research on poisoning attacks on FL, we evaluate FLAME
+in three typical application scenarios: word prediction [39,
+42–44], image classification [15, 54, 55], and an IoT intrusion
+detection [48,52,53,59] as summarized in Tab. 2. Verification
+of the effectiveness of FLAME against state-of-the-art attacks
+in comparison to existing defenses (cf. Tab. 3 and Tab. 4) are
+conducted on these three datasets in the mentioned application
+scenarios. Experiments for evaluating specific performance
+aspects of FLAME are performed on the IoT dataset as it
+represents a very diverse and real-world setting with clear
+security implications.
+Evaluation Metrics. We consider a set of metrics for evaluating the effectiveness of backdoor attack and defense techniques as follows:
+BA - Backdoor Accuracy indicates the accuracy of the model
+in the backdoor task, i.e., it is the fraction of the trigger set
+for which the model provides the wrong outputs as chosen by
+the adversary. The adversary aims to maximize BA, while an
+effective defense prevents the adversary from increasing it.
+MA - Main Task Accuracy indicates the accuracy of a model
+in its main (benign) task. It denotes the fraction of benign
+inputs for which the system provides correct predictions. The
+adversary aims at minimizing the effect on MA to reduce the
+chance of being detected. The defense system should not negatively impact MA.
+TPR - True Positive Rate indicates how well the defense
+identifies poisoned models, i.e., the ratio of the number of
+models correctly classified as poisoned (True Positives - TP)
+to the total number of models being classified as poisoned:
+TP
+TPR = T P+FP
+, where FP is False Positives indicating the number of benign clients that are wrongly classified as malicious.
+TNR - True Negative Rate indicates the ratio of the number
+of models correctly classified as benign (True Negatives - TN)
+TN
+to the total number of benign models: TNR = T N+FN
+, where
+FN is False Negatives indicating the number of malicious
+clients that are wrongly classified as benign.
+
+Striking a balance between accuracy and security: Clustering and DP-based approaches affect model accuracy as
+discussed in §4.2 (Challenges C2 and C3 ). In particular, an approach that aims to maximize the number of filtered malicious
+models may lead to many false positives, i.e., many benign
+models being filtered out. Moreover, applying a very low clipping bound or a very high level of injected noise will degrade
+model accuracy. To address these problems, FLAME is configured so that the clustering component removes only models
+with high attack impact rather than all malicious models, i.e.,
+it aims to remove the first backdoor type W1′ as shown in
+Fig. 3. In addition, FLAME carefully estimates the clipping
+bound and noise level to ensure backdoor elimination while
+preserving model performance. As discussed in §4.3.2, the
+L2 -norms of model updates depend on the number of training
+rounds, dataset types, and type of backdoors. Consequently,
+the clipping threshold and noise level should be adapted to
+L2 -norms. We therefore apply the median of the L2 -norms of
+model updates as the clipping bound St (cf. Lines 9-11 of Alg.
+1). This ensures that St is always computed between a benign
+local model and the global model since we assume that more
+than 50% of clients are benign (cf. §2.3). Further, estimating
+noise level based on St (cf. Lines 13-14 of Alg. 1) also provides a noise boundary that ensures that the global model is
+resilient against backdoors as discussed in §5.1. Moreover,
+our comparison of potential values for St presented in §B.2
+and §B.3 shows that the chosen clipping bound and noise
+level provide the best balance between accuracy and security,
+i.e., FLAME eliminates backdoor while retaining the global
+model’s performance on the main task.
+
+7
+
+Experimental Results
+
+In this section, we evaluate FLAME against backdoor attacks
+in the literature (§7.1) and demonstrate that our defense mechanism is resilient to adaptive attacks (§7.2). In addition, we
+10
+
+Table 3: Effectiveness of FLAME against state-of-the-art
+attacks for the respective dataset, in terms of Backdoor Accuracy (BA) and Main Task Accuracy (MA). All metric values
+are reported as percentages.
+Attack
+Constrain-and-scale [9]
+DBA [64]
+Edge-Case [62]
+PGD [62]
+Untargeted Poisoning [22]
+
+Dataset
+Reddit
+CIFAR-10
+IoT-Traffic
+CIFAR-10
+CIFAR-10
+CIFAR-10
+CIFAR-10
+
+No Defense
+BA
+MA
+100
+22.6
+81.9
+89.8
+100.0
+100.0
+93.8
+57.4
+42.8
+84.3
+56.1
+68.8
+46.72
+
+Table 4: Effectiveness of FLAME in comparison to state-ofthe-art defenses for the constrain-and-scale attack on three
+datasets, in terms of Backdoor Accuracy (BA) and Main Task
+Accuracy (MA). All values are percentages.
+
+FLAME
+BA
+MA
+0
+22.3
+0
+91.9
+0
+99.8
+3.2
+76.2
+4.0
+79.3
+0.5
+65.1
+91.31
+
+Defenses
+Benign Setting
+No defense
+Krum [11]
+FoolsGold [25]
+Auror [56]
+AFA [46]
+DP [20]
+Median [67]
+FLAME
+
+show the effectiveness of each of FLAME’s components in
+§B and FLAME overhead in §D. Finally, we evaluate the
+impact of the number of clients (§7.3) as well as the degree
+of non-IID data (§7.4).
+
+7.1
+
+Reddit
+BA
+MA
+22.7
+100.0
+22.6
+100.0
+9.6
+0.0
+22.5
+100.0
+22.5
+100.0
+22.4
+14.0
+18.9
+0.0
+22.0
+0.0
+22.3
+
+CIFAR-10
+BA
+MA
+92.2
+81.9
+89.8
+100.0
+56.7
+100.0
+52.3
+100.0
+26.1
+0.0
+91.7
+0.0
+78.9
+0.0
+50.1
+0.0
+91.9
+
+IoT-Traffic
+BA
+MA
+100.0
+100.0
+100.0
+100.0
+84.0
+100.0
+99.2
+100.0
+96.6
+100.0
+87.4
+14.8
+82.3
+0.0
+87.7
+0.0
+99.8
+
+Krum [11], Auror [56] or AFA [46] are not able to handle
+non-iid data scenarios like Reddit. In contrast, FoolsGold is
+only effective on the Reddit dataset (TPR = 100%) because
+it works well on highly non-independent and identically distributed (non-IID) data (cf. §9). Similarly, AFA only mitigates
+backdoors on the CIFAR-10 dataset since the data are highly
+IID (each client is assigned a random set of images) such that
+the benign models share similar distances to the global model
+(cf. §9). Additionally, the model’s MA is negatively impacted.
+The DP-based defense is effective, but it significantly reduces
+MA. For example, it performs best on the CIFAR-10 dataset
+with BA = 0, but MA decreases to 78.9% while FLAME increases MA to 91.9% which is close to the benign setting (no
+attacks), where MA = 92.2%.
+Effectiveness of FLAME’s Components. Further, we have
+also conducted an extensive evaluation of the effectiveness of
+each of FLAME’s components. Due to space limitations, we
+would like to refer to §B for the details.
+
+Preventing Backdoor Attacks
+
+Effectiveness of FLAME. We evaluate FLAME against
+the state-of-the-art backdoor attacks called constrain-andscale [9], DBA [64], PGD and Edge-Case [62] and an untargeted poisoning attack [22] (cf. §F) using the same attack
+settings as in the original works with multiple datasets. The
+results are shown in Tab. 3. FLAME completely mitigates the
+constrain-and-scale attack (BA = 0%) for all datasets. Moreover, our defense does not affect the Main Task Accuracy
+(MA) of the system as MA reduces by less than 0.4% in all
+experiments. The DBA attack as well as the Edge-Case attack [62] are also successfully mitigated (BA = 3.2%/4.0%).
+Further, FLAME is also effective against PGD attacks (BA =
+0.5 %). It should be noted that suggesting words is a quite
+challenging task, causing the MA even without attack to be
+only 22.7%, aligned with previous work [9].
+We extend our evaluation to various backdoors on three
+datasets. For NIDS, we evaluate 13 different backdoors (Mirai
+malware attacks) and 24 device types (78 IoT devices). The
+results show that FLAME is able to mitigate all backdoor
+attacks completely while achieving a high MA=99.8%. We
+evaluate 5 different word backdoors for WP, and 90 different image backdoors for IC, which change the output of a
+whole class to another class. In all cases, FLAME successfully mitigates the attack while still preserving the MA.
+Comparison to existing defenses. We compare FLAME to
+existing defenses: Krum [11], FoolsGold [25], Auror [56],
+Adaptive Federated Averaging (AFA) [46], Median [67] and a
+generalized differential privacy (DP) approach [9, 44]. Tab. 4
+shows that FLAME is effective for all 3 datasets, while previous works either fail to mitigate backdoors or reduce the
+main task accuracy. Krum, FoolsGold, Auror, and AFA do not
+effectively remove poisoned models and BA often remains
+at 100%. Also, some defenses make the attack even more
+successful than without defense. Since they remove many
+benign updates (cf. §B) but fail to remove a sufficient number
+of poisoned updates, these defenses increase the PMR and,
+therefore, also the impact of the attack. Some defenses, e.g.,
+
+7.2
+
+Resilience to Adaptive Attacks
+
+Given sufficient knowledge about FLAME, an adversary may
+seek to use adaptive attacks to bypass the defense components.
+In this section, we analyze such attack scenarios and strategies
+including changing the injection strategy, model alignment,
+and model obfuscation.
+Changing the Injection Strategy. The adversary A may attempt to inject several backdoors simultaneously to execute
+different attacks on the system in parallel or to circumvent the
+clustering defense (cf. §2.2). FLAME is also effective against
+such attacks (cf. Fig. 5). To further investigate the resilience of
+FLAME against such attacks, we conduct two experiments:
+1) assigning different backdoors to malicious clients and 2)
+letting each malicious client inject several backdoors. To
+ensure that each backdoor is injected by a sufficient number
+of clients, we increased the PMR for this experiment. We
+conducted these experiments with n = 100 clients of which
+k = 40 are malicious on the IoT-Traffic dataset with each type
+of Mirai attack representing a backdoor. First, we evaluate
+FLAME for 0, 1, 2, 4, and 8 backdoors, meaning that the number of malicious clients for each backdoor is 0, 40, 20, 10, and
+5. Our experimental results show that our approach is effec11
+
+Table 5: Resilience to model alignment attacks in terms of
+Backdoor Accuracy (BA), Main Task Accuracy (MA), True
+Positive Rate (TPR), True Negative Rate (TNR) in percent.
+BA
+100.0
+0.0
+
+Model Filtering
+FLAME
+
+MA
+91.98
+100.0
+
+TPR
+0.0
+5.68
+
+(cf. §2.2) and our clustering is only expected to be successful
+when PMR = nk < 50% (cf. §4.3.1). We evaluate FLAME for
+different PMR values. Figure 7 shows how BA, TPR, and TNR
+change in the IC, NIDS, and WP applications for PMR values
+from 25% to 60%. It shows that FLAME is only effective
+if PMR < 50% so that only benign clients are admitted to
+the model aggregation (TNR = 100%) and thus BA = 0%.
+However, if PMR > 50%, FLAME fails to mitigate the attack
+because the majority of poisoned models will be included
+resulting in low TNR. Interestingly, FLAME accepted all
+models for PMR = 50% (TPR = 0% and TNR = 100%). For
+the IC application, since the IC data are non-IID, poisoned
+models are not similar. Therefore, some poisoned models
+were excluded from the cluster resulting in a high TPR even
+for PMRs higher than 50%. However, the majority of poisoned
+models were selected resulting in the drop in the TNR.
+Varying number of clients in different training rounds.
+In general, FLAME is a round-independent defense, i.e., it
+does not use information from previous rounds such as which
+clients were excluded in which rounds. Therefore, FLAME
+will not be affected if the number of clients or number of
+malicious clients varies as long as the majority of clients
+remain benign. To demonstrate this, we simulate realistic scenarios in which clients can join and drop out dynamically.
+We conducted an experiment where during each round, the
+total number of available clients is randomly selected. As the
+result, the number of malicious clients will also be random.
+In this experiment, we used a population of 100 clients in
+total, out of which 25 are malicious. In each round, a random number (from 60 to 90) of clients are selected, so that
+the fraction of malicious clients (PMR) varies in each round.
+Figure 8 shows the experimental results. One can see that
+the proportion of malicious clients (PMR) does not affect the
+effectiveness of FLAME, i.e., the backdoor is completely removed (BA = 0%) in every round. Since all poisoned models
+are detected, their negative effect on the aggregated model
+is removed. Therefore, the MA with FLAME is better than
+the one without defense, and is almost always 100 % aligned
+with the results in Tab. 4.
+
+TNR
+33.04
+33.33
+
+tive in mitigating the attacks as BA = 0% ± 0.0% in all cases,
+with TPR = 95.2% ± 0.0%, and TNR = 100.0% ± 0.0%. For
+the second experiment, 4 backdoors are injected by each of
+the 40 malicious clients. Also, in this case, the results show
+that FLAME can completely mitigate the backdoors.
+Model Alignment. Using the same attack parameter values,
+i.e., PDR (cf. §2.2), for all malicious clients can result in high
+distances between benign and poisoned models. Those high
+distances can be illustrated as a gap between poisoned and benign models, s.t. the clustering can separate them. Therefore,
+a sophisticated adversary can generate models that bridge the
+gap between them such that they are merged to the same cluster in our clustering. We evaluate this attack on the IoT-Traffic
+dataset for k = 80 malicious clients and n = 200 clients in
+total. To remove the gap, each malicious client is assigned a
+random amount of malicious data, i.e., a random PDR ranging
+from 5% to 20%. As Tab. 5 shows, when we apply model
+filtering only, our clustering component cannot identify the
+malicious clients well (TPR = 0%), resulting in BA = 100%.
+However, when we apply FLAME, although TPR remains
+low (5.68%) FLAME still mitigates the attack successfully
+(BA reduces from 100% to 0%). This can be explained by the
+fact that when the adversary A tunes malicious updates to be
+close to the benign ones, the attack’s impact is reduced and
+consequently averaged out by our noising component.
+Model Obfuscation. A can add noise to the poisoned models
+to make them difficult to detect. However, our evaluation
+of such an attack on the IoT-Traffic dataset shows that this
+strategy is not effective. We evaluate different noise levels to
+determine a suitable standard deviation for the noise. Thereby,
+we observe that a noise level of 0.034 causes the models’
+cosine distances in clustering to change without significantly
+impacting BA. However, FLAME can still efficiently defend
+this attack: BA remains at 0% and MA at 100%.
+
+7.3
+
+7.4
+
+Effect of Number of Clients
+
+Since clustering is based on measuring differences between
+benign and malicious updates, the distribution of data among
+clients might affect our defense. We conduct two experiments
+for both Constrain-and-scale and Edge-Case PGD on the
+CIFAR-10 dataset. For Reddit and IoT datasets, changing the
+degree of non-IID data is not meaningful since the data have a
+natural distribution as every client obtains data from different
+Reddit users or traffic chunks from different IoT devices.
+Following previous works [22,62], we vary the degree of nonIID data DegnIID by changing the fraction of images belonging
+to a specific class assigned to clients. In particular, we divide
+the clients into 10 groups corresponding to the 10 classes of
+CIFAR-10. The clients of each group are assigned a fixed
+
+Value of Metric
+
+Impact of Number of Malicious Clients. We assume that
+the number of benign clients is more than half of all clients
+100%
+
+100%
+50%
+0%
+
+TNR
+TPR
+BA
+30 40 50 60
+Poisoned Model Rate (PMR)
+
+(a) IC
+
+50%
+0%
+
+100%
+TNR
+TPR
+BA
+30 40 50 60
+Poisoned Model Rate (PMR)
+
+(b) NIDS
+
+TNR
+TPR
+BA
+
+50%
+0%
+
+Impact of the Degree of non-IID Data
+
+30 40 50 60
+Poisoned Model Rate (PMR)
+
+(c) WP
+
+Figure 7: Impact of the poisoned model rate PMR = nk on the
+evaluation metrics. PMR is the fraction of malicious clients k
+per total clients n.
+12
+
+TPR FLAME
+TNR FLAME
+
+2
+
+BA FLAME
+BA No Defense
+
+4
+
+6
+Rounds
+
+PMR
+#clients
+
+8
+
+100
+80
+60
+40
+20
+0
+
+DegnIID = 0.6, and is reduced to 91.0% for DegnIID = 1.0).
+Note that Fig. 9 shows the evaluation results in a training
+round t where the global model Gt is close to convergence [9],
+thus even though the TNR decreases with a large value of
+DegnIID , the drop of MA with FLAME is not substantial.
+
+Number of Clients
+
+Value of Metrice
+
+100%
+80%
+60%
+40%
+20%
+0%
+
+10
+
+8
+
+TPR FLAME
+TNR FLAME
+
+2
+
+BA FLAME
+BA No Defense
+
+4
+
+6
+Rounds
+
+PMR
+#clients
+
+8
+
+100
+80
+60
+40
+20
+0
+
+10
+
+(b) Network Intrusion Detection
+
+Value in Percentage
+
+Figure 8: Impact of the number of clients on FLAME
+100%
+50%
+0%
+
+BA No Defense
+MA No Defense
+0.0
+
+0.2
+
+BA FLAME
+MA FLAME
+0.4
+
+DegnIID
+
+TPR FLAME
+TNR FLAME
+
+0.6
+
+0.8
+
+1.0
+
+Value in Percentage
+
+(a) Constrain-and-scale
+100%
+BA No Defense
+MA No Defense
+
+50%
+0%
+
+0.0
+
+0.1
+
+0.2
+
+0.3
+
+BA FLAME
+MA FLAME
+
+TPR FLAME
+TNR FLAME
+
+0.4 0.5
+DegnIID
+
+0.6
+
+0.7
+
+Privacy-preserving Federated Learning
+
+A number of attacks on FL have been proposed that aim to
+infer from parameters of a model the presence of a specific
+training sample in the training dataset (membership inference
+attacks) [45, 51, 57], properties of training samples (property
+inference attacks) [26,45], try to assess the proportion of samples of a specific class in the data (distribution estimation
+attacks) [63]. Inference attacks by the aggregator A s are significantly stronger, as A s has access to the local models [47]
+and can also link gained information to a specific user, while
+the global model anonymizes the individual contributions.
+Therefore, enhanced privacy protection for FL is needed that
+prohibits access to the local model updates.
+Adversary Model (privacy). In this adversary type, A s attempts to infer sensitive information about clients’ data Di
+from their model updates Wi [26, 45, 51, 57] by maximizing
+the information φi = I NFER(Wi ) that A s gains about the data
+Di of client i by inferring from its corresponding model Wi .
+Deficiencies of existing defenses. Generally, there are two approaches to protect the privacy of clients’ data: differential privacy (DP; [20]) and cryptographic techniques such as homomorphic encryption [27] or multi-party computation [16]. DP
+is a statistical approach that can be efficiently implemented,
+but it can only offer high privacy protection at the cost of
+a significant loss in accuracy due to the noise added to the
+models [8, 68]. In contrast, cryptographic techniques provide
+strong privacy guarantees as well as high accuracy at the cost
+of reduced efficiency.
+Private FLAME. To securely implement FLAME using
+STPC, we use an optimized combination of three prominent STPC techniques as implemented with state-of-the-art
+optimizations in the ABY framework [16]. Fig. 10 shows
+an overview of private FLAME. It involves n clients and
+two non-colluding servers, called aggregator A and external
+server B. Each client i ∈ {1, ..., n} splits the parameters of its
+local update Wi into two Arithmetic shares ⟨X⟩Ai and ⟨X⟩Bi ,
+such that Wi = ⟨X⟩Ai + ⟨X⟩Bi , and sends ⟨X⟩Ai to A and ⟨X⟩Bi
+to B. A and B then privately compute the new global model
+via STPC. We co-design the distance calculation, clustering,
+adaptive clipping, and aggregation of FLAME (cf. Alg. 1)
+of FLAME as efficient STPC protocols.To further improve
+performance, we approximate HDBSCAN with the simpler
+DBSCAN [12] to avoid the construction of the minimal spanning tree in HDBSCAN as it is very expensive to realize with
+STPC. See §G for more details on private FLAME evaluation
+of its accuracy and performance.
+
+Number of Clients
+
+Value of Metrice
+
+(a) Image Classification
+
+100%
+80%
+60%
+40%
+20%
+0%
+
+0.8
+
+(b) Edge-Case PGD
+
+Figure 9: Impact of degree of non-IID data on FLAME for
+constrain-and-scale using the DegnIID and for the Edge-Case
+PGD attack using the α parameter of the Dirichlet distribution.
+fraction of DegnIID of the images from its designated image
+class, while the rest of the images will be assigned to it at
+random. Consequently, the data distribution is random, i.e.,
+completely IID if DegnIID = 0% (all images are randomly
+assigned) and completely non-IID if DegnIID = 100% (a client
+only gets images from its designated class).
+Figure 9a shows the evaluation results for the constrainand-scale attacks. Although FLAME does not detect the poisoned models for very non-IID scenarios, it still mitigates the
+attack as the BA remains 0% for all values of DegnIID . For low
+DegnIID , FLAME effectively identifies the poisoned models
+(T NR = 100%) and the MA remains on almost the same level
+as without defense. As shown in Fig. 9b, FLAME also mitigates the Edge-Case PGD attack effectively for all α values of
+the Dirichlet distribution and the MA also stays on the same
+level as without defense. However, since not all poisoned
+models are detected, a higher σ is determined dynamically
+to mitigate the constrain-and-scale backdoor, resulting in a
+slightly reduced MA for DegnIID ≥ 0.7 (MA is 91.9% for
+13
+
+Arithmetic
+shares
+〈𝑋〉𝑖𝐴
+
+∗
+𝐺𝑡−1
+Global
+model
+
+Client 𝑖
+
+Dynamic 〈𝑋〉
+Clustering
+STPC
+
+𝐴
+
+𝐵
+
+〈𝑋〉𝐵𝑖
+
+Aggregator A
+Adaptive 𝐺𝑡
+Clipping
+STPC
+
+Dynamic 〈𝑋〉 Adaptive
+Clustering
+Clipping
+External Server B
+
+Adaptive
+Noising
+
+deficits in model performance due to the backdoor from lack
+of data.
+Differential Privacy-based approaches. Clipping and noising are known techniques to achieve differential privacy
+(DP) [20]. However, directly applying these techniques to
+defend against backdoor attacks is not effective because
+they significantly decrease the Main Task Accuracy (§7.1)
+[9]. FLAME tackles this by i) identifying and filtering out
+potential poisoned models that have a high attack impact
+(cf. §4.3.1), and ii) eliminating the residual poison with an
+appropriate adaptive clipping bound and noise level, such that
+the Main Task Accuracy is retained (cf. §4.3.2).
+
+𝐺𝑡∗
+Updated
+global model
+
+Figure 10: Overview of private FLAME in round t using
+Secure-Two-Party Computation (STPC).
+
+9
+
+Related Work
+
+In general, existing backdoor defenses can roughly be divided
+into two main categories. The first one aims to distinguish
+malicious updates and benign updates by 1) clustering model
+updates [11, 17, 25, 32, 37, 38, 56], 2) changing aggregation
+rules [28, 67], and 3) using root dataset [6]. The second category is based on differential privacy techniques [9, 61]. Next,
+we will discuss these points in detail.
+Clustering model updates. Several backdoor defenses, such
+as Krum [11], AFA [46], and Auror [56], aim at separating benign and malicious model updates. However, they
+only work under specific assumptions about the underlying data distributions, e.g., Auror and Krum assume that
+data of benign clients are iid. In contrast, FoolsGold and
+AFA [46] assume that benign data are non-iid. In addition,
+FoolsGold assumes that manipulated data are iid. As a result, these defenses are only effective under specific circumstances (cf. §7.1) and cannot handle the simultaneous injection of multiple backdoors (cf. §4.3.1). Moreover, such
+defenses cannot detect stealthy attacks, e.g., where the adversary constrains their poisoned updates within benign update distribution such as Constrain-and-scale attacks [9]. In
+contrast, FLAME does not make any assumption about the
+data distribution, clipping, and noising components can also
+mitigate stealthy attacks, and FLAME can defend against
+injection of multiple backdoors (cf. §4.3.1).
+Changing aggregation rules. Instead of using FedAvg [42],
+Yin et al. [67] and Guerraoui et al. [28] propose using the
+median parameters from all local models as the global model
+parameters, i.e., Gt = M EDIAN(W1t , . . . ,Wnt ). However, the
+adversary can bypass it by injecting stealthy models like W3′
+(cf. Fig. 2), in which the parameters of the poisoned model
+will be selected to be incorporated into the global model.
+Further, our evaluation in §7.1 shows that Median also reduces
+the performance of the model significantly.
+Using root data. Although FLTrust [14] can defend against
+byzantine clients (with arbitrary behavior) and detect poisoning attacks, including backdoors, it requires the aggregator to
+have access to a benign root dataset. Baffle [6] utilizes clients
+using their own data to evaluate the performance of the aggregated model to detect backdoors. However, this approach
+has several limitations. Firstly, the backdoor triggers are only
+known to the attacker. One cannot ensure that the benign
+clients would have such trigger data to activate the backdoor.
+Secondly, Baffle does not work in a non-IID data scenario
+with a small number of clients as clients cannot distinguish
+
+10 Revisiting Attacks Claiming to Bypass
+FLAME
+Since we presented our FLAME paper at the USENIX Security Conference in 2022 [49], it has sparked considerable
+interest among researchers, garnering over 100 citations according to Google Scholar [1]. When creating this document,
+two attacks have been highlighted that allege to circumvent
+FLAME [36, 65]. We promptly responded by conducting an
+exhaustive investigation into these attacks, uncovering notable
+errors in their approach. They made misleading claims and
+seemed to misinterpret FLAME’s core design principles. To
+resolve this issue, we initiated a dialogue with the respective
+authors, leading to an acknowledgment and ensuing correction of assertions by Xu et al. [65]. In the subsequent sections,
+we explore these studies in greater detail.
+Xu et al. [65] propose a distributed backdoor attack (DBA)
+targeting federated Graph Neural Networks (GNN) training.
+The authors assert their proposed attacks can circumvent
+FLAME [49]. However, upon discussing this with the authors of [65], it becomes clear that they have misinterpreted
+our approach and failed to incorporate all key components of
+FLAME in their understanding. Specifically, they have only
+accounted for the clustering aspect of FLAME while neglecting the Adaptive Clipping and Noising components, both of
+which are essential for backdoor mitigation. Acknowledging
+this, the authors have revised their claim in the recent version
+of their paper published on arXiv [66].
+Li et al. [36] introduce 3DFed , a multifaceted backdoor
+attack composed of three elements: Constrain Loss, Noise
+Masks, and Decoy Model. Among these, the Constrain Loss
+component is crafted to target FLAME. However, it solely
+aims to counteract the Clipping defense facet of FLAME, as
+outlined in §VI of [36]. This implies that the authors did not
+account for the Clustering and Noising elements intrinsic to
+our defense design. At its core, 3DFed seeks to limit the loss
+during the backdoor model training phase, striving to keep
+the backdoor objective closely aligned with the global model
+in terms of L2 -norm (Euclidean distance). This alignment is
+achieved by manipulating the hyper-parameter β, meaning
+14
+
+3DFed ’s goal is to ensure the L2 -norm of the backdoor model
+falls under the L2 -norm-based clipping threshold. In [36],
+however, the authors neither discuss nor assess how hyperparameter β could be selected to ensure L2 -norms of backdoored models fall below our dynamic Clipping boundary.
+It is important to note that because the Clipping threshold
+in FLAME is dynamically recalculated with each federated
+training iteration, it’s highly unlikely that a particular β value
+can ensure the L2 -norms of tampered models stay below our
+dynamic Clipping threshold while still maintaining the attack’s effectiveness. This is particularly true once Gaussian
+noise is factored in. As we highlighted in Section 4, we are
+aware of such tampered models, working on the assumption
+that an adversary can carefully manipulate the training process (see Constrain-and-scale attack [9]). Consequently, we
+argue that 3DFed cannot counteract FLAME. To empirically support this argument, we have carried out a comprehensive replication study of 3DFed using the exact source
+code provided by the 3DFed authors [4], strictly adhering to
+the experimental setup detailed in the 3DFed paper [36], as
+described in Section H. As anticipated, contrary to the results
+presented in the 3DFed paper, specifically Figures 10c, 10h,
+and 13c [36], our results demonstrate FLAME’s effective
+mitigation of 3DFed attacks across all datasets used in 3DFed
+experiments (see Table 8).
+In conclusion, Table 6 underscores the significant discrepancy between how recent attacks interpret FLAME and the
+actual design principles of FLAME. Importantly, none of
+these approaches consider the Adaptive Noising defense,
+which plays a crucial role in eliminating remaining backdoor
+updates. This highlights the essentiality of comprehending
+design principles when devising an attack against FLAME.
+
+cure two-party computation protocols for FLAME to ensure
+the privacy of clients’ training data and to impede inference
+attacks on client updates.
+
+Acknowledgments
+This research was funded by the Deutsche Forschungsgemeinschaft (DFG) SFB-1119 CROSSING/236615297, the
+European Research Council (ERC, grant No. 850990 PSOTI),
+the EU H2020 project SPATIAL (grant No. 101021808),
+GRK 2050 Privacy & Trust/251805230, HMWK within
+ATHENE project, NSF-TrustHub (grant No. 1649423), SRCAuto (2019-AU-2899), Huawei OpenS3 Lab, and Intel Private
+AI Collaborative Research Center. We thank the anonymous
+reviewers and the shepherd, Neil Gong, for constructive reviews and comments.
+
+References
+[1] Flame: Taming backdoors in federated learning.
+https://scholar.google.de/citations?view_op=
+view_citation&hl=en&user=Ro2m0z0AAAAJ&citation_
+for_view=Ro2m0z0AAAAJ:GnPB-g6toBAC.
+[2] Reddit dataset, 2017. https://bigquery.cloud.google.
+com/dataset/fh-bigquery:reddit_comments.
+[3] Pytorch, 2019. https://pytorch.org.
+[4] 3dfed source
+code.
+haoyangliASTAPLE/3DFed, 2023.
+
+[5] Martin Abadi, Andy Chu, Ian Goodfellow, H. Brendan McMahan, Ilya Mironov, Kunal Talwar, and Li Zhang. Deep learning
+with differential privacy. In CCS. ACM, 2016.
+
+Table 6: Analysis of Recent Attack Strategies Against
+FLAME.
+FLAME defense
+mechanisms
+Dynamic Clustering
+Adaptive Clipping
+Adaptive Noising
+
+11
+
+https://github.com/
+
+[6] Sebastien Andreina, Giorgia Azzurra Marson, Helen Möllering, and Ghassan Karame. BaFFLe: Backdoor Detection via
+Feedback-based Federated Learning. In ICDCS, 2021.
+
+Consideration in attack design
+Xu et al. [65]
+Li et al. [36]
+Yes
+No
+No
+Yes
+No
+No
+
+[7] Manos Antonakakis, Tim April, Michael Bailey, Matt Bernhard, Elie Bursztein, Jaime Cochran, Zakir Durumeric, J. Alex
+Halderman, Luca Invernizzi, Michalis Kallitsis, Deepak Kumar, Chaz Lever, Zane Ma, Joshua Mason, Damian Menscher,
+Chad Seaman, Nick Sullivan, Kurt Thomas, and Yi Zhou. Understanding the Mirai Botnet. In USENIX Security, 2017.
+[8] Yoshinori Aono, Takuya Hayashi, Lihua Wang, and Shiho Moriai. Privacy-preserving Deep Learning via Additively Homomorphic Encryption. In TIFS, 2017.
+
+Conclusion
+
+In this paper, we introduce FLAME, a resilient aggregation
+framework for FL that eliminates the impact of backdoor attacks while maintaining the performance of the aggregated
+model on the main task. We propose a method to approximate
+the amount of noise that needs to be injected into the global
+model to neutralize backdoors. Furthermore, in combination
+with our dynamic clustering and adaptive clipping, FLAME
+can significantly reduce the noise scale for backdoor removal
+and thus preserve the benign performance of the global model.
+In addition, we design, implement, and benchmark efficient se-
+
+[9] Eugene Bagdasaryan, Andreas Veit, Yiqing Hua, Deborah Estrin, and Vitaly Shmatikov. How To Backdoor Federated Learning. In AISTATS, 2020.
+[10] Moran Baruch, Gilad Baruch, and Yoav Goldberg. A Little
+Is Enough: Circumventing Defenses For Distributed Learning.
+In NIPS, 2019.
+[11] Peva Blanchard, El Mahdi El Mhamdi, Rachid Guerraoui, and
+Julien Stainer. Machine Learning with Adversaries: Byzantine
+Tolerant Gradient Descent. In NIPS, 2017.
+
+15
+
+[12] Beyza Bozdemir, Sébastien Canard, Orhan Ermis, Helen
+Möllering, Melek Önen, and Thomas Schneider. Privacypreserving density-based clustering. In ASIACCS, 2021.
+
+[28] Rachid Guerraoui, Sébastien Rouault, et al. The hidden vulnerability of distributed learning in byzantium. In ICML. PMLR,
+2018.
+
+[13] Ricardo J. G. B. Campello, Davoud Moulavi, and Joerg Sander.
+Density-Based Clustering Based on Hierarchical Density Estimates. In Pacific-Asia Conference on Knowledge Discovery
+and Data Mining, 2013.
+
+[29] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun.
+Deep Residual Learning for Image Recognition. In CVPR,
+2016.
+[30] Stephen Herwig, Katura Harvey, George Hughey, Richard
+Roberts, and Dave Levin. Measurement and Analysis of Hajime, a Peer-to-Peer IoT Botnet. In NDSS, 2019.
+
+[14] Xiaoyu Cao, Minghong Fang, Jia Liu, and Neil Zhenqiang
+Gong. Fltrust: Byzantine-robust federated learning via trust
+bootstrapping. In NDSS, 2021.
+
+[31] Li Huang, Yifeng Yin, Zeng Fu, Shifa Zhang, Hao Deng,
+and Dianbo Liu. LoAdaBoost: Loss-Based AdaBoost Federated Machine Learning on medical Data.
+In arXiv
+preprint:1811.12629, 2018.
+
+[15] Trishul Chilimbi, Yutaka Suzue, Johnson Apacible, and Karthik
+Kalyanaraman. Project Adam: Building an Efficient and Scalable Deep Learning Training System. In USENIX Operating
+Systems Design and Implementation, 2014.
+
+[32] Youssef Khazbak, Tianxiang Tan, and Guohong Cao. Mlguard:
+Mitigating poisoning attacks in privacy preserving distributed
+collaborative learning. In International Conference on Computer Communications and Networks (ICCCN). IEEE, 2020.
+
+[16] Daniel Demmler, Thomas Schneider, and Michael Zohner.
+ABY - A Framework for Efficient Mixed-Protocol Secure TwoParty Computation. In NDSS, 2015.
+
+[33] Constantinos Kolias, Georgios Kambourakis, Angelos Stavrou,
+and Jeffrey Voas. DDoS in the IoT: Mirai and Other Botnets.
+In IEEE Computer, 2017.
+
+[17] Ilias Diakonikolas, Gautam Kamath, Daniel Kane, Jerry Li,
+Jacob Steinhardt, and Alistair Stewart. Sever: A robust metaalgorithm for stochastic optimization. In ICML, 2019.
+
+[34] Alex Krizhevsky and Geoffrey Hinton. Learning Multiple
+Layers of Features from Tiny Images. Technical report, 2009.
+
+[18] Rohan Doshi, Noah Apthorpe, and Nick Feamster. Machine
+Learning DDoS Detection for Consumer Internet of Things
+Devices. In arXiv preprint:1804.04159, 2018.
+
+[35] Y. Lecun, L. Bottou, Y. Bengio, and P. Haffner. Gradient-based
+learning applied to document recognition. Proceedings of the
+IEEE, 86(11), 1998.
+
+[19] Min Du, Ruoxi Jia, and Dawn Song. Robust anomaly detection
+and backdoor attack detection via differential privacy. In ICLR,
+2020.
+[20] Cynthia Dwork and Aaron Roth. The Algorithmic Foundations of Differential Privacy. In Foundations and Trends in
+Theoretical Computer Science, 2014.
+
+[36] Haoyang Li, Qingqing Ye, Haibo Hu, Jin Li, Leixia Wang,
+Chengfang Fang, and Jie Shi. 3dfed: Adaptive and extensible
+framework for covert backdoor attack in federated learning. In
+2023 IEEE Symposium on Security and Privacy (SP), pages
+1893–1907, 2023.
+
+[21] Martin Ester, Hans-Peter Kriegel, Jörg Sander, Xiaowei Xu,
+et al. A Density-Based Algorithm for Discovering Clusters in
+Large Spatial Databases with Noise. In KDD, 1996.
+
+[37] Suyi Li, Yong Cheng, Yang Liu, Wei Wang, and Tianjian Chen.
+Abnormal client behavior detection in federated learning. arXiv
+preprint arXiv:1910.09933, 2019.
+
+[22] Minghong Fang, Xiaoyu Cao, Jinyuan Jia, and Neil Zhenqiang
+Gong. Local Model Poisoning Attacks to Byzantine-Robust
+Federated Learning. In USENIX Security, 2020.
+
+[38] Suyi Li, Yong Cheng, Wei Wang, Yang Liu, and Tianjian Chen.
+Learning to detect malicious clients for robust federated learning. arXiv preprint arXiv:2002.00211, 2020.
+
+[23] Hossein Fereidooni, Alexandra Dmitrienko, Phillip Rieger,
+Markus Miettinen, Ahmad-Reza Sadeghi, and Felix Madlener.
+FedCRI: Federated Mobile Cyber-Risk Intelligence. In NDSS,
+2022.
+
+[39] Yujun Lin, Song Han, Huizi Mao, Yu Wang, and William J.
+Dally. Deep Gradient Compression: Reducing the Communication Bandwidth for Distributed Training. In ICLR, 2018.
+[40] Leland McInnes and John Healy. Accelerated hierarchical
+density based clustering. In Data Mining Workshops (ICDMW),
+2017 IEEE International Conference on. IEEE, 2017.
+
+[24] Hossein Fereidooni, Samuel Marchal, Markus Miettinen, Azalia Mirhoseini, Helen Möllering, Thien Duc Nguyen, Phillip
+Rieger, Ahmad-Reza Sadeghi, Thomas Schneider, Hossein
+Yalame, et al. Safelearn: secure aggregation for private federated learning. In 2021 IEEE Security and Privacy Workshops
+(SPW), pages 56–62. IEEE, 2021.
+
+[41] Leland McInnes, John Healy, and Steve Astels. hdbscan: Hierarchical density based clustering. The Journal of Open Source
+Software, 2(11):205, 2017.
+[42] Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and Blaise Agüera y Arcas. Communication-Efficient
+Learning of Deep Networks from Decentralized Data. In AISTATS, 2017.
+
+[25] Clement Fung, Chris JM Yoon, and Ivan Beschastnikh. The
+limitations of federated learning in sybil settings. In RAID,
+2020. originally published as arxiv:1808.04866.
+[26] Karan Ganju, Qi Wang, Wei Yang, Carl A Gunter, and Nikita
+Borisov. Property Inference Attacks on Fully Connected Neural Networks Using Permutation Invariant Representations. In
+CCS, 2018.
+
+[43] Brendan McMahan and Daniel Ramage. Federated learning:
+Collaborative Machine Learning without Centralized Training
+Data. Google AI, 2017.
+[44] H. Brendan McMahan, Daniel Ramage, Kunal Talwar, and
+Li Zhang. Learning Differentially Private Language Models
+Without Losing Accuracy. In ICLR, 2018.
+
+[27] Craig Gentry. A Fully Homomorphic Encryption Scheme. PhD
+thesis, Stanford University, Stanford, CA, USA, 2009.
+
+16
+
+[45] Luca Melis, Congzheng Song, Emiliano De Cristofaro, and
+Vitaly Shmatikov. Exploiting Unintended Feature Leakage in
+Collaborative Learning. In IEEE S&P, 2019.
+
+[59] Virginia Smith, Chao-Kai Chiang, Maziar Sanjabi, and
+Ameet S Talwalkar. Federated Multi-Task Learning. In NIPS,
+2017.
+
+[46] Luis Muñoz-González, Kenneth T. Co, and Emil C. Lupu.
+Byzantine-Robust Federated Machine Learning through Adaptive Model Averaging. In arXiv preprint:1909.05125, 2019.
+
+[60] Saleh Soltan, Prateek Mittal, and Vincent Poor. BlackIoT: IoT
+Botnet of High Wattage Devices Can Disrupt the Power Grid.
+In USENIX Security, 2018.
+
+[47] M. Nasr, R. Shokri, and A. Houmansadr. Comprehensive
+privacy analysis of deep learning: Passive and active white-box
+inference attacks against centralized and federated learning. In
+IEEE S&P, 2019.
+
+[61] Ziteng Sun, Peter Kairouz, Ananda Theertha Suresh, and
+H Brendan McMahan. Can you really backdoor federated
+learning? arXiv preprint arXiv:1911.07963, 2019.
+[62] Hongyi Wang, Kartik Sreenivasan, Shashank Rajput, Harit
+Vishwakarma, Saurabh Agarwal, Jy-yong Sohn, Kangwook
+Lee, and Dimitris Papailiopoulos. Attack of the tails: Yes, you
+really can backdoor federated learning. In NeurIPS, 2020.
+
+[48] Thien Duc Nguyen, Samuel Marchal, Markus Miettinen, Hossein Fereidooni, N. Asokan, and Ahmad-Reza Sadeghi. DÏoT:
+A Federated Self-learning Anomaly Detection System for IoT.
+In ICDCS, 2019.
+
+[63] Lixu Wang, Shichao Xu, Xiao Wang, and Qi Zhu. Eavesdrop
+the Composition Proportion of Training Labels in Federated
+Learning. In arXiv preprint:1910.06044, 2019.
+
+[49] Thien Duc Nguyen, Phillip Rieger, Huili Chen, Hossein
+Yalame, Helen Möllering, Hossein Fereidooni, Samuel Marchal, Markus Miettinen, Azalia Mirhoseini, Shaza Zeitouni,
+Farinaz Koushanfar, Ahmad-Reza Sadeghi, and Thomas
+Schneider. FLAME: Taming backdoors in federated learning. In 31st USENIX Security Symposium (USENIX Security
+22), pages 1415–1432, Boston, MA, August 2022. USENIX
+Association.
+
+[64] Chulin Xie, Keli Huang, Pin-Yu Chen, and Bo Li. DBA: Distributed Backdoor Attacks against Federated Learning. In
+ICLR, 2020.
+[65] Jing Xu, Rui Wang, Stefanos Koffas, Kaitai Liang, and Stjepan
+Picek. More is better (mostly): On the backdoor attacks in
+federated graph neural networks. In Annual Computer Security
+Applications Conference (ACSAC) 2022, 2022.
+
+[50] Thien Duc Nguyen, Phillip Rieger, Markus Miettinen, and
+Ahmad-Reza Sadeghi. Poisoning Attacks on Federated
+Learning-Based IoT Intrusion Detection System. In Workshop on Decentralized IoT Systems and Security, 2020.
+
+[66] Jing Xu, Rui Wang, Stefanos Koffas, Kaitai Liang, and Stjepan
+Picek. More is better (mostly): On the backdoor attacks in
+federated graph neural networks, 2022.
+
+[51] Apostolos Pyrgelis, Carmela Troncoso, and Emiliano
+De Cristofaro. Knock Knock, Who’s There? Membership
+Inference on Aggregate Location Data. In NDSS, 2018.
+
+[67] Dong Yin, Yudong Chen, Ramchandran Kannan, and Peter
+Bartlett. Byzantine-robust distributed learning: Towards optimal statistical rates. In ICML. PMLR, 2018.
+
+[52] Jianji Ren, Haichao Wang, Tingting Hou, Shuai Zheng, and
+Chaosheng Tang. Federated Learning-Based Computation Offloading Optimization in Edge Computing-Supported Internet
+of Things. In IEEE Access, 2019.
+
+[68] Chengliang Zhang, Suyi Li, Junzhe Xia, Wei Wang, Feng Yan,
+and Yang Liu. BatchCrypt: Efficient Homomorphic Encryption
+for Cross-Silo Federated Learning. In USENIX ATC, 2020.
+
+[53] Sumudu Samarakoon, Mehdi Bennis, Walid Saad, and Merouane Debbah. Federated Learning for Ultra-Reliable LowLatency V2V Communications. In GLOBCOM, 2018.
+
+A
+
+Datasets and Learning Configurations
+
+Word Prediction (WP). We use the Reddit dataset of November 2017 [2] with the same settings as state-of-the-art works
+[9, 42, 44] for comparability. In particular, each user in the
+dataset with at least 150 posts and not more than 500 posts is
+considered as a client. This results in 80 000 clients’ datasets
+with sizes between 298 and 32 660 words.
+The model consists of two LSTM layers and a linear output
+layer [9, 42]. To be comparable to the attack setting in [9],
+we evaluate FLAME on five different backdoors, each with
+a different trigger sentence corresponding to a chosen output.
+Image Classification (IC). For image classification, we use
+mainly the CIFAR-10 dataset [34], a standard benchmark
+dataset for image classification, in particular for FL [42] and
+backdoor attacks [9, 10, 46]. It consists of 60 000 images of
+10 different classes. The adversary aims at changing the predicted label of one class of images to another class of images.
+We use a lightweight version of the ResNet18 model [29] with
+4 convolutional layers with max-pooling and batch normalization [9]. The experimental setup consists of 100 clients and
+uses a PMR of 20%. In addition to the CIFAR-10 dataset, we
+
+[54] Micah Sheller, Anthony Reina, Brandon Edwards, Jason Martin, and Spyridon Bakas. Federated Learning for Medical
+Imaging. In Intel AI, 2018.
+[55] Micah Sheller, Anthony Reina, Brandon Edwards, Jason Martin, and Spyridon Bakas. Multi-Institutional Deep Learning
+Modeling Without Sharing Patient Data: A Feasibility Study
+on Brain Tumor Segmentation. In Brain Lesion Workshop,
+2018.
+[56] Shiqi Shen, Shruti Tople, and Prateek Saxena. Auror: Defending Against Poisoning Attacks in Collaborative Deep Learning
+Systems. In ACSAC, 2016.
+[57] Reza Shokri, Marco Stronati, Congzheng Song, and Vitaly
+Shmatikov. Membership Inference Attacks Against Machine
+Learning Models. In IEEE S&P, 2017.
+[58] Arunan Sivanathan, Hassan Habibi Gharakheili, Franco Loi,
+Adam Radford, Chamith Wijenayake, Arun Vishwanath, and
+Vijay Sivaraman. Classifying IoT Devices in Smart Environments Using Network Traffic Characteristics. In TMC, 2018.
+
+17
+
+IoT-Traffic
+TPR
+TNR
+24.2
+0.0
+32.7
+84.4
+0.0
+70.2
+4.5
+69.2
+59.5 100.0
+
+80%
+60%
+
+No Defense
+S = 10
+S =1
+S = 0.5
+
+40%
+20%
+0%
+
+20%
+
+Main Task Accuracy (MA)
+
+100%
+
+40%
+60%
+Poisoned Data Rate (PDR)
+
+(a) BA for static bound
+
+also evaluate FLAME’s effectiveness on two further datasets
+for image classification. The MNIST dataset consists of 70 000
+handwritten digits [35]. The learning task is to classify images
+to identify digits. The adversary poisons the model by mislabeling labels of digit images before using it for training [56].
+We use a convolutional neural network (CNN) with 431000
+parameters. The Tiny-ImageNet 3 consists of 200 classes and
+each class has 500 training images, 50 validation images, and
+50 test images. We used ResNet18 [29] model.
+Network Intrusion Detection System (NIDS). We test
+backdoor attacks on IoT anomaly-based intrusion detection systems that often represent critical security applications [7, 18, 30, 33, 48, 50, 60]. Here, the adversary aims at
+causing incorrect classification of anomalous traffic patterns,
+e.g., generated by IoT malware, as benign patterns. Based
+on the FL anomaly detection system DÏoT [48], we use
+three datasets called DIoT-Benign, DIoT-Attack, and UNSWBenign [48,58] from real-world home and office deployments
+(four homes and two offices located in Germany and Australia). DIoT-Attack contains the traffic of 5 anomalously
+behaving IoT devices, infected by the Mirai malware [48].
+Moreover, we collected a fourth IoT dataset containing communication data from 24 typical IoT devices (including IP
+cameras and power plugs) in three different smart home settings and an office setting. Following [48], we extracted
+device-type-specific datasets capturing the devices’ communication behavior. We simulate the FL setup by splitting
+each device type’s dataset among several clients (from 20
+to 200). Each client has a training dataset corresponding to
+three hours of traffic measurements containing samples of
+roughly 2 000-3 000 communication packets. The learning
+model consists of 2 GRU layers and a fully connected layer.
+
+100%
+75%
+50%
+
+S = 0.5 med
+S = med
+S = 1.5 med
+
+25%
+0%
+
+20%
+40%
+60%
+Poisoned Data Rate (PDR)
+
+(c) BA for dynamic bound
+
+80%
+60%
+40%
+
+No Defense
+S = 10
+S =1
+S = 0.5
+
+20%
+0%
+
+20% 30% 40% 50% 60% 70%
+Poisoned Data Rate (PDR)
+
+(b) MA for static bound
+Main Task Accuracy (MA)
+
+Krum
+FoolsGold
+Auror
+AFA
+FLAME
+
+CIFAR-10
+TPR
+TNR
+8.2
+0.0
+0.0
+90.0
+0.0
+90.0
+100.0
+100.0
+23.8
+86.2
+
+Backdoor Accuracy (BA)
+
+Defenses
+
+Reddit
+TPR
+TNR
+9.1
+0.0
+100.0
+100.0
+0.0
+90.0
+0.0
+88.9
+22.2
+100.0
+
+Backdoor Accuracy (BA)
+
+Table 7: Effectiveness of the clustering component, in terms
+of True Positive Rate (TPR) and True Negative Rate (TNR), of
+FLAME in comparison to existing defenses for the constrainand-scale attack on three datasets. All values are in percentage
+and the best results of the defenses are marked in bold.
+
+86%
+85%
+84%
+83%
+82%
+
+S = 0.5 med
+S = med
+S = 1.5 med
+20%
+40%
+60%
+Poisoned Data Rate (PDR)
+
+(d) MA for dynamic bound
+
+Figure 11: Effectiveness of FLAME’s clipping bound in
+terms of Backdoor Accuracy (BA) and Main Task Accuracy
+(MA). S is the clipping bound and med the L2 -norm median.
+This allows FLAME to defend backdoor attacks effectively,
+even if not all poisoned models are filtered. For example,
+although for the CIFAR-10 dataset in Tab. 7 the TNR is not
+100 % (86.2%), the attack is still mitigated by the noising
+component, such that the BA is 0 % (cf. Tab. 4).
+
+B.2
+
+Effectiveness of Clipping
+
+Fig. 11 demonstrates the effectiveness of FLAME’s dynamic
+clipping where S is the median of L2 -norms compared to a
+static clipping bound [9] and different choices for a dynamic
+clipping boundary (i.e., median, half of median, median multiplied by 1.5). The experiments are conducted for the IoTTraffic dataset, which is non-iid. Fig. 11a and Fig. 11b show
+that a small static bound S = 0.5 is effective to mitigate the
+attack (BA = 0%), but MA drops to 0% rendering the model
+useless. Moreover, a higher static bound like S = 10 is ineffective as BA = 100% if the Poisoned Data Rate (PDR) ≥ 35%.
+In contrast, FLAME’s dynamic clipping threshold performs
+significantly better as BA consistently remains at 0% while
+MA remains high (cf. Fig. 11c and Fig. 11d).
+
+B.3
+
+Effectiveness of Adding Noise
+
+Fig. 12 shows the impact of adding noise to the intermediate
+global models with respect to different noise level factors λ to
+determine the standard deviation of the noise σ dynamically
+based on the median L2 -norm of the updates St as σ = λSt .
+As it can be seen, increasing λ reduces the BA, but it also
+negatively impacts the performance of the model in the main
+task (MA). Therefore, the noise level must be dynamically
+tuned and combined with the other defense components to
+optimize the overall success q
+of the defense. The noise level
+
+B Effectiveness of FLAME’s Components
+B.1 Effectiveness of the Clustering Component
+We show the results for the clustering component in Tab. 7.
+As shown there, our filtering achieves TNR = 100% for the
+Reddit and IoT-Traffic datasets, i.e., FLAME only selects
+benign models in this attack setting. Recall that the goal of
+clustering is to filter out the poisoned models with high attack
+impact, i.e., not necessarily all poisoned models (cf. §4.1).
+
+factor is determined by λ = 1ε 2ln 1.25
+δ for (ε, δ)-DP. We use
+standard DP parameters and set ε = 3705 for IC, ε = 395 for
+the NIDS and ε = 4191 for the NLP scenario. Accordingly,
+λ = 0.001 for IC and NLP, and λ = 0.01 for the NIDS scenario. The DP budget is dependent on the considered dataset
+
+3 https://tiny-imagenet.herokuapp.com
+
+18
+
+MA
+BA
+
+50%
+0%
+
+0.000
+
+0.005
+Noise Level Factors
+
+Value of Metric
+
+Value of Metric
+
+100%
+
+0.010
+
+(a) Image Classification
+
+100%
+50%
+0%
+
+MA
+BA
+
+to build a binary tree where the leaf nodes represent the vertices of the MST and the non-leaf nodes represent the edges of
+the MST. For this, first, all vertices are considered as separate
+trees (of size 1). For this, first, all vertices are considered as
+separate trees (of size 1) and then, starting from the edge with
+the lowest weight, iteratively the trees are merged by creating
+a non-leaf-node for each edge of the MST and set the (previously not connected) subtrees containing the endpoints of the
+edge as children for the new node (represented by calling the
+function make_binary_tree. In the next step, HDBSCAN
+collects all nodes of the binary tree as candidates, that cover
+at least N/2 + 1 data points. Since only non-leaf nodes fulfill
+the requirement of covering at least N/2 + 1 data points, each
+cluster candidate is based on a node, representing an edge in
+the MST. It uses the weight of the edge and the number of
+covered points to calculate a so-called stability value. Then
+HDBSCAN uses the stability value to determine the cluster
+candidate with the most homogeneous density and returns this
+candidate as majority cluster. Finally, it assigns the cluster
+label to all data points inside this cluster and labels all points
+outside of this cluster as noise.
+
+0.00 0.05 0.10 0.15 0.20 0.25
+Noise Level Factors
+
+(b) Network Intrusion Detection
+
+Figure 12: Impact of different noise level factors on the Backdoor Accuracy (BA) and Main Task Accuracy (MA).
+scenario. It is determined based on the median of the dataset
+sizes of the clients and the size of the model used. It can thus
+be empirically determined by the aggregator. Analogous to
+determining the clipping boundary S (cf. 4.3.2), using the
+median ensures that the used dataset size is within the range
+of benign values.
+
+C
+
+Naïve Combination
+
+Furthermore, we test a naïve combination of the defense components by stacking clipping and adding noise (using a fixed
+clipping bound of 1.0 and a standard deviation of 0.01 as
+in [9]) on top of a clustering component using K-means. However, this naïve approach still allows a BA of 51.9% and a MA
+of 60.24%, compared to a BA of 0.0% and a MA of 89.87%
+of FLAME in the same scenario for the CIFAR-10 dataset.
+Based on our evaluations in §7.1, it becomes apparent that
+FLAME’s dynamic nature goes beyond previously proposed
+defenses that consist of static baseline ideas, which FLAME
+significantly optimizes, extends, and automates to offer a comprehensive dynamic and private defense against sophisticated
+backdoor attacks.
+
+D
+
+F
+
+Another attack type related to backdooring is untargeted poisoning [10, 11, 22]. Unlike backdoor attacks that aim to incorporate specific backdoor functionalities, untargeted poisoning
+aims at rendering the model unusable. The adversary uses
+crafted local models with low Main Task Accuracy to damage the global model G. Fang at el. [22] propose such an
+attack bypassing state-of-the-art defenses. Although we do
+not focus on untargeted poisoning, our approach intuitively
+defends it since, in principle, this attack also trade-offs attack
+impact against stealthiness. To evaluate the effectiveness of
+FLAME against this attack, we test the Krum-based attack
+proposed by [22] on FLAME. Since [22]’s evaluation uses
+image datasets, we evaluate FLAME’s resilience against it
+with CIFAR-10. The evaluation results show that although
+the attack significantly damages the model by reducing MA
+from 92.16% to 46.72%, FLAME can successfully defend
+against it and MA remains at 91.31%.
+
+Overhead of FLAME
+
+We evaluated FLAME for 6 different device types from the
+IoT dataset. In this experiment, only benign clients participated and the model was randomly initialized. The highest
+observed overhead was 4 additional rounds. In average, 1.67
+additional training rounds were needed to achieve at least 99%
+of the MA that was achieved without applying the defense,
+i.e., FLAME does not prevent the model from converging.
+
+E
+
+Effectiveness of FLAME against untargeted
+poisoning attacks
+
+HDBSCAN
+
+HDBSCAN [13] is a density-based clustering technique that
+classifies data samples in different clusters without predefined the maximum distance and the number of clusters. In
+the following, we describe HDBSCAN in detail, following
+the implementation of McInnes et al. [40, 41]. However,
+we focus on the behavior of HDBSCAN for the parameters that FLAME uses, i.e., when min_cluster_size=N/2 +
+1 and min_samples=1, e.g., because of the choice for
+min_cluster_size we skip parts that deal with multiple
+clusters. HDBSCAN first uses the given distances to build a
+minimal spanning tree (MST), where the vertices represent
+the individual data points and the edges are weighted by the
+distances between the respective points. Then it uses the MST
+
+G
+
+Performance of Private FLAME
+
+For our implementation, we use the STPC framework
+ABY [16] which implements the three sharing types, including state-of-the-art optimizations and flexible conversions and
+the open-source privacy-preserving DBSCAN by Bozdemir
+et al. [12]. All STPC results are averaged over 10 experiments
+and run on two separate servers with Intel Core i9-7960X
+CPUs with 2.8 GHz and 128 GB RAM connected over a 10
+Gbit/s LAN with 0.2 ms RTT.
+Approximating HDBSCAN by DBSCAN. We measure the
+effect of approximating HDBSCAN by DBSCAN including
+19
+
+the binary search for the neighborhood parameter ε. The
+results show that our approximation has a negligible loss
+of accuracy. For some applications, the approximation even
+performs slightly better than the standard FLAME, e.g., for
+CIFAR-10, private FLAME correctly filters all poisoned models, while standard FLAME accepts a small number (TNR =
+86.2%), which is still sufficient to achieve BA = 0.0%.
+Runtime of Private FLAME. We evaluate the runtime in
+seconds per training iteration of the cosine distance, Euclidean
+distance + clipping + model aggregation, and clustering steps
+of Alg. 1 in standard (without STPC) and in private FLAME
+(with STPC). The results show that private FLAME causes a
+significant overhead on the runtime by a factor of up to three
+orders of magnitude compared to the standard (non-private)
+FLAME. However, even if we consider the largest model
+(Reddit) with K = 100 clients, we have a total server-side
+runtime of 22 081.65 seconds (≈ 6 hours) for a training iteration with STPC. Such runtime overhead would be acceptable
+to maintain privacy, especially since mobile phones, which
+would be a typical type of clients in FL [42], are not always
+available and connected so that there will be delays in synchronizing clients’ model updates in FL. These delays can
+then also be used to run STPC. Furthermore, achieving provable privacy by using STPC may even motivate more clients
+to contribute to FL in the first place and provide more data.
+
+H
+
+Table 8: Efficacy of FLAME in mitigating 3DFed across various datasets and pre-trained models. *) MA is not reported
+while FLAME is deployed. Models were pre-trained following the specifications outlined in the configuration file [4].
+
+Dataset
+
+Pre-trained
+Model
+@Epoch
+200
+
+CIFAR-10
+200
+400
+600
+800
+
+Replication Study of 3DFed
+
+To ensure consistency with 3DFed work, we used the exact source code provided by 3DFed authors [4] and thoroughly followed the experimental setup described in 3DFed
+paper [36]. Every aspect, from hyper-parameter selection to
+training regime configuration, was carefully implemented. We
+repeated each experiment a minimum of 50 times to ensure
+robustness and reliability. To introduce variability, we employed various random seed values in each experiment. This
+rigorous process was applied to four distinct pre-trained models, each reaching different convergence levels based on the
+number of training epochs. Our experimental results, summarized in Tab. 8, primarily focus on two key metrics: Backdoor
+Accuracy (BA) and Main-task Accuracy (MA). The findings
+undeniably establish the effectiveness of Flame in mitigating
+3DFed attacks. As the global model approaches convergence,
+a significant reduction in BA is observed, indicating that the
+BA closely resemble those obtained through random guesses.
+
+10**
+MNIST
+10
+20
+30
+50
+20
+TinyImageNet
+
+20
+
+20**
+25
+30
+40
+
+Averaged MA Averaged BA
+for 50 exp.
+for 50 exp.
+(in %)
+(in %)
+3DFed paper
+Not
+99.89
+reported*
+Our replication study
+80.8
+53.9
+86.9
+9.9
+87.0
+9.9
+86.9
+9.9
+3DFed paper
+Not
+96
+reported*
+Our replication study
+98.9
+19.1
+99.1
+20.4
+99.1
+24.0
+99.1
+29.2
+3DFed paper
+Not
+96
+reported*
+Our replication study
+61.1
+0.56
+63.9
+0.55
+65.2
+0.55
+66.8
+0.55
+
+

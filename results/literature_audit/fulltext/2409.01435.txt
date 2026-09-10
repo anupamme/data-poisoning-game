@@ -1,0 +1,4628 @@
+arXiv:2409.01435v1 [cs.LG] 2 Sep 2024
+
+Achieving Byzantine-Resilient Federated Learning via Layer-Adaptive
+Sparsified Model Aggregation
+Jiahao Xu
+University of Nevada, Reno
+
+Zikai Zhang
+University of Nevada, Reno
+
+Rui Hu
+University of Nevada, Reno
+
+jiahaox@unr.edu
+
+zikaiz@unr.edu
+
+ruihu@unr.edu
+
+Abstract
+
+care [39] and remote sensing [29], facilitating the use of
+machine learning in scenarios where data privacy and communication efficiency are critical.
+However, distributing the model training across individual clients makes FL vulnerable to poisoning attacks [16,
+26, 48], where an attacker controls a subset of clients and
+manipulates their local model updates to compromise the
+integrity of the global model. The Byzantine attack [5, 12,
+16, 23, 45, 58] is one of the potent attacks which generally
+degrades the model’s overall performance during the training. Specifically, under Byzantine attacks, a small set of
+malicious clients sends corrupted local model updates to the
+server during the training. It is shown that if the aggregation rule used by the server is a simple linear combination
+of local model updates, even one single malicious client
+can easily destroy the convergence of the global model [7].
+Therefore, many efforts have been dedicated to designing
+aggregation rules that are robust against Byzantine attacks.
+Existing robust aggregation rules can be mainly categorized into two types based on their granularity in handling
+model parameters: coordinate-wise robust aggregation [7,
+54,59] and model-wise robust aggregation [7,16,42,45,58].
+Coordinate-wise robust aggregation focuses on evaluating
+and aggregating each coordinate of model updates independently, effectively filtering out extreme values that could
+represent malicious activity with fine granularity. In contrast, model-wise robust aggregation holistically assesses
+the entire model update from each client to detect outliers.
+The primary challenge in designing an effective robust aggregation rule lies in the difficulty of distinguishing between
+benign and malicious model updates, especially when the
+attacker’s manipulations are subtle enough to blend seamlessly with benign data. This challenge becomes more pronounced in FL settings with non-IID data. To capture the
+subtle difference between benign and malicious model updates in such cases, it is essential to strike a balance between
+fine-grained and holistic assessment of model updates.
+Recently, model sparsification has been used as an approach to enhance the Byzantine robustness of FL [34, 40,
+61]. The key idea is to remove less important parame-
+
+Federated Learning (FL) enables multiple clients to collaboratively train a model without sharing their local data.
+Yet the FL system is vulnerable to well-designed Byzantine attacks, which aim to disrupt the model training process by uploading malicious model updates. Existing robust aggregation rule-based defense methods overlook the
+diversity of magnitude and direction across different layers of the model updates, resulting in limited robustness
+performance, particularly in non-IID settings. To address
+these challenges, we propose the Layer-Adaptive Sparsified
+Model Aggregation (LASA) approach, which combines preaggregation sparsification with layer-wise adaptive aggregation to improve robustness. Specifically, LASA includes
+a pre-aggregation sparsification module that sparsifies updates from each client before aggregation, reducing the impact of malicious parameters and minimizing the interference from less important parameters for the subsequent filtering process. Based on sparsified updates, a layer-wise
+adaptive filter then adaptively selects benign layers using
+both magnitude and direction metrics across all clients for
+aggregation. We provide the detailed theoretical robustness
+analysis of LASA and the resilience analysis for the FL integrated with LASA. Extensive experiments are conducted
+on various IID and non-IID datasets. The numerical results
+demonstrate the effectiveness of LASA. Code is available at
+https://github.com/JiiahaoXU/LASA.
+
+1. Introduction
+Federated Learning (FL) [33] is an emerging distributed
+machine learning paradigm that enables multiple clients,
+such as mobile devices or organizations, to collaboratively
+train a shared model while keeping their private data locally.
+This approach significantly reduces the necessity for data
+centralization, thereby not only decreasing data communication costs but also mitigating data privacy concerns. FL
+framework has been applied in diverse fields such as health1
+
+ters in the model updates to alleviate the malicious impact while maintaining the model’s utility. For instance,
+SparseFed [40] removes the parameters with less importance on the aggregated model update to defend against
+Byzantine attacks. However, current methods typically utilize a uniform sparsification mask for all model updates,
+leading to high sparsification error and limited robustness
+improvement, especially in non-IID settings where model
+updates diverge and necessitate personalized sparsification
+to preserve model utility.
+Inspired by the sparsification-based method and robust
+aggregation with different granularity, we propose a novel
+Byzantine robust aggregation rule called LASA (LayerAdaptive Sparsified Model Aggregation) that achieves
+Byzantine robustness of FL at the granularity of layer-level
+and important parameters only. Basically, LASA at first
+sparsifies each local model update individually without degrading the model utility. These sparsified updates are then
+fed into a layer-wise filter to adaptively detect and drop potential malicious layers. Finally, the remaining layers will
+be averaged as the global model update. The model sparsification is applied before aggregation to reduce the attack
+surface of malicious clients and maintain the model utility
+of benign clients with personalized sparsification. It also
+enables the subsequent filtering to focus on key parameters
+that determine the model performance. Notably, this strategy is particularly beneficial for non-IID settings, where local model updates of benign clients are diverse. The layerwise filter extracts both the magnitude and direction of a
+sparsified layer as metrics and also enables layer-adaptive
+filtering with minimal control parameters, allowing LASA
+to strike a balance between coordinate-wise filtering and
+model-wise filtering efficiently and achieve better robustness. The model sparsification is carefully co-designed with
+the layer-wise adaptive filtering to ensure its amplification
+effect on robustness. The main contributions of this work
+are summarized as follows:
+
+based FL algorithm with LASA, for general non-convex
+loss functions and in the context of non-IID data. To the
+best of our knowledge, our work is the first to theoretically analyze layer-wise defense methods.
+• We empirically evaluate the performances of LASA by
+conducting comprehensive experiments on both IID and
+non-IID datasets under various SOTA attacks. Compared
+to the SOTA defense methods, LASA achieves better robustness as well as performance.
+
+2. Related Works
+Poisoning attacks to FL. Federated Averaging (FedAvg) [33] stands as the classic FL method in nonadversarial environments. Yet, it has a critical vulnerability: the global model within FedAvg is susceptible to arbitrary manipulation by even a single malicious client [7, 59].
+In particular, such a client can mislead the convergence of
+the global model by poisoning its local update sent to the
+server, which is known as poisoning attack in the context of
+FL [4–7, 12, 14, 16, 17, 20, 31, 36, 45, 47, 49, 51, 53, 55, 58].
+Poisoning attacks can be categorized into untargeted
+attacks and target attacks. Targeted attacks (aka backdoor attacks) aim to mislead the global model to incorrectly predict certain outcomes chosen by the attacker for
+specific inputs while keeping the model’s performance on
+other inputs unaffected [4, 6, 49, 51, 53]. Untargeted attacks
+(aka Byzantine attacks) aim to generally disrupt the overall
+performance of the global model without any specific focus [5, 12, 16, 31, 45, 55, 58]. In this work, we focus on the
+Byzantine attacks on FL. The technical details of the SOTA
+Byzantine attacks [5, 45, 58] are given in Appendix 7.3.
+Existing defense methods. Existing defense methods against Byzantine attacks in FL can be generally categorized into three types: 1) auxiliary data-based methods [9, 41, 56] which leverage the proxy dataset to conduct additional evaluation and thus filter out updates with
+abnormal performance. However, these methods somehow
+contradict the privacy-preserving goal of FL as they require
+a server dataset that is similar to local data to help identify malicious updates. Note that our approach does not
+need an auxiliary dataset and is orthogonal to these methods. 2) sparsification-based methods [34, 40, 61] which aim
+to remove malicious model parameters to enhance the robustness. For example, SparseFed [40] sparsifies the aggregated model update at the server side, integrating with
+model clipping and error feedback, to mitigate the impact
+of malicious local model updates. Model sparsification can
+enhance robustness by reducing malicious parameters, but
+since the server can’t identify malicious clients, it sparsifies
+all model updates, which degrades benign models’ performance. Moreover, existing works [40,61] use uniform sparsification masks which increase sparsification errors, espe-
+
+• We propose a novel robust aggregation rule called LASA.
+To the best of our knowledge, our work is the first to combine pre-aggregation model sparsification with layerwise adaptive aggregation to defend against Byzantine
+attacks in FL. LASA can be easily integrated into the existing FL frameworks.
+• We introduce a robustness criterion named κ-robustness,
+which quantifies the ability of an aggregation rule to accurately estimate the average of honest clients’ inputs when
+f out of n clients are malicious. We prove that LASA is a
+κ-robust aggregation rule with κ = O(ck (1+f /(n−2f )),
+where ck ≤ 1 correlates with the sparsification level,
+demonstrating the effectiveness of sparsification in amplifying robustness. Based on the robustness analysis,
+we also provide the resilience analysis of the local SGD2
+
+Algorithm 1 LASA
+
+cially in non-IID settings. Our method applies individual
+sparsification to each update and combines it with magnitude and direction-based filtering to boost robustness. In
+addition, we theoretically analyze how this model sparsification contributes to robust aggregation, bridging the gap
+in the current SOTAs. 3) Robust aggregation-based methods [7, 12, 16, 37, 42, 45, 50, 54, 57–59] focus on developing a new aggregation rule on the server side that is robust
+against Byzantine attacks to replace the standard averaging
+aggregation rule used in FedAvg. For example, Trimmed
+mean (TrMean) proposed in [59] discards a certain percentage of the highest and lowest values among the received
+models for each dimension. After this trimming, the mean
+of the remaining values is computed by the server, which
+mitigates the impact of extreme values on the aggregated
+model. Multi-Krum [7] selects the most reliable local model
+that has the smallest sum of squared Euclidean distances to
+all other models as the output. LEGATO [50] weights each
+layer before aggregation but cannot eliminate malicious parameters. Recently, a defense method called SignGuard that
+achieves SOTA results has been proposed in [58]. It combines direction-based clustering and magnitude-based filtering to identify malicious model updates.
+However, coordinate-wise methods [7, 54, 59] ignore
+model direction, and model-wise methods [7, 16, 42, 45, 58]
+overlook the diverse distribution of direction and magnitude across layers, limiting their robustness. Our layerlevel approach is finer-grained than model-wise methods
+and more comprehensive than coordinate-wise methods.
+Furthermore, most works assume IID data, using clustering
+or distance-based methods to filter outliers [7, 42, 57, 58].
+However, in real-world FL scenarios, data is often non-IID,
+making these methods less effective. Our approach combines pre-aggregation model sparsification with layer-wise
+direction- and magnitude-based filtering to handle diverse
+model updates with only key parameters. We use a novel
+sign-based metric to assess model update directions, improving the purity and effectiveness of direction-based filtering. Unlike works like SignGuard [58], we provide a
+detailed theoretical robustness analysis of LASA and its resilience in FL. Our theoretical analysis is most related to
+works on distributed gradient descent (D-GD) [1–3], but we
+focus on FL with local SGD, which increases local model
+divergence and complicates the analysis.
+
+Require: Set of n local model updates {∆i }ni=1 , number of
+model layers L, sparsification parameter k, magnitudebased radius λm , and direction-based radius λd
+1: for i ∈ [n] do
+ˆ i ← Top (∆i )
+2:
+∆
+◁ model sparsification
+k
+3: end for
+4: for each layer l ∈ [L] do
+5:
+Initialize benign set S = ∅
+ˆ l )}n
+6:
+ω l ← {L2 -norm(∆
+i i=1
+l
+l n
+ˆ
+7:
+ρ ← {PDP(∆i )}i=1
+◁ by Equation. 1
+8:
+for i ∈ [n] do
+9:
+λli,m ← MZ-score(ωil , ω l )
+◁ by Equation. 2
+10:
+λli,d ← MZ-score(ρli , ρl )
+◁ by Equation. 2
+l
+l
+11:
+if |λi,m | ≤ λm and |λi,d | ≤ λd then
+12:
+S ← S ∪ {i}
+13:
+end if
+14:
+end for P
+ˆl
+¯l ← 1
+◁ layer-wise aggregation
+15:
+∆
+i∈S ∆i
+|S|
+16: end for
+¯
+17: return ∆
+clients, the server first sparsifies each local model update
+∆i individually using the Top-k sparsifier defined in Definition 1 (line 2).
+Definition 1 (Top-k sparsifier [19]). For a vector x ∈ Rd
+and a parameter k ∈ [1, d] , the Top-k sparsifier Topk (·):
+Rd → Rd is defined as: [Topk (x)]j := [x]π(j) if j ≤ k
+and [Topk (x)]j := 0 otherwise, where π is a permutation of
+indices such that |[x]π(j) | ≥ |[x]π(j+1) |, ∀j ∈ [1, d − 1].
+With sparsification, each element of the sparsified model
+update [ ˆ
+∆i ]j equals to [∆i ]j if j ∈ K and 0 otherwise,
+where K represents the set of coordinates of parameters that
+have the top k largest absolute values. Here, model sparsification can limit the attack surface available to malicious
+clients by dropping out d − k parameters from the model
+update. Nonetheless, given the server’s inability to differentiate between malicious and benign updates, the sparsification also introduces sparsification errors to the benign
+updates, diminishing the model’s utility, especially when k
+is small. Fortunately, the Top-k sparsifier prunes a vector
+by keeping the largest elements, so that the sparsified vector still contains the core information of the original vector, resulting in a low sparsification error. Compared with
+other sparsification method like random sparsification, Topk sparsifier is much more robust when k is small [19, 46].
+Moreover, individual sparsification of each model update
+can better preserve the model utility, compared with the uniform sparsification in existing works [34,61]. This is particularly beneficial in non-IID settings, where variability in local data distributions results in diverse local model updates.
+
+3. Our Solution: LASA
+The LASA process is given in Algorithm 1. LASA
+features an innovative design and integration of preaggregation model sparsification and layer-wise robust aggregation on the server side, aimed at mitigating the impact
+of malicious local model updates.
+Pre-aggregation sparsification. Specifically, in each
+round of FL, after receiving the local model updates from
+3
+
+In addition, applying sparsification before aggregation allows the subsequent layer-wise filtering to concentrate on
+the key parameters critical to model performance, thereby
+eliminating interference from less important parameters.
+Layer-wise adaptive aggregation. It has been observed
+that different layers in the deep neural network differ in their
+sizes, functionality, and more importantly, learning and converging speed [25,27,30,44]. However, most of the existing
+robust aggregation rules perform model-wise or coordinatewise assessment on the local model updates, which usually fail to identify the nuances of each layer. Therefore,
+in LASA, we design a layer-wise filtering and aggregation
+after model sparsification, which enhances robustness with
+more precise, layer-specific granularity.
+In the context of Byzantine attacks, where attackers aim
+to deviate the global model’s convergence in the wrong directions, malicious updates are typically crafted to significantly diverge from benign updates, both in magnitude and
+direction. Hence, the LASA, both magnitude and direction
+of each model update are captured at the layer level to effectively identify and filter out malicious clients. More precisely, for each layer l ∈ [L] of the sparsified model update,
+its magnitude is quantified using the L2 -norm, and its direction is determined by analyzing the signs of its parameters.
+Inspired by [10], a direction metric, termed as Positive Direction Purity (PDP) is defined in Definition 2.
+
+for each layer can vary significantly, setting such thresholds
+necessitates layer-specific customization. This, however,
+leads to a proliferation of hyper-parameters. Inspired by the
+traditional standardization method Z-score, we introduce a
+robust variant named Median-based Z-score (MZ-score), as
+defined in Definition 3.
+Definition 3 (MZ-score). For a set of values X :=
+{x1 , . . . , xn } with median Med(X) and standard deviation
+σ, the MZ-score λi of xi ∈ X is defined as
+λi :=
+
+xi − Med(X)
+.
+σ
+
+(2)
+
+This variant indicates how many standard deviations an
+element is from the median, which can be positive or negative. Importantly, MZ-score allows a uniform filtering radius to be applied across all layers, which substantially reduces the number of hyper-parameters required for adaptive
+layer-wise filtering. Specifically, in LASA, MZ-scores of
+magnitude and direction metrics are calculated at the layer
+level for all clients (line 9-11). Model updates with high
+absolute MZ-score values are then filtered out using two
+pre-defined filtering radiuses: λm for magnitude and λd for
+direction. Subsequently, the clients that remain, considered
+benign, are added to the set S and will participate in layerwise model averaging (line 15).
+
+Definition 2 (Positive Direction Purity). For a vector x ∈
+Rd , the positive direction purity ρ of x is defined as
+!
+Pd
+sgn([x]
+)
+1
+i
+, 0 ≤ ρ ≤ 1, (1)
+ρ := × 1 + Pdi=1
+2
+i=1 |sgn([x]i )|
+
+4. Robustness and Resilience Analysis of LASA
+Before presenting our theoretical results, we make the
+following assumptions:
+Assumption 1 (µ-Smoothness). Each local objective function Li for benign client i ∈ B is µ-Lipschitz smooth with
+µ > 0, i.e., for any x, y ∈ Rd , ∥∇Li (x) − ∇Li (y)∥ ≤
+µ ∥x − y∥ , ∀i ∈ B, which further gives: Li (x) − Li (y) ≤
+2
+∇Li (x)T (y − x) + µ2 ∥x − y∥ , ∀i ∈ B.
+
+where sgn(·) is the function to take the sign of each element
+and [·]i is the i-th coordinate of a vector.
+PDP serves as a metric to evaluate the predominance of
+positive signs within a given vector, providing a refined approach for identifying anomalies in model direction. As a
+normalized measure, PDP measures a vector’s overall orientation toward positive values, which is useful for analyzing
+directional tendencies. It is particularly effective in detecting stealthy attacks where the malicious models might not
+exhibit significant variations in magnitude. It is worth noting that the pre-aggregation sparsification can significantly
+enhance the PDP-based measurement of model direction by
+removing many less important parameters. This removal is
+particularly significant for PDP, which relies solely on the
+signs of the parameters, ensuring that the measurement focuses on the parameters with large values.
+With the magnitude and direction metrics of a layer
+(line 6-7), LASA will filter out clients that exhibit extreme
+values (either excessively high or low) using pre-defined
+thresholds. Given that the magnitude and direction values
+
+Assumption 2 (Unbiased gradient and bounded variance).
+The stochastic gradient at each benign client is an unbiased estimator of the local gradient, i.e., E[gi (x)] =
+∇Li (x) and has bounded variance, i.e., for any x ∈ Rd ,
+2
+E ∥gi (x) − ∇Li (x))∥ ≤ νi2 , ∀i ∈ B, where the expectation is over
+P the local mini-batches. We also denote ν̄ :=
+(1/|B|) i∈B νi2 for convenience.
+Assumption 3 (Bounded heterogeneity). There exist P
+a real value ζ̄ such that for any x ∈ Rd ,
+2
+1
+∇L (x)∥
+≤
+ζ̄, where the
+i∈B ∥∇Li (x) −
+|B|
+P B
+∇LB (x) := (1/|B|) i∈B Li (x).
+Note that Assumption 1-2 are commonly used in the theoretical analysis of distributed learning systems [19,38,58].
+While Assumption 3 states a standard measure of interclient heterogeneity in FL [1,11,21], which complicates the
+4
+
+if the learning rate η ≤ 1/2τ and the selection set satisfies
+|S l | ≥ n/2 − f, ∀l ∈ [L], τ is the number of local iteration.
+Here, Cλ2m and C 2 represent the upper bound of the norm
+of malicious and benign updates, respectively.
+If the sparsification parameter k satisfies that ck ≤
+1/(1 + ϵ) and (bk /ck ) ≤ ϵ(4 + (4ν̄ + 2ζ̄ + 4Cλ2m )/C 2 ) with
+
+ 
+f
+.
+a positive constant ϵ, we have κ = O ck 1 + n−2f
+
+problem of Byzantine FL [1]. Note that these assumptions
+apply to benign clients only, as malicious clients do not follow the prescribed local training protocol of FL.
+Assumption 4 (Bounded sparsification). Given a vector
+x ∈ Rd , there exists non-negative constants ck ∈ [0, 1] and
+bk ∈ [0, 1], so that the Top-k sparsifier in Definition 1 satisfies ∥Topk (x)∥2 ≤ ck ∥x∥2 , and ∥Topk (x) − x∥2 ≤ bk ∥x∥2 .
+As LASA incorporates model sparsification, we make
+the following Assumption 4 on the Top-k sparsifier in Definition 1. This assumption applies for any k ∈ [0, d] due
+to the fact that ∥x∥2 = ∥Topk (x) − x∥2 + ∥Topk (x)∥2 .
+A smaller k implies a higher degree of sparsification and
+yields a smaller ck and a larger bk .
+
+Proof. The detailed proof is given in Appendix 7.9.2.
+Remark. (1) Extreme cases. Extremely, without sparsification, i.e., k = d, we have ck = 1 and bk = 0. In this
+case, the robustness
+upper
+
+ bound of LASA, denoted by κ1 ,
+f
+is κ1 = 2 1 + n−2f (2ν̄ + ζ̄ + 2Cλ2m + 2C 2 ). When
+k = 0, we have ck = 1 and bk = 0 which gives an upper
+bound of C 2 , indicating the greatest sparsification error to
+robustness. (2) Proper k yields higher robustness. When
+0 < k < d, if the sparsification parameter k is selected to
+satisfy the two conditions in Lemma 1, the robustness upper bound in this case, denoted by κ2 , is κ2 = (1 + ϵ)ck κ1 .
+As ck ≤ 1/(1 + ϵ), we have κ2 ≤ κ1 , which demonstrates
+the effectiveness of sparsification in amplifying robustness.
+Moreover, the conditions on k indicate that when the local divergence/variance or the magnitude of the malicious
+model is large, we can select a relatively small k (which
+gives a large bk and small ck ) to amplify the robustness.
+Hence, the benefit of sparsification will be more significant in non-IID settings theoretically. (3) Impact of Cλ2m
+and C 2 . Lemma 1 also shows that theoretically the larger
+the magnitude of benign updates or malicious updates is,
+the lower the robustness will be. Indeed, in the literature,
+model clipping has demonstrated its effectiveness in mitigating the impact of malicious [40, 58, 60]. In LASA, the
+norm of malicious updates is particularly bounded by the
+magnitude-based filtering which is controlled by the hyperparameter λm in Algorithm 1. A smaller λm indicates a
+relatively smaller Cλ2m . (4) Impact of ν̄ and ζ̄. Note that ν̄
+and ζ̄ represent the local variance and local heterogeneity in
+Assumption 2-3. The findings in Lemma 1 highlight the importance of reducing the variance of stochastic gradient and
+mitigating the divergence due to non-IID data distribution
+to enhance robustness. Our work is orthogonal to existing
+variance or divergence reduction methods [15] and can be
+combined with them to further improve the robustness.
+
+4.1. Robustness analysis of LASA
+To theoretically evaluate the efficacy of LASA, we introduce the concept of κ-robustness in Definition 4. Note that
+Definition 4 is similar to (f, κ)-robustness defined in [1, 2],
+(δmax , c)-ARAgg defined in [15,21,32], and (f, λ)-resilient
+averaging defined in [13]. Our robustness definition adopts
+a constant upper bound and focuses on quantifying the distance between the output of a robust aggregation rule and
+the average of all benign updates, which represents the optimal output of such a rule. We denote the set of benign
+clients as B so that B ⊆ N , where N is the client set.
+Definition 4 (κ-robustness). Let n > 1 and 0 ≤ f < n/2.
+An aggregation rule F : Rd×n → Rd is κ-robust if for
+any vectors x1 , . . . , xn ∈ Rd and a benign set B ⊆ N
+of size n − f , the output x̂ := F (x1 , . . . , xn ) satisfies
+P
+2
+1
+E ∥x̂ − x̄B ∥ ≤ κ, where x̄B := |B|
+i∈B xi , κ ≥ 0 refers
+to the robustness coefficient of the aggregation rule F , and
+the expectation is taken over the randomness of the inputs.
+The κ-robustness guarantees that the error of an aggregation rule, in estimating the average of the benign inputs, is
+upper-bounded by κ. With Definition 4, we prove that when
+LASA is applied to n input models, of which f < n/2 are
+malicious, satisfies κ-robustness with κ = O(ck (1+f /(n−
+2f ))), as stated in Lemma 1. Note that LASA enjoys a
+higher robustness than several classical robust aggregation
+rules, for example, GeoMed [42] (O(1+f /(n−2f ))2 ), and
+Krum [7] (O(1 + f /(n − 2f ))) 1 .
+Lemma 1 (κ-robustness of LASA). Under Assumption 14, if n ≥ 1 and 0 ≤ f < n/2, the proposed LASA method
+is a κ-robust aggregation rule with
+
+
+f
+(2ν̄ + ζ̄ + 2Cλ2m + 2C 2 ) + bk C 2 ,
+κ = 2ck 1 +
+n − 2f
+
+4.2. Resilience analysis of FL with LASA
+Similar to [1, 3], we define Byzantine resilience of a FL
+algorithm in Definition 5 as follows.
+Definition 5 ((f, R)-Byzantine resilience [1, 3]). With
+the presence of f Byzantine clients, a FL algorithm is
+said (f, R)-Byzantine resilient if it outputs θe such that
+2
+e
+E ∇LB (θ)
+≤ R, where B denotes the set of benign
+
+1 Results of GeoMed and Krum are taken from [1]. Note that the def-
+
+inition of κ in [1] is different from ours, but since we are concerned with
+the order of κ, we can safely incorporate these results into our discussion
+without losing generality.
+
+5
+
+P
+1
+clients, LB (θ) := |B|
+i∈B Li (θ), and expectation is taken
+over the randomness of the FL algorithm.
+
+SOTA defense methods, including Bulyan [16], Trimmed
+Mean (TrMean) [59], Geometric median (GeoMed) [42],
+Multi-Krum [7], Divide-and-Conquer (DnC) [45], SignGuard [58], and SparseFed [40]. We test three naive attacks including Random, Noise and Sign-flip attacks and
+five SOTA attack methods including Min-Max [45], MinSum [45], AGR-tailored Trimmed-mean [45], Lie [5], and
+ByzMean [58] attacks. We mainly conduct experiments
+on FMNIST [52], FEMNIST [8], CIFAR-10 [22], CIFAR100 [22] and Shakespeare [33] datasets. FEMNIST and
+Shakespeare datasets are naturally non-IID. For FMNIST,
+CIFAR-10 and CIFAR-100 datasets, we evenly split the
+dataset over the clients to simulate the IID settings, and use
+Dirichlet distribution [35] Dir(α) to simulate the non-IID
+settings with a default non-IID degree α = 0.5. The default attack ratio is set to 25%, meaning 25% of the clients
+are malicious in our FL system. Note that the number of
+malicious clients selected for training per round may differ
+due to client sampling. For the hyperparameters in LASA,
+for all datasets, we set the sparsification level to 0.3 (i.e.,
+1 − k/d = 0.3), λd is set to 1.0 by default while λm is set
+to 1.0 for CIFAR10/100 and 2.0 for others. More details of
+the experimental settings are given in Appendix 7.2. Additionally, the attack and defense models are presented in
+Appendix 7.1. We run each experiment with three random
+seeds and report the average testing accuracy. We use bold
+font to highlight the best results, while the second-best results are underlined.
+
+In words, a (f, R)-Byzantine resilient FL finds an Rapproximate stationary point for the honest loss, despite the
+presence of up to f Byzantine clients. This definition is
+crucial as it quantifies the level of tolerance a Byzantineresilient FL has against the potentially harmful influence of
+Byzantine clients. Note that f is assumed to be less than
+n/2, as it is generally impossible for an FL algorithm with
+F to achieve Byzantine resilience when f ≥ n/2 [28].
+Now we prove that FL with LASA is (f, R)-Byzantine
+resilient and achieves the asymptotic error bounded by R in
+the presence of f Byzantine clients, as stated Theorem 1.
+Theorem 1 ((f, R)-Byzantine resilience of LASA). Let
+θ0 be the initial point and θ∗ be the optimal point. Assume θe is uniformly sampled from the sequence of outputs {θ0 , θ1 , . . . , θT } generated by FL with LASA. Under Assumption 1-4, suppose the learning rate η satisfies
+η ≤ min{1/2τ, 1/3µτ }, then we have
+2
+
+e
+E ∇LB (θ)
+
+≤
+
+LB (θ0 ) − LB (θ∗ )
++ κ (µη + 1)
+Tη
++ 7τ ζ̄ + (1 + τ )ν̄,
+
+where κ represents the robustness coefficient of LASA.
+Proof. The detailed proof is given in Appendix 7.9.3.
+Remark. The last two terms, i.e., 7τ ζ̄ + (1 + τ )ν̄, represent
+the convergence errors due to data heterogeneity and gradient variance and will be eliminated when local data are
+IID and full gradient is calculated. The second term represents the Byzantine error associated with the robustness
+coefficient κ. Note that due to the client sampling in FL,
+h out of n clients are selected uniformly at random to participate in the training per round, and the expected number
+of malicious clients is hf /n per round, which does not affect the expected value of κ. Recall that selecting an appropriate sparsification parameter k allows LASA to achieve a
+smaller κ, leading to a smaller convergence error. However,
+choosing an unsuitable k, such as when k ≪ d, may result
+in a very high sparsification error, which will dominate κ
+and make the robustness amplification benefit of sparsification negligible. This finally leads to a higher convergence
+error and lower Byzantine resilience. We discuss the selection of k in Lemma 1 and also study its impact on model
+performance during the evaluation.
+
+Performance of LASA in IID settings. We first comprehensively evaluate the performance of all the defense
+methods in IID settings. From the results on FMNIST,
+CIFAR-10, and CIFAR-100 datasets (shown in Table 1),
+we can see that except for Noise attack on CIFAR-100
+where LASA achieves second-best performance, LASA
+achieves the highest accuracy under all attacks, outperforming other defense methods. For example, under
+ByzMean attack, LASA, GeoMed, and SignGuard stand
+out as the most effective defense methods on FMNIST, and
+LASA achieves the highest accuracy of 87.65%, which is
++0.03% and +4.60% higher than SignGuard and GeoMed,
+respectively. On CIFAR-10 under TailoredTrMean attack,
+LASA achieves the highest accuracy of 89.05%, which is
++0.60% and +4.02% higher than SignGuard and Bulyan,
+respectively. It is noteworthy that LASA reaches “ceiling” performance levels as it consistently achieves accuracy similar to scenarios without attacks. We observe
+that the classic robust aggregation rule-based methods including TrMean, GeoMed, Multi-Krum, and Bulyan, as
+well as the sparsification-based method SparseFed, fail to
+defend against advanced distance-based attacks like TailoredTrMean and ByzMean, which maximize or minimize
+the distance between benign and malicious models. The
+reason is that these classic robust aggregation rules often
+
+5. Evaluation
+Experimental settings. To comprehensively demonstrate the effectiveness of LASA, we compare it with
+the non-robust baseline FedAvg and seven existing
+6
+
+Table 1. Testing Accuracy (%) of Different Defense Methods in IID Settings.
+Naive Attacks
+
+SOTA Attacks
+
+Dataset
+(Model)
+
+Defense
+Method
+
+No
+Attack
+
+Random
+
+Noise
+
+Sign-flip
+
+TailoredTrMean
+
+Min-Max
+
+Min-Sum
+
+Lie
+
+ByzMean
+
+Average
+w/ Attacks
+
+FMNIST
+(CNN)
+
+FedAvg
+TrMean
+GeoMed
+Multi-Krum
+Bulyan
+DnC
+SignGuard
+SparseFed
+LASA (Ours)
+
+86.28
+84.05
+84.10
+86.91
+81.35
+87.30
+87.63
+86.27
+87.62
+
+29.20
+80.56
+84.30
+84.15
+83.81
+84.23
+87.72
+29.48
+87.92
+
+41.66
+81.26
+84.30
+84.33
+83.84
+84.17
+87.72
+41.10
+87.87
+
+83.91
+81.11
+82.28
+85.34
+78.59
+85.69
+87.06
+83.86
+87.13
+
+10.08
+10.59
+84.51
+10.00
+33.76
+32.66
+87.40
+10.08
+87.97
+
+77.89
+69.95
+60.86
+68.76
+59.24
+69.81
+87.40
+77.88
+87.91
+
+79.56
+73.01
+50.32
+80.67
+62.09
+79.08
+87.18
+79.55
+87.36
+
+83.47
+77.78
+65.08
+80.43
+73.29
+81.96
+87.17
+83.47
+87.54
+
+11.22
+10.54
+83.05
+11.80
+59.75
+63.11
+87.61
+11.28
+87.65
+
+52.12
+59.85
+74.34
+63.19
+66.80
+72.59
+87.41
+52.09
+87.67
+
+CIFAR-10
+(ResNet18 [18])
+
+FedAvg
+TrMean
+GeoMed
+Multi-Krum
+Bulyan
+DnC
+SignGuard
+SparseFed
+LASA (Ours)
+
+89.70
+90.14
+89.85
+84.73
+88.97
+89.54
+89.47
+89.65
+89.00
+
+44.34
+87.36
+87.76
+84.62
+87.68
+59.26
+82.36
+43.93
+88.66
+
+47.65
+87.36
+87.57
+84.72
+87.56
+61.33
+81.68
+48.22
+88.81
+
+82.07
+84.77
+85.74
+84.58
+86.52
+84.72
+80.04
+82.18
+86.68
+
+15.77
+49.65
+71.22
+84.49
+85.03
+38.75
+88.45
+15.92
+89.05
+
+76.26
+61.30
+63.42
+47.97
+38.38
+63.34
+88.14
+75.90
+88.57
+
+61.25
+57.58
+71.91
+53.16
+47.29
+61.11
+88.09
+68.13
+88.96
+
+84.76
+77.40
+70.78
+44.26
+53.30
+67.30
+88.11
+84.91
+88.59
+
+13.01
+49.61
+87.45
+84.55
+84.96
+57.08
+88.39
+10.00
+89.08
+
+53.14
+69.38
+78.23
+71.04
+71.34
+61.61
+85.66
+53.65
+88.55
+
+CIFAR-100
+(ResNet18 [18])
+
+FedAvg
+TrMean
+GeoMed
+Multi-Krum
+Bulyan
+DnC
+SignGuard
+SparseFed
+LASA (Ours)
+
+65.98
+65.40
+65.84
+52.71
+61.29
+65.53
+65.64
+65.99
+65.52
+
+12.09
+63.19
+63.33
+52.14
+61.06
+24.47
+63.24
+12.06
+63.48
+
+14.20
+63.22
+63.57
+52.24
+61.32
+28.05
+63.36
+14.06
+63.49
+
+48.05
+52.65
+61.25
+52.92
+60.01
+53.39
+47.55
+48.01
+62.89
+
+1.96
+28.57
+39.78
+52.88
+50.84
+11.21
+63.36
+1.83
+63.71
+
+45.90
+34.80
+38.95
+19.03
+17.83
+29.37
+63.20
+46.05
+63.54
+
+44.26
+33.83
+39.34
+19.82
+19.17
+28.51
+63.22
+44.34
+63.63
+
+57.66
+48.92
+46.93
+24.43
+30.27
+34.04
+62.72
+57.74
+63.98
+
+1.36
+30.11
+61.29
+53.26
+56.75
+29.05
+62.94
+1.53
+63.85
+
+28.19
+44.41
+51.81
+40.84
+44.66
+29.76
+61.20
+28.20
+63.57
+
+Attack Ratio=10%
+Accuracy / TPR / FPR (%)
+
+Table 2. Testing Accuracy (%) of LASA in Non-IID Settings on
+CIFAR-10 (C-10) and CIFAR-100 (C-100) Datasets, Compared
+with Multi-Krum, GeoMed and SignGuard under ByzMean.
+Non-IID degrees α
+Dataset
+
+Method
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+1.0
+
+Avg.
+
+C-10
+
+Multi-Krum
+GeoMed
+SignGuard
+LASA (Ours)
+
+26.34
+49.14
+51.90
+56.01
+
+39.34
+63.33
+63.17
+65.61
+
+52.06
+71.45
+70.77
+74.59
+
+55.52
+72.82
+75.05
+75.40
+
+61.31
+75.72
+76.16
+77.73
+
+74.75
+83.49
+83.31
+84.34
+
+51.55
+69.33
+70.06
+72.28
+
+C-100
+
+Multi-Krum
+GeoMed
+SignGuard
+LASA (Ours)
+
+25.83
+46.46
+48.95
+51.25
+
+37.91
+53.80
+56.74
+57.59
+
+43.64
+56.99
+58.50
+59.73
+
+45.58
+58.16
+58.51
+60.41
+
+47.58
+58.72
+59.82
+60.24
+
+51.37
+59.79
+61.42
+61.61
+
+41.99
+55.65
+57.32
+58.47
+
+Attack Ratio=25%
+
+100
+
+SignGuard TPR
+LASA TPR
+SignGuard FPR
+LASA FPR
+SignGuard Accuracy
+LASA Accuracy
+
+80
+60
+40
+20
+0
+4
+
+20
+
+40
+
+60
+
+80
+
+Training Rounds
+
+100 4
+
+20
+
+40
+
+60
+
+80
+
+Training Rounds
+
+100
+
+Figure 1. TPR, FPR, and Testing Accuracy (%) of LASA and
+SignGuard under ByzMean Attack on Shakespeare Dataset.
+
+filter malicious parameters at coordinate level or based on
+model-wise distance; SparseFed is ineffective due to its limited capability in removing malicious parameters. The robustness of LASA, illustrated by the above-mentioned results, emphasizes its potential as a robust defense method
+in securing FL environments against a wide collection of
+attacks, ultimately enhancing the reliability of FL systems.
+Additional results on MNIST, FEMNIST, and Shakespeare
+datasets are given in Appendix 7.4.
+Performance of LASA in various non-IID settings.
+Here, we evaluate the effectiveness of LASA in various
+non-IID settings. We simulate different non-IIDness by
+varying the non-IID degree α from 0.1 to 1.0, where a
+smaller α indicates a more intense non-IIDness. From the
+results on CIFAR-10 and CIFAR-100 datasets under the
+SOTA ByzMean attack (shown in Table 2), we observe that
+
+as α increases, the performance of all the defense methods
+improves due to the decreased data heterogeneity. Among
+them, LASA always achieves the highest accuracy under
+various non-IID degrees, leading a average of +1.15% and
++2.22% over SOTA SignGuard. LASA individually sparsifies model updates thus reducing sparsification error, especially in non-IID cases with heterogeneous model updates.
+It also performs layer-wise filtering, allowing precise identification of benign/malicious model updates at a finer granularity. By adeptly integrating pre-aggregation sparsification and layer-wise adaptive aggregation, LASA effectively
+mitigates the impact of divergent updates, resulting in the
+highest accuracy among its counterparts.
+Effectiveness of LASA in model update identification.
+To deeply investigate the effectiveness of LASA, we ob7
+
+ByzMean
+
+86
+
+Table 3. Comparison of Performance with Different Components
+
+TailoredTrmean
+
+CIFAR-10 (IID)
+
+FEMNIST
+Accuracy (%)
+
+84
+
+SparseFed
+DnC
+SignGuard
+LASA (Ours)
+
+78
+76
+70
+
+Shakespeare
+Accuracy (%)
+
+Min-Max
+
+Lie
+
+Noise
+
+Min-Max
+
+Lie
+
+Noise
+
+Avg.
+
+Spar
+Ma
+Di
+Spar+Ma
+Spar+Di
+Ma+Di
+LASA (Ours)
+
+75.00
+85.73
+89.23
+84.66
+89.28
+88.35
+88.57
+
+87.00
+87.99
+89.07
+87.99
+89.18
+88.38
+88.59
+
+86.04
+89.39
+83.07
+89.38
+83.87
+88.51
+88.81
+
+44.39
+40.45
+84.26
+36.33
+84.28
+84.20
+84.19
+
+81.08
+79.38
+84.28
+79.43
+84.26
+83.52
+83.52
+
+54.91
+84.27
+68.40
+84.26
+69.03
+83.97
+84.05
+
+71.40
+77.87
+83.05
+77.01
+83.32
+86.16
+86.29
+
+82
+80
+
+60
+50
+
+30
+
+tively low accuracy of 79.09%. Compared to SignGuard,
+LASA achieves a better and more stable performance. As
+the attack ratio increases, LASA only has a minor decrease
+in accuracy. More results under other attacks with various
+attack ratios are given in Appendix 7.5.
+Ablation study. As LASA consists of three key components to achieve Byzantine resilience, we conduct an ablation study to investigate how each component functions. We
+denote pre-aggregation sparsification, magnitude-based
+adaptive filtering, and direction-based adaptive filtering as
+Spar, Ma, and Di, respectively. Experimental results on
+CIFAR-10 and FEMNIST are summarized in Table 3. As
+expected, only applying pre-aggregation sparsification does
+not provide enough robustness compared to LASA as it only
+removes partial less important malicious parameters. We
+observe that direction-based adaptive filtering is powerful
+in defending against the stealthy Min-Max and Lie attacks,
+but it is vulnerable to the simple Noise attack that generates malicious updates with large magnitudes. In contrast,
+magnitude-based adaptive filtering is effective in defending against Noise attack but is less effective against MinMax and Lie attacks. Notably, when integrated with preaggregation sparsification, the performance of directionbased adaptive filtering improves: the accuracy of Spar+Di
+is higher than that of Di. This demonstrates the effectiveness of sparsification in improving the filtering accuracy. While LASA demonstrates comparable performance
+to Ma+Di, we emphasize in Section 4.1 the theoretical significance of Spar in enhancing robustness, thereby underscoring its necessity. We further discuss the impact of different radii and sparsification levels in Appendix 7.6- 7.7.
+
+SparseFed
+DnC
+SignGuard
+LASA (Ours)
+
+40
+30
+
+25
+
+20
+
+15
+
+10
+
+Attack Ratios (%)
+
+5 30
+
+25
+
+20
+
+15
+
+10
+
+Attack Ratios (%)
+
+FEMNIST (non-IID)
+
+Method
+
+5
+
+Figure 2. Testing Accuracy (%) of LASA SparseFed, DnC, and
+SignGuard under Various Attack Ratios on the Non-IID FEMNIST (upper) and Shakespeare (lower) Datasets.
+
+serve the behavior of LASA in identifying malicious updates, compared with the SOTA method SignGuard. Specifically, we use two metrics, True Positive Rate (TPR) and
+False Positive Rate (FPR), to evaluate their performance
+in identifying malicious updates and benign updates. A
+higher TPR and lower FPR imply a more accurate benign/malicious update identification. As shown in Figure 1,
+LASA and SignGuard achieve significantly high TPRs,
+which means they can effectively identify malicious updates. However, SignGuard achieves relatively high FPRs
+in both attack ratio settings. For example, with a high attack
+ratio of 25%, at each round, SignGuard misidentifies about
+15% percent of benign updates as malicious ones, so that
+the convergence rate of the global model drops due to the
+lack of benign updates. In contrast, LASA always keeps a
+very low FPR, demonstrating the superior performance of
+our unique design of layer-wise adaptive filtering.
+Impact of various attack ratios. We additionally evaluate the performance of three SOTA defense methods including DnC, SignGuard, and SparseFed, and our method
+LASA under different attack ratios on non-IID datasets and
+report the results in Figure 2. Specifically, we conduct
+experiments under ByzMean and TailoredTrMean attacks
+with the attack ratio varying from 5% to 30%. In general, DnC and SparseFed’s accuracies increase as the attack ratio decreases, but they suffer from significant accuracy degradation when the attack ratio is high. For instance,
+on FEMNIST, even when the attack ratio is as low as 5%,
+SparseFed does not improve the robustness, achieving an
+accuracy of 7.44% under the ByzMean attack. Similarly,
+DnC struggles to defend against ByzMean attack effectively
+until the attack ratio is reduced to 10%, achieving a rela-
+
+6. Conclusion
+We present a novel Byzantine-resilient aggregation rule
+called LASA. LASA combines a pre-aggregation sparsification that sparsifies each local model update before aggregation with a novel layer-wise adaptive aggregation that filters
+and aggregates the sparsified model updates based on the
+magnitude and direction of each model layer. We theoretically analyze the robustness of LASA and provide the resilience analysis results of FL with LASA and then conduct
+extensive experiments on both IID and non-IID datasets to
+evaluate the effectiveness of LASA. Experimental results
+8
+
+demonstrate that LASA outperforms other defense methods
+under both naive and advanced attacks.
+
+[13] Sadegh Farhadkhani, Rachid Guerraoui, Nirupam Gupta,
+Rafael Pinot, and John Stephan. Byzantine machine learning
+made easy by resilient averaging of momentums. In International Conference on Machine Learning, pages 6246–6283.
+PMLR, 2022. 5
+[14] Hossein Fereidooni, Alessandro Pegoraro, Phillip Rieger,
+Alexandra Dmitrienko, and Ahmad-Reza Sadeghi. Freqfed: A frequency analysis-based approach for mitigating
+poisoning attacks in federated learning. arXiv preprint
+arXiv:2312.04432, 2023. 2
+[15] Eduard Gorbunov, Samuel Horváth, Peter Richtárik, and
+Gauthier Gidel. Variance reduction is an antidote to byzantines: Better rates, weaker assumptions and communication compression as a cherry on the top. arXiv preprint
+arXiv:2206.00529, 2022. 5
+[16] Rachid Guerraoui, Sébastien Rouault, et al. The hidden vulnerability of distributed learning in byzantium. In International Conference on Machine Learning, pages 3521–3530.
+PMLR, 2018. 1, 2, 3, 6
+[17] Prajjwal Gupta, Krishna Yadav, Brij B Gupta, Mamoun
+Alazab, and Thippa Reddy Gadekallu. A novel data poisoning attack in federated learning based on inverted loss function. Computers & Security, 130:103270, 2023. 2
+[18] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun.
+Deep residual learning for image recognition. In Proceedings of the IEEE conference on computer vision and pattern
+recognition, pages 770–778, 2016. 7, 12
+[19] Rui Hu, Yuanxiong Guo, and Yanmin Gong. Federated learning with sparsified model perturbation: Improving accuracy
+under client-level differential privacy. IEEE Transactions on
+Mobile Computing, 2023. 3, 4, 12
+[20] Matthew Jagielski, Alina Oprea, Battista Biggio, Chang Liu,
+Cristina Nita-Rotaru, and Bo Li. Manipulating machine
+learning: Poisoning attacks and countermeasures for regression learning. In 2018 IEEE symposium on security and privacy (SP), pages 19–35. IEEE, 2018. 2
+[21] Sai Praneeth Karimireddy, Lie He, and Martin Jaggi.
+Byzantine-robust learning on heterogeneous datasets via
+bucketing. In International Conference on Learning Representations, 2021. 4, 5
+[22] Alex Krizhevsky et al. Learning multiple layers of features
+from tiny images. University of Toronto, 2009. 6, 12
+[23] Leslie Lamport, Robert Shostak, and Marshall Pease. The
+byzantine generals problem. In Concurrency: the works of
+leslie lamport, pages 203–226. 2019. 1
+[24] Yann LeCun, Léon Bottou, Yoshua Bengio, and Patrick
+Haffner. Gradient-based learning applied to document recognition. Proceedings of the IEEE, 86(11):2278–2324, 1998.
+12
+[25] Sunwoo Lee, Tuo Zhang, and A Salman Avestimehr. Layerwise adaptive model aggregation for scalable federated
+learning. In Proceedings of the AAAI Conference on Artificial Intelligence, volume 37, pages 8491–8499, 2023. 4
+[26] Han Liu, Zhiyuan Yu, Mingming Zha, XiaoFeng Wang,
+William Yeoh, Yevgeniy Vorobeychik, and Ning Zhang.
+When evil calls: Targeted adversarial voice over ip network.
+In Proceedings of the 2022 ACM SIGSAC Conference on
+
+References
+[1] Youssef Allouah, Sadegh Farhadkhani, Rachid Guerraoui,
+Nirupam Gupta, Rafaël Pinot, and John Stephan. Fixing by
+mixing: A recipe for optimal byzantine ml under heterogeneity. In International Conference on Artificial Intelligence and
+Statistics, pages 1232–1300. PMLR, 2023. 3, 4, 5
+[2] Youssef Allouah, Rachid Guerraoui, Nirupam Gupta, Rafael
+Pinot, and Geovani Rizk. Robust distributed learning: Tight
+error bounds and breakdown point under data heterogeneity. In Thirty-seventh Conference on Neural Information Processing Systems, 2023. 3, 5
+[3] Youssef Allouah, Rachid Guerraoui, Nirupam Gupta, Rafaël
+Pinot, and Geovani Rizk. Robust distributed learning: Tight
+error bounds and breakdown point under data heterogeneity. Advances in Neural Information Processing Systems, 36,
+2024. 3, 5
+[4] Eugene Bagdasaryan, Andreas Veit, Yiqing Hua, Deborah
+Estrin, and Vitaly Shmatikov. How to backdoor federated
+learning. In International conference on artificial intelligence and statistics, pages 2938–2948. PMLR, 2020. 2
+[5] Gilad Baruch, Moran Baruch, and Yoav Goldberg. A little is enough: Circumventing defenses for distributed learning. Advances in Neural Information Processing Systems,
+32, 2019. 1, 2, 6, 12, 13
+[6] Arjun Nitin Bhagoji, Supriyo Chakraborty, Prateek Mittal,
+and Seraphin Calo. Analyzing federated learning through
+an adversarial lens. In International Conference on Machine
+Learning, pages 634–643. PMLR, 2019. 2
+[7] Peva Blanchard, El Mahdi El Mhamdi, Rachid Guerraoui,
+and Julien Stainer. Machine learning with adversaries:
+Byzantine tolerant gradient descent. Advances in neural information processing systems, 30, 2017. 1, 2, 3, 5, 6
+[8] Sebastian Caldas, Sai Meher Karthik Duddu, Peter Wu, Tian
+Li, Jakub Konečnỳ, H Brendan McMahan, Virginia Smith,
+and Ameet Talwalkar. Leaf: A benchmark for federated settings. arXiv preprint arXiv:1812.01097, 2018. 6, 12
+[9] Xiaoyu Cao, Minghong Fang, Jia Liu, and Neil Gong.
+Fltrust: Byzantine-robust federated learning via trust bootstrapping. In Proceedings of NDSS, 2021. 2, 12
+[10] Zhao Chen, Jiquan Ngiam, Yanping Huang, Thang Luong,
+Henrik Kretzschmar, Yuning Chai, and Dragomir Anguelov.
+Just pick a sign: Optimizing deep multitask models with gradient sign dropout. Advances in Neural Information Processing Systems, 33:2039–2050, 2020. 4
+[11] El Mahdi El-Mhamdi, Sadegh Farhadkhani, Rachid Guerraoui, Arsany Guirguis, Lê-Nguyên Hoang, and Sébastien
+Rouault. Collaborative learning in the jungle (decentralized, byzantine, heterogeneous, asynchronous and nonconvex learning). Advances in Neural Information Processing
+Systems, 34:25044–25057, 2021. 4
+[12] Minghong Fang, Xiaoyu Cao, Jinyuan Jia, and Neil Gong.
+Local model poisoning attacks to byzantine-robust federated
+learning. In 29th USENIX security symposium (USENIX Security 20), pages 1605–1622, 2020. 1, 2, 3, 12
+
+9
+
+[40] Ashwinee Panda, Saeed Mahloujifar, Arjun Nitin Bhagoji,
+Supriyo Chakraborty, and Prateek Mittal. Sparsefed: Mitigating model poisoning attacks in federated learning with
+sparsification. In International Conference on Artificial Intelligence and Statistics, pages 7587–7624. PMLR, 2022. 1,
+2, 5, 6
+[41] Jungwuk Park, Dong-Jun Han, Minseok Choi, and Jaekyun
+Moon. Sageflow: Robust federated learning against both
+stragglers and adversaries. Advances in neural information
+processing systems, 34:840–851, 2021. 2
+[42] Krishna Pillutla, Sham M Kakade, and Zaid Harchaoui. Robust aggregation for federated learning. IEEE Transactions
+on Signal Processing, 70:1142–1154, 2022. 1, 3, 5, 6
+[43] Sashank Reddi, Zachary Charles, Manzil Zaheer, Zachary
+Garrett, Keith Rush, Jakub Konečnỳ, Sanjiv Kumar, and
+H Brendan McMahan. Adaptive federated optimization.
+arXiv preprint arXiv:2003.00295, 2020. 12
+[44] Yasar Abbas Ur Rehman, Yan Gao, Pedro Porto Buarque
+De Gusmão, Mina Alibeigi, Jiajun Shen, and Nicholas D
+Lane. L-dawa: Layer-wise divergence aware weight aggregation in federated self-supervised visual representation
+learning. In Proceedings of the IEEE/CVF International
+Conference on Computer Vision, pages 16464–16473, 2023.
+4
+[45] Virat Shejwalkar and Amir Houmansadr. Manipulating the
+byzantine: Optimizing model poisoning attacks and defenses
+for federated learning. In NDSS, 2021. 1, 2, 3, 6, 12, 13
+[46] Shaohuai Shi, Zhenheng Tang, Qiang Wang, Kaiyong Zhao,
+and Xiaowen Chu. Layer-wise adaptive gradient sparsification for distributed deep learning with convergence guarantees. arXiv preprint arXiv:1911.08727, 2019. 3
+[47] Gan Sun, Yang Cong, Jiahua Dong, Qiang Wang, Lingjuan
+Lyu, and Ji Liu. Data poisoning attacks on federated machine
+learning. IEEE Internet of Things Journal, 9(13):11365–
+11375, 2021. 2
+[48] Zhiyi Tian, Lei Cui, Jie Liang, and Shui Yu. A comprehensive survey on poisoning attacks and countermeasures in machine learning. ACM Computing Surveys, 55(8):1–35, 2022.
+1
+[49] Vale Tolpegin, Stacey Truex, Mehmet Emre Gursoy, and
+Ling Liu. Data poisoning attacks against federated learning
+systems. In European Symposium on Research in Computer
+Security, pages 480–501, 2020. 2
+[50] Kamala Varma, Yi Zhou, Nathalie Baracaldo, and Ali Anwar. Legato: A layerwise gradient aggregation algorithm
+for mitigating byzantine attacks in federated learning. In
+2021 IEEE 14th international conference on cloud computing (CLOUD), pages 272–277. IEEE, 2021. 3
+[51] Hongyi Wang, Kartik Sreenivasan, Shashank Rajput, Harit
+Vishwakarma, Saurabh Agarwal, Jy-yong Sohn, Kangwook
+Lee, and Dimitris Papailiopoulos. Attack of the tails: Yes,
+you really can backdoor federated learning. Advances in
+Neural Information Processing Systems, 33:16070–16084,
+2020. 2
+[52] Han Xiao, Kashif Rasul, and Roland Vollgraf. Fashionmnist: a novel image dataset for benchmarking machine
+learning algorithms. arXiv preprint arXiv:1708.07747, 2017.
+6, 12
+
+Computer and Communications Security, pages 2009–2023,
+2022. 1
+[27] Jun Liu, Jianchun Liu, Hongli Xu, Yunming Liao, Zhiyuan
+Wang, and Qianpiao Ma. Yoga: Adaptive layer-wise model
+aggregation for decentralized federated learning. IEEE/ACM
+Transactions on Networking, 2023. 4
+[28] Shuo Liu, Nirupam Gupta, and Nitin H Vaidya. Approximate byzantine fault-tolerance in distributed optimization.
+In Proceedings of the 2021 ACM Symposium on Principles
+of Distributed Computing, pages 379–389, 2021. 6
+[29] Yi Liu, Jiangtian Nie, Xuandi Li, Syed Hassan Ahmed, Wei
+Yang Bryan Lim, and Chunyan Miao. Federated learning in
+the sky: Aerial-ground air quality sensing framework with
+uav swarms. IEEE Internet of Things Journal, 8(12):9827–
+9837, 2020. 1
+[30] Xiaosong Ma, Jie Zhang, Song Guo, and Wenchao Xu.
+Layer-wised model aggregation for personalized federated
+learning. In Proceedings of the IEEE/CVF conference
+on computer vision and pattern recognition, pages 10092–
+10101, 2022. 4
+[31] Saeed Mahloujifar, Mohammad Mahmoody, and Ameer Mohammed. Universal multi-party poisoning attacks. In International Conference on Machine Learning, pages 4274–
+4283. PMLR, 2019. 2
+[32] Grigory Malinovsky, Peter Richtárik, Samuel Horváth, and
+Eduard Gorbunov. Byzantine robustness and partial participation can be achieved simultaneously: Just clip gradient
+differences. arXiv preprint arXiv:2311.14127, 2023. 5
+[33] Brendan McMahan, Eider Moore, Daniel Ramage, Seth
+Hampson, and Blaise Aguera y Arcas. Communicationefficient learning of deep networks from decentralized data.
+In Artificial intelligence and statistics, pages 1273–1282.
+PMLR, 2017. 1, 2, 6, 12
+[34] Mark Huasong Meng, Sin G Teo, Guangdong Bai, Kailong
+Wang, and Jin Song Dong. Enhancing federated learning
+robustness using data-agnostic model pruning. In PacificAsia Conference on Knowledge Discovery and Data Mining,
+pages 441–453. Springer, 2023. 1, 2, 3
+[35] Thomas Minka. Estimating a dirichlet distribution, 2000. 6
+[36] Luis Muñoz-González, Battista Biggio, Ambra Demontis,
+Andrea Paudice, Vasin Wongrassamee, Emil C Lupu, and
+Fabio Roli. Towards poisoning of deep learning algorithms
+with back-gradient optimization. In Proceedings of the 10th
+ACM workshop on artificial intelligence and security, pages
+27–38, 2017. 2
+[37] Luis Muñoz-González, Kenneth T Co, and Emil C Lupu.
+Byzantine-robust federated machine learning through adaptive model averaging. arXiv preprint arXiv:1909.05125,
+2019. 3
+[38] Yurii Nesterov et al. Lectures on convex optimization, volume 137. Springer, 2018. 4
+[39] Dinh C Nguyen, Quoc-Viet Pham, Pubudu N Pathirana,
+Ming Ding, Aruna Seneviratne, Zihuai Lin, Octavia Dobre,
+and Won-Joo Hwang. Federated learning for smart healthcare: A survey. ACM Computing Surveys (CSUR), 55(3):1–
+37, 2022. 1
+
+10
+
+[53] Chulin Xie, Keli Huang, Pin Yu Chen, and Bo Li. Dba:
+Distributed backdoor attacks against federated learning. In
+8th International Conference on Learning Representations,
+ICLR 2020, 2020. 2
+[54] Cong Xie, Oluwasanmi Koyejo, and Indranil Gupta.
+Generalized byzantine-tolerant sgd.
+arXiv preprint
+arXiv:1802.10116, 2018. 1, 3
+[55] Cong Xie, Oluwasanmi Koyejo, and Indranil Gupta. Fall of
+empires: Breaking byzantine-tolerant sgd by inner product
+manipulation. In Uncertainty in Artificial Intelligence, pages
+261–270. PMLR, 2020. 2
+[56] Cong Xie, Sanmi Koyejo, and Indranil Gupta. Zeno: Distributed stochastic gradient descent with suspicion-based
+fault-tolerance. In International Conference on Machine
+Learning, pages 6893–6901. PMLR, 2019. 2
+[57] Jian Xu and Shao-Lun Huang. Byzantine-resilient decentralized collaborative learning. In ICASSP 2022-2022 IEEE
+International Conference on Acoustics, Speech and Signal
+Processing (ICASSP), pages 5253–5257. IEEE, 2022. 3
+[58] Jian Xu, Shao-Lun Huang, Linqi Song, and Tian Lan.
+Byzantine-robust federated learning through collaborative
+malicious gradient filtering. In 2022 IEEE 42nd International Conference on Distributed Computing Systems
+(ICDCS), pages 1223–1235. IEEE, 2022. 1, 2, 3, 4, 5, 6,
+12, 13
+[59] Dong Yin, Yudong Chen, Ramchandran Kannan, and Peter
+Bartlett. Byzantine-robust distributed learning: Towards optimal statistical rates. In International Conference on Machine Learning, pages 5650–5659. PMLR, 2018. 1, 2, 3, 6,
+13
+[60] Jingzhao Zhang, Tianxing He, Suvrit Sra, and Ali Jadbabaie.
+Why gradient clipping accelerates training: A theoretical
+justification for adaptivity. In International Conference on
+Learning Representations, 2019. 5
+[61] Zikai Zhang and Rui Hu. Byzantine-robust federated learning with variance reduction and differential privacy. In 2023
+IEEE Conference on Communications and Network Security
+(CNS), pages 1–9. IEEE, 2023. 1, 2, 3
+
+11
+
+7. Appdenix
+
+including 52 for upper and lower case characters and 10 for
+digits. We subsample 5% of the original data following [8],
+resulting in 1,827 clients with a total of 450,632 images.
+The number of samples for each client ranges from 3 to 525.
+The Shakespeare dataset is naturally a non-IID FL dataset
+for the next character prediction tasks. Following [43], we
+process the original data and result in a dataset consisting
+of 37,784 samples from 715 clients.
+
+7.1. Attack and defense models
+Attack model. We follow the attack model in previous
+works [5, 12, 45, 58]. Specifically, the attacker controls a
+subset of f malicious clients within the FL system. These
+clients can either be fake clients injected into the system
+by the attacker or genuine clients that have been compromised. The goal of the attacker is to degrade the overall
+performance of the global model in FL. The attacker has
+full knowledge of all benign updates in each training round.
+For additional background knowledge of the attacker, we
+follow the same settings of the proposed attack works. The
+malicious clients need not follow the prescribed local training protocol of FL and may send arbitrary local model updates to the server. Let B denote the set of benign clients in
+the system so that B ⊂ N . Under the Byzantine attack, the
+local model update of a client i ∈ N can be represented as
+(
+∆i , if i ∈ B
+∆i =
+(3)
+βi , if i ∈
+/B
+
+The CIFAR-10 and CIFAR-100 datasest [22] is a collection of 60,000 32×32 color images with 50,000 training samples and 10,000 testing samples. All images are
+evenly distributed among 10/100 different classes, respectively. We split the training dataset over 100 clients for IID
+cases. For non-IID cases, we use Dirichlet distribution to
+simulate the non-IID settings on CIFAR-10 and CIFAR-100
+datasets, which is controlled by a non-IID degree hyperparameter α. The default value of α is set to 0.5 in our work.
+For MNIST, FMNIST, and FEMNIST datasets, given
+their identical image format and size, we use the same neural network architecture in [19]. Specifically, we use a CNN
+model composed of two convolutional layers, each followed
+by max-pooling and ReLU activation functions. Two linear
+layers are utilized to map features to classes. For CIFAR10/100 datasets, we use ResNet-18 [18]. For the Shakespeare dataset, we implement a Recurrent Neural Network
+(RNN) model following [43]. The RNN model takes a sequence of characters as input and then uses an embedding
+layer to convert each character into an 8-dimensional feature representation. Subsequently, two Long Short-Term
+Memory (LSTM) layers process these embedded characters, and a final linear layer with the softmax activation is
+applied.
+
+where βi ∈ Rd represents an arbitrary model depending on
+the specific attack method.
+Defense goal. Like previous works [9, 12, 58], we assume the server to be the defender who can deploy a robust
+aggregation rule, denoted by F , to mitigate the negative impact of malicious local models on the global model. The
+server has full access to the global model and local model
+updates in each training round, but it does not have access
+to the local training data of clients. We assume the server
+does not know the number of malicious clients unless explicitly specified. In addition, we assume that clients’ submissions are made anonymously so that the server cannot
+track clients’ actions.
+
+For all datasets except CIFAR-10/100, the server randomly selects h = 100 clients per round to perform local
+computations. While for CIFAR-10/100, we set h = 25.
+We use SGD with momentum as the local solver, with the
+decay ratio and momentum parameters set to 0.99 and 0.9,
+respectively, for all datasets except for Shakespeare, where
+it is set to 0.999 and 0.5, respectively. The learning rate
+is set as η = 0.1 for all datasets except for Shakespeare,
+where it is set to η = 1.0. By default, the filtering radius
+is set as λm = λd = 1.0 for CIFAR-10/100. While for
+other datasets, we set λm to 2.0. We define the sparsification level (SL) to be 1 − k/d. A higher SL implies more
+parameters are zeroed out. In our experiments, SL is set
+as 0.3 for all datasets by default. We run each experiment
+with three random seeds and report the average of the best
+testing accuracies achieved in each individual training. The
+experiments are conducted using PyTorch and executed on
+NVIDIA RTX A6000 GPUs.
+
+7.2. Experimental settings
+We utilize six benchmark datasets of FL, including
+MNIST [24], Fashion-MNIST [52], FEMNIST [8], CIFAR10 [22], CIFAR-100 [22], and Shakespeare [33] datasets, to
+conduct the performance evaluation. The MNIST dataset
+is composed of gray-scale images of size 28 × 28 pixels
+for image classification tasks. It has 60,000 images for
+training and 10,000 images for testing. Similar to MNIST,
+Fashion-MNIST (FMNIST) dataset contains 70,000 28×28
+grayscale images for 10 categories of fashion products. The
+dataset is divided into 60,000 training images and 10,000
+test images. For MNIST and FMNIST datasets, we evenly
+split the training data over 6,000 clients so that the distribution of private datasets on each client is IID. The Federated Extended MNIST (FEMNIST) dataset is a non-IID FL
+dataset extended from MNIST. It consists of 805,263 images hand-written by 3,550 users for a total of 62 classes,
+12
+
+7.3. Evaluated attack methods
+
+each with m1 and m2 clients, respectively. Clients
+in the first group select any existing attack methods to generate their malicious updates, denoted as
+βi,∀i∈[m1 ] . The clients in the second group generate
+their malicious updates to make the average of all updates exactly equal to the average of malicious updates in [m1 ], whichPcan be expressed as βi,∀i∈[m2 ] =
+
+We consider eight attack methods including three naive
+attack methods, and five SOTA attack methods to comprehensively evaluate our method.
+• Random attack. The malicious clients send randomized updates that follow a Gaussian distribution
+N (µ, σ 2 Id ). We set µ = (0, . . . , 0) ∈ Rd and σ = 0.5.
+
+(n−m1 )×βi,∀i∈[m1 ] −
+m2
+
+n
+i=f +1 ∆i
+
+assuming the first f updates are malicious. We follow the same setting in
+[58], where the Lie attack is selected as the base attack
+method for the first group, and the size of two groups
+are set as m1 = ⌊f /2⌋ and m2 = f − m1 .
+
+• Noise attack. The malicious clients perturb benign updates by adding Gaussian noise used in random attacks.
+• Sign-flip attack. The malicious clients manipulate their
+model updates by flipping the sign coordinately.
+
+7.4. Additional experimental results
+In this section, we set the attack ratio to 25%, and for
+FEMNIST and Shakeperare datasets, we set λd to 1.5. As
+shown in Table 4, LASA demonstrates its robustness against
+the naive and SOTA attack methods in IID settings, whereas
+almost all other defense methods are vulnerable to at least
+one attack method. Under no attack, LASA achieves a test
+accuracy comparable to FedAvg on MNIST dataset. This
+demonstrates the effectiveness of LASA in maintaining accuracy, not just in adversarial environments, but also in benign environments.
+For MNIST dataset, LASA achieves the best performance against naive attacks with the highest accuracy of
+97.96% for Random attack, 98.27% for Noise attack, and
+97.26% for Sign-Flip attack, outperforming all other defense methods. In contrast, SignGuard, DnC and LASA can
+effectively defend against TailoredTrmean and ByzMean
+attacks. Under TailoredTrmean attack, LASA achieves
+the highest accuracy of 97.94%, which is +0.17% and
++51.63% higher than SignGuard and DnC, respectively; under ByzMean attacks, LASA achieves the highest accuracy
+of 97.94%, which is 0.31% and +69.66% higher than SignGuard and DnC, respectively.
+Main results in non-IID settings. Compared to FedAvg under no attack, we can see that LASA can maintain the accuracy of FL in the benign environment with
+only a -0.57% accuracy drop on FEMNIST dataset and even
+a +1.34% accuracy increase on Shakespeare dataset. We
+also observe that the performance of classic robust aggregation rules, including Trmean, GeoMed, Multi-Krum, and
+Bulyan, is poor on non-IID datasets. For example, Trmean
+and Multi-Krum completely failed against the ByzMean attack on FEMNIST dataset, yielding an accuracy of 5.73%
+and 6.48%, respectively. As we discussed in the related
+works, in non-IID settings, the divergence between benign
+model updates will increase, making these classic methods hard to filter out malicious model updates. For FEMNIST dataset, LASA outperforms all other defense methods. It achieves an accuracy of 84.26% at best under TailoredTrmean attack, which is identical to that of Mean un-
+
+• Min-Max/Min-Sum attack [45]. The malicious model
+updates are crafted in two steps. In the first step, the
+attacker generates a malicious update by perturbing
+the average of all benign updates. Then, for MinMax attack, the attacker optimizes the malicious update so that its maximum Euclidean distance with
+any benign update is upper-bounded by the maximum distance between any two benign updates, i.e.,
+maxi,j∈H ∥∆i − ∆j ∥2 . For Min-Sum attack, the malicious update is optimized to ensure that the sum of its
+distances with each benign update is upper-bounded by
+the maximum total distance of a benign
+P update among
+other benign updates, i.e.,maxi∈H j∈H ∥∆i −∆j ∥2 .
+We additionally test a stealthy version of Min-Sum attack, where the distance of the malicious update from
+any benign update is bounded by the minimum (rather
+than maximum) total distance of benign updates. This
+stealthy version is tested on all the datasets except for
+MNIST. We follow [45] to keep the updates of all malicious clients the same.
+• AGR-tailored Trimmed-mean attack [45]. AGRtailored Trimmed-mean (TailoredTrmean) attack is designed to attack the defense method Trmean proposed
+in [59] by maximizing the Euclidean distance between
+the aggregated result of simple average and Trmean,
+respectively.
+• Lie attack [5]. The malicious clients apply slight
+changes to their local benign updates, making it hard
+to be detected. Specifically, the malicious clients calculate the element-wise mean µj and standard error σj
+of all updates and generate the element of malicious
+updates by (βi )j = µj − z × σj , where j ∈ [d]. The
+scaling factor z is set to 0.5 for all experiments.
+• ByzMean attack [58]. The ByzMean attack makes the
+mean of updates arbitrary malicious updates. Specifically, it divides malicious clients into two groups,
+13
+
+Table 4. The main results for MNIST, FEMNIST, and Shakespeare are presented.
+Naive Attacks
+
+State-of-the-art Attacks
+
+Datasets
+(Model)
+
+Defense
+Methods
+
+No
+Attack
+
+Random
+
+Noise
+
+Sign-flip
+
+TailoredTrmean
+
+Min-Max
+
+Min-Sum
+
+Lie
+
+ByzMean
+
+Average
+w/ Attacks
+
+MNIST
+(CNN)
+
+FedAvg
+TrMean
+GeoMed
+Multi-Krum
+Bulyan
+DnC
+SignGuard
+SparseFed
+LASA (Ours)
+
+97.85
+96.14
+94.59
+97.00
+94.95
+97.69
+96.64
+97.86
+97.35
+
+19.28
+94.11
+94.66
+96.50
+96.42
+96.57
+97.70
+19.18
+97.96
+
+32.25
+94.50
+94.66
+96.73
+96.41
+96.58
+97.70
+31.69
+98.27
+
+96.89
+95.19
+94.21
+96.97
+94.20
+97.14
+96.85
+96.85
+97.26
+
+11.01
+11.35
+94.76
+11.35
+11.70
+46.31
+97.78
+11.01
+97.94
+
+94.16
+88.35
+63.99
+67.33
+63.89
+64.57
+97.58
+94.11
+97.93
+
+94.22
+88.41
+52.29
+69.51
+68.00
+89.89
+97.46
+94.22
+97.94
+
+96.86
+93.67
+80.82
+93.82
+90.98
+96.17
+97.58
+96.86
+97.54
+
+10.24
+10.74
+94.17
+10.24
+54.88
+28.29
+97.63
+10.24
+97.94
+
+56.36
+72.67
+83.69
+67.43
+71.06
+76.69
+97.54
+56.27
+97.85
+
+FEMNIST
+(CNN)
+
+FedAvg
+TrMean
+GeoMed
+Multi-Krum
+Bulyan
+DnC
+SignGuard
+SparseFed
+LASA (Ours)
+
+84.27
+82.23
+75.57
+82.85
+77.10
+83.89
+83.06
+84.27
+83.69
+
+42.60
+78.26
+75.48
+76.13
+81.68
+75.41
+83.75
+42.24
+84.07
+
+48.15
+78.81
+75.47
+76.48
+81.65
+76.08
+83.75
+48.07
+84.05
+
+81.30
+79.13
+71.67
+80.00
+73.50
+80.96
+79.43
+81.29
+81.72
+
+5.58
+5.70
+76.19
+5.58
+5.97
+63.93
+83.80
+5.58
+84.26
+
+58.76
+29.80
+68.27
+25.83
+19.17
+66.60
+83.80
+60.06
+84.19
+
+81.68
+76.72
+28.13
+77.25
+60.55
+80.37
+82.59
+81.71
+83.60
+
+81.11
+75.79
+22.56
+74.91
+58.98
+78.97
+82.58
+81.05
+83.52
+
+1.28
+5.73
+74.32
+6.48
+18.02
+22.84
+83.78
+1.28
+84.14
+
+50.43
+53.12
+61.01
+52.58
+49.94
+68.52
+82.68
+50.41
+83.94
+
+Shakespeare
+(LSTM)
+
+FedAvg
+TrMean
+GeoMed
+Multi-Krum
+Bulyan
+DnC
+SignGuard
+SparseFed
+LASA (Ours)
+
+63.74
+63.15
+57.63
+62.26
+60.89
+64.67
+63.65
+63.72
+65.08
+
+45.00
+59.09
+57.67
+61.55
+62.73
+61.38
+65.26
+44.49
+66.25
+
+47.28
+59.43
+57.67
+61.73
+62.76
+61.47
+65.26
+47.24
+66.24
+
+60.43
+59.83
+52.55
+59.11
+58.05
+60.80
+59.84
+60.40
+62.56
+
+39.01
+42.23
+57.89
+35.11
+49.39
+59.32
+64.76
+39.24
+66.32
+
+59.17
+57.54
+57.72
+54.30
+54.61
+61.10
+64.76
+59.84
+65.63
+
+63.35
+62.60
+57.89
+62.09
+60.71
+64.70
+60.83
+63.31
+64.02
+
+62.79
+61.86
+56.24
+58.34
+59.11
+62.30
+62.35
+62.77
+64.25
+
+24.24
+37.38
+56.28
+23.16
+52.90
+56.18
+64.76
+24.27
+65.99
+
+50.41
+54.75
+57.24
+52.92
+57.41
+60.65
+61.97
+50.69
+65.16
+
+7.5. More results under various attack ratios
+
+der no attack. In addition, LASA outperforms SignGuard
+more significantly in non-IID settings, compared to their
+performance in IID settings. Specifically on Shakespeare
+dataset, the performance of SignGuard is not stable. For example, under Sign-Flip attack, the accuracy of SignGuard
+drops to 59.84%, while LASA achieves the highest accuracy of 62.56% (+2.72%). Under Min-Sum attack, SignGuard’s accuracy drops to 60.83%, while LASA achieves
+an accuracy of 64.017% (+3.19%), which is comparable to
+the best accuracy achieved by DnC.
+
+We evaluate the performance of three SOTA defense
+methods including DnC, SignGuard and SparseFed, and
+our method LASA under different attack ratios on non-IID
+datasets and report the results in Fig. 3. Specifically, we
+conduct experiments under one naive attack and four SOTA
+attacks with the attack ratio varying from 5% to 30%. In
+Fig. 3, the Baseline represents the non-robust method Mean
+under no attack. In general, DnC and SparseFed’s accuracies increase as the attack ratio decreases, but they suffer
+from significant accuracy degradation when the attack ratio is high, especially under Byzmean and TailoredTrmean
+attacks. For instance, on FEMNIST dataset, even when
+the attack ratio is as low as 5%, SparseFed does not improve the robustness, achieving an accuracy of 7.44% under the ByzMean attack. Similarly, DnC struggles to defend against ByzMean attack effectively until the attack ratio is reduced to 10%, achieving a relatively low accuracy
+of 79.09%. SignGuard outperforms DnC and SparseFed
+significantly. However, under Byzmean, TailoredTrmean,
+Noise, and Min-Max attacks, the accuracy of SignGuard
+decreases as the attack ratio decreases. Compared to SignGuard, our method LASA achieves a better and more stable
+performance. As the attack ratio increases, LASA only has
+
+In a nutshell, the performance of LASA is not only manifested in attack scenarios but also in the absence of any
+attacks, which aligns with the design principles of LASA.
+Moreover, LASA shows robustness to both IID and more
+challenging non-IID cases. By adeptly integrating preaggregation sparsification and layer-wise adaptive aggregation, LASA effectively mitigates the impact of updates that
+diverge from others. The robustness of LASA, illustrated
+by the above-mentioned results, emphasizes its potential as
+a robust defense method in securing federated learning environments against a wide collection of attacks, ultimately
+enhancing the reliability of federated learning systems.
+14
+
+ByzMean
+
+86
+
+TailoredTrmean
+
+Noise
+
+Min-Max
+
+Lie
+
+FEMNIST
+Accuracy (%)
+
+84
+82
+
+SignGuard
+DnC
+Sparsefed
+LASA (Ours)
+Baseline
+
+80
+78
+76
+
+Shakespeare
+Accuracy (%)
+
+70
+60
+SignGuard
+DnC
+SparseFed
+LASA (Ours)
+Baseline
+
+50
+40
+30
+
+30 25 20 15 10
+
+Attack Ratio (%)
+
+5
+
+30 25 20 15 10
+
+Attack Ratio (%)
+
+5
+
+30 25 20 15 10
+
+Attack Ratio (%)
+
+5
+
+30 25 20 15 10
+
+Attack Ratio (%)
+
+5
+
+30 25 20 15 10
+
+Attack Ratio (%)
+
+5
+
+Figure 3. Testing Accuracy of LASA, SignGuard, DnC and SparseFed under Various Attack Ratios in non-IID Settings.
+
+Table 5. Performance of LASA with Different Sparsification Levels.
+
+Table 6. Performance of LASA with Different Filtering Radius
+Con.
+
+Att.
+
+Data.
+
+0.1
+
+0.3
+
+0.5
+
+0.7
+
+0.9
+
+0.95
+
+0.99
+
+ByzMean
+
+M
+FM
+FEM
+Sha
+
+97.833
+87.820
+84.143
+66.024
+
+97.943
+87.647
+84.138
+65.990
+
+97.821
+87.943
+84.137
+65.842
+
+97.543
+87.867
+84.118
+65.409
+
+98.053
+87.803
+83.834
+64.355
+
+97.880
+87.740
+83.489
+63.055
+
+97.490
+86.437
+81.120
+60.463
+
+Min-Max
+
+M
+FM
+FEM
+Sha
+
+97.310
+87.917
+84.184
+64.723
+
+97.930
+87.907
+84.264
+66.324
+
+97.493
+87.920
+84.203
+65.472
+
+97.307
+87.967
+84.162
+65.032
+
+97.557
+87.330
+83.772
+63.654
+
+96.950
+87.707
+83.361
+62.527
+
+97.593
+86.353
+81.038
+60.090
+
+Noise
+
+Sparsification Level
+
+M
+FM
+FEM
+Sha
+
+98.223
+87.877
+84.061
+66.255
+
+98.270
+87.870
+84.053
+66.244
+
+98.320
+87.893
+84.023
+66.102
+
+97.643
+87.933
+84.018
+65.754
+
+98.050
+87.623
+83.645
+64.506
+
+97.923
+87.897
+83.269
+63.546
+
+97.800
+86.423
+80.537
+60.686
+
+MNIST
+
+FMNIST
+
+FEMNIST
+
+λd
+
+λm
+
+Noise
+
+ByzMean
+
+Noise
+
+ByzMean
+
+Noise
+
+ByzMean
+
+1.0
+1.0
+1.0
+1.0
+1.5
+2.0
+3.0
+
+1.0
+1.5
+2.0
+4.0
+2.0
+2.0
+2.0
+
+97.963
+97.883
+98.270
+91.743
+97.927
+97.593
+97.883
+
+97.803
+97.843
+97.943
+97.840
+98.023
+97.487
+66.897
+
+87.950
+88.023
+87.870
+77.400
+87.937
+87.950
+87.917
+
+87.887
+87.720
+87.647
+77.930
+87.640
+84.000
+67.250
+
+83.922
+83.946
+84.007
+69.408
+84.053
+84.136
+84.225
+
+84.158
+84.209
+84.119
+84.048
+84.138
+77.399
+28.300
+
+nificant accuracy drop. For example, as SL increases, the
+accuracy of LASA on FMNIST dataset increases to 87.94%
+and then decreases to 86.44% under ByzMean attack. This
+occurs because the sparsification error overwhelms the robustness improvement when SL is too large. We also observe that the sensitivity of LASA on SL depends on both
+the dataset and the attack method.
+
+a minor decrease in accuracy.
+
+7.6. Impact of sparsification level
+7.7. Impact of filtering radius
+
+As we stated in Section 4.1, the optimal sparsification parameter k should balance the tradeoff between sparsification
+error and robustness improvement. Here, we empirically
+study the impact of different k on learning performance.
+Recall that the SL is defined as 1 − k/d, hence, a smaller
+k implies a higher SL and a heavier sparsification. We report the performance of LASA under Noise, Min-Max, and
+ByzMean attacks with SLs varying from 0.1 to 0.99 in Table 5, where M, FM, FEM, and Sha represent MNIST, FMNIST, FEMNIST, and Shakespeare datasets, respectively.
+The results demonstrate that there exists an optimal SL that
+maximizes robustness and a very high SL may lead to a sig-
+
+In this subsection, we study the performance of LASA
+with different filtering radius λm and λd . A smaller λm or
+λd indicates more stringent filtering and results in a smaller
+benign set for aggregation. As shown in Table 6, there exist optimal λm and λd that balance the filtering intensity
+and maximize the model accuracy. We also observe that
+the effectiveness of Noise attack is marginally affected by
+λd , as random noise perturbation does not change the sign
+purity in expectation. For all datasets, the optimal λd under Noise attack is 1.0 (note that for FEMNIST, the best
+accuracy when λd = 3.0 is comparable to the accuracy
+15
+
+when λd = 1.0). However, as Noise attack adds Gaussian
+noise to the model updates to increase their magnitude (in
+L2 norm), the effectiveness of Noise attack is sensitive to
+the values of λm . For different datasets, the optimal λm are
+different. For the advanced ByzMean attack, its effectiveness is marginally affected by λm , as the accuracy of LASA
+does not change much when λm increases from 1.0 to 2.0.
+This demonstrates that the magnitudes of malicious updates
+generated by ByzMean attack are close to that of benign
+models. In order to make the attack effective, ByzMean attack mainly focuses on manipulating the model direction,
+making it sensitive to the direction filtering radius λd : the
+accuracy of LASA vibrates a lot as λd increases. Additionally, both λm and λd should not be too large to compromise
+the effectiveness of the filtering.
+
+7.8. Computational cost of LASA
+We evaluate the computational cost of LASA in comparison to other methods. LASA incorporates pre-aggregation
+sparsification, leading to a complexity of O(d log d) due to
+the use of sorting algorithms like merge sort in the parameter space of local updates. Consequently, the worst-case
+computational expense for LASA is O(nd log d). Despite
+this, LASA’s computational burden is on par with other
+methods such as Krum and Multi-Krum, which have a complexity of O(dn2 ), and Trmean with O(dn log n).
+
+16
+
+7.9. Proof preliminaries
+7.9.1
+
+Useful Inequalities
+
+Lemma 2. Given any two vectors a, b ∈ Rd ,
+2
+
+2 ⟨a, b⟩ ≤ α ∥a∥ +
+
+1
+2
+∥b∥ , ∀ α > 0.
+α
+
+Lemma 3. Given any two vectors a, b ∈ Rd ,
+2
+
+2
+
+2
+
+∥a + b∥ ≤ (1 + δ) ∥a∥ + (1 + δ −1 ) ∥b∥ , ∀ δ > 0.
+Lemma 4. Given arbitrary set of n vectors {ai }ni=1 , ai ∈ Rd ,
+n
+X
+
+2
+
+≤n
+
+ai
+
+n
+X
+
+i=1
+
+2
+
+∥ai ∥ .
+
+i=1
+
+Lemma 5. If the learning rate η ≤ 1/2τ , under Assumption 2 and 3, the local divergence of benign model updates are
+bounded as follows:
+1 X
+¯ B 2 ≤ 2ν̄ + ζ̄
+E ∆i − ∆
+(4)
+|B|
+i∈B
+
+Proof. Given that ∆i = η
+We have
+
+Pτ −1
+
+s
+s
+s=0 gi where η is the learning rate and gi is the local stochastic gradient over the mini-batch s.
+
+τ
+−1
+τ −1
+X
+X
+1 X X s
+1 X
+¯B 2 = 1
+gis −
+E ∆i − ∆
+E η
+η
+gi
+|B|
+|B|
+|B|
+s=0
+s=0
+i∈B
+
+i∈B
+
+i∈B
+
+gis −
+
+E
+
+i∈B s=0
+
+−1
+2 Xτ
+X
+
+≤
+
+2
+
+i∈B
+
+−1
+2 Xτ
+X
+
+τη
+=
+|B|
+
+(5)
+
+i∈B
+
+τ
+−1
+τ −1
+X
+η2 X
+1 XX s
+=
+E
+gis −
+gi
+|B|
+|B|
+s=0
+s=0
+
+τη
+≤
+|B|
+
+2
+
+1 X s
+gi
+|B|
+
+2
+
+i∈B
+
+(gis − ∇Li (θis )) +
+
+E
+
+∇LB (θis ) −
+
+i∈B s=0
+
+i∈B
+
+2
+
+!
++ (∇Li (θis ) − ∇LB (θis ))
+
+i∈B
+
+−1
+2 Xτ
+X
+
+3τ η
+|B|
+
+1 X s
+gi
+|B|
+
+−1
+2 Xτ
+X
+
+3τ η
+2
+E ∥gis − ∇Li (θis ))∥ +
+|
+{z
+}
+|B|
+s=0
+T1
+
+E ∇LB (θis ) −
+
+i∈B s=0
+
+1 X s
+gi
+|B|
+
+2
+
+i∈B
+
+|
+
+{z
+T2
+
+}
+
+τ −1
+
++
+
+3τ η 2 X X
+2
+E ∥∇Li (θis ) − ∇LB (θis )∥ ,
+|B|
+i∈B s=0
+|
+{z
+}
+
+(6)
+
+T3
+
+where the first inequality follows Lemma 4, and the last second follows Lemma 3. For T1 , with Assumption 2, we have
+T1 ≤ ν̄.
+
+(7)
+
+For T2 , we have
+T2 = E
+
+∇LB (θis ) −
+
+1 X s
+gi
+|B|
+i∈B
+
+2
+
+1 X
+=E
+(∇Li (θis ) − gis )
+|B|
+i∈B
+
+17
+
+2
+
+≤
+
+1 X
+2
+E ∥∇Li (θis ) − gis ∥ ≤ ν̄,
+|B|
+i∈B
+
+(8)
+
+where the first inequality follows Lemma 4, and the last inequality follow Assumption 2. For T3 , we have
+T3 =
+
+τ
+−1
+τ −1
+X
+3τ η 2 X X
+2
+ζ̄ = 3τ 2 η 2 ζ̄
+E ∥∇Li (θis ) − ∇LB (θis )∥ ≤ 3τ η 2
+|B|
+s=0
+s=0
+i∈B
+
+by Assumption 3.
+Plugging 7, 8, and 9 back to 6, with η ≤ 1/2τ , we have
+1 X
+¯ B 2 ≤ 2ν̄ + ζ̄.
+E ∆i − ∆
+|B|
+i∈B
+
+This concludes the proof.
+
+18
+
+(9)
+
+7.9.2
+
+Proof of Lemma 1
+
+Proof. Recall that LASA denoted by F (·) : Rd×n → Rd is a layer-wise aggregation rule, i.e., there exist L real-valued
+functions F1 , . . . , FL : Rd×n → Rd such that for all ∆1 , . . . , ∆n ∈ Rd , [F (∆1 , . . . , ∆n )]l = Fl (∆l1 , . . . , ∆ln ). As LASA
+utilizes layer-wise aggregation, we have
+Fl (∆1 , . . . , ∆n ) =
+
+1 X ˆl
+∆i ,
+|S l |
+l
+i∈S
+
+ˆ l be the l-th layer of the Top-k sparsified model ∆
+ˆ i and S l is the indices set of benign updates in l-th layer shown in
+where ∆
+i
+Algorithm 1. We denote the indices set of Top-k parameters of a model/layer by K and the set of remaining parameters by
+K− . Let [∆]K represent a sparsified model with only parameters in K (the rest are zero), then we have
+¯ B ∥2 = E
+E∥F (∆1 , . . . , ∆n ) − ∆
+
+L
+X
+
+¯ lB 2
+Fl (∆1 , . . . , ∆n ) − ∆
+
+l=1
+
+=E
+
+L
+X
+l=1
+
+=E
+
+L
+X
+l=1
+
+=E
+
+L
+X
+l=1
+
+2
+
+1 X ˆl ¯l
+∆i − ∆B
+|S l |
+l
+i∈S
+
+2
+
+X
+1
+ˆ
+¯ lB
+∆li − ∆
+l
+2
+|S |
+l
+i∈S
+
+2
+
+i
+X
+Xh
+
+1
+ˆ li − ∆
+¯ lB
+¯ lB l−
+∆
++
+−∆
+Ki
+|S l |2
+Kil
+l
+l
+i∈S
+
+i∈S
+
+2
+
+L
+X
+
+X
+X
+
+
+1
+¯l l +
+¯ l l−
+=E
+∆li − ∆
+−∆
+B K
+B K
+l
+2
+i
+i
+|S |
+l=1
+i∈S l
+i∈S l
+
+
+2
+2
+L
+X 1  X
+X
+
+ l
+¯ lB l +
+¯ B l− 
+=E
+∆li − ∆
+∆
+
+.
+l
+2
+K
+Ki
+i
+|S |
+l
+l
+l=1
+
+2
+
+
+¯ B 2 , bl :=
+¯ l l / ∆i − ∆
+Let cli := ∆li − ∆
+B
+B K
+i
+PL l
+l=1 ci , we have
+
+¯ B ∥2 ≤ E
+E∥F (∆1 , . . . , ∆n ) − ∆
+
+i∈S
+
+
+
+2
+
+¯ B 2 , C 2 :=
+¯ l l− / ∆
+∆
+B
+B K
+i
+
+L
+X
+l=1
+
+=E
+
+L
+X
+l=1
+
+=E
+
+¯ B 2 , bB := PL bl , and ci :=
+∆
+l=1 B
+
+
+
+L
+X
+2
+2
+ l
+
+ l
+1 X
+l
+¯
+¯
+∆i − ∆B Kl + ∆B Kl−
+i
+i
+|S l |
+l
+l=1
+
+=E
+
+i∈S
+
+L
+X
+l=1
+
+i∈S
+
+
+1 X l
+2
+2
+l
+¯
+¯
+c
+∆
+−
+∆
++
+b
+∆
+i
+B
+B
+i
+B
+|S l |
+l
+i∈S
+
+
+1 X l
+2
+l
+2
+¯
+c
+∆
+−
+∆
++
+b
+C
+i
+B
+i
+B B ,
+|S l |
+l
+i∈S
+
+L
+
+X
+1 X l
+2
+ci ∆i − ¯
+∆B + CB2
+blB
+l
+|S |
+l
+i∈S
+
+1 X
+¯ B 2 +CB2 bB ,
+=E l
+ci ∆i − ∆
+|S |
+i∈S l
+|
+{z
+}
+T1
+
+19
+
+l=1
+
+(10)
+
+where the first inequality follows Lemma 4.
+2
+ 
+¯B − / ∆
+¯ B 2.
+∆
+K
+
+Note that ci
+
+=
+
+
+
+¯B
+∆i − ∆
+K
+
+2
+
+i
+
+¯ B 2 and bB
+/ ∆i − ∆
+
+=
+
+i
+
+Now we treat T1 . If S l ⊆ B, we have
+
+
+
+"
+#
+X
+X
+1
+1
+2
+2
+¯
+¯
+T1 = E  l
+ci ∆i − ∆B  ≤ E
+ci ∆i − ∆B
+.
+|S |
+|S l |
+l
+
+(11)
+
+i∈B
+
+i∈S
+
+2
+
+2
+If S l ⊈ B, let P = S l ∩ B, and R = S l \B, let CM,i
+:= ∥∆i ∥ , ∀i ∈ [N ]\B, then we have
+
+
+"
+!#
+X
+X
+X
+1
+1
+2
+2
+2
+¯B  = E
+¯B +
+¯B
+T1 = E  l
+ci ∆i − ∆
+ci ∆i − ∆
+ci ∆i − ∆
+|S |
+|S l |
+l
+i∈P
+i∈R
+i∈S
+#
+"
+#
+"
+X
+1
+1 X
+2
+2
+¯B
+¯B
+ci ∆i − ∆
+ci ∆i − ∆
++E
+≤E
+|S l |
+|S l |
+i∈B
+i∈R
+"
+#
+"
+#
+
+X
+X 
+1
+2
+2
+2
+2
+≤E
+∆B
+ci ∆i − ¯
+∆B
++E
+ci ∥∆i ∥ + ¯
+|S l |
+|S l |
+i∈B
+i∈R
+#
+"
+"
+#
+X
+
+2
+1 X
+2
+2
+2
+ci ∆i − ¯
+∆B
++E
+ci CM,i + CB ,
+=E
+|S l |
+|S l |
+i∈B
+
+(12)
+
+i∈R
+
+where the second inequality follows Lemma 3.
+Due to the use of MZ-score, models in S l are centered around the median within a λm (and λd ) radius. If the radius parameter
+λm or λd equals to zero, only the median model (based on l2 -norm or PDP) will be selected for averaging. To maximize
+benign model inclusion in averaging, the radius parameters λm and λd are set sufficiently large to ensure |S l | ≥ n/2 − f .
++
+More precisely, assume there exist two positive constants λ+
+m and λd , and if the radius parameters λm and λd in Algorithm
++
+l
++
+1 satisfy λm ≥ λm , λd ≥ λd , we have |S | ≥ n/2 − f , ∀l ∈ [L]. Integrated with 11 and 12, we have
+
+P
+2
+¯ 2
+if S l ⊆ B
+
+ n−2f E i∈B ci ∆i − ∆B ,
+T1 ≤
+
+
+P
+ 2
+¯B 2 + 4 EP
+E
+ci ∆i − ∆
+ci C 2 + C 2 , if S l ⊈ B
+n−2f
+
+i∈B
+
+M,i
+
+i∈R
+
+n−2f
+
+B
+
+X
+X
+
+2
+4
+2
+¯B 2 +
+≤
+E
+E
+ci ∆i − ∆
+ci CM,i
++ CB2
+n − 2f
+n − 2f
+i∈B
+i∈R
+X
+
+4c
+2cmax X
+2
+¯ B 2 + max
+E
+∆i − ∆
+CM,i
++ CB2
+≤
+n − 2f
+n − 2f
+i∈B
+
+i∈R
+
+X
+
+2cmax |B| 1 X
+2
+¯ B 2 + 4cmax
+E ∆i − ∆
+CM,i
++ CB2
+=
+n − 2f |B|
+n − 2f
+i∈B
+
+i∈R
+
+X
+
+2cmax (n − f ) 1 X
+2
+¯ B 2 + 4cmax
+=
+E ∆i − ∆
+CM,i
++ CB2
+n − 2f
+|B|
+n − 2f
+i∈B
+
+i∈R
+
+
+2(n − f )
+4cmax X 2
+≤
+(2ν̄ + ζ̄)cmax +
+CM,i + CB2 ,
+n − 2f
+n − 2f
+i∈R
+|
+{z
+}
+
+(13)
+
+T2
+
+where the second inequality holds as cmax := max{ci , i ∈ [N ]} and the last inequality follows Lemma 5.
+Assume the benign model update is bounded as ∥∆i ∥2 ≤ C 2 , ∀i ∈ B, which can be achieved by using gradient clipping
+in practice. Assume the malicious model update is bounded as ∥∆i ∥2 ≤ Cλ2m , ∀i ∈ [N ]\B, which depends on the specific
+attack method and our magnitude-based filtering that is controlled by λm in Algorithm 1. We have
+X
+
+
+
+2
+T2 =
+CM,i
++ CB2 ≤ |R| Cλ2m + C 2 ≤ f Cλ2m + C 2 ,
+(14)
+i∈R
+
+20
+
+as |R| ≤ |[N ]\B| ≤ f . Therefore,
+
+
+
+2(n − f )
+4f
+T1 ≤ cmax
+(2ν̄ + ζ̄) +
+Cλ2m + C 2
+n − 2f
+n − 2f
+
+
+
+2(n − f )
+4f
+2
+2
+≤ ck
+(2ν̄ + ζ̄) +
+Cλm + C
+n − 2f
+n − 2f
+
+
+f
+≤ ck 1 +
+(4ν̄ + 2ζ̄ + 4Cλ2m + 4C 2 ),
+n − 2f
+
+
+
+(15)
+
+if the sparsification applied to the local model update satisfies Assumption 4 so that cmax ≤ ck .
+Summarizing to (10), we have
+E∥F (∆1 , . . . , ∆n ) − ¯
+∆B ∥2 ≤ T1 + CB2 bB
+≤ T1 + bk C 2
+
+
+f
+(4ν̄ + 2ζ̄ + 4Cλ2m + 4C 2 ) + bk C 2
+≤ ck 1 +
+n − 2f
+
+(16)
+
+Discussion on the selection of k: When no sparsification is applied, i.e., when k = d, we have ck = 1 and bk = 0. In this
+case, the robustness upper bound is
+
+
+
+
+
+f
+f
+4ν̄ + 2ζ̄ + 4Cλ2m + 4C 2 = O 1 +
+.
+κ1 = 1 +
+n − 2f
+n − 2f
+When k = 0, we have ck = 0 and bk = 1, then
+κ = C 2,
+which indicates the greatest sparsification error affecting robustness. When 0 < k < d, the robustness upper bound is
+
+ 
+
+
+
+f
+f
+2
+2
+κ2 = (1 + ϵ)ck 1 +
+4ν̄ + 2ζ̄ + 4Cλm + 4C = O ck 1 +
+n − 2f
+n − 2f
+if the sparsification parameter k is selected to satisfy that
+Condition 1 : ck ≤
+
+1
+1+ϵ
+
+and
+bk
+Condition 2 :
+≤ϵ
+ck
+
+4ν̄ + 2ζ̄ + 4Cλ2m
++4
+C2
+
+!
+
+with a positive constant ϵ. As (1 + ϵ)ck ≤ 1, we have
+κ2 ≤ κ1 ,
+which demonstrates the effectiveness of sparsification for improving robustness. This finally concludes the proof.
+
+21
+
+7.9.3
+
+Proof of Theorem 1
+
+¯ t = θt − η∆
+˜ t where ∆
+˜ t := Pτ −1 g t,r = τ dt , for ease of expression, we let
+Proof. Given the update rule θt+1 = θt − ∆
+i
+i
+r=0 i
+i
+h
+Pr=τ −1
+Pr=τ −1 t,r
+P
+t,r
+t
+t
+t
+˜
+˜
+=
+(1/τ
+)
+∇L
+]
+=
+E
+(1/τ
+)
+g
+:=
+E[d
+∆Bt := 1t
+and
+h
+∆
+t
+i (θ ). With Assumption 1, we
+|B |
+
+i∈B
+
+i
+
+i
+
+i
+
+i
+
+r=0
+
+i
+
+r=0
+
+have the following for all t ∈ [0, T − 1]:
+µ
+2
+LB (θt+1 ) − LB (θt ) ≤ E ∇LB (θt ), θt+1 − θt + E θt+1 − θt
+2
+E
+D
+2
+2
+˜ t + µη E ∆
+˜t
+= −ηE ∇LB (θt ), ∆
+2
+D
+E
+2
+2
+˜ Bt − ∆
+˜t
+˜ Bt + µη E ∆
+= −ηE ∇LB (θt ), ˜
+∆t + ∆
+2
+E
+E
+D
+D
+2
+2
+˜t − ∆
+˜ Bt + µη E ∆
+˜ Bt − ηE ∇LB (θt ), ∆
+˜t
+= −ηE ∇LB (θt ), ∆
+2
+*
++
+E
+D
+2
+X
+2
+1
+˜t .
+˜ t + ηE ∇LB (θt ), ∆
+˜ Bt − ∆
+˜ t + µη E ∆
+= −ηE ∇LB (θt ), t
+∆
+i
+|B |
+|
+{z
+} | 2 {z
+}
+i∈Bt
+|
+{z
+}
+T2
+T3
+
+(17)
+
+T1
+
+Now we treat T1 , T2 , and T3 respectively. We decompose T1 by
+*
+
+1 X ˜t
+T1 = −ηE ∇LB (θ ), t
+∆i
+|B |
+t
+
++
+
+t
+
+ητ
+1 X t
+E
+hi − ∇LB (θt )
+2
+|B|
+
+1 X t
+= −ητ E ∇LB (θ ), t
+di
+|B |
+t
+t
+
+i∈B
+
+=
+
+*
+
+i∈B
+
+2
+
++
+
+*
+
+1 X t
+= −ητ E ∇LB (θ ),
+hi
+|B|
+i∈B
+
+ητ
+1 X t
+ητ
+2
+E ∇LB (θt ) −
+E
+hi
+2
+2
+|B|
+
+−
+
+i∈B
+
++
+
+t
+
+2
+
+,
+
+(18)
+
+i∈B
+
+2
+
+2
+
+2
+
+where we use the fact that −2 ⟨a, b⟩ = ∥a − b∥ − ∥a∥ − ∥b∥ .
+We decompose T2 as
+D
+E ηα
+2
+η
+2
+˜ Bt ,
+T2 = ηE ∇LB (θt ), ˜
+∆B t − ˜
+∆t ≤
+E ∇LB (θt ) +
+E ˜
+∆t − ∆
+2
+2α
+
+(19)
+
+where the first inequality follows Lemma 2 with a α > 0.
+We decompose T3 as
+
+T3 =
+
+2
+2
+2
+µη 2
+˜ t = µη E ∆
+˜t + ∆
+˜ Bt − ∆
+˜ Bt
+E ∆
+2
+2
+2
+
+˜ Bt
+≤ µη 2 E ∆
+= µη 2 E
+
+˜t − ∆
+˜ Bt
++ µη 2 E ∆
+
+1 X ˜t
+∆i
+|B t |
+t
+
+2
+
+2
+
+˜ Bt
++ µη 2 E ˜
+∆t − ∆
+
+2
+
+i∈B
+
+≤
+
+2 X
+
+µη
+|B|
+
+˜ ti
+E ∆
+
+2
+
++ µη 2 E ˜
+∆t − ˜
+∆B t
+
+2
+
+,
+
+i∈B
+
+where the first inequality follows Lemma 3 with δ = 1 and the second inequality follows Lemma 4.
+22
+
+(20)
+
+Combining 18, 19, 20 and, 17, we get
+
+LB (θ
+
+t+1
+
+2
+
+1 X t
+ητ
+) − LB (θ ) ≤
+E
+hi − ∇LB (θt )
+2
+|B|
+t
+
+i∈B
+
+2
+
+ητ
+ητ
+1 X t
+2
+−
+E ∇LB (θt ) −
+E
+hi
+2
+2
+|B|
+i∈B
+
+2 X
+2
+2
+2
+ηα
+η
+2
+˜ Bt
+˜ Bt + µη
+∆t − ∆
+∆t − ∆
++
+∆ti + µη 2 E ˜
+E ∇LB (θt ) +
+E ˜
+E ˜
+2
+2α
+|B|
+i∈B
+
+=−
+
+ ητ
+2
+
+−
+
+1 X t
+ηα 
+ητ
+2
+E ∇LB (θt ) +
+E
+hi − ∇LB (θt )
+2
+2
+|B|
+
+2
+
+i∈B
+
+2
+
+2
+2
+ητ
+η 
+µη 2 X
+1 X t
+2
+t
+˜
+˜
+˜t
+t
+−
++ µη +
+E ∆ − ∆B
+E
+hi +
+E ∆
+i
+2α
+2
+|B|
+|B|
+i∈B
+
+=−
+
+ ητ
+2
+
+−
+
+ηα 
+2
+
+E ∇LB (θt )
+
+2
+
++
+
+ητ
+E
+2
+|B|
+
+1 X
+
+i∈B
+2
+
+hti − ∇LB (θt )
+
+i∈B
+
+2
+
+2
+2
+η 
+1 X t
+µη 2 X
+ητ
+2
+t
+˜t .
+˜
+˜
++ µη +
+hi +
+E ∆
+E ∆ − ∆B t − E
+i
+2α {z
+|B|
+|B|
+|
+} 2
+i∈B
+i∈B
+
+(21)
+
+T4
+
+T4 can be decomposed as
+
+
+
+
+2
+η 
+˜ Bt ≤ κ µη 2 + η
+T4 = µη 2 +
+E ˜
+∆t − ∆
+2α
+2α
+
+(22)
+
+where the first inequality holds as LASA is κ-robust aggregation rule with κ.
+Plugging 22 back to 21, we have
+
+LB (θ
+
+t+1
+
+t
+
+) − LB (θ ) ≤ −
+
+ ητ
+
+ηα 
+ητ
+1 X t
+2
+−
+E ∇LB (θt ) +
+E
+hi − ∇LB (θt )
+2
+2
+2
+|B|
+
+2
+
+i∈B
+
+
+
++ κ µη 2 +
+
+=−
+
+ ητ
+2
+
+−
+
+η 
+2α
+
+ηα 
+2
+
+−
+
+1 X
+
+ητ
+E
+2
+|B|
+t
+
+E ∇LB (θ )
+
+2
+
+i∈B
+
+2
+
+hti
+
++
+
+2
+µη 2 X
+˜ ti
+E ∆
+|B|
+i∈B
+
+ητ
+1 X t
+E
+hi − ∇LB (θt )
++
+2
+|B|
+i∈B
+
+X
+2
+1 X
+˜ ti − ητ E 1
++ κ µη +
++ µη
+E ∆
+hti
+2α
+|B|
+2
+|B|
+i∈B
+i∈B
+|
+{z
+}
+
+
+2
+
+2
+
+η 
+
+2
+
+T5
+
+23
+
+2
+
+(23)
+
+T5 can be charcterized as
+
+T5 =
+
+
+2 X
+2
+τ2 X 
+1 X
+2
+2
+2
+˜t = τ
+E ∆
+E dti =
+E dti − hti + E hti
+i
+|B|
+|B|
+|B|
+i∈B
+i∈B
+i∈B
+
+
+2
+τ
+−1
+2 X
+X
+
+τ
+2
+E 1
+=
++ E hti 
+g t,s − ∇Li (θit,s )
+|B|
+τ s=0 i
+i∈B
+!
+τ −1
+τ2 X 1 X
+2
+t,s
+t,s 2
+≤
+E gi − ∇Li (θi ) + E hti
+|B|
+τ s=0
+i∈B
+!
+τ −1
+2 X
+τ
+1X 2
+t 2
+≤
+ν + E hi
+|B|
+τ s=0 i
+i∈B
+
+τ2 X  2
+2
+=
+,
+νi + E hti
+|B|
+
+(24)
+
+i∈B
+
+where the first inequality follows Lemma 4 and the second inequality follows Assumption 2.
+Plugging 24 back to 23, we have
+
+LB (θ
+
+t+1
+
+ητ
+ηα 
+1 X t
+2
+) − LB (θ ) ≤ −
+−
+E ∇LB (θt ) +
+E
+hi − ∇LB (θt )
+2
+2
+2
+|B|
+i∈B
+
+
+η 
+µη 2 τ 2 X  2
+2
+νi + E hti
++ κ µη 2 +
++
+|B|
+2α
+ ητ
+
+t
+
+2
+
+1 X t
+ητ
+E
+−
+hi
+2
+|B|
+
+2
+
+i∈B
+
+i∈B
+
+2
+
+1 X t
+µη 2 τ 2 X
+ηα 
+η2 τ
+2
+2
+E ∇LB (θt ) +
+E
+hi − ∇LB (θt ) +
+E hti
+2
+2
+2
+|B|
+|B|
+i∈B
+i∈B
+
+η 
+2 2
+2
++ µητ ν̄ + κ µη +
+(25)
+2α
+τ −1
+ ητ
+ητ 1 X 1 X
+ηα 
+2
+2
+−
+E ∇LB (θt ) +
+E ∇Li (θit,r ) − ∇Li (θt )
+≤−
+2
+2
+2 |B|
+τ r=0
+i∈B
+!
+
+2 2 X
+µη τ
+2 X
+η 
+t
+t 2
+t 2
++
++ µη 2 τ 2 ν̄ 2 + κ µη 2 +
+2E hi − ∇Li (θ ) +
+E ∇Li (θ )
+|B|
+|B|
+2α
+=−
+
+ ητ
+
+−
+
+i∈B
+
+i∈B
+
+τ −1
+τ −1
+ητ 1 X µ2 X
+µη 2 τ 2 X µ2 X
+2
+2
+E θit,r − θt +
+2E θit,r − θt
+2
+2
+2 |B|
+τ r=0
+|B|
+τ r=0
+i∈B
+i∈B
+
+
+2 2 X
+X
+4µη τ
+1
+η
+2
+E(ζ̄ + ∇LB (θt ) ) + µη 2 τ 2 ν̄ 2 + κ µη 2 +
++
+|B|
+|B|
+2α
+i∈B
+i∈B
+ 2
+ τX
+−1
+h  ητ
+
+i
+ηα
+ηµ
+1 X
+2
+2
+= −
+−
++ 4µη 2 τ 2 E ∇LB (θt ) +
++ 2η 2 τ µ3
+E θit,r − θt
+2
+2
+2
+|B|
+r=0
+i∈B
+|
+{z
+}
+
+≤−
+
+ ητ
+
+−
+
+ηα 
+
+E ∇LB (θt )
+
+2
+
++
+
+T6
+
+
+η 
++ 4µη τ ζ̄ + µη τ ν̄ + κ µη 2 +
+2α
+2 2
+
+2 2 2
+
+where the second inequality follows Lemma 3 and the third inequality follow Assumption 1.
+24
+
+(26)
+
+Now we treat T6 as
+2
+1 X
+1 X
+2
+E θit,r − θt =
+E θit,r−1 − θt − ηgit,s−1
+T6 =
+|B|
+|B|
+i∈B
+i∈B
+2
+1 X
+t,r−1
+t,s−1
+t
+− θ − ηgi
++ η∇Li (θt,s−1 ) − η∇Li (θt,s−1 ) + η∇Li (θt ) − η∇Li (θt )
+=
+E θi
+|B|
+i∈B
+
+=
+
+1 X
+
+E θit,r−1 − θt − η∇Li (θt,s−1 ) + η∇Li (θt ) − η∇Li (θt )
+
+2
+
++
+
+2
+η2 X
+E git,s−1 − ∇Li (θt,s−1 )
+|B|
+
+|B|
+i∈B
+i∈B
+
+
+2 X
+2
+2τ
+η
+1
+1 X
+2
+t,r−1
+− θt +
+≤ 1+
+∇Li (θt,s−1 ) + ∇Li (θt ) − ∇Li (θt ) + η 2 ν̄
+E θi
+2τ − 1 |B|
+|B|
+i∈B
+i∈B
+
+
+2 X
+2
+4τ
+η
+4τ η 2 X
+1
+1 X
+2
+2
+t,r−1
+− θt +
+∇Li (θt,s−1 ) − ∇Li (θt ) +
+∇Li (θt ) + η 2 ν̄
+≤ 1+
+E θi
+2τ − 1 |B|
+|B|
+|B|
+i∈B
+i∈B
+i∈B
+
+
+2 2 X
+2 X
+2
+2
+1
+4τ
+µ
+η
+4τ
+η
+1 X
+2
+≤ 1+
+θit,r−1 − θt +
+∇Li (θt ) − ∇LB (θt ) + ∇LB (θt ) + η 2 ν̄
+E θit,r−1 − θt +
+2τ − 1 |B|
+|B|
+|B|
+i∈B
+i∈B
+i∈B
+
+
+2 X
+X
+2
+1
+1
+8τ
+η
+2
++ 4τ µ2 η 2
+∇LB (θt ) + 8τ ζ̄η 2 + η 2 ν̄
+≤ 1+
+E θit,r−1 − θt +
+2τ − 1
+|B|
+|B|
+i∈B
+i∈B
+
+
+2 X
+2
+1
+1 X
+8τ
+η
+2
+≤ 1+
+E θit,r−1 − θt +
+∇LB (θt ) + 8τ ζ̄η 2 + η 2 ν̄,
+(27)
+τ − 1 |B|
+|B|
+i∈B
+
+i∈B
+
+where the first and second inequality follows Lemma 3 with δ = 2τ and δ = 1, respectively. The third inequality follows
+Assumption 1, and the last inequality holds if η ≤ 1/3τ µ. Consequently, we have
+h h
+s−1 
+i
+X
+1 X
+1
+2
+2
+T6 =
+E θit,r − θt ≤
+1+
+8τ η 2 ∇LB (θt ) + 8τ ζ̄η 2 + η 2 ν̄
+|B|
+τ −1
+i∈B
+h=0
+
+τ
+ h
+i
+1
+2
+≤ (τ − 1) 1 +
+− 1 × 8τ η 2 ∇LB (θt ) + 8τ ζ̄η 2 + η 2 ν̄
+τ −1
+2
+
++ 32τ 2 ζ̄η 2 + 4τ η 2 ν̄,
+(28)
+
+t
+1
+where the last inequality results from the fact that 1 + τ −1
+≤ 5 when τ > 1.
+Plugging 28 back to 26, we have
+h  ητ
+i
+
+ηα 
+η 
+2
+LB (θt+1 ) − LB (θt ) ≤ −
+−
++ 4µη 2 τ 2 E ∇LB (θt ) + 4µη 2 τ 2 ζ̄ + µη 2 τ 2 ν̄ 2 + κ µη 2 +
+2
+2
+2α
+ τX
+ 2
+−1 h
+i
+ηµ
+2
++ 2η 2 τ µ3
+32τ 2 η 2 ∇LB (θt ) + 32τ 2 ζ̄η 2 + 4τ η 2 ν̄
++
+2
+r=0
+h  ητ
+i
+
+ηα 
+η 
+2
+= −
+−
++ 4µη 2 τ 2 E ∇LB (θt ) + 4µη 2 τ 2 ζ̄ + µη 2 τ 2 ν̄ 2 + κ µη 2 +
+2α
+ 22 2
+h
+i
+ηµ
+2
++
++ 2η 2 τ µ3 32τ 3 η 2 ∇LB (θt ) + 32τ 3 ζ̄η 2 + 4τ 2 η 2 ν̄
+2
+h 
+
+
+i  ηµ2
+
+ητ
+ηα 
+2
+= −
+−
++ 4µη 2 τ 2 +
++ 2η 2 τ µ3 32η 2 τ 3 E ∇LB (θt )
+2
+2
+2
+ 2
+
+
+
+ηµ
+η 
++
++ 2η 2 τ µ3 32τ 3 ζ̄η 2 + 4τ 2 η 2 ν̄ + 4µη 2 τ 2 ζ̄ + µη 2 τ 2 ν̄ + κ µη 2 +
+2
+2α
+ 2
+
+
+
+ηµ
+η 
+2
+≤ −ηE ∇LB (θt ) +
++ 2η 2 τ µ3 32τ 3 ζ̄η 2 + 4τ 2 η 2 ν̄ + 4µη 2 τ 2 ζ̄ + µη 2 τ 2 ν̄ + κ µη 2 +
+2
+2α
+
+η
+t 2
+2
++ 7ητ ζ̄ + (1 + τ )ην̄
+(29)
+≤ −ηE ∇LB (θ ) + κ µη +
+4
+≤ 32τ 2 η 2 ∇LB (θt )
+
+25
+
+where the second inequality holds with α ≥ 2, and η ≤ 1/3µτ .
+Times 1/η to the both sides of 29, rearranging and summing it form t = 0 to t = T − 1 and dividing by T , one yields
+
+T −1
+LB (θ0 ) − LB (θ∗ )
+1 X
+t 2
+∇LB (θ ) ≤
++ κ (µη + 1) + 7τ ζ̄ + (1 + τ )ν̄.
+T t=0
+Tη
+Assume θe is uniformly sampled from the sequence of outputs {θ0 , θ1 , . . . , θT } generated by FL with LASA as the F , then
+we have
+T −1
+2
+1 X
+2
+e
+=
+E ∇LB (θ)
+∇LB (θt ) ,
+T t=0
+which concludes the proof.
+
+26
+
+

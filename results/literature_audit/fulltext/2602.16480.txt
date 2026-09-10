@@ -1,0 +1,2372 @@
+1
+
+SRFed: Mitigating Poisoning Attacks in
+Privacy-Preserving Federated Learning
+with Heterogeneous Data
+Yiwen Lu∗ ,† Corresponding Author
+
+∗ School of Mathematics, Nanjing University, Nanjing 210093, China
+
+arXiv:2602.16480v1 [cs.CR] 18 Feb 2026
+
+† E-mail: luyw@smail.nju.edu.cn
+
+Abstract—Federated Learning (FL) enables collaborative model
+training without exposing clients’ private data, and has been
+widely adopted in privacy-sensitive scenarios. However, FL
+faces two critical security threats: curious servers that may
+launch inference attacks to reconstruct clients’ private data,
+and compromised clients that can launch poisoning attacks
+to disrupt model aggregation. Existing solutions mitigate these
+attacks by combining mainstream privacy-preserving techniques
+with defensive aggregation strategies. However, they either incur
+high computation and communication overhead or perform poorly
+under non-independent and identically distributed (Non-IID) data
+settings. To tackle these challenges, we propose SRFed, an efficient
+Byzantine-robust and privacy-preserving FL framework for NonIID scenarios. First, we design a decentralized efficient functional
+encryption (DEFE) scheme to support efficient model encryption
+and non-interactive decryption. DEFE also eliminates third-party
+reliance and defends against server-side inference attacks. Second,
+we develop a privacy-preserving defensive model aggregation
+mechanism based on DEFE. This mechanism filters poisonous
+models under Non-IID data by layer-wise projection and clusteringbased analysis. Theoretical analysis and extensive experiments
+show that SRFed outperforms state-of-the-art baselines in privacy
+protection, Byzantine robustness, and efficiency.
+
+[17], [18], [19]. The adversaries may manipulate some clients
+to execute malicious local training and upload poisonous model
+updates to mislead the global model [18], [20], [21]. This attack
+will damage the performance of the global model and lead
+to incorrect decisions in downstream tasks such as medical
+diagnosis and intelligent driving.
+To address privacy leakage issues, existing privacypreserving federated learning (PPFL) methods primarily rely
+on techniques such as differential privacy (DP) [22], [23], [24],
+[25], [26], secure multi-party computation (SMC) [27], [28],
+and homomorphic encryption (HE) [29], [30]. However, DP typically leads to a reduction in global model accuracy, while SMC
+and HE incur substantial computational and communication
+overheads in FL. Recently, lightweight functional encryption
+(FE) schemes [31], [32] have been applied in FL. FE enables
+the server to aggregate encrypted models and directly obtain
+the decrypted results via a functional key, which avoids the
+accuracy loss in DP and the extra communication overhead in
+HE/SMC. However, existing FE schemes rely on third parties for
+functional key generation, which introduces potential privacy
+Index Terms—Federated learning, privacy-preserving, func- risks.
+tional encryption, poisoning attacks, Non-IID.
+To mitigate poisoning attacks, existing Byzantine-robust
+FL methods [33], [34], [35], [36] typically adopt defensive
+I. Introduction
+aggregation strategies, which filter out malicious model upFederated learning (FL) has emerged as a promising dates based on statistical distances or performance-based
+paradigm for distributed machine learning, which enables criteria. However, these strategies rely on the assumption that
+multiple clients to collaboratively train a global model without clients’ data distributions are homogeneous, leading to poor
+sharing their private data. In a typical FL setup, multiple performance in non-independent and identically distributed
+clients periodically train local models using their private (Non-IID) data settings. Moreover, they require access to
+data and upload model updates to a central server, which plaintext model updates, which directly contradicts the design
+aggregates these updates to obtain a global model with goal of PPFL [32]. Recently, privacy-preserving Byzantineenhanced performance. Due to its ability to protect data privacy, robust FL methods [37], [29] have been proposed to address
+FL has been widely applied in real-world scenarios, such as both privacy and poisoning attacks. However, these methods
+intelligent driving [1], [2], [3], [4], [5], medical diagnosis [6], still suffer from limitations such as accuracy loss, excessive
+[7], [8], [9], and intelligent recommendation systems [10], [11], overhead, and limited effectiveness in Non-IID environments,
+as they merely combine the PPFL with existing defensive
+[12], [13].
+Although FL avoids direct data exposure, it is not immune aggregation strategies. As a result, there is still a lack of
+to privacy and security risks. Existing studies [14], [15], [16] practical solutions that can simultaneously ensure privacy
+have shown that the curious server may launch inference protection and Byzantine robustness in Non-IID data scenarios.
+attacks to reconstruct sensitive data samples of clients from
+To address the limitations of existing FL solutions, we
+the model updates. This may lead to the leakage of clients’ propose a novel Byzantine-robust privacy-preserving FL
+sensitive information, e.g., medical diagnosis records, which method, SRFed. SRFed achieves efficient privacy protection
+can be exploited by adversaries for launching further malicious and Byzantine robustness in Non-IID data scenarios through
+activities. Moreover, FL is also vulnerable to poisoning attacks two key designs. First, we propose a new functional en-
+
+2
+
+cryption scheme, DEFE, to protect clients’ model privacy
+TABLE I
+COMPARISON BETWEEN OUR METHOD WITH PREVIOUS WORK
+and resist inference attacks from the server. Compared with
+existing FE schemes, DEFE eliminates reliance on third parties
+Methods
+Privacy Protection
+Defense Mechanism
+Efficient
+Non-IID
+Fidelity
+ESFL [24]
+Local DP
+Local DP
+✓
+✗
+✗
+through distributed key generation and improves decryption
+PBFL [37]
+CKKS
+Cosine similarity
+✗
+✗
+✓
+ESB-FL [31]
+NDD-FE
+✗
+✓
+✗
+✓
+efficiency by reconstructing the ciphertext. Second, we develop
+Median [35]
+✗
+Median
+✓
+✗
+✓
+FoolsGold
+[33]
+✗
+Cosine
+similarity
+✓
+✗
+✓
+a privacy-preserving robust aggregation strategy based on
+ShieldFL [29]
+HE
+Cosine similarity
+✗
+✗
+✓
+PrivLDFL
+[40]
+DDMCFE
+✗
+✓
+✗
+✓
+secure layer-wise projection and clustering. This strategy resists
+Biscotti [41]
+DP
+Euclidean distance
+✓
+✗
+✗
+the poisoning attacks in Non-IID data scenarios. Specifically,
+Layer-wise projection
+SRFed
+DEFE
+✓
+✓
+✓
+and clustering
+this strategy first decomposes client models layer by layer,
+Notes: The symbol ”✓” indicates that it owns this property; ”✗”
+projects each layer onto the corresponding layer of the global
+indicates that it does not own this property. ”Fidelity” indicates that
+model. Then, it performs clustering analysis on the projection
+the method has no accuracy loss when there is no attack. ”Non-IID”
+vectors to filter malicious updates and aggregates the remaining
+indicates that the method is Byzantine-Robust under Non-IID data
+environments.
+benign models. DEFE supports the above secure layer-wise
+projection computation and enables privacy-preserving model
+aggregation. Finally, we evaluate SRFed on multiple datasets
+identical to plaintext computations. This property preserves
+with varying levels of heterogeneity. Theoretical analysis and
+privacy without sacrificing accuracy. Ma et al. [29] developed
+experimental results demonstrate that SRFed achieves strong
+ShieldFL, a robust FL framework based on two-trapdoor HE,
+privacy protection, Byzantine robustness, and high efficiency.
+which encrypts all local gradients and achieves aggregation of
+In summary, the core contributions of this paper are as follows.
+encrypted gradients. Despite their strong privacy guarantees,
+• We propose a novel secure and robust FL method, SRFed, SMC/HE-based FL methods incur substantial computation
+which simultaneously guarantees privacy protection and and communication overhead, posing challenges for largeByzantine robustness in Non-IID data scenarios.
+scale deployment. To address these issues, FE has been
+• We design an efficient functional encryption scheme, which
+introduced into FL. FE avoids noise injection and eliminates the
+not only effectively protects the local model privacy but high overhead caused by multi-round interactions or complex
+also enables efficient and secure model aggregation.
+homomorphic operations. Chen et al. [31] proposed ESB-FL,
+• We develop a privacy-preserving robust aggregation strat- an efficient secure FL framework based on non-interactive
+egy, which effectively defends against poisoning attacks in designated decrypter FE (NDD-FE), which protects local data
+Non-IID scenarios and generates high-quality aggregated privacy but relies on a trusted third-party entity. Yu et al.
+models.
+[40] further proposed PrivLDFL, which employs a dynamic
+• We implement the prototype of SRFed and validate its
+decentralized multi-client FE (DDMCFE) scheme to preserve
+performance in terms of privacy preservation, Byzantine privacy in decentralized settings. However, both FE-based
+robustness, and computational efficiency. Experimental methods require discrete logarithm-based decryption, which
+results show that SRFed outperforms state-of-the-art is typically a time-consuming operation. To overcome these
+baselines in all aspects.
+limitations, we propose a decentralized efficient functional
+encryption (DEFE) scheme that achieves privacy protection
+II. Related Works
+and high computational and communication efficiency.
+A. Privacy-Preserving Federated Learning
+To safeguard user privacy, current research on privacy- B. Privacy-Preserving Federated Learning Against Malicious
+preserving federated learning (PPFL) mainly focuses on protect- Participants
+ing gradient information. Existing solutions are primarily built
+upon four core technologies: Differential Privacy (DP) [22],
+[23], [24], Secure Multi-Party Computation (SMC) [27], [28],
+Homomorphic Encryption (HE) [29], [38], [30], and Functional
+Encryption (FE) [31], [32], [39], [40]. DP achieves data
+indistinguishability by injecting calibrated noise into raw data,
+thus ensuring privacy with low computational overhead. Miao
+et al. [24] proposed a DP-based ESFL framework that adopts
+adaptive local DP to protect data privacy. However, the injected
+noise inevitably degrades the model accuracy. To avoid accuracy
+loss, SMC and HE employ cryptographic primitives to achieve
+privacy preservation. SMC enables distributed aggregation
+while keeping local gradients confidential, revealing only
+the aggregated model update. Zhang et al. [27] introduced
+LSFL, a secure FL framework that applies secret sharing
+to split and transmit local parameters to two non-colluding
+servers for privacy-preserving aggregation. HE allows direct
+computation on encrypted data and produces decrypted results
+
+To resist poisoning attacks, several defensive aggregation
+rules have been proposed in FL. FoolsGold [33], proposed by
+Fung et al. [33], reweights clients’ contributions by computing
+the cosine similarity of their historical gradients. Krum [34]
+selects a single client update that is closest, in terms of
+Euclidean distance, to the majority of other updates in each
+iteration. Median [35] mitigates the effect of malicious clients
+by taking the median value of each model parameter across all
+clients. However, the above aggregation rules require access
+to plaintext model updates. This makes them unsuitable for
+direct application in PPFL. To achieve Byzantine-robust PPFL,
+Shiyan et al. [41] proposed Biscotti. Biscotti leverages DP
+to protect local gradients while using the Krum algorithm to
+mitigate poisoning attacks. Nevertheless, the injected noise in
+DP reduces the accuracy of the aggregated model. To overcome
+this limitation, Zhang et al. [27] proposed LSFL. LSFL employs
+SMC to preserve privacy and uses Median-based aggregation
+for poisoning defense. However, its dual-server architecture
+
+3
+
+introduces significant communication overhead. In addition, Ma
+et al. [29] and Miao et al. [37] proposed ShieldFL and PBFL,
+respectively. Both schemes adopt HE to protect local gradients
+and cosine similarity to defend against poisoning attacks.
+However, they suffer from high computational complexity and
+limited robustness under non-IID data settings. To address
+these challenges, we propose a novel Byzantine-robust and
+privacy-preserving federated learning method. Table I compares
+previous schemes with our method.
+III. Problem Statement
+A. System Model
+The system model of SRFed comprises two roles: the
+aggregation server and clients.
+• Clients: Clients are nodes with limited computing power
+and heterogeneous data. In real-world scenarios, data heterogeneity typically arises across clients (e.g., intelligent
+vehicles) due to differences in usage patterns, such as
+driving habits. Each client is responsible for training its
+local model based on its own data. To protect data privacy,
+the models are encrypted and submitted to the server for
+aggregation.
+• Server: The server is a node with strong computing
+power (e.g., service provider of intelligent vehicles). It
+collects encrypted local models from clients, conducts
+model detection, and then aggregates selected models and
+distributes the aggregated model back to clients for the
+next training round.
+B. Threat Model
+
+Attack [27]. The malicious clients first train local models
+based on the clean dataset. Then, they inject Gaussian
+noise into the model parameters and submit the malicious
+models to the server. Consequently, the aggregated model
+exhibits low accuracy across test samples of all classes.
+C. Design Goals
+Under the defined threat model, SRFed aims to ensure the
+following security and performance guarantees:
+• Confidentiality. SRFed should ensure that any unauthorized entities (e.g., the server) cannot infer clients’ private
+training data from the encrypted models or intermediate
+results.
+• Robustness. SRFed should mitigate poisoning attacks
+launched by malicious clients under Non-IID data settings
+while maintaining the quality of the final aggregated
+model.
+• Efficiency. SRFed should ensure efficient FL, with the
+introduced DEFE scheme and robust aggregation strategy
+incurring only limited computation and communication
+overhead.
+IV. Building Blocks
+A. NDD-FE Scheme
+NDD-FE [31] is a functional encryption scheme that supports
+the inner-product computation between a private vector 𝒙 and
+a public vector 𝒚. NDD-FE involves three roles, i.e., generator,
+encryptor, and decryptor, to elaborate on its construction.
+• NDD-FE.Setup(1𝜆 )→𝑝 𝑝: It is executed by the generator.
+It takes the security parameter 1𝜆 as input and generates
+the system public parameters 𝑝 𝑝 = (𝐺, 𝑝, 𝑔) and a secure
+hash function 𝐻1 .
+• NDD-FE.KeyGen(𝑝 𝑝)→( 𝑝𝑘, 𝑠𝑘): It is executed by all
+roles. It takes 𝑝 𝑝 as input and outputs public/secret
+keys ( 𝑝𝑘, 𝑠𝑘). Let ( 𝑝𝑘 1 , 𝑠𝑘 1 ), ( 𝑝𝑘 2𝑖 , 𝑠𝑘 2𝑖 ) and ( 𝑝𝑘 3 , 𝑠𝑘 3 )
+denote the public/secret key pairs of the generator, the
+𝑖-th encryptor and the decryptor, respectively.
+• NDD-FE.KeyDerive(𝑝𝑘 1 , 𝑠𝑘 1 , {𝑝𝑘 2𝑖 } 𝑖=1,2,...,𝐼 , 𝑐𝑡𝑟, 𝒚,
+𝑎𝑢𝑥)→𝑠𝑘 ⊗ : It is executed by the generator. It takes
+( 𝑝𝑘 1 , 𝑠𝑘 1 ), the {𝑝𝑘 2𝑖 }𝑖=1,2,...,𝐼 of 𝐼 encryptors, an incremental counter 𝑐𝑡𝑟, a vector 𝒚 and auxiliary information
+𝑎𝑢𝑥 as input, and outputs the functional key 𝑠𝑘 ⊗ .
+• NDD-FE.Encrypt(𝑝𝑘 1 , 𝑠𝑘 2𝑖 , 𝑝𝑘 3 , 𝑐𝑡𝑟, 𝑥 𝑖 , 𝑎𝑢𝑥)→𝑐 𝑖 : It is
+executed by the encryptor. It takes 𝑝𝑘 1 , ( 𝑝𝑘 2𝑖 , 𝑠𝑘 2𝑖 ),
+𝑝𝑘 3 , 𝑐𝑡𝑟, 𝑎𝑢𝑥, and the data 𝑥𝑖 as input, and outputs the
+𝑟 𝑐𝑡𝑟
+ciphertext 𝑐 𝑖 = 𝑝𝑘 1𝑖 · 𝑝𝑘 3𝑥𝑖 , where 𝑟 𝑖𝑐𝑡𝑟 is generated by
+𝐻1 .
+• NDD-FE.Decrypt(𝑝𝑘 1 , 𝑠𝑘 ⊗ , 𝑠𝑘 3 , {𝑐𝑡 𝑖 } 𝑖=1,2,...,𝐼 , 𝒚)→
+⟨𝒙, 𝒚⟩: It is executed by the decryptor. It takes 𝑝𝑘 1 , 𝑠𝑘 ⊗ ,
+𝑠𝑘 3 , {𝑐𝑡 𝑖 }𝑖=1,2,...,𝐼 and 𝒚 as input. First, it outputs 𝑔 ⟨ 𝒙,𝒚 ⟩
+and subsequently calculates log(𝑔 ⟨ 𝒙,𝒚 ⟩ ) to reconstruct the
+result of the inner product of (𝒙, 𝒚).
+
+We consider the following threat model:
+1) Honest-But-Curious server: The server honestly follows
+the FL protocol but attempts to infer clients’ private data.
+Specifically, upon receiving encrypted local models from
+the clients, the server may launch inference attacks on the
+encrypted models and exploit intermediate computational
+results (e.g., layer-wise projections and aggregated outputs)
+to extract sensitive information of clients.
+2) Malicious clients: We consider a FL scenario where a
+certain proportion of clients are malicious. These malicious
+clients conduct model poisoning attacks to poison the global
+model, thereby disrupting the training process. Specifically, we
+focus on the following attack types:
+• Targeted poisoning attack. This attack aims to poison
+the global model so that it incurs erroneous predictions
+for the samples of a specific label. More specifically, we
+consider the prevalent label-flipping attack [29]. Malicious
+clients remap samples labeled 𝑙 𝑠𝑟 𝑐 to a chosen target label
+𝑙 𝑡 𝑎𝑟 to obtain a poisonous dataset 𝐷 ∗𝑖 . Subsequently, they
+train local models based on 𝐷 ∗𝑖 and submit the poisonous
+models to the server for aggregation. As a result, the
+global model is compromised, leading to misclassification
+of source-label samples as the target label during inference. B. The Proposed Decentralized Efficient Functional Encryption
+Scheme
+• Untargeted poisoning attack. This attack aims to degrade
+the global model’s performance on the test samples of
+We propose a decentralized efficient functional encryption
+all classes. Specifically, we consider the classic Gaussian (DEFE) scheme for more secure and efficient inner product
+
+4
+
+TABLE II
+Notation Descriptions
+Notations
+
+Descriptions
+
+Notations
+
+Descriptions
+
+𝑝𝑘, 𝑠𝑘
+𝑇
+𝐼
+𝐷𝑖
+𝑙
+𝑊𝑡
+𝑊𝑡𝑖
+(𝑙)
+|𝑊𝑡 |
+𝜂
+𝑛𝑜𝑖𝑠𝑒
+𝑉𝑡𝑖
+𝑆𝐴
+
+Public/secret key
+Total training round
+Number of clients
+Dataset of 𝐶𝑖
+Model layer
+Global model
+Benign model
+Length of 𝑊𝑡𝑙
+Hash noise
+Gaussian noise
+projection vector
+Source accuracy
+
+𝑠𝑘 𝑓
+𝑡
+𝐶𝑖
+𝐷𝑖∗
+𝜁
+𝑊𝑡+1
+(𝑊𝑡𝑖 ) ∗
+(𝑙)
+∥𝑊𝑡 ∥
+𝐻1
+𝐸𝑡𝑖
+𝑂𝐴
+𝐴𝑆𝑅
+
+Functional key
+Training round
+The 𝑖-th client
+Poisoned dataset
+Length of 𝑊𝑡
+Aggregated model
+Poisonous model
+(𝑙)
+The Euclidean norm of ∥𝑊𝑡 ∥
+Hash function
+Encrypted update
+Overall accuracy
+Attack success rate
+
+operations. Our DEFE is an adaptation of NDD-FE in three
+aspects:
+• Decentralized authority: DEFE eliminates reliance on
+the third-party entities (e.g., the generator) by enabling
+encryptors to jointly generate the decryptor’s decryption
+key.
+• Mix-and-Match attack resistance: DEFE inherently restricts the decryptor from obtaining the true inner product
+results, which prevents the decryptor from launching
+inference attacks.
+• Efficient decryption: DEFE enables efficient decryption
+by modifying the ciphertext structure. This avoids the
+costly discrete logarithm computations in NDD-FE.
+We consider our SRFed system with one decryptor (i.e., the
+server) and 𝐼 encryptors (i.e., the clients). The 𝑖-th encryptor
+encrypts the 𝑖-th component 𝑥𝑖 of the 𝐼-dimensional message
+vector 𝒙. The message vector 𝒙 and key vector 𝒚 satisfy
+∥𝒙∥ ∞ ≤ 𝑋 and ∥ 𝒚∥ ∞ ≤ 𝑌 , with 𝑋 · 𝑌 < 𝑁, where 𝑁
+is the Paillier composite modulus [42]. Decryption yields
+⟨𝒙, 𝒚⟩ mod 𝑁, which equals the integer
+inner product ⟨𝒙, 𝒚⟩
+√︃  
+𝑁
+under these bounds. Let 𝑀 = 12
+. We assume 𝑋, 𝑌 < 𝑀
+𝐼
+
+𝑐𝑡𝑟, data 𝑥 𝑖 ∈ Z, and 𝑎𝑢𝑥 as input, and outputs noiseaugmented ciphertext 𝑐𝑡𝑖 ∈ Z 𝑁 2 . Considering the multiround training process of FL, each 𝑖-th encryptor generates
+a noise value 𝜂𝑡 ,𝑖 for the 𝑡-th round following the recursive
+relation 𝜂𝑡 ,𝑖 = 𝐻1 (𝜂𝑡 −1,𝑖 , 𝑝𝑘 𝑖 , 𝑐𝑡𝑟) mod 𝑀, where 𝑐𝑡𝑟 is
+an incremental counter. The initial noise 𝜂0,𝑖 is uniformly
+set across all encryptors via a single communication. Using
+the noise-augmented data 𝑥 𝑖′ = 𝑥𝑖 + 𝜂𝑡 ,𝑖 and secret key 𝑠𝑘 𝑖 ,
+𝑐𝑡𝑟
+′
+the encryptor computes the ciphertext 𝑐𝑡𝑖′ = (1+𝑁) 𝑥𝑖 ·𝑔𝑟𝑖
+mod 𝑁 2 with 𝑟 𝑖𝑐𝑡𝑟 = 𝐻1 (𝑠𝑘 𝑖 , 𝑐𝑡𝑟, 𝑎𝑢𝑥) and 𝑎𝑢𝑥
+ ∈ AUX.
+𝐼 , 𝑐𝑡𝑟, 𝑦 , 𝑎𝑢𝑥 → 𝑠𝑘 𝑓 :
+• DEFE.FunKeyGen ( 𝑝𝑘 𝑖 , 𝑠𝑘 𝑖 )𝑖=1
+𝑖
+𝑖,𝒚
+It is executed by 𝐼 encryptors. Each encryptor computes its
+partial functional key 𝑠𝑘 𝑓𝑖,𝒚 . It takes the public/secret key
+𝑛
+pairs ( 𝑝𝑘 𝑖 , 𝑠𝑘 𝑖 ) 𝑖=1
+of encryptors and the 𝑖-th component
+𝑦 𝑖 of the key vector 𝒚 as inputs and outputs:
+∑︁𝑖−1
+∑︁𝐼
+𝑠𝑘 𝑓𝑖,𝒚 = 𝑟 𝑖𝑐𝑡𝑟 𝑦 𝑖 +
+𝜑𝑖, 𝑗 −
+𝜑𝑖, 𝑗 ,
+(1)
+𝑗=1
+
+𝑗=𝑖+1
+
+𝑖
+where 𝑟 𝑖𝑐𝑡𝑟 = 𝐻1 (𝑠𝑘 𝑖 , 𝑐𝑡𝑟, 𝑎𝑢𝑥) and 𝜑𝑖, 𝑗 = 𝐻1 ( 𝑝𝑘 𝑠𝑘
+𝑗 , 𝑐𝑡𝑟,
+𝑖,
+𝑗
+𝑗,𝑖
+𝑎𝑢𝑥). Note that 𝜑 = 𝜑 .
+𝐼 ) → 𝑠𝑘 𝑓 : It is executed
+• DEFE.FunKeyAgg {𝑠𝑘 𝑓𝑖,𝒚 } 𝑖=1
+𝒚
+by the decryptor. It inputs partial functional keys 𝑠𝑘 𝑓𝑖,𝒚
+and derives the final functional key:
+∑︁𝐼
+∑︁𝐼
+𝑠𝑘 𝑓𝒚 =
+𝑠𝑘 𝑓𝑖,𝒚 =
+𝑟 𝑖𝑐𝑡𝑟 · 𝑦 𝑖 ∈ Z.
+(2)
+
+𝑖=1
+
+𝑖=1
+
+𝐼 ) → ⟨𝒙 ′ , 𝒚⟩: It is executed
+• DEFE.AggDec(𝑠𝑘 𝑓𝒚 , {𝑐𝑡 𝑖 } 𝑖=1
+
+by the decryptor. It first computes
+Ö 𝐼
+
+𝑦
+𝐶𝑇𝒙′ =
+𝑐𝑡𝑖 𝑖 · 𝑔 −𝑠𝑘 𝑓𝒚
+𝑖=1
+
+mod 𝑁 2 .
+
+(3)
+
+𝐶𝑇 ′ −1 mod 𝑁 2
+
+𝒙
+Then, it outputs log (1+𝑁 ) (𝐶𝑇𝒙′ ) =
+=
+𝑁
+′
+⟨𝒙 , 𝒚⟩.
+𝐼 , 𝒚, 𝑐𝑡𝑟) → ⟨𝒙, 𝒚⟩: It is
+• DEFE.UsrDec(⟨𝒙 ′ , 𝒚⟩, {𝑝𝑘 𝑖 } 𝑖=1
+executed by 𝐼 encryptors. During FL processes, each
+encryptor maintains a 𝐼-dimensional noise list 𝐿 𝑡 =
+𝐼
+[𝜂𝑡 ,𝑖 ] 𝑖=1
+for each training round 𝑡. Based on this, each
+encryptor can obtain the true inner product value: ⟨𝒙, 𝒚⟩ =
+Í𝐼
+⟨𝒙 ′ , 𝒚⟩ − 𝑖=1
+𝜂𝑡 ,𝑖 · 𝑦 𝑖 .
+
+in DEFE. Specifically, the construction of the DEFE scheme
+is as follows. The notations are described in Table II.
+• DEFE.Setup(1𝜆 , 𝑋, 𝑌 ) → 𝑝 𝑝: It takes the security parameter 1𝜆 as input and outputs the public parameters
+V. System Design
+𝑝 𝑝, which include the modulus 𝑁, generator 𝑔, and
+hash function 𝐻1 . It initializes by selecting safe primes A. High-Level Description of SRFed
+𝑝 = 2𝑝 ′ + 1 and 𝑞 = 2𝑞 ′ + 1 with 𝑝 ′ , 𝑞 ′ > 2𝑙 (𝜆) (where 𝑙
+The workflow of SRFed is illustrated in Figure 1. Specifically,
+is a polynomial in 𝜆), ensuring the factorization hardness SRFed iteratively performs the following three steps: 1)
+of 𝑁 = 𝑝𝑞 is 2𝜆 -hard and 𝑁 > 𝑋𝑌 . A generator 𝑔 ′ is Initialization. The server initializes the global model 𝑊0 and
+uniformly sampled from Z∗𝑁 2 , and 𝑔 = 𝑔 ′2𝑁 mod 𝑁 2 is distributes it to all clients (step ①). 2) Local training. In the 𝑡-th
+computed to generate the subgroup of (2𝑁)-th residues in training iteration, each client 𝐶𝑖 receives the global model 𝑊𝑡
+Z∗𝑁 2 . Hash function 𝐻1 : Z × N × AUX → Z is defined, from the server and performs local training on its private dataset
+where AUX denotes auxiliary information (e.g., task to obtain the local model 𝑊𝑡𝑖 (step ②). To protect model privacy,
+identifier, timestamp).
+𝐶𝑖 encrypts the local model and gets the encrypted model 𝐸 𝑡𝑖
+𝜆
+• DEFE.KeyGen(1 , 𝑁, 𝑔) → ( 𝑝𝑘 𝑖 , 𝑠𝑘 𝑖 ): It is executed by
+(step ③). Then, 𝐶𝑖 generates the functional key 𝑠𝑘 𝑓𝑡𝑖 for model
+𝑛 encryptors. It takes 𝜆, 𝑁, and 𝑔 as input, and outputs the detection (step ④), and uploads the encrypted model and the
+corresponding key pair ( 𝑝𝑘 𝑖 , 𝑠𝑘 𝑖 ). For the 𝑖-th encryptor, functional key to the server (step ⑤). 3) Privacy-preserving
+an integer 𝑠𝑖 is√drawn from a discrete Gaussian distribution robust model aggregation. Upon receiving all encrypted local
+𝐷 Z, 𝜎 (𝜎 > 𝜆 · 𝑁 5/2 ), and the public key ℎ𝑖 = 𝑔 𝑠𝑖 models {𝐸 𝑡𝑖 }𝑖=1,...,𝐼 , the server computes a layer-wise projection
+mod 𝑁 2 , forming key pair ( 𝑝𝑘 𝑖 = ℎ𝑖 , 𝑠𝑘 𝑖 = 𝑠𝑖 ).
+vector 𝑉𝑡𝑖 for each model based on the global model 𝑊𝑡 (step
+• DEFE.Encrypt( 𝑝𝑘 𝑖 , 𝑠𝑘 𝑖 , 𝑐𝑡𝑟, 𝑥 𝑖 , 𝑎𝑢𝑥) → 𝑐𝑡 𝑖 : It is exe- ⑥). The server then performs clustering analysis on {𝑉𝑡𝑖 } 𝑖=1,...,𝐼
+cuted by 𝐼 encryptors. It takes key pair ( 𝑝𝑘 𝑖 , 𝑠𝑘 𝑖 ), counter to filter malicious models and identify benign models (step ⑦).
+
+5
+
+Server
+
+Privacy-Preserving Robust Model Aggregation
+
+Layer-wise projection
+
+...
+
+Encrypted
+benign model
+Encrypted
+malicious model
+Global model
+
+⑧
+
+⑦
+K-Means
+
+...
+
+...
+1
+
+...
+
+Malicious model
+
+Aggregation
+
+Cluster analysis
+
+⑥
+
+Benign model
+
+...
+
+...
+
+Projection
+vector
+
+2
+K
+
+Functional key
+
+DEFE.
+AggDec
+
+Cosine similarity
+
+Projection vector
+Malicious
+
+Top K-1 clusters
+
+Benign
+
+Benign models,
+⑤
+functional key
+
+① Global model
+
+Client 1
+
+Malicious models,
+⑤ functional key
+
+① Global model
+
+Malicious client c*, c*∈{i+1, …, I}
+Label-flipping attack & Gaussian attack
+
+Client 2
+Client i ② Model
+training
+
+③ DEFE.Encrypt
+③ DEFE.
+Encrypt
+
+② Model training
+
+④ DEFE.FunKeyGen
+
+④ DEFE.FunKeyGen
+
+Benign Local Training
+
+Malicious Local Training
+
+Fig. 1. The workflow of SRFed.
+
+Finally, the server aggregates these benign clients to update
+the global model 𝑊𝑡+1 (step ⑧).
+B. Construction of SRFed
+
+on the poisoned dataset 𝐷 ∗𝑖 (𝑙 src → 𝑙 tar ) to derive the poisoned
+model (𝑊𝑡𝑖 ) ∗ , i.e.,
+
+(𝑊𝑡𝑖 ) ∗ = arg min 𝐿 𝑖 𝑊𝑡𝑖 , 𝐷 ∗𝑖 (𝑙 src → 𝑙tar ) .
+(6)
+𝑊𝑡𝑖
+
+1) Initialization: In this phase, the server first executes the
+2) Model Encryption: To protect the privacy information of
+DEFE.Setup(1𝜆 , 𝑋, 𝑌 ) algorithm to generate the public param- the local model, the clients exploit the DEFE scheme to encrypt
+eters 𝑝 𝑝, which are then made publicly available. Each client their local models. Specifically, the clients first parse the local
+𝐶𝑖 (𝑖 ∈ [1, 𝐼]) subsequently generates its key pair ( 𝑝𝑘 𝑖 , 𝑠𝑘 𝑖 ) model as 𝑊 𝑖 = [𝑊 (𝑖,1) , . . . , 𝑊 (𝑖,𝑙) , . . . , 𝑊 (𝑖,𝐿) ], where 𝑊 (𝑖,𝑙)
+𝑡
+𝑡
+𝑡
+𝑡
+by executing the DEFE.KeyGen(1𝜆 , 𝑁, 𝑔) algorithm. Finally, denotes the 𝑡parameter
+set of the 𝑙-th model layer. For each
+the server distributes the initial global model 𝑊0 to all clients.
+parameter element 𝑊𝑡(𝑖,𝑙) [𝜀] in 𝑊𝑡(𝑖,𝑙) , client 𝐶𝑖 executes the
+2) Local Training: The local training phase consists of three
+DEFE.Encrypt( 𝑝𝑘 𝑖 , 𝑠𝑘 𝑖 , 𝑐𝑡𝑟, 𝑊𝑡(𝑖,𝑙) [𝜀]) algorithm to generate
+components: model training, model encryption, and functional
+(𝑖,𝑙)
+key generation. 1) Model Training: In the 𝑡-th (𝑡 ∈ [1, 𝑇]) the encrypted parameter 𝐸 𝑡 [𝜀], i.e.,
+(𝑖,𝑙) ′
+𝑐𝑡𝑟
+training round, once receiving the global model 𝑊𝑡 , each
+𝐸 𝑡(𝑖,𝑙) [𝜀] = (1 + 𝑁) 𝑊𝑡 [ 𝜀 ] · 𝑔𝑟𝑖 mod 𝑁 2 ,
+(7)
+client 𝐶𝑖 utilizes its local dataset 𝐷 𝑖 to update 𝑊𝑡 and obtains
+model update 𝑊𝑡𝑖 . For benign clients, they minimize their local where 𝑊 (𝑖,𝑙) ′ [𝜀] is the parameter 𝑊 (𝑖,𝑙) [𝜀] perturbed by a
+𝑡
+𝑡
+objective function 𝐿 𝑖 to obtain 𝑊𝑡𝑖 , i.e.,
+noise term 𝜂, i.e.,
+𝑊𝑡𝑖 = arg min 𝐿 𝑖 (𝑊𝑡 , 𝐷 𝑖 ).
+(4)
+′
+𝑊𝑡
+𝑊𝑡(𝑖,𝑙) [𝜀] = 𝑊𝑡(𝑖,𝑙) [𝜀] + 𝜂.
+(8)
+Malicious clients execute distinct update strategies based on
+In SRFed, the noise 𝜂 remains fixed for all clients during
+their attack method. Specifically, to perform a Gaussian attack,
+the first 𝑇 − 1 training rounds, and is set to 0 in the final
+malicious clients first conduct normal local training according to
+training round. Specifically, 𝜂 is an integer generated by client
+Equation (4) to obtain the benign model 𝑊𝑡𝑖 , and subsequently
+𝐶1 using the hash function 𝐻1 during the first iteration, and is
+inject Gaussian noise 𝑛𝑜𝑖𝑠𝑒 𝑡 into it to produce a poisoned
+subsequently broadcast to all other clients for model encryption.
+model (𝑊𝑡𝑖 ) ∗ , i.e.,
+The magnitude of 𝜂 is constrained by:
+(𝑊𝑡𝑖 ) ∗ = 𝑊𝑡𝑖 + 𝑛𝑜𝑖𝑠𝑒 𝑡 .
+(5)
+𝑚 𝑙 · 𝜂2 ≪ ∥𝑊0(𝑙) ∥ 2 , ∀𝑙 ∈ [1, 𝐿],
+(9)
+In addition, to launch a label-flipping attack, malicious clients
+first poison their training datasets by flipping all samples labeled where 𝑊0(𝑙) denotes the 𝑙-th layer model parameters of the
+as 𝑙src to a target class 𝑙 tar . They then perform local training initial global model 𝑊0 , and 𝑚 𝑙 represents the number of
+
+6
+
+parameters in 𝑊0(𝑙) . Finally, the client 𝐶𝑖 obtains the encrypted
+local model 𝐸 𝑡𝑖 = [𝐸 𝑡(𝑖,1) , . . . , 𝐸 𝑡(𝑖,𝑙) , . . . , 𝐸 𝑡(𝑖,𝐿) ].
+3) Functional Key Generation: Each client 𝐶𝑖 generates a
+functional key vector 𝑠𝑘 𝑓𝑡𝑖 = [𝑠𝑘 𝑓𝑡(𝑖,1) , 𝑠𝑘 𝑓𝑡(𝑖,2) , . . . , 𝑠𝑘 𝑓𝑡(𝑖,𝐿) ]
+to enable the server to perform model detection on
+encrypted models. Specifically, for the 𝑙-th layer
+of the global model 𝑊𝑡 , client 𝐶𝑖 executes the
+DEFE.FunKeyGen( 𝑝𝑘 𝑖 , 𝑠𝑘 𝑖 , 𝑐𝑡𝑟, 𝑊𝑡(𝑙) [𝜀])
+algorithm to
+generate element-wise functional keys, i.e.,
+𝑠𝑘 𝑓𝑡(𝑖,𝑙, 𝜀) = 𝑟 𝑖𝑐𝑡𝑟 · 𝑊𝑡(𝑙) [𝜀] = 𝐻1 (𝑠𝑘 𝑖 , 𝑐𝑡𝑟, 𝜀) · 𝑊𝑡(𝑙) [𝜀], (10)
+where 𝑊𝑡(𝑙) [𝜀] denotes the 𝜀-th parameter of 𝑊𝑡(𝑙) . After processing all elements in 𝑊𝑡(𝑙) , client 𝐶𝑖 obtains the set of element|𝑊
+
+(𝑙)
+
+|
+
+𝐿 . Subsequently, the
+wise functional keys {{𝑠𝑘 𝑓𝑡(𝑖,𝑙, 𝜀) } 𝜀=1𝑡 }𝑙=1
+layer-level functional key is derived by aggregating the element|𝑊
+
+(𝑙)
+
+|
+
+wise keys using the DEFE.FunKeyAgg({𝑠𝑘 𝑓𝑡(𝑖,𝑙, 𝜀) } 𝜀=1𝑡 )
+algorithm, i.e.,
+𝑠𝑘 𝑓𝑡(𝑖,𝑙) =
+
+∑︁ |𝑊𝑡(𝑙) |
+𝜀=1
+
+𝑠𝑘 𝑓𝑡(𝑖,𝑙, 𝜀) .
+
+(11)
+
+This procedure is repeated for all layers to obtain the complete
+functional key vector 𝑠𝑘 𝑓𝑡𝑖 for client 𝐶𝑖 . Finally, each client
+uploads the encrypted local model 𝐸 𝑡𝑖 and the corresponding
+functional key 𝑠𝑘 𝑓𝑡𝑖 to the server for subsequent model detection
+and aggregation.
+3) Privacy-Preserving Robust Model Aggregation: To resist
+poisoning attacks from malicious clients, SRFed implements a
+privacy-preserving robust aggregation strategy, which enables
+secure detection and aggregation of encrypted local models
+without exposing private information. As illustrated in Figure
+1, the proposed method performs layer-wise projection and
+clustering analysis to identify abnormal updates and ensure
+reliable model aggregation. Specifically, in each training round,
+the local model 𝑊𝑡𝑖 and the global model 𝑊𝑡 are decomposed
+layer by layer. For each layer, the parameters are projected onto
+the corresponding layer of the global model, and clustering
+is performed on the projection vectors to detect anomalous
+models. After that, the server filters malicious models and
+aggregates the remaining benign updates. Unlike prior defenses
+that rely on global statistical similarity between model updates
+[33], [29], [35], our approach captures fine-grained parameter
+anomalies and conducts clustering analysis to achieve effective
+detection even under non-IID data distributions.
+1) Model Detection: Once receiving 𝐸 𝑡𝑖 and 𝑠𝑘 𝑓𝑡𝑖 from client
+′
+𝐶𝑖 , the server computes the projection 𝑉𝑡(𝑖,𝑙) of 𝑊𝑡(𝑖,𝑙) onto
+𝑊𝑡(𝑙) , i.e.,
+′
+⟨𝑊𝑡(𝑖,𝑙) , 𝑊𝑡(𝑙) ⟩
+(𝑖,𝑙)
+𝑉𝑡
+=
+.
+(12)
+∥𝑊𝑡(𝑙) ∥ 2
+Specifically,
+the
+server
+first
+executes
+the
+DEFE.AggDec(𝑠𝑘 𝑓𝑡(𝑖,𝑙) , 𝐸 𝑡(𝑖,𝑙) ) algorithm, which effectively
+′
+computes the inner product of 𝑊𝑡(𝑖,𝑙) and 𝑊𝑡(𝑙) . This value is
+then normalized by ∥𝑊𝑡(𝑙) ∥ 2 to obtain
+𝑉𝑡(𝑖,𝑙) =
+
+DEFE.AggDec(𝑠𝑘 𝑓𝑡(𝑖,𝑙) , 𝐸 𝑡(𝑖,𝑙) )
+∥𝑊𝑡(𝑙) ∥ 2
+
+.
+
+By iterating over all 𝐿 layers, the server obtains the layer-wise
+projection vector 𝑉𝑡𝑖 = [𝑉𝑡(𝑖,1) , 𝑉𝑡(𝑖,2) , . . . , 𝑉𝑡(𝑖,𝐿) ] corresponding to client 𝐶𝑖 . After computing projection vectors for all
+𝐼
+clients, the server clusters the set {𝑉𝑡𝑖 }𝑖=1
+into 𝐾 clusters
+{Ω1 , Ω2 , . . . , Ω𝐾 } using the K-Means algorithm. For each
+cluster Ω 𝑘 , the centroid vector 𝑉¯ 𝑘 is computed, and the average
+cosine similarity 𝑐𝑠 𝑘 between all vectors in the cluster and 𝑉¯ 𝑘
+is calculated. Finally, the 𝐾 − 1 clusters with the largest average
+cosine similarities are identified as benign clusters, while the
+remaining cluster is considered potentially malicious.
+3) Model Aggregation: The server first maps the vectors in the
+selected 𝐾 −1 clusters to their corresponding clients, generating
+a client list 𝐿 𝑡𝑏𝑐 and a weight vector 𝛾𝑡 = (𝛾𝑡1 , . . . , 𝛾𝑡𝐼 ), where
+(
+1 if 𝐶𝑖 ∈ 𝐿 𝑡𝑏𝑐 ,
+𝑖
+𝛾𝑡 =
+(14)
+0 otherwise.
+
+(13)
+
+The server then distributes 𝛾𝑡 to all clients. Upon
+receiving 𝛾𝑡𝑖 , each client 𝐶𝑖 locally executes the
+DEFE.FunKeyGen( 𝑝𝑘 𝑖 , 𝑠𝑘 𝑖 , 𝑐𝑡𝑟, 𝛾𝑡𝑖 , 𝑎𝑢𝑥) algorithm to
+(𝑖,Agg)
+compute the partial functional key 𝑠𝑘 𝑓𝑡
+as
+(𝑖,Agg)
+
+𝑠𝑘 𝑓𝑡
+
+= 𝑟 𝑖𝑐𝑡𝑟 𝑦 𝑖𝑡 +
+
+𝑖−1
+∑︁
+
+𝑛
+∑︁
+
+𝜑𝑖, 𝑗 −
+
+𝑗=1
+
+𝜑𝑖, 𝑗 .
+
+(15)
+
+𝑗=𝑖+1
+
+(𝑖,Agg)
+
+Each client uploads 𝑠𝑘 𝑓𝑡
+to the server.
+ Subsequently,
+
+(𝑖,Agg) 𝐼
+the server executes the DEFE.FunKeyAgg (𝑠𝑘 𝑓𝑡
+)𝑖=1
+to compute the aggregation key as
+Agg
+
+𝑠𝑘 𝑓𝑡
+
+=
+
+𝐼
+∑︁
+
+(𝑖,Agg)
+
+𝑠𝑘 𝑓𝑡
+
+.
+
+(16)
+
+𝑖=1
+
+Finally, the server performs layer-wise aggregation to obtain
+′
+the noise-perturbed global model 𝑊𝑡+1
+as
+
+
+Agg
+𝐼
+DEFE.AggDec 𝑠𝑘 𝑓𝑡 , {𝐸 𝑡(𝑖,𝑙) [𝜀]}𝑖=1
+′
+(𝑙)
+𝑊𝑡+1
+[𝜀] =
+(17)
+𝑛
+′
+′
+⟨(𝑊𝑡(1,𝑙) [𝜀], . . . , 𝑊𝑡(𝐼,𝑙) [𝜀]), 𝛾𝑡 ⟩
+=
+𝑛
+where 𝑛 denotes the number of 1-valued elements in 𝐿 𝑡𝑏𝑐 . The
+′
+server then distributes 𝑊𝑡+1
+to all clients for the (𝑡 + 1)-th train′
+ing round. Note that 𝑊𝑡+1 is noise-perturbed, the clients must
+remove the perturbation to recover the accurate global
+model
+(𝑙) ′
+𝑊𝑡+1 . They will execute the DEFE.UsrDec(𝑊𝑡+1
+[𝜀], 𝛾𝑡 ) al(𝑙)
+gorithm to restore the true global model parameter 𝑊𝑡+1
+[𝜀] =
+(𝑙) ′
+𝑊𝑡+1 [𝜀] − 𝜂.
+VI. Analysis
+A. Confidentiality
+In this subsection, we demonstrate that our DEFE-based
+SRFed framework guarantees the confidentiality of clients’
+local models under the Honest-but-Curious (HBCS) security
+setting.
+Definition 6.1 (Decisional Composite Residuosity (DCR)
+Assumption [43]): Selecting safe primes 𝑝 = 2𝑝 ′ + 1 and
+𝑞 = 2𝑞 ′ + 1 with 𝑝 ′ , 𝑞 ′ > 2𝑙 (𝜆) , where 𝑙 is a polynomial in
+security parameter 𝜆, let 𝑁 = 𝑝𝑞. The Decision Composite
+
+7
+
+Residuosity (DCR) assumption states that, for any Probability
+Polynomial Time (PPT) adversary A and any distinct inputs
+𝑥0 , 𝑥1 , the following holds:
+
+vectors within each cluster to their centroid, and assigns client
+𝐼
+weights accordingly. Since {𝑉𝑡𝑖 }𝑖=1
+is indistinguishable between
+the ideal world and the real world, the intermediate variables
+𝐼
+calculated via {𝑉𝑡𝑖 }𝑖=1
+above also inherit this indistinguishabil𝑐𝑡𝑟
+1
+|𝑃𝑟 𝑤𝑖𝑛 (A, (1 + 𝑁) 𝑥0 · 𝑔𝑟𝑖
+mod 𝑁 2 , 𝑥0 , 𝑥1 ) − | = 𝑛𝑒𝑔𝑙 (𝜆), ity. Hence, this hybrid is indistinguishable from the previous
+2
+one.
+where 𝑃𝑟 𝑤𝑖𝑛 denotes the probability that the adversary A
+′
+Hyb4 In this hybrid, the aggregated model 𝑊𝑡+1
+is
+distinguishes ciphertexts.
+∗
+computed
+by
+the
+DEFE.AggDec
+algorithm.
+A
+holds
+the
+Definition 6.2 (Honest but Curious Security (HBCS)):
+Agg
+F𝑆𝑅𝐹𝑒𝑑
+′ , 𝑊 ), where
+=(𝐶𝑡𝑖 , 𝑠𝑘 𝑓 𝑖𝑡 , 𝑠𝑘 𝑓𝑡 , 𝑉𝑡𝑖 , 𝑊𝑡+1
+𝑇
+Consider the following game between an adversary A and view IDEAL A ∗
+Agg
+is obtained by the interaction of non-colluding clients
+a PPT simulator A ∗ , a protocol Π is secure if the real- 𝑠𝑘 𝑓𝑡
+world view REALΠA of A is computationally indistinguishable and server, the full security property of DEFE and the nonAgg
+F⋄
+∗
+colluding setting ensure the security of 𝑠𝑘 𝑓𝑡 . Among the
+from the ideal-world view IDEAL A
+∗ of A , i.e., for all
+𝑖′
+inputs 𝑥ˆ and intermediate results 𝑦ˆ from participants, it elements of intermediate computation, the local model 𝑊𝑡
+𝑐
+𝑐
+F⋄
+holds REALΠA (𝜆, ˆ𝑥, 𝑦ˆ ) ≡ IDEAL A
+𝑥, 𝑦ˆ ), where ≡ denotes is encrypted, which is consistent with the previous hybrid.
+∗ (𝜆, ˆ
+Throughout the 𝑇-round iterative process, the server obtains
+computationally indistinguishable.
+′
+Theorem 6.1: SRFed achieves Honest but Curious Security the noise-perturbed aggregated model 𝑊𝑡+1 = 𝑊𝑡+1 + 𝜂 via the
+under the DCR assumption, which means that for all inputs secure model aggregation when 0 ≤ 𝑡 < 𝑇 − 1. Thus, the server
+′ , 𝑊 ), cannot infer the real 𝑊𝑡+1 , and cannot distinguish the 𝑊 ′
+{𝐶𝑡𝑖 , 𝑠𝑘 𝑓 𝑖𝑡 }𝑖=1,...,𝐼 and intermediate results (𝑉𝑡𝑖 , 𝑊𝑡+1
+𝑡+1
+𝑇
+between ideal world and real world. When 𝑡 = 𝑇 − 1, since
+SRFed holds:
+𝑐
+Agg
+′ ,𝑊 ) ≡
+the distribution of Θ𝑊 remains identical to that of 𝑊𝑇 , the
+REAL𝑆𝑅𝐹𝑒𝑑
+(𝐶𝑡𝑖 , 𝑠𝑘 𝑓 𝑖𝑡 , 𝑠𝑘 𝑓𝑡 , 𝑉𝑡𝑖 , 𝑊𝑡+1
+𝑇
+A
+Agg
+F𝑆𝑅𝐹𝑒𝑑
+probability that the server can distinguish the final averaged
+𝑖
+𝑖
+𝑖
+′
+IDEAL A ∗
+(𝐶𝑡 , 𝑠𝑘 𝑓 𝑡 , 𝑠𝑘 𝑓𝑡 , 𝑉𝑡 , 𝑊𝑡+1 , 𝑊𝑇 ).
+aggregated model 𝑊𝑇 is negligible. Hence, this hybrid is
+Proof.
+To prove the security of SRFed, we just need to prove the indistinguishable from the previous one.
+Hyb5 When 0 ≤ 𝑡 < 𝑇, all clients further execute the
+confidentiality of the privacy-preserving defense strategy, since
+only it involves the computation of private data by unauthorized DEFE.UsrDec algorithm to restore the 𝑊𝑡+1 . This process is
+independent of the server, hence this hybrid is indistinguishable
+entities (i.e., the server). For the curious server, REAL𝑆𝑅𝐹𝑒𝑑
+A
+contains intermediate parameters and encrypted local models from the previous one.
+F𝑆𝑅𝐹𝑒𝑑
+{𝐶𝑡𝑖 }𝑖=1,...,𝐼 collected from each client during the execution
+The argument above proves that the output of IDEAL A
+∗
+𝑆𝑅𝐹𝑒𝑑
+of SRFed protocols. Besides, we construct a PPT simulator is indistinguishable from the output of REAL A
+. Thus, it
+A ∗ to execute F𝑆𝑅𝐹𝑒𝑑 , which simulates each process of the proves that SRFed guarantees HBCS.
+privacy-preserving defensive aggregation strategy. The detailed
+□
+proof is described below.
+Hyb1 We initialize a series of random variables whose
+distributions are indistinguishable from REAL𝑆𝑅𝐹𝑒𝑑
+during
+A
+the real protocol execution.
+B. Robustness
+Hyb2 In this hybrid, we change the behavior of simulated
+client 𝐶𝑖 (𝑖 ∈ [1, 𝐼]). 𝐶𝑖 takes the selected random vector of
+′
+To theoretically analyze the robustness of SRFed against
+random variables Θ𝑊 as the local model 𝑊𝑡𝑖 , and uses the
+′
+poisoning
+attacks, we first prove the following theorem.
+𝑖
+DEFE.Encrypt algorithm to encrypt 𝑊𝑡 . As only the original
+Theorem
+6.2: When the noise perturbation 𝜂 satisfies the
+contents of ciphertexts have changed, it guarantees that the
+constraint
+in
+(9), the clustering results of SRFed over all 𝑇
+server cannot distinguish the view of Θ𝑊 from the view of
+′
+𝑖
+iterations
+remain
+approximately equivalent to those obtained
+original 𝑊𝑡 according to the Definition (6.1). Then, 𝐶𝑖 uses the
+𝑖
+using
+the
+original
+local models {𝑊𝑡𝑖 }1,2,...,𝐼 .
+DEFE.FunKeyGen algorithm to generate the key vector 𝑠𝑘 𝑓𝑡 =
+′
+[𝑠𝑘 𝑓𝑡(𝑖,1) , 𝑠𝑘 𝑓𝑡(𝑖,2) , . . . , 𝑠𝑘 𝑓𝑡(𝑖,𝐿) ]. Note that each component Proof. Let 𝜂 be a vector of the same shape as 𝑊𝑡(𝑖,𝑙) with
+of 𝑠𝑘 𝑓𝑡𝑖 essentially is the inner product result, thus revealing all entries equal to 𝜂, and 𝑉𝑡𝑖 𝑟 𝑒𝑎𝑙 be the real projection vector
+no secret information to the server.
+derived from the noise-free models. We discuss the following
+Hyb3 In this hybrid, we change the input of the proto- three cases.
+′
+col of Secure Model Aggregation executed by the server
+① 𝑡 = 0 : For any 𝑖 ∈ [1, 𝐼], 𝑊0(𝑖,𝑙) = 𝑊0(𝑖,𝑙) + 𝜂, we have
+with encrypted random variables instead of real encrypted
+model parameters. The server gets the plaintexts vector
+′
+⟨𝑊0(𝑖,𝑙) , 𝑊0(𝑙) ⟩
+⟨𝑊0(𝑖,𝑙) + 𝜂, 𝑊0(𝑙) ⟩
+⟨𝜂, 𝑊0(𝑙) ⟩
+𝑉𝑡𝑖 = [𝑉𝑡(𝑖,1) , 𝑉𝑡(𝑖,2) , . . . , 𝑉𝑡(𝑖,𝐿) ] corresponding to 𝐶𝑖 , which
+𝑖
+𝑖
+𝑉
+=
+=
+=
+𝑉
++
+.
+0
+0𝑟 𝑒𝑎𝑙
+is the layer-wise projection of Θ𝑊 and 𝑊𝑡 . As the inputs
+∥𝑊0(𝑙) ∥ 2
+∥𝑊0(𝑙) ∥ 2
+∥𝑊0(𝑙) ∥ 2
+′
+𝑖
+Θ𝑊 follow the same distribution as the real 𝑊𝑡 , the server
+(18)
+(𝑙)
+cannot distinguish the 𝑉𝑡𝑖 between ideal world and real world
+⟨ 𝜂,𝑊0 ⟩
+Note that
+is identical for any client, the clustering
+(𝑙)
+without knowing further information about the inputs. Then, the
+∥𝑊0 ∥ 2
+𝑖
+𝐼
+𝐾
+𝑖
+𝐼
+𝑖
+server performs clustering based on {𝑉𝑡 }𝑖=1 to obtain {Ω 𝑘 } 𝑘=1 . result of {𝑉0 }𝑖=1 is entirely equivalent to that of {𝑉0𝑟
+}𝐼
+𝑒𝑎𝑙 𝑖=1
+Subsequently, it computes the average cosine similarity of all based on the underlying computation of K-Means.
+
+8
+
+′
+
+② 0 < 𝑡 < 𝑇 : For any 𝑖 ∈ [1, 𝐼], 𝑊𝑡(𝑖,𝑙) = 𝑊𝑡(𝑖,𝑙) + 𝜂.
+′
+Correspondingly, 𝑊𝑡(𝑙) = 𝑊𝑡(𝑙) + 𝜂, and we have
+′
+′
+⟨𝑊𝑡(𝑖,𝑙) , 𝑊𝑡(𝑙) ⟩
+𝑖
+𝑉𝑡 =
+′
+∥𝑊𝑡(𝑙) ∥ 2
+⟨𝑊𝑡(𝑖,𝑙) , 𝑊𝑡(𝑙) ⟩ + ⟨𝑊𝑡(𝑖,𝑙) , 𝜂⟩ + ⟨𝜂, 𝑊𝑡(𝑙) ⟩ + ⟨𝜂, 𝜂⟩
+
+=
+
+√︃
+
+Method
+
+Comp.
+
+.
+∥𝑊𝑡(𝑙) ∥ 22 + 2⟨𝑊𝑡(𝑙) , 𝜂⟩ + ∥𝜂∥ 22
+
+′
+
+⟨𝑊𝑇(𝑖,𝑙) , 𝑊𝑇(𝑙) ⟩
+′
+
+∥𝑊𝑇(𝑙) ∥ 2
+
+= √︃
+
+⟨𝑊𝑇(𝑖,𝑙) , 𝑊𝑇(𝑙) ⟩ + ⟨𝑊𝑇(𝑖,𝑙) , 𝜂⟩
+∥𝑊𝑇(𝑙) ∥ 22 + 2⟨𝑊𝑇(𝑙) , 𝜂⟩ + ∥𝜂∥ 22
+
+. (20)
+
+SRFed
+O (𝑇𝑙𝑡 ) + O (𝜁 𝑇𝑚𝑒−𝑑𝑒 𝑓 𝑒 )
+
+(19)
+
+By combining the above equation with the constraint (9), 𝑉𝑡𝑖
+is approximately equivalent to the real value of 𝑉𝑡𝑖 𝑟 𝑒𝑎𝑙 .
+′
+③ 𝑡 = 𝑇 : For any 𝑖 ∈ [1, 𝐼], 𝑊𝑇(𝑖,𝑙) = 𝑊𝑇(𝑖,𝑙) . Correspond′
+ingly, 𝑊𝑇(𝑙) = 𝑊𝑇(𝑙) + 𝜂, and we have
+𝑉𝑇𝑖 =
+
+TABLE III
+Comparison of computation and communication overhead between
+different methods
+
+Comm.
+
++O (𝑇𝑚𝑎−𝑑𝑒 𝑓 𝑒 )
+
+ShieldFL
+O (𝑇𝑙𝑡 ) + O ( 𝜁 𝑇𝑚𝑒− 𝑝ℎ𝑒 )
++O ( 𝜁 𝑇𝑚𝑑− 𝑝ℎ𝑒 )
+
++O (𝑇𝑚𝑎−𝑑𝑒 𝑓 𝑒 )
+
++O (𝑇𝑚𝑑− 𝑝ℎ𝑒 )
+
+O (𝐼 𝜁 |𝑤𝑑𝑒 𝑓 𝑒 | ) 1 + O (𝐼 𝐿 |𝑤 | ) 2
+
+O (13𝐼 𝜁 |𝑤 𝑝ℎ𝑒 | ) 3
+
+Notes: 1,2,3 |𝑤𝑑𝑒 𝑓 𝑒 |, |𝑤 | and |𝑤 𝑝ℎ𝑒 | denote the communication complexity of a DEFE ciphertext, a plaintext, and a PHE ciphertext, respectively.
+
+malicious models exhibit a lower average cosine similarity to
+their cluster center. Consequently, our scheme filters out the
+cluster containing malicious models by computing average
+cosine similarity, ultimately achieving robust to malicious
+clients.
+□
+
+Similarly, by combining the above equation with the constraint
+(9), 𝑉𝑇𝑖 is approximately equivalent to the real value of 𝑉𝑇𝑖 𝑟 𝑒𝑎𝑙 .
+Therefore, across all iterations, the clustering results based C. Efficiency
+on {𝑉𝑡𝑖 } closely approximate those derived from the original
+Theorem 6.4: The computation and communication complexlocal models, confirming that the introduced perturbation does
+ities
+of SRFed are O (𝑇𝑙𝑡 ) + O (𝜁𝑇𝑚𝑒−𝑑𝑒 𝑓 𝑒 ) + O (𝑇𝑚𝑑−𝑑𝑒 𝑓 𝑒 ) +
+not affect model detection.
+□
+O
+(𝑇
+𝑚𝑎−𝑑𝑒
+𝑓 𝑒 ) and O (𝐼 𝜁 |𝑤 𝑑𝑒 𝑓 𝑒 |) + O (𝐼 𝐿|𝑤|), respectively.
+Then, we introduce a key assumption, which has been proved
+Proof.
+in [37], [32]. This assumption reveals the essential difference
+To evaluate the efficiency of SRFed, we analyze its compubetween malicious and benign models and serves as a core
+tational
+and communication overhead per training iteration and
+basis for subsequent robustness analysis.
+(𝑡
+)
+compare
+it with ShieldFL [29]. ShieldFL is an efficient PPFL
+Assumption 6.1: An error term 𝜏
+exists between the
+𝑖∗
+framework
+based on the partially homomorphic encryption
+average malicious gradients W𝑡 and the average benign
+𝑖
+(PHE)
+scheme.
+The comparative results are presented in
+gradients W𝑡 due to divergent training objectives. This is
+Table
+III.
+Specifically,
+the computational overhead of SRFed
+formally expressed as:
+∑︁
+∑︁
+comprises four components: local training O (𝑇𝑙𝑡 ), model
+W𝑖∗
+W𝑖𝑡 + 𝜏 (𝑡 ) .
+(21) encryption O (𝜁𝑇𝑚𝑒−𝑑𝑒 𝑓 𝑒 ), model detection O (𝑇𝑚𝑑−𝑑𝑒 𝑓 𝑒 ), and
+𝑡 =
+𝐶
+∈
+B
+𝐶𝑖 ∈ M
+𝑖
+model aggregation O (𝑇𝑚𝑎−𝑑𝑒 𝑓 𝑒 ). For model encryption, FE
+(𝑡
+)
+The magnitude of 𝜏 exhibits a positive correlation with the inherently offers a lightweight advantage over PHE, leading to
+O (𝜁𝑇𝑚𝑒−𝑑𝑒 𝑓 𝑒 ) < O (𝜁𝑇𝑚𝑒− 𝑝ℎ𝑒 ). In terms of model detection,
+number of iterative training rounds.
+SRFed
+performs this process primarily on the server side using
+Theorem 6.3: SRFed guarantees robustness to malicious
+plaintext
+data, whereas ShieldFL requires multiple rounds of
+clients in non-IID settings, provided that most clients are
+interaction
+to complete the encrypted model detection. This
+benign.
+results
+in
+O
+(𝑇𝑚𝑑−𝑑𝑒 𝑓 𝑒 ) ≪ O (𝑇𝑚𝑑− 𝑝ℎ𝑒 ). Furthermore, SRFed
+Proof.
+enables
+the
+server to complete decryption and aggregation
+In the secure model aggregation phase of SRFed, the server
+𝑖
+simultaneously.
+In contrast, ShieldFL necessitates aggregation
+collects the encrypted model 𝐶𝑡 and the corresponding key
+𝑖
+prior
+to
+decryption
+and involves interactions with a third party,
+vectors 𝑠𝑘 𝑓𝑡 from each client, then computes the projection
+(𝑖,𝑙)
+(𝑙)
+resulting
+in
+significantly
+higher overhead, i.e., O (𝑇𝑚𝑎−𝑑𝑒 𝑓 𝑒 ) ≪
+⟨𝑊
+,𝑊
+⟩
+𝑉𝑡(𝑖,𝑙) of 𝑊𝑡(𝑖,𝑙) onto 𝑊𝑡(𝑙) , i.e., 𝑡 (𝑙) 𝑡 . By iterating over 𝐿 O (𝑇
+∥𝑊𝑡 ∥ 2
+𝑚𝑎− 𝑝ℎ𝑒 ). Overall, these characteristics collectively render
+layers, the server obtains the layer-wise projection vector 𝑉𝑡𝑖 = SRFed more efficient than ShieldFL. The communication
+[𝑉𝑡(𝑖,1) , 𝑉𝑡(𝑖,2) , . . . , 𝑉𝑡(𝑖,𝐿) ] corresponding to 𝐶𝑖 . Subsequently, overhead of SRFed comprises two components: the encrypted
+𝐼 . models O (𝐼 𝜁 |𝑤
+the server performs clustering on the projection vectors {𝑉𝑡𝑖 }𝑖=1
+𝑑𝑒 𝑓 𝑒 |) and key vectors O (𝐼 𝐿|𝑤|) uploaded by 𝐼
+Based on the Assumption (6.1), a non-negligible divergence clients, where 𝜁 denotes the model dimension, 𝐿 is the number
+𝜏 (𝑡 ) emerges between benign and malicious local models, which of layers, |𝑤 𝑑𝑒 𝑓 𝑒 | and |𝑤| are the communication complexity
+grows with the number of iterations. Meanwhile, by indepen- of a single DEFE ciphertext and a single plaintext, respectively.
+dently projecting each layer’s parameters onto the corresponding Since |𝑤| is significantly lower than |𝑤 𝑑𝑒 𝑓 𝑒 |, and |𝑤 𝑑𝑒 𝑓 𝑒 |
+layer of the global model, our operation eliminates cross-layer and |𝑤 𝑝ℎ𝑒 | are nearly equivalent, SRFed reduces the overall
+interference. This ensures that malicious modifications confined communication complexity by approximately O (12𝐼 𝜁 |𝑤 𝑝ℎ𝑒 |)
+to specific layers can be detected significantly more effectively. compared to ShieldFL. This reduction in overhead is primarTherefore, our clustering approach successfully distinguishes ily attributed to SRFed’s lightweight DEFE scheme, which
+between benign and malicious models by grouping them into eliminates extensive third-party interactions.
+separate clusters. Due to significant distribution divergence,
+□
+
+9
+
+Accuracy (%)
+
+Accuracy (%)
+
+Accuracy (%)
+
+Accuracy (%)
+
+VII. Experiments
+95
+96
+A. Experimental Settings
+94
+90
+1) Implementation: We implement SRFed on a small-scale
+92
+85
+local network. Each machine in the network is equipped with
+90
+FedAvg
+FedAvg
+80
+ShieldFL
+ShieldFL
+the following hardware configuration: an Intel Xeon CPU
+88
+PBFL
+PBFL
+Median
+Median
+75
+E5-1650 v4, 32 GB of RAM, an NVIDIA GeForce GTX
+86
+Biscotti
+Biscotti
+FoolsGold
+FoolsGold
+84
+70
+1080 Ti graphics card, and a network bandwidth of 40 Mbps.
+Ours
+Ours
+0
+10
+20
+30
+40
+50
+0
+10
+20
+30
+40
+50
+Additionally, the implementation of the DEFE scheme is based
+Attack ratio (%)
+Attack ratio (%)
+on the NDD-FE scheme [31], and the code implementation of
+(a) MNIST (𝛼=0.2)
+(b) MNIST (𝛼=0.8)
+FL processes is referenced to [44].
+2) Dataset and Models: We evaluate the performance of
+76
+75.0
+74
+SRFed on two datasets:
+72.5
+72
+70.0
+• MNIST [45]: This dataset consists of 10 classes of
+70
+67.5
+handwritten digit images, with 60,000 training samples
+FedAvg
+FedAvg
+65.0
+68
+ShieldFL
+ShieldFL
+and 10,000 test samples. Each sample is a grayscale image
+PBFL
+62.5
+PBFL
+66
+Median
+Median
+60.0
+of 28 × 28 pixels. The global model used for this dataset
+Biscotti
+Biscotti
+64
+FoolsGold
+FoolsGold
+57.5
+Ours
+Ours
+is a Convolutional Neural Network (CNN) model, which
+62
+0
+10
+20
+30
+40
+50
+0
+10
+20
+30
+40
+50
+Attack ratio (%)
+Attack ratio (%)
+includes two convolutional layers followed by two fully
+connected layers.
+(c) CIFAR10 (𝛼=0.2)
+(d) CIFAR10 (𝛼=0.6)
+• CIFAR-10 [46]: This dataset contains RGB color images
+Fig. 2. The OA of the models obtained by four benchmarks under label-flipping
+across 10 categories, including airplane, car, bird, cat, deer, attack.
+dog, frog, horse, boat, and truck. It consists of 50,000
+training images and 10,000 test samples. Each sample
+dataset, the training samples originally labeled as ”0”
+is a 32 × 32 pixel color image. The global model used
+are reassigned to the target label ”4”. For the CIFARfor this dataset is a CNN model, which includes three
+10
+dataset, the training samples originally labeled as
+convolutional layers, one pooling layer, and two fully
+”airplane”
+are reassigned to the target label ”deer”.
+connected layers.
+• Untargeted Poisoning Attack: We consider the commonly
+3) Baselines: To evaluate the robustness of the proposed
+used Gaussian attack. In experiments, malicious clients
+SRFed method, we conduct comparative experiments against
+inject noise that follows a Gaussian distribution N (0, 0.52 )
+several advanced baseline methods, including FedAvg [47],
+into their local model updates.
+ShieldFL [29], PBFL [37], Median [35], Biscotti [41], and
+6)
+Evaluation Metrics: For each benchmark experiment, we
+FoolsGold [33]. Furthermore, to evaluate the efficiency of
+adopt
+the following evaluation metrics on the test dataset to
+SRFed, we compare it with representative methods such as
+quantify
+the impact of poisoning attacks on the aggregated
+ShieldFL [29] and ESB-FL [31].
+model
+in
+FL.
+4) Experimental parameters: In all experiments, the number
+• Overall Accuracy (OA): It is the ratio of the number of
+of local clients is set to 20, the number of training rounds is
+samples correctly predicted by the model in the test dataset
+set to 100, the batchsize is set to 64, and the number of local
+to the total number of predictions for all samples in the
+training epochs is set to 10. We use the stochastic gradient
+test dataset.
+descent (SGD) to optimize the model, with a learning rate of
+• Source Accuracy (SA): It specifically refers to the ratio
+0.01 and a momentum of 0.5. Additionally, our experiments
+of the number of correctly predicted flip class samples by
+are conducted under varying levels of data heterogeneity, with
+the model to the total number of flip class samples in the
+the data distributions configured as follows:
+dataset.
+• MNIST: Two distinct levels of data heterogeneity are
+• Attack Success Rate (ASR): It is defined as the proportion
+configured by sampling from a Dirichlet distribution with
+of source-class samples that are misclassified as the target
+the parameters 𝛼 = 0.2 and 𝛼 = 0.8, respectively, to
+class by the aggregated model.
+simulate Non-IID data partitions across clients.
+• CIFAR-10: Two distinct levels of data heterogeneity are
+configured by sampling from a Dirichlet distribution with B. Experimental Results
+the parameters 𝛼 = 0.2 and 𝛼 = 0.6, respectively, to
+1) Robustness Evaluation of SRFed: To evaluate the rosimulate Non-IID data partitions across clients.
+bustness of the proposed SRFed framework, we conduct a
+5) Attack Scenario: In each benchmark, the adversary can comparative analysis against the six baseline methods discussed
+control a certain proportion of clients to launch poisoning at- in Section VII-A3. Specifically, we first evaluate the overall
+tacks, with the proportion varying across {0%, 10%, 20%, 30%, accuracy (OA) of FedAvg, ShieldFL, PBFL, Median, Biscotti,
+40%, 50%}. The attack scenario parameters are configured as FoolsGold, and SRFed under the label-flipping attacks. The
+follows:
+results are presented in Figure 2. In the MNIST benchmarks
+• Targeted Poisoning Attack: we consider the mainstream
+with two levels of heterogeneity, the proposed SRFed conlabel-flipping attack. For experiments on the MNIST sistently maintains a high OA across varying proportions
+
+100
+
+100
+
+80
+
+80
+
+80
+
+20
+0
+0
+
+10
+
+60
+
+FedAvg
+ShieldFL
+PBFL
+Median
+Biscotti
+FoolsGold
+Ours
+
+40
+20
+0
+
+20
+30
+Attack ratio (%)
+
+40
+
+50
+
+0
+
+(a) MNIST (𝛼=0.2)
+
+40
+
+0
+20
+30
+Attack ratio (%)
+
+40
+
+50
+
+40
+
+FedAvg
+ShieldFL
+PBFL
+Median
+Biscotti
+FoolsGold
+Ours
+
+30
+20
+10
+0
+0
+
+10
+
+60
+50
+
+40
+
+FedAvg
+ShieldFL
+PBFL
+Median
+Biscotti
+FoolsGold
+Ours
+
+30
+20
+10
+0
+
+20
+30
+Attack ratio (%)
+
+40
+
+(c) CIFAR10 (𝛼=0.2)
+
+50
+
+0
+
+10
+
+20
+30
+Attack ratio (%)
+
+40
+
+50
+
+80
+
+40
+
+60
+
+30
+
+(d) CIFAR10 (𝛼=0.6)
+
+40
+
+50
+
+50
+40
+30
+
+10
+
+0
+50
+
+20
+30
+Attack ratio (%)
+
+20
+
+10
+
+40
+
+10
+
+FedAvg
+ShieldFL
+PBFL
+Median
+Biscotti
+FoolsGold
+Ours
+
+70
+
+20
+
+20
+30
+Attack ratio (%)
+
+0
+
+(b) MNIST (𝛼=0.8)
+
+FedAvg
+ShieldFL
+PBFL
+Median
+Biscotti
+FoolsGold
+Ours
+
+70
+
+Accuracy (%)
+
+50
+
+Accuracy (%)
+
+60
+
+50
+
+10
+
+(a) MNIST (𝛼=0.2)
+
+70
+
+60
+
+40
+
+0
+0
+
+80
+
+70
+
+60
+
+20
+
+20
+
+(b) MNIST (𝛼=0.8)
+
+80
+
+Accuracy (%)
+
+10
+
+60
+
+FedAvg
+ShieldFL
+PBFL
+Median
+Biscotti
+FoolsGold
+Ours
+
+80
+
+Accuracy (%)
+
+FedAvg
+ShieldFL
+PBFL
+Median
+Biscotti
+FoolsGold
+Ours
+
+40
+
+ASR (%)
+
+60
+
+100
+
+FedAvg
+ShieldFL
+PBFL
+Median
+Biscotti
+FoolsGold
+Ours
+
+ASR (%)
+
+100
+
+Accuracy (%)
+
+Accuracy (%)
+
+10
+
+0
+
+10
+
+20
+30
+Attack ratio (%)
+
+40
+
+(c) CIFAR10 (𝛼=0.2)
+
+50
+
+0
+
+0
+
+10
+
+20
+30
+Attack ratio (%)
+
+40
+
+50
+
+(d) CIFAR10 (𝛼=0.6)
+
+Fig. 3. The SA of the models obtained by four benchmarks under label-flipping
+attack.
+
+Fig. 4. The ASR of the models obtained by four benchmarks under labelflipping attack.
+
+of malicious clients. In the MNIST (𝛼=0.8) benchmark, all
+methods except Biscotti demonstrate relatively strong defense
+performance. Similarly, in the MNIST (𝛼=0.2) benchmark,
+all methods, except Biscotti, continue to perform well when
+facing a malicious client proportion ranging from 0% to 40%.
+Biscotti’s poor performance is due to the fact that, in NonIID data scenarios, the model distributions trained by benign
+clients are more scattered, which can lead to their incorrect
+elimination. In the CIFAR-10 dataset benchmarks with different
+levels of heterogeneity, the OA of all methods fluctuates as
+the proportion of malicious clients increases. However, SRFed
+generally maintains better performance compared to the other
+methods, owing to the effectiveness of its robust aggregation
+strategy.
+We further compare the SA of the global models achieved by
+different methods in the four benchmarks under label-flipping
+attacks. SA accurately measures the defense effectiveness of
+different methods against poisoning attacks, as it specifically
+reveals the model’s accuracy on the samples of the flipping
+label. The experimental results are presented in Figure 3.
+In the MNIST (𝛼 = 0.2) benchmark, SRFed demonstrates
+a significant advantage in defending against label-flipping
+attacks. Especially, when the attack ratio reaches 50%, SRFed
+achieves a SA of 70%, while the SA of all other methods
+drops to nearly 0% even though their OA remaining above
+80%. SRFed is the only method to sustain a high SA across all
+attack ratios, underscoring its superior Byzantine robustness
+even in scenarios with extreme data heterogeneity and high
+attack ratios. In the MNIST (𝛼 = 0.8) benchmark, SRFed
+also outperforms other baselines. In the CIFAR-10 (𝛼 = 0.2)
+benchmark, although SRFed still outperforms the other methods,
+its performance gradually deteriorates as the proportion of
+malicious clients increases. This demonstrates that defending
+against poisoning attacks in scenarios with a high attack
+
+ratio and extremely heterogeneous data remains a significant
+challenge. In the CIFAR-10 (𝛼 = 0.6) benchmark, SRFed
+maintains a high level of performance as the proportion of
+malicious clients increases (SA ≥ 70%), while the SA of all
+other methods sharply declines and eventually approaches 0%.
+This superior performance is attributed to the robust aggregation
+strategy of SRFed, which performs layer-wise projection and
+clustering analysis on client models. This enables more accurate
+detection of local parameter anomalies compared to baselines.
+We also evaluate the ASR of the models obtained by different
+methods across four benchmarks, with the experimental results
+presented in Figure 4. As the attack ratio increases, we can
+observe that the ASR trend exhibits a negative correlation
+with the SA trend. Notably, our proposed SRFed consistently
+demonstrates optimal performance across all four benchmarks,
+showing minimal performance fluctuations across varying attack
+ratios.
+Finally, we evaluate the OA of the models of different
+methods under the Gaussian attack. The experimental results
+are shown in Figure 5. We observe that SRFed consistently
+achieves optimal performance across all four benchmarks.
+Furthermore, as the attack ratio increases, SRFed exhibits
+minimal fluctuations in OA. Specifically, in the MNIST
+(𝛼 = 0.2) and MNIST (𝛼 = 0.8) benchmarks, all methods
+maintain an OA above 90% when the attack ratio is ≤ 20%.
+However, when the attack ratio ≥ 30%, only SRFed and Median
+retain an OA above 90%, demonstrating their effective defense
+against poisoning attacks under high malicious client ratios. In
+the CIFAR-10 (𝛼 = 0.2) and CIFAR-10 (𝛼 = 0.6) benchmarks,
+while the OA of most methods drops below 30% as the attack
+ratio increases, SRFed consistently maintains high accuracy
+across all attack rates, demonstrating its robustness against
+extreme client ratios and heterogeneous data distributions.
+In summary, SRFed demonstrates strong robustness against
+
+11
+
+95
+
+TABLE IV
+Comparison of time consumption between different frameworks
+
+95
+
+90
+
+90
+
+80
+
+Accuracy (%)
+
+Accuracy (%)
+
+85
+
+FedAvg
+ShieldFL
+PBFL
+Median
+Biscotti
+FoolsGold
+Ours
+
+75
+70
+65
+0
+
+10
+
+85
+
+FedAvg
+ShieldFL
+PBFL
+Median
+Biscotti
+FoolsGold
+Ours
+
+80
+75
+
+20
+30
+Attack ratio (%)
+
+40
+
+50
+
+0
+
+(a) MNIST (𝛼=0.2)
+70
+
+80
+
+60
+
+70
+
+SRFed
+
+ShieldFL
+
+ESB-FL
+
+Local training1
+
+19.51 h
+
+14.23 h
+
+5.16 h
+
+9.09 h
+
+51.97 h
+
+31.43 h
+
+Privacy-preserving
+20
+30
+Attack ratio (%)
+
+40
+
+50
+
+(b) MNIST (𝛼=0.8)
+
+robust model aggregation2
+Node communication
+
+0.09 h
+
+1.51 h
+
+0.09 h
+
+Total time
+
+28.69 h
+
+67.71 h
+
+36.68 h
+
+Accuracy
+
+98.90%
+
+97.42%
+
+98.68%
+
+60
+
+40
+
+Accuracy (%)
+
+50
+Accuracy (%)
+
+10
+
+Framework
+
+FedAvg
+ShieldFL
+PBFL
+Median
+Biscotti
+FoolsGold
+Ours
+
+30
+20
+10
+0
+
+10
+
+FedAvg
+ShieldFL
+PBFL
+Median
+Biscotti
+FoolsGold
+Ours
+
+40
+30
+20
+10
+
+20
+30
+Attack ratio (%)
+
+40
+
+(c) CIFAR10 (𝛼=0.2)
+
+50
+
+TABLE V
+Time overhead of proposed DEFE
+
+50
+
+0
+
+10
+
+20
+30
+Attack ratio (%)
+
+40
+
+50
+
+(d) CIFAR10 (𝛼=0.6)
+
+Fig. 5. The OA of the models obtained by four benchmarks under Gaussian
+attack.
+
+Operations
+
+DEFE
+
+NDD-FE
+
+HE
+
+(for a model)
+
+(SRFed)
+
+(ESB-FL)
+
+(shieldFL)
+
+Encryption
+
+28.37 s
+
+2.53 s
+
+18.87 s
+
+Inner product
+
+8.97 s
+
+56.58 s
+
+30.15 s
+
+Decryption
+
+-
+
+-
+
+3.10 s
+
+poisoning attacks under different Non-IID data settings and experiments on the CNN model of the MNIST dataset.
+Specifically, we compare the DEFE scheme with the NDD-FE
+attack ratios, thus achieving the design goal of robustness.
+scheme used in ESB-FL [31] and the HE scheme used in
+2) Efficiency Evaluation of SRFed: Learning Overheads.
+ShieldFL [29]. For these schemes, we calculate their average
+We evaluate the efficiency of the proposed SRFed in obtaining
+time required for different operations, i.e., encryption, inner
+a qualified aggregated model. Specifically, we compare SRFed
+product computation, and decryption, over 100 test runs. The
+with two baseline methods, i.e., ESB-FL and ShieldFL. These
+results are presented in Table V. It is evident that the DEFE
+two methods respectively utilize NDD-FE and HE to ensure
+scheme offers a substantial efficiency advantage in terms of
+privacy protection for local models. The experiments are
+inner product computation. Specifically, the inner product time
+conducted on MNIST with no malicious clients. For each
+of DEFE is reduced by 84% compared to NDD-FE and by 70%
+method, we conduct 10 training tasks and calculate the
+compared to HE. Furthermore, DEFE directly produces the
+average time consumed in each phase, along with the average
+final plaintext result during inner product computation, avoiding
+communication time across all participants. The results are
+the need for interactive decryption in HE. Combined with the
+summarized in Table IV. The experimental results demonstrate
+results in Table IV, it is clear that although the encryption
+that SRFed reduces the total time overheads throughout the
+time of DEFE is slightly higher, its highly efficient decryption
+entire training process by 58% compared to ShieldFL. This
+process significantly reduces the overall computation overhead.
+reduction can be attributed to two main factors: 1) DEFE in
+Thus, DEFE guarantees the high efficiency of SRFed.
+SRFed offers a significant computational efficiency advantage
+over HE in ShieldFL, with faster encryption and decryption,
+VIII. Conclusion
+as shown in the ”Local training” and ”Privacy-preserving
+robust model aggregation” phases in Table IV. 2) The privacyIn this paper, we address the challenges of achieving both
+preserving robust model aggregation is handled solely by the privacy preservation and Byzantine robustness in FL under Nonserver, which avoids the overhead of multi-server interactions IID data distributions, and propose a novel secure and efficient
+in ShieldFL. Compared to ESB-FL, SRFed reduces the total FL method SRFed. Specifically, we design a DEFE scheme
+time overhead by 22% even though it incorporates an additional that enables efficient model encryption and non-interactive deprivacy-preserving model detection phase. This is attributed to cryption, which eliminates third-party dependency and defends
+its underlying DEFE scheme, which significantly enhances against server-side inference attacks. Second, we develop a
+decryption efficiency. As a result, SRFed achieves a 71% privacy-preserving robust aggregation mechanism based on
+reduction in execution time during the privacy-preserving robust secure layer-wise projection and clustering, which effectively
+model aggregation phase, even with the added overhead of filters malicious updates and mitigates poisoning attacks in data
+model detection. In summary, SRFed achieves an efficient heterogeneous environments. Theoretical analysis and extensive
+privacy-preserving FL process, achieving the design goal of experimental results demonstrate that SRFed achieves superior
+efficiency.
+performance compared to state-of-the-art baselines in terms of
+Efficiency Evaluation of DEFE. We further evaluate the privacy protection, Byzantine resilience, and system efficiency.
+efficiency of the DEFE scheme within SRFed by conducting In future work, we will explore the extension of SRFed to
+
+12
+
+practical FL scenarios, such as vertical FL, edge computing,
+and personalized FL.
+References
+[1] R. Lan, Y. Zhang, L. Xie, Z. Wu, and Y. Liu, ‘Bev feature exchange
+pyramid networks-based 3d object detection in small and distant situations:
+A decentralized federated learning framework,” Neurocomputing, vol.
+583, p. 127476, 2024.
+[2] T. Zeng, O. Semiari, M. Chen, W. Saad, and M. Bennis, ‘Federated
+learning on the road autonomous controller design for connected and
+autonomous vehicles,” IEEE Transactions on Wireless Communications,
+vol. 21, no. 12, pp. 10 407–10 423, 2022.
+[3] V. P. Chellapandi, L. Yuan, C. G. Brinton, S. H. Żak, and Z. Wang,
+‘Federated learning for connected and automated vehicles: A survey of
+existing approaches and challenges,” IEEE Transactions on Intelligent
+Vehicles, vol. 9, no. 1, pp. 119–137, 2024.
+[4] Y. Fu, X. Tang, C. Li, F. R. Yu, and N. Cheng, ‘A secure personalized
+federated learning algorithm for autonomous driving,” Trans. Intell.
+Transport. Sys., vol. 25, no. 12, p. 20378–20389, Dec. 2024.
+[5] G. Li, J. Gan, C. Wang, and S. Peng, ‘Stateless distributed stein
+variational gradient descent method for bayesian federated learning,”
+Neurocomputing, vol. 654, p. 131198, 2025.
+[6] G. Hu, S. Song, Y. Kang, Z. Yin, G. Zhao, C. Li, and J. Tang,
+‘Federated client-tailored adapter for medical image segmentation,” IEEE
+Transactions on Information Forensics and Security, vol. 20, pp. 6490–
+6501, 2025.
+[7] X. Wu, J. Pei, C. Chen, Y. Zhu, J. Wang, Q. Qian, J. Zhang, Q. Sun, and
+Y. Guo, ‘Federated active learning for multicenter collaborative disease
+diagnosis,” IEEE Transactions on Medical Imaging, vol. 42, no. 7, pp.
+2068–2080, 2023.
+[8] A. Rauniyar, D. H. Hagos, D. Jha, J. E. Håkegård, U. Bagci, D. B.
+Rawat, and V. Vlassov, ‘Federated learning for medical applications:
+A taxonomy, current trends, challenges, and future research directions,”
+IEEE Internet of Things Journal, vol. 11, no. 5, pp. 7374–7398, 2024.
+[9] T. Deng, C. Huang, M. Cai, Y. Liu, M. Liu, J. Lin, Z. Shi, B. Zhao,
+J. Huang, C. Liang, G. Han, Z. Liu, Y. Wang, and C. Han, ‘Fedbcd:
+Federated ultrasound video and image joint learning for breast cancer
+diagnosis,” IEEE Transactions on Medical Imaging, vol. 44, no. 6, pp.
+2395–2407, 2025.
+[10] C. Wu, F. Wu, L. Lyu et al., ‘A federated graph neural network framework
+for privacy-preserving personalization,” Nature Communications, vol. 13,
+no. 1, p. 3091, 2022.
+[11] Y. Hao, X. Chen, W. Wang, J. Liu, T. Li, J. Wang, and W. Pedrycz,
+‘Eyes on federated recommendation: Targeted poisoning with competition
+and its mitigation,” IEEE Transactions on Information Forensics and
+Security, vol. 19, pp. 10 173–10 188, 2024.
+[12] Z. Li, C. Li, F. Huang, X. Zhang, J. Weng, and P. S. Yu, ‘Lapglp:
+Approximating infinite-layer graph convolutions with laplacian for
+federated recommendation,” IEEE Transactions on Information Forensics
+and Security, vol. 20, pp. 8178–8193, 2025.
+[13] X. Liu, Y. Chen, and S. Pang, ‘Defending against membership inference
+attack for counterfactual federated recommendation with differentially
+private representation learning,” IEEE Transactions on Information
+Forensics and Security, vol. 19, pp. 8037–8051, 2024.
+[14] A. V. Galichin, M. Pautov, A. Zhavoronkin, O. Y. Rogov, and I. Oseledets, ‘Glira: Closed-box membership inference attack via knowledge
+distillation,” IEEE Transactions on Information Forensics and Security,
+vol. 20, pp. 3893–3906, 2025.
+[15] W. Issa, N. Moustafa, B. Turnbull, and K.-K. R. Choo, ‘Rve-pfl: Robust
+variational encoder-based personalized federated learning against model
+inversion attacks,” IEEE Transactions on Information Forensics and
+Security, vol. 19, pp. 3772–3787, 2024.
+[16] G. Liu, Z. Tian, J. Chen, C. Wang, and J. Liu, ‘Tear: Exploring temporal
+evolution of adversarial robustness for membership inference attacks
+against federated learning,” IEEE Transactions on Information Forensics
+and Security, vol. 18, pp. 4996–5010, 2023.
+[17] F. Hu, A. Zhang, X. Liu, and M. Li, ‘Dampa: Dynamic adaptive model
+poisoning attack in federated learning,” IEEE Transactions on Information
+Forensics and Security, vol. 20, pp. 12 215–12 230, 2025.
+[18] H. Zhang, J. Jia, J. Chen, L. Lin, and D. Wu, ‘A3fl: Adversarially
+adaptive backdoor attacks to federated learning,” in Advances in Neural
+Information Processing Systems, A. Oh, T. Naumann, A. Globerson,
+K. Saenko, M. Hardt, and S. Levine, Eds., vol. 36. Curran Associates,
+Inc., 2023, pp. 61 213–61 233.
+
+[19] B. Wang, Y. Tian, Y. Guo, and H. Li, ‘Defense against poisoning
+attacks on federated learning with neighborhood coulomb force,” IEEE
+Transactions on Information Forensics and Security, pp. 1–1, 2025.
+[20] H. Zeng, T. Zhou, X. Wu, and Z. Cai, ‘Never too late: Tracing
+and mitigating backdoor attacks in federated learning,” in 2022 41st
+International Symposium on Reliable Distributed Systems (SRDS), 2022,
+pp. 69–81.
+[21] Y. Jiang, B. Ma, X. Wang, G. Yu, C. Sun, W. Ni, and R. P. Liu,
+‘Preventing harm to the rare in combating the malicious: A filteringand-voting framework with adaptive aggregation in federated learning,”
+Neurocomputing, vol. 604, p. 128317, 2024.
+[22] L. Sun, J. Qian, and X. Chen, ‘Ldp-fl: Practical private aggregation
+in federated learning with local differential privacy,” in Proceedings of
+the Thirtieth International Joint Conference on Artificial Intelligence,
+IJCAI-21, Z.-H. Zhou, Ed. International Joint Conferences on Artificial
+Intelligence Organization, 8 2021, pp. 1571–1578, main Track.
+[23] C. Liu, Y. Tian, J. Tang, S. Dang, and G. Chen, ‘A novel local differential
+privacy federated learning under multi-privacy regimes,” Expert Systems
+with Applications, vol. 227, p. 120266, 2023.
+[24] Y. Miao, R. Xie, X. Li, Z. Liu, K.-K. R. Choo, and R. H. Deng, ‘Efficient
+and Secure Federated Learning scheme (esfl) against backdoor attacks,”
+IEEE Trans. Dependable Secur. Comput., vol. 21, no. 5, p. 4619–4636,
+Sep. 2024.
+[25] R. Zhang, W. Ni, N. Fu, L. Hou, D. Zhang, Y. Zhang, and L. Zheng,
+‘Principal angle-based clustered federated learning with local differential
+privacy for heterogeneous data,” IEEE Transactions on Information
+Forensics and Security, vol. 20, pp. 9328–9342, 2025.
+[26] X. Tang, L. Peng, Y. Weng, M. Shen, L. Zhu, and R. H. Deng, ‘Enforcing
+differential privacy in federated learning via long-term contribution
+incentives,” IEEE Transactions on Information Forensics and Security,
+vol. 20, pp. 3102–3115, 2025.
+[27] Z. Zhang, L. Wu, C. Ma, J. Li, J. Wang, Q. Wang, and S. Yu, ‘LSFL: A
+lightweight and secure federated learning scheme for edge computing,”
+IEEE Trans. Inf. Forensics Secur., vol. 18, pp. 365–379, 2023.
+[28] L. Chen, D. Xiao, Z. Yu, and M. Zhang, ‘Secure and efficient federated
+learning via novel multi-party computation and compressed sensing,”
+Information Sciences, vol. 667, p. 120481, 2024.
+[29] Z. Ma, J. Ma, Y. Miao, Y. Li, and R. H. Deng, ‘Shieldfl: Mitigating
+model poisoning attacks in privacy-preserving federated learning,” IEEE
+Transactions on Information Forensics and Security, vol. 17, pp. 1639–
+1654, 2022.
+[30] A. Ebel, K. Garimella, and B. Reagen, ‘Orion: A fully homomorphic
+encryption framework for deep learning,” in Proceedings of the 30th
+ACM International Conference on Architectural Support for Programming
+Languages and Operating Systems, Volume 2, ser. ASPLOS ’25. New
+York, NY, USA: Association for Computing Machinery, 2025, p. 734–749.
+[31] B. Chen, H. Zeng, T. Xiang, S. Guo, T. Zhang, and Y. Liu, ‘Esbfl: Efficient and secure blockchain-based federated learning with fair
+payment,” IEEE Transactions on Big Data, vol. 10, no. 6, pp. 761–774,
+2024.
+[32] H. Zeng, J. Li, J. Lou, S. Yuan, C. Wu, W. Zhao, S. Wu, and Z. Wang,
+‘Bsr-fl: An efficient byzantine-robust privacy-preserving federated learning
+framework,” IEEE Transactions on Computers, vol. 73, no. 8, pp. 2096–
+2110, 2024.
+[33] C. Fung, C. J. M. Yoon, and I. Beschastnikh, ‘The limitations of federated
+learning in sybil settings,” in 23rd International Symposium on Research
+in Attacks, Intrusions and Defenses (RAID 2020). San Sebastian:
+USENIX Association, Oct. 2020, pp. 301–316.
+[34] P. Blanchard, E. M. El Mhamdi, R. Guerraoui, and J. Stainer, ‘Machine
+learning with adversaries: byzantine tolerant gradient descent,” in
+Proceedings of the 31st International Conference on Neural Information
+Processing Systems, ser. NIPS’17.
+Red Hook, NY, USA: Curran
+Associates Inc., 2017, p. 118–128.
+[35] D. Yin, Y. Chen, R. Kannan, and P. Bartlett, ‘Byzantine-robust distributed
+learning: Towards optimal statistical rates,” in Proceedings of the 35th
+International Conference on Machine Learning, ser. Proceedings of
+Machine Learning Research, J. Dy and A. Krause, Eds., vol. 80. PMLR,
+10–15 Jul 2018, pp. 5650–5659.
+[36] Q. Dong, Y. Bai, M. Su, Y. Gao, and A. Fu, ‘Drift: Dct-based robust
+and intelligent federated learning with trusted privacy,” Neurocomputing,
+vol. 658, p. 131697, 2025.
+[37] Y. Miao, Z. Liu, H. Li, K.-K. R. Choo, and R. H. Deng, ‘Privacypreserving byzantine-robust federated learning via blockchain systems,”
+IEEE Transactions on Information Forensics and Security, vol. 17, pp.
+2848–2861, 2022.
+[38] M. Gong, Y. Zhang, Y. Gao, A. K. Qin, Y. Wu, S. Wang, and Y. Zhang, ‘A
+multi-modal vertical federated learning framework based on homomorphic
+
+13
+
+encryption,” IEEE Transactions on Information Forensics and Security,
+vol. 19, pp. 1826–1839, 2024.
+[39] H. Zeng, J. Lou, K. Li, C. Wu, G. Xue, Y. Luo, F. Cheng, W. Zhao,
+and J. Li, ‘Esfl: Accelerating poisonous model detection in privacypreserving federated learning,” IEEE Transactions on Dependable and
+Secure Computing, vol. 22, no. 4, pp. 3780–3794, 2025.
+[40] B. Yu, J. Zhao, K. Zhang, J. Gong, and H. Qian, ‘Lightweight and
+dynamic privacy-preserving federated learning via functional encryption,”
+Trans. Info. For. Sec., vol. 20, p. 2496–2508, Feb. 2025.
+[41] M. Shayan, C. Fung, C. J. M. Yoon, and I. Beschastnikh, ‘Biscotti:
+A blockchain system for private and secure federated learning,” IEEE
+Transactions on Parallel and Distributed Systems, vol. 32, no. 7, pp.
+1513–1525, 2021.
+[42] S. Agrawal, B. Libert, and D. Stehle, ‘Fully secure functional encryption
+for inner products, from standard assumptions,” in Proceedings, Part III,
+of the 36th Annual International Cryptology Conference on Advances in
+Cryptology — CRYPTO 2016 - Volume 9816, no. 1. Berlin, Heidelberg:
+Springer-Verlag, Aug 2016, p. 333–362.
+[43] P. Paillier, ‘Public-key cryptosystems based on composite degree residuosity classes,” in Advances in Cryptology — EUROCRYPT ’99, J. Stern,
+Ed. Berlin, Heidelberg: Springer Berlin Heidelberg, 1999, pp. 223–238.
+[44] N. M. Jebreel, J. Domingo-Ferrer, D. Sánchez, and A. BlancoJusticia, ‘Lfighter: Defending against label-flipping attacks in federated
+learning (code repository),” 2024, accessed: Please replace with
+actual access date, e.g., 2024-10-01. [Online]. Available: https:
+//github.com/najeebjebreel/LFighter
+[45] Y. LeCun, C. Cortes, and C. J. Burges, ‘The mnist database,” http:
+//yann.lecun.com/exdb/mnist/, accessed: Nov. 1, 2023.
+[46] A. Krizhevsky and G. Hinton, ‘Learning multiple layers of features
+from tiny images,” University of Toronto, Tech. Rep. TR-2009-1, 2009.
+[Online]. Available: https://www.cs.toronto.edu/∼kriz/cifar.html
+[47] B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A. y Arcas,
+‘Communication-efficient learning of deep networks from decentralized
+data,” in Proceedings of the 20th International Conference on Artificial
+Intelligence and Statistics, AISTATS 2017, 20-22 April 2017, Fort
+Lauderdale, FL, USA, ser. Proceedings of Machine Learning Research,
+A. Singh and X. J. Zhu, Eds., vol. 54. PMLR, 2017, pp. 1273–1282.
+
+Yiwen Lu received the B.S. degree from
+the School of Mathematics and Statistics,
+Central South University (CSU), Changsha, China, in 2021. He is currently working toward the Ph.D. degree in mathematics with the School of Mathematics, Nanjing University (NJU), Nanjing, China. His
+research interests include number theory,
+cryptography, and artificial intelligence
+security.
+
+

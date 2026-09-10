@@ -1,0 +1,3012 @@
+1
+
+DSFL: A Dual-Server Byzantine-Resilient Federated
+Learning Framework via Group-Based Secure
+Aggregation
+
+arXiv:2509.08449v1 [cs.CR] 10 Sep 2025
+
+Charuka Herath , Student Member, IEEE, Yogachandran Rahulamathavan, , Member, IEEE, Varuna De
+Silva, , Member, IEEE, and Sangarapillai Lambotharan, , Senior Member, IEEE,
+
+Abstract—Federated Learning (FL) enables decentralised
+model training without sharing raw data, offering an attractive privacy-preserving paradigm. However, current FL
+protocols struggle to defend against Byzantine participants,
+preserve model utility under non-independent and identically
+distributed (non-IID) data, and remain computationally feasible on edge devices. Prior approaches either assume trusted
+hardware, rely on heavy cryptographic tools, utilise extreme
+hardware capabilities, or fail to address simultaneous threats
+to robustness and privacy. In this work, we propose DSFL,
+A Dual-Server Byzantine-Resilient FL Framework via GroupBased Secure Aggregation that overcomes these limitations
+through a novel, non-cryptographic design. Unlike LSFL, which
+assumes non-colluding, semi-honest servers, our framework
+eliminates this dependency by exposing and addressing a
+key vulnerability: the possibility of privacy leakage through
+collusion between clients and servers. DSFL introduces three
+core innovations: (1) a dual-server secure aggregation protocol
+that preserves update confidentiality without encryption or
+pairwise key exchange, (2) a group-wise, credit-based filtering
+mechanism to identify and suppress Byzantine participants
+based on deviation scoring, and (3) a dynamic reward–penalty
+strategy to enforce fair, adaptive participation over training
+rounds. DSFL is evaluated on MNIST, CIFAR-10, and CIFAR100 under up to 30% Byzantine participants and across independent and identically distributed (IID) and non-IID settings.
+It consistently outperforms state-of-the-art baselines, including
+LSFL, HE-based protocols, and DP-enhanced schemes. For
+example, DSFL achieves 97.15% accuracy on CIFAR-10 and
+68.60% on CIFAR-100, while FedAvg degrades to 9.39% under
+moderate adversarial conditions. Despite its strong resilience,
+DSFL remains lightweight, introducing only 55.9 ms runtime
+and 1088 KB communication overhead per round, making it
+suitable for secure, scalable deployment in edge computing
+environments.
+Index Terms—Federated learning, privacy-preserving,
+byzantine robustness, data privacy, high practicability
+
+I. Introduction
+
+C. Herath, Y. Rahulamathavan, Varuna De Silva, and S. Lambotharan are with the Institute for Digital Technologies, Loughborough
+University, London, U.K. (e-mails: {c.herath, y.rahulamathavan,
+v.d.de-silva, s.lambotharan}@lboro.ac.uk).
+Copyright (c) 2024 IEEE. Personal use of this material is permitted. However, permission to use this material for any other purposes
+must be obtained from the IEEE by sending a request to pubspermissions@ieee.org.
+This work is supported by Engineering and Physical Sciences
+Research Council (EPSRC) projects under grant EP/X012301/1,
+EP/X04047X/2, and EP/Y037243/1
+
+T
+
+HE rapid proliferation of intelligent edge devices
+ranging from LLM-enabled assistants to IoT sensors and autonomous participants has led to a growing
+demand for privacy-preserving collaborative intelligence.
+While centralised machine learning systems continue to
+dominate, recent regulatory attention from bodies like the
+Global Privacy Assembly [1] has underscored the risks
+of training large models on centralised datasets, which
+are often noisy, incomplete, or privacy-invasive [2], [3].
+Furthermore, implementing controls to address the data
+protection risks posed by the use of these datasets is
+very challenging. Moreover, [1] states that if not properly
+secured, ML model outputs can reveal sensitive or private
+information included in the datasets used for training,
+leading to potential or real data breaches.
+Federated Learning (FL) [4], [5] has emerged as a
+compelling solution to this challenge. FL enables distributed participants to jointly train a global model
+without revealing raw data, offering enhanced privacy and
+regulatory compliance. Unlike traditional ML, where data
+is centralised [6], [7], [8], FL participants and the server
+collaboratively train a model. Real-world FL deployments
+span use cases from keyword recognition in voice assistants
+[4] to cross-silo model validation in medical AI [9] and
+autonomous vehicle collaboration [10]. However, despite
+its promise, FL remains vulnerable to critical risks that
+undermine its viability in participantic workflows.
+We group these critical risks into three categories.
+Firstly, the privacy leakage of local model updates remains
+a primary concern, where adversaries exploit shared gradients to infer sensitive participant data. These leakages can
+intermediate gradients that could unintentionally reveal
+information about the training data. This can occur
+without access to raw data and reveals a core vulnerability
+in the FL model [11], [12], [13], [14]. Byzantine adversaries
+in FL participants that send corrupted updates can cause
+model compromise, compromising both model integrity
+and data privacy. For instance, model replacement attacks
+[15], [16], [17] allow an attacker to completely override the
+global model with malicious intent through a single update
+and expose the vulnerability of standard aggregation
+schemes like FedAvg that fail to bound or normalise
+updates. Backdoor attacks [18], [19] have shown even
+more subtle manipulation: Participants can cause the
+model to misclassify specific inputs while maintaining
+
+2
+
+overall accuracy. Label-flipping attacks, where adversarial
+clients deliberately mislabel data to mislead the learning
+process, are shown by [20] to be particularly destructive
+in non-independent and identically distributed (non-IID)
+settings. These attacks are subtle yet potent, as they
+can bypass typical validation due to the poisoned data’s
+structural similarity to legitimate samples. Moreover,
+GAN-based attacks represent a severe breach of privacy, as
+illustrated by [21], [22], [23], where adversaries can exploit
+shared gradients to reconstruct private training data using
+generative adversarial networks, revealing a critical link
+between robustness and privacy in FL. Moreover, these
+attacks are often successful even under secure communication, as the leakage stems from the model update
+itself. This has alarming implications for applications in
+healthcare and finance, where data exposure can violate
+legal regulations like HIPAA and GDPR.
+Secondly, FL assumes that all participants behave
+honestly and upload well-trained local models. In practice,
+this assumption breaks down due to poisoning attacks [16],
+[24], [17]. A small fraction of malicious clients can significantly degrade the accuracy and reliability of the global
+model [25], [26]. Various defence mechanisms have been
+proposed [27], [28], [29], [30], including Byzantine-robust
+aggregation and anomaly detection. However, many of
+these mechanisms rely on computationally intensive nonlinear operations, making them incompatible with privacypreserving secure computation.
+Finally, almost all the current secure aggregation protocols are communication-intensive and require elaborate
+key exchanges, making them unsuitable for edge devices.
+For instance, Google’s Secure Aggregation (SecAgg) [31]
+requires each client to establish pairwise keys with all
+other clients and perform multiple rounds of cryptographic
+operations, resulting in communication and computational
+overheads that scale quadratically with the number of
+clients. Similarly, homomorphic encryption-based protocols like Paillier and CKKS [32], [33] support computation
+on encrypted data but suffer from heavy ciphertext expansion and arithmetic complexity. Consequently, achieving a practical, privacy-preserving, and Byzantine-robust
+FL framework remains an open challenge, especially for
+resource-constrained edge environments [34].
+A. Motivation
+These challenges underscore a fundamental tension in
+practical FL deployments: how to simultaneously achieve
+privacy preservation, Byzantine robustness, and computational eﬀiciency, particularly on edge devices with
+limited resources. Existing methods often prioritise one
+goal at the expense of others. For instance, approaches
+using homomorphic encryption or differential privacy
+offer strong privacy guarantees but introduce prohibitive
+overheads and degrade model utility in non-IID or adversarial settings. Conversely, lightweight schemes may lack
+provable privacy or robustness, making them unsuitable
+for adversarial environments. This persistent trade-off
+
+necessitates the design of FL protocols that are secure,
+robust, and practical for real-world deployment.
+As a solution, et al. introduced a promising direction
+in the form of a dual-server secure aggregation protocol
+called LSFL [35]. This approach aims to provide Byzantine
+resilience while avoiding heavy encryption-based computations by leveraging additive noise and non-colluding semihonest servers. While conceptually eﬀicient, LSFL suffers
+from a critical security limitation: its privacy protection
+can be breached if a malicious client colludes with one of
+the aggregation servers—an assumption that is diﬀicult
+to uphold in untrusted environments. As we detail in
+Section III, the protocol is vulnerable to a simple reconstruction attack that exposes individual model updates
+using shared aggregate information.
+Motivated by this limitation, we propose an improved
+design that builds on LSFL’s architecture but addresses
+its core vulnerabilities through formal enhancements.
+Specifically, our approach DSFL, introduces a secure,
+modular secret-sharing scheme and a trust-aware, groupbased aggregation mechanism. These additions reduce
+collusion risk and strengthen both privacy and robustness under adversarial conditions while maintaining low
+computational and communication overhead, making it
+particularly suited for edge-based FL deployments.
+As shown in our evaluations, DSFL outperforms existing
+schemes across multiple dimensions—privacy, Byzantine
+tolerance, and scalability—without sacrificing convergence
+speed or accuracy. Table I summarises these benefits, and
+a detailed technical comparison against relevant baselines
+is presented.
+B. Contributions and Paper Organisation
+Initial work [35] motivated this work and introduced a
+novel grouping mechanism that enhances LSFL’s security
+without sacrificing eﬀiciency. DSFL is designed to support
+collaborative model training among edge nodes while
+ensuring low overhead, resistance to adversarial attacks,
+and strong data privacy guarantees. Our simulation results
+show that the proposed approach, DSFL, achieves SOTA
+performance in terms of security, privacy, and computational eﬀiciency. Moreover, Table I states the challenges
+in existing work in brief, and a detailed comparison of the
+challenges can be found in Table III.
+The key contributions of this paper are as follows:
+1) We introduce DSFL, a privacy-preserving, FL framework that improves edge service quality without
+compromising user data.
+2) We improved the originally proposed LSFL by
+[35], proposing a Dual-Server Byzantine-Resilient
+FL Framework via Group-Based Secure Aggregation protocol by introducing a novel (participant
+combination matrix) PCM and a contributed participant group matrix (CPG). It can achieve secure
+aggregation and Byzantine robustness by addressing
+the security vulnerability. Expressly, it preserves
+the privacy information of the participants in the
+Byzantine robustness and model aggregation phases.
+
+3
+
+TABLE I
+Key features and challenges addressed by DSFL compared to prior FL frameworks.
+Algorithm
+
+Reference
+
+FedAvg
+SecAgg
+Trimmed Mean
+Median
+FLOD
+DPBFL
+HE-based FL
+ELSA
+LSFL
+DSFL (Ours)
+
+[4]
+[31]
+[29]
+[29]
+[36]
+[37]
+[32]
+[38]
+[35]
+This paper
+
+High Accuracy
+(Byzantine)
+
+✓
+✓
+✓
+✓
+✓
+✓
+
+Fast
+Convergence
+
+Lightweight
+(No Encryption)
+
+✓
+✓
+✓
+✓
+✓
+
+✓
+✓
+✓
+✓
+
+✓
+✓
+✓
+
+3) We implemented a prototype of DSFL and evaluated its performance in terms of training accuracy,
+training time, and Byzantine robustness. Our results
+show that DSFL can achieve the fidelity, eﬀiciency
+and security design goals.
+4) We conduct rigorous experiments showcasing
+DSFL’s robustness against both data and model poisoning attacks. Furthermore, we provide a convergence analysis, an Eﬀiciency and Overhead Analysis,
+and a security Analysis.
+C. Paper Organization
+The subsequent sections of this paper are organised as
+follows. Section II summarises the related work in the
+same research area to address the three main problems.
+Section III states the system model and problem scope and
+provides why traditional dual server architecture (LSFL)
+[35] have been compromised. Section IV explains the
+proposed DSFL Framework. Section V states the results
+and discussion on the proposed approach, which improves
+robustness against byzantine participants, the convergence
+speed and model accuracy, provides an eﬀiciency and
+overhead analysis, a convergence guarantee and a security
+guarantee. Section VI serves as the conclusion of the
+paper, summarising the key findings, contributions and
+future work. Additionally, all notations are listed in Table
+II.
+II. Related Work
+The development of FL has prompted extensive investigation into secure aggregation, Byzantine robustness, and
+communication eﬀiciency. We categorise related works into
+three subtopics: (i) FL with single aggregators, (ii) FL
+with distributed trust, and (iii) other defence strategies.
+A. FL with Single Aggregators
+Many FL frameworks adopt a single aggregator architecture where the central server collects local model updates
+from participants. This setup, while straightforward, introduces significant risks related to single points of failure
+and privacy leakage. To address Byzantine attacks in such
+centralised settings, aggregation techniques such as Krum
+[39], Trimmed Mean, and Median [29] have been proposed.
+
+Fairness
+Guarantee
+
+✓
+✓
+✓
+
+✓
+
+Low Comm. &
+Comp. Cost
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+
+Malicious
+Privacy
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+
+Poisoning
+Resilience
+
+✓
+✓
+✓
+✓
+✓
+
+Server
+single
+single
+single
+single
+dual
+single
+single
+dual
+dual
+sual
+
+These statistical methods filter outliers or select updates
+based on distance metrics but require direct access to raw
+gradients, undermining privacy.
+Secure aggregation protocols aim to mitigate such
+leakage. Bonawitz et al. proposed SecAgg [31], where
+clients share encrypted model updates using pairwise
+masks. However, this incurs quadratic communication
+overhead and complex key negotiation. Homomorphic
+encryption (HE)-based methods such as Aono et al. [32]
+and BatchCrypt [40] offer stronger confidentiality but are
+computationally expensive for edge devices. VerifyNet [41]
+enhances SecAgg with verifiability, while SEAR [42] leverages Trusted Execution Environments (TEEs) for stronger
+integrity, though TEEs introduce hardware dependencies
+and scalability concerns.
+B. FL with Distributed Trust
+To overcome the central aggregator’s limitations, recent
+efforts have shifted toward decentralised trust models.
+These include dual-server setups or fully decentralised FL.
+The LSFL framework [35] introduces a lightweight dualserver aggregation scheme that improves scalability and
+robustness under semi-honest assumptions but remains
+vulnerable to collusion. Building upon LSFL, ELSA [38]
+proposes input validation with range proofs and crosschecking between two non-colluding servers, enabling
+enhanced privacy and robustness. ELSA also evaluates
+dropout resilience and incorporates defences against malicious clients without requiring direct access to updates.
+Zhao et al. [43] propose a verifiable decentralised FL
+system (PVD-FL) using zero-knowledge proofs to validate
+updates and aggregation correctness. Although privacypreserving, these verification layers introduce substantial
+computational costs. Likewise, SEFL [44] incorporates
+federated blockchains and multi-server shuffling to prevent
+gradient leakage but requires additional trust coordination. The rest of the works [45], [46] only provide privacy
+against a semi-honest server, and therefore, leave much
+to be desired, but still, LSFL colludes, and ELSA is less
+eﬀicient.
+C. Other Defense Methods
+Beyond architectural improvements, statistical and
+cryptographic defences have been developed to address
+
+4
+
+TABLE II
+Table of Notations
+P
+
+Local Participant
+
+F (·)
+
+Local Objective Functions
+
+w
+N
+d
+b
+k
+γ
+ς
+m
+Gm
+P
+
+Local Model
+Total Local Devices
+Euclidean distance
+Local mini-batch size
+threshold
+Credit
+Reward
+P CMi,j rows
+P CMi,j groups
+Selected Participants
+
+ϵ
+w̄
+E
+L(·)
+η
+ϕ
+σ
+P∗
+M
+O()
+
+Gaussian Noise
+Global Model
+Local epochs
+Loss Function
+Learning Rate
+Penalty
+Cost
+Malicious Participants
+median
+Big O
+
+poisoning, backdoor, and gradient inference attacks. Liu
+et al. [47] and Zhou et al. [48] utilise differential privacy
+(DP) to perturb gradients, thus hiding sensitive information. However, DP often degrades model utility due
+to noise. Mu noz-Gonz’alez et al. [30] introduce adaptive
+model averaging techniques that improve resilience to data
+poisoning. Moreover, Byzantine-resilient model selection
+frameworks have also been explored. The MKrum algorithm [27] and its variants attempt to estimate model
+trustworthiness using distance metrics. More integrated
+solutions have emerged. Dong et al. [49] proposed the
+ΠP 2Brof l framework, which uses a 3-party secure computation model to simultaneously ensure privacy and robustness. Their top-k protocol enables eﬀicient top-k model
+selection under privacy constraints, reducing the cost
+of secure model filtering. Their results indicate minimal
+model degradation even under 50% Byzantine presence.
+However, such MPC-based systems may still be too
+resource-heavy for edge environments. Other approaches
+attempt to combine robustness and eﬀiciency. FedMD
+[50] applies model distillation for FL with non-IID data,
+enhancing generalisation and reducing communication.
+However, it requires public auxiliary datasets and lacks
+robust aggregation under adversarial scenarios.
+Despite significant progress, many prior works either
+rely on strong cryptographic tools, incur heavy computation and communication costs, or require unrealistic
+trust assumptions. Our DSFL framework is designed to
+be both practical and secure. It leverages dual-server
+lightweight aggregation, integrates secret sharing for privacy, and filters poisoned clients through group-wise credit
+estimation—making it suitable for scalable FL on edge
+devices.
+III. System Model and Problem Formulation
+A. System Entities and Assumptions
+The LSFL system comprises three main entities, as depicted in Figure 1, the Third-Party Service Provider (TP),
+the Service Provider (SP), and the Local participants (P s).
+The TP is a third-party service provider responsible
+for selecting eligible participants for each training round
+and initiating the PCM. It filters out suspicious or potentially Byzantine nodes based on predefined criteria to
+ensure that only reliable participants contribute to model
+
+aggregation. By doing so, it enhances the integrity of the
+aggregation process handled by the SP.
+The SP acts as the edge computing service provider
+and maintains the initial global model. It seeks to improve
+the model using the decentralised data and computational
+resources of the participating edge devices. The SP coordinates the training process, initialises CPG aggregates local
+model updates, and maintains the latest global model.
+The P s are local participants, such as mobile phones or
+IoT devices, that collect private data through on-device
+sensors. These devices contribute to the FL process by
+training local models and uploading updates to the SP.
+However, P s are not assumed to be fully trustworthy.
+Some may behave incorrectly or maliciously, contributing inappropriate or adversarial updates to the training
+process.
+We adopt an honest-but-curious model for both the SP
+and TP. While these entities follow the protocol correctly
+and do not actively disrupt the training process, they may
+attempt to infer private information from the updates
+received from P s. This assumption reflects realistic commercial motivations, where service providers and thirdparty authorities may seek to extract sensitive insights
+from user data, even without direct malicious intent.
+B. Byzantine Device Agents
+In practical FL deployments, edge devices are susceptible to adversarial behaviour due to limited oversight
+and computational constraints. Following prior work [27],
+[38], we assume that most participants are honest, but a
+minority may behave maliciously. Specifically, we consider
+two types of Byzantine P s: (1) Free-riders: These are
+passive participants who avoid computation by submitting
+arbitrary or noisy updates, often simulated using Gaussian
+noise [51]. While not overtly malicious, they degrade model
+quality without directly attacking it. (2) Malicious nodes:
+These adversaries aim to poison the global model by
+submitting crafted updates. We model this using labelflipping attacks [18], where the adversary inverts the
+direction of the update to counteract convergence.
+C. Problem Formulation
+This section revisits the LSFL scheme proposed in [35]
+and analyses a security vulnerability that exposes user
+model updates to an adversarial server. In [35], user i
+partitions the local model update wi into two components,
+(1)
+(2)
+wi and wi , as follows:
+(1)
+
+wi
+
+= wi + ϵ i ,
+
+(2)
+
+wi
+
+= wi − ϵ i ,
+
+(1)
+
+Where ϵi is Gaussian noise introduced to obscure the
+partitioning. The original model update can be reconstructed as:
+1 (1) 1 (2)
+w + wi .
+(2)
+2 i
+2
+The primary objective of [35] is to ensure that model
+updates remain concealed from the participating servers.
+wi =
+
+5
+
+(1)
+
+(2)
+
+In this scheme, user i transmits wi to the TP and wi
+to the SP. Upon collecting updates from all N users, TP
+and SP compute:
+z1 =
+
+N
+X
+
+wi(1) ,
+
+z2 =
+
+X
+
+(2)
+
+i = 1 N wi ,
+
+(3)
+
+i=1
+
+Where z1 is exclusively known to TP and z2 is known
+only to SP. Subsequently, TP transmits z1 to SP, enabling
+SP to derive the global model update:
+
+6
+
+1
+w̄ =
+(z1 + z2 ).
+2N
+
+(4)
+(2)
+
+Using w̄, SP calculates the distance metric di
+
+2
+
+∀i.
+
+(5)
+
+(2)
+
+SP then transmits all di values to TP. The security
+analysis in [35] claims that, assuming TP and SP do not
+collude, TP cannot infer user model updates. However,
+the following section demonstrates a vulnerability that
+enables TP to reconstruct user updates by exploiting the
+(2)
+transmitted di values.
+The security of the LSFL scheme [35] is contingent on
+the assumptions that (i) TP and SP do not engage in
+collusion and (ii) the majority of users are non-malicious.
+However, in practical FL environments with numerous
+users, collusion between a subset of users and a server is a
+plausible scenario. A privacy-preserving FL scheme must,
+therefore, be resilient to such adversarial behaviours.
+A secure FL scheme should withstand collusion attacks
+such that a significant number of users must conspire with
+a server to breach privacy. However, if a single user’s
+collusion with a server can compromise the entire scheme,
+as is the case with LSFL [35], the system is critically
+vulnerable.
+To illustrate this attack, consider a scenario where the
+first user is adversarial and shares its partitioned update
+(2)
+w1 with TP. TP can leverage this information along with
+the received distance values (5) from SP to reconstruct
+the remaining users’ model updates. Specifically, TP
+computes:
+(2)
+
+wi
+
+(2)
+
+(2)
+
+(2)
+
+− d1 ) + w 1 ,
+
+= 2(di
+
+(1)
+
+(2)
+
+Send wi to TP and wi to SP ;
+(1)
+(2)
+Output: Secret shares wi , wi
+
+between
+
+(2)
+wi and w̄:
+
+1 (2)
+(2)
+di = wi − w̄,
+
+Algorithm 1: Private Local Model Training
+Input: learning rate η, loss L(w, D), epochs E,
+noise variance g 2
+1 Initialize global model w0 ;
+2 for i = 1 to E do
+3
+Sample batch Di from D
+wi ← wi−1 − η∇L(wi−1 , Db )
+4
+Generate random noise ζi ∼ N (0, g 2 );
+(1)
+(2)
+5
+Compute: wi = wi − ζi , wi = wi + ζi
+
+i = 2, . . . , N.
+
+(6)
+
+The correctness of this reconstruction follows from:
+
+scheme’s security model. While we assume non-colluding
+servers, prior systems, such as Prio/Prio+ [45], make
+the same assumption to achieve low-overhead masking.
+Our system inherits this practical balance while ensuring
+computational feasibility for edge settings
+IV. Proposed DSFL Framework
+A comprehensive outline of the system is depicted in
+Figure 1. In each iteration, P s, TP, and SP engage
+in FL training. To maintain clarity, P s are denoted as
+P , represented as a set {P1 , P2 , . . . , PN }. The primary
+objective of each P is to train a machine learning model
+locally while ensuring the confidentiality of their datasets
+from external entities within the system.
+FL operates cyclically, encompassing the following three
+phases: (depicted in Figure 1):
+Step I: Global Model Synchronisation with Selected
+Participants The SP maintains the initial model to facilitate collaborative training among FL participants. At the
+beginning of each training round, SP transmits the most
+recent global model wglobal to the selected participants
+P ∈ N . Each participant stores this model locally for
+subsequent training iterations.
+Step II: Local Model Training Upon receiving the global
+model, each selected participant trains a local model
+by refining the global model using its respective local
+dataset. Each participant Pi possesses a local
+PNdataset Di ,
+where i ∈ {1, 2, . . . , N }, such that D =
+i=1 Di . The
+aggregators, TP and SP, retain portions of the global
+model parameters. The optimisation problem for each
+participant Pi is defined as:
+min L(Di , wi ),
+wi
+
+(2)
+
+di
+
+(2)
+
+− d1 =
+
+1 (2) 1 (2)
+w − w1 ,
+2 i
+2
+
+i = 2, . . . , N.
+
+(7)
+
+(1)
+
+With wi already received from users, TP can now
+compute the original model update for each user:
+(1)
+
+wi = wi
+
+(2)
+
++ wi ,
+
+i = 2, . . . , N.
+
+(8)
+
+This analysis confirms that the LSFL privacy mechanism [35] can be compromised if a single user colludes
+with one of the servers, highlighting a critical flaw in the
+
+(9)
+
+where L(Di , wi ) represents the empirical loss on training
+dataset Di , and wi denotes participant Pi ’s local model
+parameters.
+Unlike conventional FL schemes, model parameter computations are distributed among participants to (i) reduce
+the computational burden on the aggregator and (ii) leverage the computing resources of participants. To enhance
+model parameter security and mitigate security risks
+associated with aggregators, a dual-server architecture is
+adopted for secure aggregation, similar to the approach
+
+6
+
+Fig. 1. System Overview
+
+proposed in [35]. Each participant Pi splits its private
+parameter wi into two additive secret shares:
+wi =
+
+1 (1)
+1
+(2)
+(w + wi ) = (wi + ζi + wi − ζi ),
+2 i
+2
+
+(10)
+
+where ζi is Gaussian noise sampled from N (0, σ 2 ) with
+(1)
+(2)
+σ = 20. Each participant Pi sends wi and wi to SP
+and TP, respectively. The dual-Server secure model update
+process follows this step. This process is systematically
+delineated in Algorithm 1.
+Step III: Dual-Server Secure Model Update: The reconstruction of the correct global model by the SP is contingent upon the collaborative efforts of the TP and SP.
+The SP is responsible not only for preserving the model
+parameters but also for overseeing secure aggregation.
+To ensure the security of model updates and the
+preservation of data privacy, SP and TP collaboratively
+compute the global model W through secure aggregation
+of secret-shared local model updates, conforming to a
+predefined aggregation rule. This rule incorporates Secure
+Byzantine Robustness, Secure Fairness Guarantee, and
+Secure Model Aggregation principles, ensuring that SP
+and TP (i) remain oblivious to the update parameters
+of any individual participant, (ii) mitigate Byzantine
+attacks that could compromise the accuracy of the global
+model, and (iii) encourage participant engagement while
+maintaining fairness among them.
+Upon receiving the secret shared model parameters from
+each participant Pi , the aggregators initiate the process of
+
+updating the global model and subsequently disseminate
+the updated model parameters to all participants.
+As described in Algorithm 2, the proposed aggregation protocol comprises three integral components: secure
+Byzantine robustness, secure fairness guarantee, and secure model aggregation. Importantly, neither TP nor SP
+can reconstruct the individual model updates wi from
+the aggregated group results, due to the linear underdetermined nature of the problem.
+1) Secure Byzantine Robustness: To counteract the
+influence of Byzantine participants on the global model,
+it is crucial to scrutinise the model parameters submitted
+by each participant and select the most reliable ones. This
+study proposes a k-nearest weight selection approach that
+effectively resists Byzantine participants.
+Initially,
+TP and SP independently
+compute the sumPN
+PN
+(1)
+(2)
+mations
+w
+and
+w
+,
+respectively.
+Subsei=1 i
+i=1 i
+quently, TP constructs a Participant Combination Matrix
+(PCMij ) of dimensions N × G, where Gi represents the
+ith group among a total of m groups. Such that:
+(
+PCMij =
+
+if participant Pi ∈ Gj
+otherwise
+
+1
+0
+
+The value of m is determined based on the percentage of
+malicious participants (P ∗ ) in each training round, m is
+∗
+
+computed as: m =
+
+N − PP ×100
+10
+
+−1. If P ∗ is set to 20, then
+
+7
+
+Algorithm 2: Dual-Server Byzantine-Resilient FL
+Framework via Group-Based Secure Aggregation
+(1)
+
+(2)
+
+Input: Secret shares wi , wi , credit γ, penalty ϕ,
+reward ς, cost σ, participants P , threshold k
+Output: global model parameter W
+(1)
+1 Initialize: ϕ, γ, ς, σ, k ∀Pi , TP receive wi
+and SP
+(2)
+receive (wi ) // Secure Byzantine Robustness;
+P (1)
+P (2)
+1
+2 Compute z1 = N
+wi , z2 = N1
+wi TP
+randomly groups participants into m groups;
+PP
+(1)
+3 TP computes the
+for each group;
+p=1 wp
+4 TP computes P CMi,j ;
+5 TP sends its share of P CMi,j to SP;
+6 SP computes w̄;
+2
+7 SP computes dGi =∥ w̄ − w̄Gi ∥2 for each Gi ;
+P
+8 SP computes each
+d Pi ;
+9 SP set the CP Gi,j and transmit back to TP;
+P
+P
+P
+d′ ∈ { dP1 , dP2 , ..., dPN };
+′
+10 TP gets the median M of d ;
+11 for all Pi ∈ P do
+P
+12
+TP computes d′′i = | dP1 − M |;
+13 end
+14 TP chooses the top k participants with the
+smallest similarity P ← {P1 , P2 , ..., PP };
+15 // Secure Fairness Guarantee;
+16 i ← 1;
+17 while i ≤ N do
+18
+if Pi ∈ P then
+19
+γi ← γi + ς − σ ;
+20
+end
+21
+else
+22
+γi ← γi − ϕ − σ;
+23
+end
+24
+if γi < 0 then
+25
+P.remove(Pi );
+26
+end
+27
+i ← i + 1;
+28 end
+29 // Secure Model Aggregation;
+P
+(1)
+1
+(1)
+30 TP computes w
+= 2k
+Pi ∈P wi ;
+31 TP sends the new subset of groups {G1 } in the
+PMC;
+32 SP retrieves the corresponding masked shares
+(2)
+{wi | Pi ∈ P};
+P
+(2)
+1
+(2)
+33 SP computes w
+= 2k
+Pi ∈P wi ;
+(1)
+34 SP computes W ← w
++ w(2) ;
+35 SP reveals W to participants P , and updates the
+global model;
+
+PCMij looks like below.
+P1
+P2
+P3
+P4
+P5
+P6
+P7
+P8
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+G1
+1
+1
+1
+1
+1
+1
+1
+1
+
+G2
+1
+0
+0
+0
+0
+1
+0
+1
+
+G3
+1
+1
+0
+1
+0
+0
+0
+0
+
+G4
+0
+0
+0
+0
+1
+0
+0
+1
+
+G5
+0
+0
+1
+0
+0
+0
+1
+0
+
+G6
+1
+0
+0
+0
+0
+1
+0
+0
+
+G7
+
+0
+1
+
+0
+
+0
+
+0
+
+1
+
+1
+
+0
+
+
+For the baseline experimental setting, we set N = 10
+participants and P ∗ = 20 (assuming 20% of participants
+are malicious), and the parameter m is set to 7. Each
+group Gi consists of three user combinations of selected
+participants, with G1 serving as a special case that
+PP
+(1)
+includes all participants. Finally, TP calculates p=1 wp
+for each G group, generating the finalized output PCM.
+When the N for each training round increases, the m and
+PCM dimensions change accordingly.
+Crucially, when m < N or rank(PCM) < N , this system
+is underdetermined, i.e., there are more unknowns than
+equations and hence has infinitely many solutions. Even
+when m ≥ N , the deliberate overlap and redundancy in
+group definitions prevent a unique inversion of w(1) or w(2)
+without access to both shares. Thus, TP (or SP) alone,
+having access only to w(1) (or w(2) ), and the PCM, cannot
+uniquely solve for the original wi vectors.
+This design ensures information-theoretic privacy under
+a semi-honest, non-colluding assumption between TP and
+SP. Even if TP or SP attempts linear inference using
+all available groupwise aggregates and the known PCM
+structure, the resulting system remains underdetermined
+and unsolvable without the complementary share. As the
+number of participants grows, the PCM’s sparsity and
+overlapping structure further obscure the contribution
+of any single participant, enhancing both privacy and
+robustness.
+Subsequently, the TP P
+transmits the computed sums
+(i)
+P
+of local model weights
+p=1 wp , where i ∈ {1, ...m}
+(denoted as w¯Gi ) for each group Gi , along with the PCM,
+to the SP.
+The SP then computes the average model w̄ by eliminating the influence of each participant’s local model
+parameters. This is formally expressed as:
+!
+N
+N
+X
+X
+1
+(1)
+(2)
+w̄ =
+w +
+wi
+2N i=1 i
+i=1
+Additionally, the SP determines the Euclidean distance
+dGi between the average model w̄ and each group-specific
+average model w¯Gi :
+dGi =∥ w̄ − w̄Gi ∥22
+Given PCM and distances dGi , the Contributed participant Group matrix CPGij is defined as:
+(
+dGi if PCMij = 1
+CPGij =
+0
+otherwise
+P
+Each row sum
+dPi in the CPG provides a score for
+participant Pi reflecting its contribution’s consistency with
+the majority.
+Following this computation, the cells of the CPG matrix
+containing ones are updated with their corresponding
+distances dGi , leading to the revised CPG matrix representation.
+
+8
+
+G2
+G3
+G4
+G5
+G6
+G7
+
+ P
+P1 d G 2 d G 3
+0
+0
+d G6
+0
+P d P1
+P2  0
+d G3
+0
+0
+0
+d G 7  P d P2
+
+
+P3  0
+0
+0
+d G5
+0
+0  P d P3
+
+
+P4  0
+d G3
+0
+0
+0
+0  P d P4
+
+
+P5  0
+0
+d G4
+0
+0
+0  P d P5
+
+
+P6  d G 2
+0
+0
+0
+d G6 d G7  P d P6
+
+
+P7  0
+0
+0
+d G5
+0
+d G7  P d P7
+
+
+P8  d G 2
+0
+d G4
+0
+0
+0  P d P8
+
+P9
+0
+0
+0
+0
+d G6
+0  P d P9
+P10
+0
+0
+d G 4 d G5
+0
+0
+dP10
+The updated CPG matrix is then transmitted back to
+the TP, serving as a criterion for assessing similarity and
+ensuring the integrity of the model update process while
+identifying potentially malicious model updates.
+The presence of outliers in w̄Gi , introduced by malicious
+participants submitting large model update parameters,
+may lead to deviations P
+from the global model w̄. Furthermore, an increased
+dPi may indicate the presence
+of such participants. These outliers can be identified as
+nodes responsible for deviations in the direction of the
+global model w̄.
+To quantify
+deviations,
+TP computes the set d′ , where
+P
+P
+′
+d ∈ { dP1 , ..., dPN } and derives the median value M
+of d′ . Subsequently, TP calculates
+X
+d′′i = |
+d P1 − M |
+for each Pi ∈ P . This calculation reveals the distance
+between wi and M , establishing a criterion for assessing
+participant similarity.
+Based on these computed deviations, participants are
+selected for global model aggregation. The parameter k
+represents the number of participants whose updates are
+considered most similar to the collective behaviour of
+the majority and are thus deemed trustworthy for global
+model aggregation. In this context, the similarity is quantified using the L2 distance between each participant’s
+update and the median deviation M computed across all
+participants. Smaller deviations imply closer alignment
+with the majority and lower likelihood of Byzantine
+behaviour.
+Selecting an appropriate value of k is critical: too small
+a value may exclude legitimate updates and slow convergence, while too large a value risks including adversarial
+updates. In our protocol, k is set empirically based on
+system parameters such as the expected proportion of
+malicious participants P ∗ , the total number of participants
+N , and empirical sensitivity analysis during preliminary
+training rounds. Typically, k is chosen such that it
+satisfies k ≤ N − P ∗ , ensuring that no more than the
+expected number of malicious participants are included.
+For example, with N = 10 and P ∗ = 4 (20% malicious),
+we set k = 8, ensuring that only the 80% most reliable
+participants are aggregated.
+2) Collaborative Filtering Method: A collaborative filtering approach is integrated to further enhance the
+
+robustness of the aggregation process. This method adjusts
+participants’ weights based on their similarity to highperforming participants. Leveraging collaborative filtering
+techniques, TP assigns higher weights to those whose
+models have demonstrated strong performance in past
+iterations.
+TP arranges the values of dpi in ascending order,
+such that participant similarity decreases as the values
+increase. Based on dpi , the selected participants P are
+determined by selecting the top k-nearest participants’
+model updates w̄pi , which are then used to compute the
+global model. The parameter k denotes the number of topranked participants (based on deviation scoring) selected
+for aggregation in each round. In practice, k is chosen
+such that k ≤ N − ⌊βN ⌋, where β ∈ [0, 0.2] reflects
+the estimated upper bound on the fraction of Byzantine
+participants. This ensures that only the most consistent
+and trustworthy updates contribute to the global model.
+To maintain robustness while preserving convergence, we
+empirically set k = ⌊(1 − β)N ⌋. This choice guarantees
+the exclusion of potential adversarial updates while still
+providing suﬀicient coverage of honest updates for convergence, as theoretically justified in similar robust FL
+frameworks [27], [52].
+Inspired by prior work [35], a system of rewards and
+penalties is introduced to regulate participant behaviour
+during model updates. The primary objective of this mechanism is to distinguish between beneficial and detrimental
+participants, ensuring that those who contribute positively
+to the global model are incentivised while those who do
+not are penalised.
+To effectively quantify the impact of individual participants on the convergence of the global model, each
+participant’s contribution is systematically evaluated. A
+participant Pi is classified as beneficial if their updates
+contribute constructively to the global aggregation process. Conversely, participants whose updates do not positively influence the model convergence are categorised as
+detrimental. The core principle governing this mechanism
+is to rigorously assess whether Pi facilitates the convergence of the global model W .
+To enforce this mechanism, a reward-penalty framework is introduced. If a participant Pi enhances the
+global model’s performance, they are assigned a reward
+ς. Otherwise, they incur a penalty. To ensure fairness and
+prevent exploitation, an initial allocation of computational
+credits, denoted as γ, is uniformly distributed among
+all participants before the commencement of training.
+Participants are then required to allocate a fixed cost σ
+per training iteration.
+The evaluation of each participant’s contribution is derived from their selection during the Byzantine Robustness
+phase. If a participant is not selected for aggregation,
+this implies that their updates were deemed unreliable
+or uninformative, indicating that they have only received
+the global model without substantively contributing to
+its refinement. As a consequence, such participants are
+penalised, leading to a gradual depletion of their allocated
+
+9
+
+credits. Persistent non-contributory behaviour results in
+fund exhaustion, thereby disqualifying them from further
+participation in FL. This systematic exclusion process
+effectively mitigates the influence of Byzantine adversaries
+on global model aggregation.
+The implementation of this framework involves an iterative credit-based validation system. Initially, the aggregation server distributes computational credits uniformly
+across all participants. During each training round, the
+server verifies participants’ credit balances, disseminates
+the global model, and deducts σ from each participant’s
+credit allocation. Participants execute local training and
+submit model updates, following which the server evaluates their contributions. Those deemed beneficial receive
+ς as an incentive, while non-contributory participants
+incur penalties. Over multiple iterations, this scheme
+ensures that participants with minimal or adversarial
+contributions are gradually phased out as their credits
+deplete, fostering an equitable and robust FL environment.
+3) lightweight Secure Aggregation: The proposed
+lightweight secure aggregation protocol enables privacypreserving global model updates through a dual-server
+architecture comprising the TP and the SP. Each participant’s model update wi is secret-shared into two
+(1)
+(2)
+components: TP receives wi and SP receives wi , such
+(1)
+(2)
+that wi = wi + wi .
+After executing the Byzantine-robust participant selection phase, TP identifies the set of top-k reliable
+participants, denoted as P, based on similarity metrics
+and reward-credit mechanisms. TP then aggregates the
+partial updates of the selected participants as:
+1 X (1)
+wi .
+w(1) =
+2k
+Pi ∈P
+
+Simultaneously, TP determines the subset of groups {G1 }
+associated with these participants from the PCM, and
+sends both the participant
+indices P and the aggregated
+P
+group identifier p∈P G1 to SP.
+Upon receiving this information, SP retrieves the cor(2)
+responding masked shares {wi | Pi ∈ P} and computes:
+1 X (2)
+w(2) =
+wi .
+2k
+Pi ∈P
+
+SP then cancels out the contribution of previously computed placeholder values ζi (used in intermediate deviation
+analysis) to finalise the aggregation. The global model W
+is reconstructed as:
+W = w(1) + w(2) .
+The SP updates the global model using W and broadcasts it to all active participants for the next training
+round. This architecture ensures that neither TP nor SP
+can individually reconstruct any participant’s complete
+model update, thereby guaranteeing information-theoretic
+privacy. The process remains lightweight and eﬀicient,
+avoiding cryptographic complexity while preserving robust
+aggregation and data confidentiality.
+
+V. Simulation Results
+A. Experimental Setup
+The experiments were conducted on a high-performance
+computing setup, utilising an NVIDIA RTX 6000 GPU
+with 48GB of VRAM, coupled with an Intel Core i9-10980
+processor. This hardware configuration ensured eﬀicient
+training and evaluation of our models, providing reliable
+and indicative results.
+In the experimental setup, we utilised three distinct
+datasets, MNIST, CIFAR-10, and CIFAR-100 to evaluate
+the performance of our models. MNIST comprises 60,000
+training images and 10,000 test samples, each depicting
+handwritten grayscale digits ranging from 0 to 9 in a 28 ×
+28 format. CIFAR-10 consists of 60,000 32 × 32 colour
+images distributed across 10 classes. Each class contains
+6,000 images, with 5,000 for training and 1,000 for testing.
+CIFAR-100, on the other hand, contains 60,000 colour
+images of size 32 × 32 as well, but spread across 100 finegrained object classes, with 500 training images and 100
+testing images per class.
+For MNIST, a Convolutional Neural Network (CNN)
+was employed, featuring two convolution layers with 32
+and 64 kernels of size 3 × 3, followed by a max-pooling
+layer and two fully connected layers with 9216 and 128
+neurons. CIFAR-10 and CIFAR-100 both utilised the
+ResNet-18 architecture to accommodate the increasing
+complexity and diversity of classes in these datasets.
+ResNet-18 was chosen for its ability to effectively handle
+deeper representations required for learning fine-grained
+image distinctions, especially in CIFAR-100.
+We partitioned each dataset in two ways: IID and nonIID. For the IID setting, the datasets were shuffled and
+evenly distributed among all participants. For the non-IID
+setting, the MNIST dataset was divided into 200 shards,
+each containing 300 examples, with two shards allocated
+to each participant. Similarly, non-IID versions of CIFAR10 and CIFAR-100 were constructed by sorting the data
+by class and allocating a limited subset of classes to
+each participant, thereby simulating real-world statistical
+heterogeneity across clients.
+B. Adversary Model
+We consider a common but powerful poisoning strategy, label-flipping attacks, where adversarial participants
+intentionally corrupt their local datasets by mislabeling
+class outputs. In each federated round, a selected fraction
+of participants, denoted by β ∈ {0.0, 0.1, 0.2, 0.3} (representing 0%, 10%, 20% and 30% of the total), behave
+maliciously by flipping labels in their local training data.
+Specifically, a clean input-label pair (x, y) is altered to
+(x, y ′ ) such that y ′ ̸= y, with y ′ selected to maximise
+misclassification impact. This induces gradient updates
+that mislead the global model’s optimisation path.
+In addition to label manipulation, malicious clients in
+our simulation submit poisoned model updates vi = q · v̂i ,
+where v̂i is the locally trained update and q = −1
+inverts the gradient direction to cause maximal model
+
+10
+
+TABLE III
+Test accuracy (%) under 20% Byzantine participants for various aggregation protocols across datasets (mean ± std).
+Aggregation
+Protocol
+FedAvg [4]
+SecAgg [31]
+Trimmed Mean [29]
+Median [29]
+FLOD [36]
+DPBFL [37]
+ELSA [38]
+LSFL [35]
+HE [32]
+DSFL (Ours)
+
+MNIST
+(IID)
+
+MNIST
+(non-IID)
+
+CIFAR-10
+(IID)
+
+CIFAR-10
+(non-IID)
+
+CIFAR-100
+(IID)
+
+CIFAR-100
+(non-IID)
+
+80.67 ± 0.09
+80.34 ± 0.11
+80.05 ± 0.31
+89.87 ± 0.10
+88.12 ± 0.07
+90.12 ± 0.07
+93.45 ± 0.34
+95.77 ± 0.11
+96.01 ± 0.13
+96.12 ± 0.11
+
+78.75 ± 0.12
+79.85 ± 0.34
+72.65 ± 0.40
+87.19 ± 0.15
+86.12 ± 0.14
+88.12 ± 0.14
+90.64 ± 0.09
+90.31 ± 0.11
+91.23 ± 0.08
+90.12 ± 0.08
+
+52.56 ± 0.31
+53.39 ± 0.82
+57.39 ± 0.44
+70.78 ± 0.28
+71.05 ± 0.23
+72.05 ± 0.23
+97.01 ± 0.24
+97.53 ± 0.33
+96.12 ± 0.21
+97.15 ± 0.21
+
+55.16 ± 0.25
+56.21 ± 0.45
+60.87 ± 0.19
+76.58 ± 0.22
+77.05 ± 0.20
+78.05 ± 0.20
+94.34 ± 0.08
+95.25 ± 0.18
+94.71 ± 0.28
+95.05 ± 0.18
+
+8.85 ± 0.27
+8.98 ± 0.89
+55.70 ± 0.33
+52.20 ± 0.21
+52.52 ± 0.18
+53.52 ± 0.18
+67.28 ± 0.31
+69.08 ± 0.20
+68.19 ± 0.43
+68.60 ± 0.20
+
+28.10 ± 0.22
+29.34 ± 0.34
+50.43 ± 0.20
+56.95 ± 0.25
+57.71 ± 0.19
+56.71 ± 0.19
+56.91 ± 0.34
+59.60 ± 0.75
+58.17 ± 0.34
+61.18 ± 0.17
+
+MNIST - 5%
+
+100
+
+CIFAR-10 - 5%
+
+CIFAR-100 - 5%
+
+80
+
+70
+
+T st Accurac-
+
+40
+
+Te)t Accuracy
+
+80
+
+Test Accuracy
+
+50
+
+60
+
+60
+
+F dAvg [4]
+LSFL [35]
+ELSA [38]
+Trimm d M a% [29]
+FLSFL (Ou(s)
+
+40
+
+20
+
+0
+
+25
+
+50
+
+75
+
+100
+
+Epoch
+
+125
+
+150
+
+175
+
+30
+
+50
+
+40
+
+20
+
+30
+
+10
+
+20
+
+10
+
+200
+
+0
+0
+
+25
+
+50
+
+MNIST - 15%
+
+100
+
+75
+
+100
+
+Epoch
+
+125
+
+150
+
+175
+
+200
+
+100
+
+70
+
+0
+
+100
+
+0
+
+100
+
+500
+
+200
+
+300
+
+400
+
+500
+
+300
+
+400
+
+500
+
+30
+
+50
+40
+
+40
+
+400
+
+T st Accurac-
+
+60
+
+60
+
+300
+
+40
+
+T st Accurac-
+
+80
+
+200
+
+Epoch
+CIFAR-100 - 15%
+
+50
+
+80
+
+T st Accurac-
+
+0
+
+CIFAR-10 - 15%
+
+20
+
+30
+
+10
+
+20
+20
+10
+0
+
+25
+
+50
+
+100
+
+75
+
+100
+
+125
+
+Epoch
+MNIST - 20%
+
+150
+
+175
+
+200
+
+0
+0
+
+25
+
+50
+
+90
+
+75
+
+100
+
+125
+
+Epoch
+CIFAR-10 - 20%
+
+150
+
+175
+
+200
+
+Epoch
+CIFAR-100 - 20%
+
+50
+80
+70
+
+T st Accurac-
+
+40
+
+T st Accurac-
+
+T st Accurac-
+
+80
+
+60
+
+60
+
+30
+
+50
+40
+
+40
+
+20
+
+30
+
+10
+
+20
+
+20
+
+10
+0
+
+25
+
+50
+
+75
+
+100
+
+Epoch
+
+125
+
+150
+
+175
+
+200
+
+0
+0
+
+25
+
+50
+
+75
+
+100
+
+Epoch
+
+125
+
+150
+
+175
+
+200
+
+200
+
+Epoch
+
+Fig. 2. Test accuracies of DSFL and Baseline models for different for 5%, 10% and 20%of Byzantine participants (under label flipping
+attack) on MNIST, CIFAR-10 and CIFAR-100 datasets (non-IID)
+
+TABLE IV
+Test accuracy (%) of DSFL and FedAvg under varying Byzantine
+ratios on MNIST, CIFAR-10, and CIFAR-100 (IID / non-IID).
+
+edge devices, insider threats, or Sybil attacks can constitute a substantial portion of the network [24], [25]. For
+instance, research in adversarial FL suggests even 10%–
+20% Byzantine presence can be suﬀicient to compromise
+training [17]. Our experiments at 20% and 30% offer a
+comprehensive stress test.
+
+Method
+(% Byzantine)
+
+MNIST
+
+CIFAR-10
+
+CIFAR-100
+
+FedAvg (0%)
+FedAvg (10%)
+DSFL (10%)
+DSFL (20%)
+DSFL (30%)
+
+98.67 / 95.65
+72.05 / 90.65
+97.87 / 91.19
+96.12 / 90.12
+94.08 / 90.97
+
+98.16 / 97.56
+92.39 / 70.87
+98.58 / 95.78
+97.15 / 95.05
+97.25 / 92.53
+
+55.16 / 53.56
+37.87 / 9.39
+68.85 / 59.40
+To further reflect practical dynamics, the participant
+68.60 / 61.18 pool changes in each round, simulating conditions where
+68.03 / 60.98
+
+degradation. These adversarial levels are consistent with
+real-world federated deployments, where compromised
+
+clients may intermittently join or drop out due to connectivity or availability, common in edge and IoT scenarios.
+Malicious participants are randomly sampled from the
+current pool in each round, ensuring a dynamic and
+unpredictable adversary presence.
+
+11
+
+TABLE V
+Comparison of Computation and Communication Overhead Between Our DSFL, HE [53], and FedAvg [4]
+Phase
+Computation
+Communication
+
+Our DSFL
+
+HE [53]
+
+FedAvg [4]
+
+O(Ttr ) + O(mTns ) + O(2mTadd )
+O(2m|w|)
+
+O(Ttr ) + O(mTenc )
+O(m|wenc |)
+
+O(E · n · w) + O(m · w)
+O(2m|w|)
+
+* m is the number of participants, w is the number of model parameters, and E is the number of local training epochs. Ttr is the time
+overhead for local model training, Tns is the time for noise generation, and Tenc is the time for HE. Tadd represents addition time, and
+Tmul represents multiplication time. |w| and |wenc | denote the size of plain and encrypted weights, respectively.
+
+C. Baseline Aggregation Methods
+To comprehensively evaluate the performance of our
+proposed framework (DSFL), we compared it against
+several state-of-the-art aggregation protocols under a 20%
+Byzantine adversarial setting. These baselines span traditional, statistical, privacy-preserving, and robust aggregation methods.
+FedAvg [4] serves as the standard FL baseline without any robustness or privacy safeguards. It performs
+naive averaging of local models received from clients.
+SecAgg [31] introduces secure aggregation through cryptographic masking and pairwise key sharing to ensure that
+the server cannot learn individual model updates. However, it does not provide robustness against adversarial
+updates. Median, and Trimmed Mean [29] are statistical
+aggregation rules aimed at mitigating the impact of
+outliers and adversaries: (1) Median selects the elementwise median of local model updates. (2) Trimmed Mean
+excludes the highest and lowest x% of updates and
+computes the mean of the remaining ones. FLOD [36]
+is a Byzantine-robust approach combining local anomaly
+detection with aggregation filtering. It detects and removes
+poisoned model updates before aggregation. DPBFL [37]
+employs Differential Privacy to protect individual model
+updates while introducing robustness to noisy and adversarial updates. However, its performance often degrades
+on complex datasets due to the injected noise. HEbased aggregation [32] utilises homomorphic encryption to
+support secure computation over encrypted data. While
+offering strong privacy guarantees, it imposes significant
+computational overhead. ELSA [38] implements a dualserver aggregation scheme with input validation and range
+proofs to prevent malicious contributions. It enhances
+both robustness and privacy but assumes partial trust
+in server separation. LSFL [35] proposes a lightweight
+aggregation protocol using two non-colluding servers and
+random group selection to reduce communication overhead and improve scalability. DSFL (Ours) improves
+upon LSFL by incorporating a group-based participant
+filtering mechanism, trust-weighted aggregation, and a
+reward-penalty fairness mechanism. It achieves superior
+performance across all datasets, particularly in non-IID
+and CIFAR-100 settings.
+For all experiments, we adopted consistent local training
+hyperparameters across baselines: a learning rate of 0.001,
+SGD momentum of 0.5, batch size of 10, and 5 local
+training epochs per round. The Byzantine participants
+
+(either 2 or 5 depending on the scenario) performed labelflipping attacks by submitting malicious updates of the
+form vi = qv̂i , where q is a negative scalar.
+D. Experimental Results
+To rigorously assess the effectiveness and robustness of
+the proposed DSFL scheme, we conducted a series of experiments under Byzantine settings across three standard
+image classification benchmarks MNIST, CIFAR-10, and
+CIFAR-100, using both IID and non-IID data distributions. Our evaluation focuses on test accuracy degradation under label-flipping attacks, comparing DSFL with
+widely adopted aggregation protocols including FedAvg,
+Trimmed Mean, Median, DPBFL, LSFL, and homomorphic encryption-based (HE) approaches. The results are
+presented in Table III and Table IV, with corresponding
+trends visualised in Figures 2 and 3.
+Table III illustrates the accuracy of each method under
+a fixed 20% Byzantine participant ratio. FedAvg, despite
+its simplicity and wide usage in FL, exhibits substantial
+vulnerability to malicious participants. On the MNIST
+dataset, FedAvg achieves 80.67% accuracy under IID data,
+which degrades slightly to 78.75% under a non-IID distribution. However, its performance collapses dramatically
+on more complex datasets. On CIFAR-100 (non-IID),
+FedAvg reaches only 28.10% accuracy, a level insuﬀicient
+for any meaningful classification task. This degradation
+corroborates earlier findings by Blanchard et al. [27] and
+Bagdasaryan et al. [16], who demonstrated that FedAvg
+is particularly fragile in heterogeneous and adversarial
+settings due to its unweighted averaging of all client
+updates, including malicious ones.
+Secure aggregation protocols such as SecAgg [31] and
+homomorphic encryption-based approaches [32] offer some
+improvement in preserving accuracy under attack but
+still fall short in highly non-IID contexts. Although HEbased methods achieve a moderate gain in robustness
+(e.g., 58.17% on CIFAR-100 non-IID), their excessive
+computational and communication overheads make them
+impractical for real-time or resource-constrained deployments. Robust statistical methods like Trimmed Mean
+and Median perform better, particularly in datasets like
+CIFAR-10 and CIFAR-100. However, these methods rely
+on hard-coded trimming thresholds or majority assumptions that may fail under dynamic or adaptive attack patterns. Notably, Trimmed Mean achieves 60.87% accuracy
+
+12
+
+60
+
+40
+
+80
+
+60
+
+40
+
+20
+
+20
+
+0
+25
+
+50
+
+75
+
+100
+
+125
+
+Epoch
+CIFAR-10 - 5%
+
+150
+
+175
+
+200
+
+25
+
+50
+
+35
+
+75
+
+100
+
+125
+
+Epoch
+CIFAR-10 - 15%
+
+150
+
+175
+
+40
+
+20
+
+200
+
+25
+
+20
+
+25
+
+50
+
+75
+
+100
+
+125
+
+Epoch
+CIFAR-100 - 5%
+
+150
+
+175
+
+200
+
+0
+
+25
+
+50
+
+125
+
+150
+
+175
+
+200
+
+75
+
+100
+
+125
+
+150
+
+175
+
+200
+
+10
+
+5
+
+0
+0
+
+100
+
+Epoch
+CIFAR-10 - 20%
+
+15
+
+10
+
+5
+
+75
+
+20
+
+15
+
+10
+
+50
+
+25
+
+20
+
+15
+
+25
+
+30
+
+Attack r Succ ss Rat
+
+25
+
+0
+
+35
+
+30
+
+Attack r Succ ss Rat
+
+Attack r Succ ss Rat
+
+60
+
+0
+0
+
+30
+
+0
+
+80
+
+0
+0
+
+MNIST - 20%
+
+100
+
+Attack r Succ ss Rat
+
+Attacker Succ ss Rat
+
+80
+
+MNIST - 15%
+Attacke) Succ ss Rat
+
+MNIST - 5%
+F dA-g [4]
+LSFL [35]
+ELSA [38]
+Tri%% d M an [29]
+FLSFL (Ours)
+
+5
+0
+
+0
+
+25
+
+50
+
+100
+
+75
+
+100
+
+125
+
+Epoch
+CIFAR-100 - 15%
+
+150
+
+175
+
+200
+
+100
+
+Epoch
+CIFAR-100 - 20%
+
+Attack r Succ ss Rat
+
+Attack r Succ ss Rat
+
+60
+50
+40
+30
+20
+10
+0
+
+Attack r Succ ss Rat
+
+70
+80
+
+60
+
+40
+
+20
+
+0
+0
+
+100
+
+200
+
+Epoch
+
+300
+
+400
+
+500
+
+80
+
+60
+
+40
+
+20
+
+0
+0
+
+100
+
+200
+
+Epoch
+
+300
+
+400
+
+500
+
+0
+
+100
+
+200
+
+Epoch
+
+300
+
+400
+
+500
+
+Fig. 3. Attacker success rate over training epochs across different aggregation protocols under label-flipping attacks. The success rate reflects
+the proportion of malicious updates that successfully influence the global model. DSFL demonstrates a rapid suppression of adversarial
+influence, reaching near-zero success rates within the first few epochs and maintaining robustness throughout training. In contrast, FedAvg
+remains highly vulnerable, and LSFL shows partial resistance with fluctuating success rates, particularly under non-IID data distributions.
+
+on CIFAR-10 non-IID, but only 50.43% on CIFAR-100
+non-IID, revealing its limited generalizability.
+DSFL consistently outperforms all baselines across
+datasets and data partitions. On MNIST (IID), DSFL
+achieves 96.12% accuracy despite the presence of 20%
+Byzantine participants. On CIFAR-10 and CIFAR-100,
+DSFL maintains over 95% and 68% accuracy, respectively,
+with marginal drops in non-IID conditions. Compared
+to LSFL [35], which was previously one of the strongest
+robust FL baselines, DSFL provides comparable or slightly
+better performance with improved stability, particularly
+on CIFAR-100, where it surpasses LSFL by over 1.5%
+under a non-IID distribution. These results suggest that
+the synergy between local differential privacy, the dualserver secure aggregation design, and fairness-enhanced
+participant selection enables DSFL to simultaneously
+preserve model utility and suppress malicious influence.
+Table IV and Figure 3 further illustrate the resilience
+of DSFL across increasing levels of adversarial intensity.
+While FedAvg degrades sharply with just 10% Byzantine
+clients—dropping to as low as 9.39% on CIFAR-100
+non-IID, DSFL sustains robust accuracy even at 30%
+adversaries. On CIFAR-10, DSFL maintains 97.25% under
+
+IID and 92.53% under non-IID distribution with 30%
+malicious participants, underscoring its high tolerance
+to adversarial drift. This ability to scale robustly with
+adversarial pressure stands in contrast to most prior
+defences, including DPBFL [37] and ELSA [38], which
+rely either on strong assumptions of client behaviour or
+complex cryptographic operations that are computationally demanding.
+Figure 2 complements these findings by visualising the
+attack-specific test accuracy across 5%, 10%, and 20%
+Byzantine client ratios. The curves reveal that DSFL
+maintains superior performance across all attack levels
+and datasets. In MNIST and CIFAR-10, its performance is
+almost indistinguishable from the no-attack baseline for up
+to 10% adversaries. Additionally, the attack success rate—
+measured through the attack impact on clean data—is
+shown to remain negligible throughout training in both
+IID and non-IID conditions. Notably, in non-IID settings,
+where many defence schemes lose their effectiveness due
+to high gradient variance, DSFL stabilises quickly and
+suppresses malicious gradients through noise injection and
+masked aggregation, thereby neutralising their impact
+before convergence.
+
+13
+
+Figure 3 illustrates the attacker success rate over
+training epochs across various aggregation protocols under
+adversarial conditions. This metric quantifies the proportion of poisoned inputs (or label-flipped samples) that
+successfully influence the global model, thereby serving as
+a direct measure of the system’s vulnerability to Byzantine
+behaviour.
+As observed in the figure, FedAvg exhibits a consistently
+high attacker success rate throughout the training process,
+particularly in non-IID scenarios. This is expected, as
+FedAvg performs naïve averaging without any robustness
+enhancement, making it highly susceptible to gradient
+manipulation. The attack success rate remains above 60%
+across all rounds, confirming the attacker’s persistent
+influence on the global model.
+In contrast, LSFL introduces filtering mechanisms based
+on update similarity and exhibits moderate resistance to
+adversarial behaviour. Its attacker success rate declines
+after several rounds of training but still fluctuates due to
+its sensitivity to gradient divergence in non-IID settings.
+The proposed DSFL method demonstrates the most effective suppression of attacker success. Across all datasets
+and data distributions, its success rate drops to near zero
+within the first 5–10 communication rounds and remains
+negligible thereafter. This suggests that DSFL not only
+mitigates the impact of malicious clients early in training
+but also maintains stability and robustness throughout.
+This resilience can be attributed to the combined use
+of differential privacy noise, fair participant selection,
+and secure aggregation, which jointly obscure and filter
+malicious updates before they can affect the global model.
+These results reinforce the findings in Table III and
+Figure 3, showing that DSFL does not merely preserve
+accuracy under attack but actively suppresses adversarial
+success, outperforming prior methods such as LSFL,
+DPBFL, and HE-based schemes both in robustness and
+eﬀiciency.
+Overall, these results demonstrate the capability of
+DSFL to provide strong Byzantine robustness while
+preserving high model accuracy across a range of FL
+scenarios. By avoiding the heavy computational burden
+of homomorphic encryption and the heuristic nature of
+statistical outlier rejection, DSFL offers a principled and
+scalable solution for secure and privacy-preserving FL. Its
+design ensures compatibility with non-IID data, which is
+prevalent in real-world FL deployments such as mobile and
+edge environments, making it a practical and deployable
+alternative to both classical and state-of-the-art defences.
+E. Determination of Optimal Hyper-parameters
+To ensure fair comparison and optimal performance
+across all evaluated aggregation protocols, we conducted
+an extensive hyper-parameter search for key variables such
+as local learning rate, number of local epochs, batch size,
+and noise scale for differential privacy, where applicable.
+For DSFL, the learning rate was selected from the range
+0.01, 0.001, 0.0005, with 0.001 yielding the most stable
+
+convergence across datasets. The number of local epochs
+was fixed at 5 after observing diminishing returns and
+potential overfitting beyond this threshold. A batch size of
+10 was used consistently to maintain training granularity,
+while the noise scale for differential privacy was tuned to
+balance privacy protection and model utility.
+All baseline methods were fine-tuned within their recommended settings as reported in their original papers
+to avoid bias. For example, in DP-based methods such
+as DPBFL, we adopted the noise multiplier and clipping
+norm suggested in [37]. For HE-based methods, cryptographic parameters such as key size and ciphertext modulus were selected based on the configurations outlined
+in [32] to ensure feasible runtime. This careful calibration
+ensured that each method was evaluated under its bestperforming configuration, thereby enabling a fair and
+rigorous comparison.
+F. Eﬀiciency and Overhead Analysis
+We evaluate the computational and communication
+eﬀiciency of DSFL in comparison with two existing secure
+aggregation baselines: FedAvg [4] and a homomorphic
+encryption (HE)-based scheme [53]. The comparison is
+summarised in Table VI and visualised in Figure 4.
+FedAvg [4] is known for its low overhead. Its computational complexity includes local model training and
+optional encryption:
+O(Ttr ) + O(mTenc )
+where Ttr denotes the local training time, Tenc is the perclient encryption cost, and m is the number of participants. The corresponding communication complexity is:
+O(m|wenc |)
+with |wenc | denoting the size of the encrypted model.
+In contrast, the proposed DSFL framework adopts a
+dual-server secure aggregation protocol using additive
+noise. Its computational complexity is:
+O(Ttr ) + O(mTns ) + O(2mTadd )
+where Tns is the time for local noise generation, and Tadd
+denotes the time for secure modular addition. DSFL avoids
+heavy cryptographic operations, enabling lightweight execution.
+The communication overhead is:
+O(2m|w|)
+as each client transmits masked model updates to two
+servers. Although this doubles the number of transmissions
+compared to FedAvg, the use of unencrypted (masked)
+values significantly reduces the payload size compared to
+HE-based approaches.
+Figure 4 illustrates that DSFL achieves competitive runtime and communication cost—only slightly higher than
+FedAvg but considerably lower than HE-based methods.
+Empirical results in Table VI (for 10 clients) show that
+
+14
+
+Fig. 4. Comparison of computational and communication complexities for DSFL, FedAvg, and HE-based solutions [53]. DSFL achieves
+strong defence with a marginal increase in complexity compared to
+FedAvg and substantially lower overhead than HE-based protocols.
+TABLE VI
+Runtime and Communication Overhead for 10 Clients on the
+MNIST Dataset
+
+Method
+
+Time/Round
+
+Msg Size
+
+CPU Load
+
+FedAvg [4]
+HE-Based [53]
+LSFL [35]
+DSFL (Ours)
+
+22.4 ms
+1020.3 ms
+58.1 ms
+55.9 ms
+
+512 KB
+13.2 MB
+1100 KB
+1088 KB
+
+Low
+High
+Medium
+Medium
+
+DSFL’s per-round runtime is 55.9 ms with a communication payload of 1088 KB, demonstrating near-parity with
+FedAvg and significant gains over LSFL.
+In summary, DSFL strikes an effective balance between
+security and system eﬀiciency. It offers significantly improved robustness against adversarial threats, with low
+runtime and communication overhead, making it practical
+for real-world, privacy-sensitive FL deployments.
+G. Security Analysis
+We analyse the security guarantees of the proposed
+DSFL scheme under the assumptions that the Service
+Provider (SP) and the Trusted Authority (TP) are honestbut-curious and do not collude. Additionally, we consider
+the presence of Byzantine Device participants capable of
+launching adversarial attacks.
+Theorem 1: Neither the SP, TP, nor Byzantine P s
+can infer the sensitive local model updates of honest-butcurious P s.
+Proof Sketch: In DSFL, each P splits its local model
+update into two random shares and sends them to the
+SP and TP, respectively. During the secure aggregation
+process, SP may send CPG TP to support Byzantine
+robustness. However, since SP and TP receive disjoint and
+partial information, and are non-colluding, they cannot
+reconstruct the full model update wi of any participant.
+Similarly, each P is aware only of its update and the global
+model, and cannot infer updates of others. Therefore,
+DSFL preserves model privacy against both external and
+internal adversaries.
+
+Theorem 2: The dual-server Secure Model Update
+protocol is secure as long as SP and TP do not collude.
+Proof Sketch: From SP’s perspective, its view in(2)
+cludes (wi , w̄, CP Gi,j , P M Ci,j , w), where CP Gi,j noncomprizable and w = w(1) + w(2) is the intermediate
+aggregated global model. Given access only to CP Gi,j and
+w, SP cannot infer w(1) or reconstruct any individual wi .
+(2)
+Likewise, the view of TP includes (wi , P M Ci,j , ). The
+views of both SP and TP are therefore computationally
+indistinguishable from simulated versions, implying no
+privacy leakage under the semi-honest model.
+Theorem 3: DSFL is robust against Byzantine P s as
+long as the majority of P s are honest-but-curious.
+Proof Sketch: DSFL employs a Euclidean distancebased filtering mechanism to select the k most reliable
+local model updates. Each P ’s update is compared to
+the aggregated baseline using dGi =∥ w̄ − w̄Gi ∥22 ., and
+updates with the smallest deviation from the median are
+selected. This makes it diﬀicult for Byzantine P s to inject
+poisoned updates without mimicking benign distributions,
+which in practice is statistically challenging. Given that
+the majority of P s are honest, malicious updates are
+unlikely to pass the selection filter. As a result, the scheme
+effectively mitigates poisoning and label-flipping attacks.
+In summary, DSFL achieves privacy-preserving and
+Byzantine-robust aggregation without relying on heavy
+cryptographic primitives or trusted hardware. Its dualserver design prevents inference attacks by curious servers
+and limits the influence of malicious participants through
+robust filtering.
+H. Convergence Analysis
+In this section, we rigorously analyse the convergence
+properties of the proposed DSFL framework. Unlike traditional single-server FL systems, DSFL employs a dualserver architecture (Trust Provider and Service Provider)
+with secret sharing and participant filtering, which introduces unique structural advantages. We show that despite
+these privacy-preserving and adversarial-robust features,
+DSFL maintains the optimal convergence rate of O(1/T )
+even under non-IID and partially Byzantine settings.
+1) Preliminaries and Problem Setup: Let the global
+optimisation objective be defined as:
+1 X
+Fp (w),
+N p=1
+N
+
+min F (w) =
+w
+
+(11)
+
+where Fp (w) = Eξp [ℓ(w; ξp )] is the local empirical risk
+over participant P ’s data sampled via ξp ∼ Dp . The local
+SGD update per epoch is:
+wp ← wp − η∇ℓ(wp ; ξp ).
+
+(12)
+
+2) Assumptions: We adopt the following standard assumptions for convergence [52], [54], [55]:
+Assumption 1 (Smoothness). Each local loss Fp is Lsmooth:
+∥∇Fp (w) − ∇Fp (v)∥ ≤ L∥w − v∥,
+
+∀w, v.
+
+15
+
+Assumption 2 (Strong Convexity). Each Fp is µ-strongly
+convex:
+(∇Fp (w) − ∇Fp (v))T (w − v) ≥ µ∥w − v∥2 .
+Assumption 3 (Bounded Variance). The stochastic gradient has bounded variance:
+Eξp ∥∇ℓ(w; ξp ) − ∇Fp (w)∥2 ≤ σ 2 .
+3) Secure dual-Server Aggregation Protocol: Each
+client Pi splits their local model update wp into two shares:
+wp(1) = wp + ζp ,
+
+wp(2) = wp − ζp ,
+
+where ζp ∼ N (0, g 2 ) is random noise known only to the
+client. TP and SP compute:
+1 X (1)
+w ,
+N i=1 p
+N
+
+z1 =
+
+1 X (2)
+w ,
+N i=1 p
+N
+
+z2 =
+
+and the global model is reconstructed securely by SP as:
+N
+1 X
+z1 + z2
+=
+wp .
+w̄ =
+2
+N i=1
+
+4) Main Convergence Result: Let w(t) be the global
+model at round t and E the number of local steps. Then
+α
+, the model update
+under a learning rate schedule ηt = t+γ
+satisfies:
+
+
+2
+2
+αµ
+(t+1)
+∗
+E w
+−w
+≤ 1−
+E w(t) − w∗
+t+γ
+α2 (σ 2 E/K + E 2 G2 )
+,
+(13)
++
+µ2 (t + γ)2
+where G bounds the magnitude of adversarial updates
+and K is the number of honest participants selected after
+filtering. This leads to a convergence rate:
+ 
+1
+(T )
+∗
+E[F (w )] − F ≤ O
+.
+T
+5) Byzantine Filtering and Impact: DSFL applies a
+deviation-based filtering mechanism, selecting the top
+K ′ = K − βK participants with minimum deviation from
+the median update:
+1 X (t+1)
+w̃(t+1) = ′
+wp
+, |S| = K ′ .
+K
+i∈S
+
+This ensures adversarial resilience without sacrificing convergence guarantees:
+ 
+1
+(T )
+∗
+E[F (w̃ )] − F = O
+.
+T
+6) Conclusion: DSFL achieves the optimal convergence
+rate for federated optimization under convexity, while
+providing robustness against adversarial behavior and
+preserving update privacy via secure dual-server aggregation. This theoretical foundation supports its practical
+deployment in distributed, edge-device scenarios.
+
+VI. Conclusion
+This paper presented DSFL, a Lightweight, Dual-Server
+Byzantine-Resilient FL Framework that simultaneously
+addresses three critical challenges in FL: privacy leakage,
+Byzantine robustness, and communication overhead. By
+leveraging a novel dual-server architecture with noncolluding Trust and Service Providers, DSFL securely
+aggregates model updates without relying on costly cryptographic primitives such as Homomorphic Encryption.
+Its group-based deviation filtering and dynamic credit
+mechanism allow robust participant selection and fair
+aggregation, even under strong adversarial presence. Unlike existing approaches, DSFL achieves strong privacy
+protection through additive noise sharing, high resilience
+to Byzantine participants via top-k filtering, and computational eﬀiciency suitable for resource-constrained edge
+deployments. Our security analysis shows that the protocol mitigates information leakage even under honestbut-curious servers. Extensive experiments on MNIST,
+CIFAR-10, and CIFAR-100, under both IID and non-IID
+settings with up to 30% adversaries, demonstrate that
+DSFL consistently outperforms state-of-the-art baselines,
+including LSFL, HE-based schemes, and DPBFL. It preserves model utility with minimal overhead, maintaining
+accuracies above 90% even under severe poisoning attacks, while reducing attacker success rates to near zero.
+Overall, DSFL bridges the gap between secure, robust,
+and eﬀicient FL, making it a strong candidate for realworld deployment in edge and IoT scenarios. In future
+work, we plan to extend DSFL to support adaptive trust
+scoring, real-time participant churn, and scalability to
+large-scale heterogeneous FL systems. Our findings pave
+the way for scalable, trustworthy FL in critical domains
+such as healthcare, finance, and IoT, where both privacy
+and robustness are paramount.
+References
+[1] G. P. Assembly, “Resolution on generative artificial intelligence
+systems,” 45th Closed Session of the Global Privacy Assembly,
+2023.
+[2] P. Singhal, R. Walambe, S. Ramanna, and K. Kotecha, “Domain
+adaptation: Challenges, methods, datasets, and applications,”
+IEEE Access, vol. 11, pp. 6973–7020, 2023.
+[3] L. Cai and Y. Zhu, “The challenges of data quality and data
+quality assessment in the big data era,” Data Science Journal,
+vol. 14, no. 0, p. 2, 2015.
+[4] H. B. McMahan, E. Moore, D. Ramage, and B. A.
+y Arcas, “Federated learning of deep networks using
+model averaging,” CoRR, vol. abs/1602.05629, 2016. [Online].
+Available: http://arxiv.org/abs/1602.05629
+[5] J. Konečný, H. B. McMahan, F. X. Yu, P. Richtárik,
+A. T. Suresh, and D. Bacon, “Federated learning:
+Strategies
+for
+improving
+communication
+eﬀiciency,”
+CoRR, vol. abs/1610.05492, 2016. [Online]. Available:
+http://arxiv.org/abs/1610.05492
+[6] S. Khan, M. Sajjad, T. Hussain, A. Ullah, and A. S. Imran,
+“A review on traditional machine learning and deep learning
+models for wbcs classification in blood smear images,” IEEE
+Access, vol. 9, pp. 10 657–10 673, 2021.
+[7] G. Drainakis, K. V. Katsaros, P. Pantazopoulos, V. Sourlas,
+and A. Amditis, “Federated vs. centralized machine learning
+under privacy-elastic users: A comparative analysis,” in 2020
+IEEE 19th International Symposium on Network Computing
+and Applications (NCA), 2020, pp. 1–8.
+
+16
+
+[8] S. Abdulrahman, H. Tout, H. Ould-Slimane, A. Mourad,
+[24] M. Fang, X. Cao, J. Jia, and N. Z. Gong, “Local model poisoning
+C. Talhi, and M. Guizani, “A survey on federated learning:
+attacks to byzantine-robust federated learning,” in Proceedings
+The journey from centralized to distributed on-site learning and
+of the 29th USENIX Conference on Security Symposium, ser.
+beyond,” IEEE Internet of Things Journal, vol. 8, no. 7, pp.
+SEC’20. USA: USENIX Association, 2020.
+5476–5497, 2021.
+[25] V. Tolpegin, S. Truex, M. E. Gursoy, and L. Liu, “Data
+[9] A. Karargyris, R. Umeton, M. J. Sheller et al., “Federated
+poisoning attacks against federated learning systems,” vol.
+benchmarking of medical artificial intelligence with medperf,”
+abs/2007.08432, 2020. [Online]. Available: https://arxiv.org/
+Nature Machine Intelligence, vol. 5, pp. 799–810, 2023. [Online].
+abs/2007.08432
+Available: https://doi.org/10.1038/s42256-023-00652-2
+[26] M. Jagielski, A. Oprea, B. Biggio, C. Liu, C. Nita-Rotaru,
+[10] H. Xu, M. Pan, X. Huang, and A. Shen, “Federand B. Li, “Manipulating machine learning: Poisoning attacks
+ated learning in autonomous vehicles using crossand countermeasures for regression learning,” in 2018 IEEE
+border
+training,”
+https://developer.nvidia.com/blog/
+Symposium on Security and Privacy (SP), 2018, pp. 19–35.
+federated-learning-in-autonomous-vehicles-using-cross-border-training/,
+[27] P. Blanchard, E. M. El Mhamdi, R. Guerraoui, and
+October 2024, computer Vision / Video Analytics, NVIDIA
+J. Stainer, “Machine learning with adversaries: Byzantine
+Developer Blog.
+tolerant gradient descent,” in Advances in Neural Information
+[11] J. So, R. E. Ali, B. Güler, J. Jiao, and A. S. Avestimehr,
+Processing Systems, I. Guyon, U. V. Luxburg, S. Bengio,
+“Securing secure aggregation: mitigating multi-round privacy
+H. Wallach, R. Fergus, S. Vishwanathan, and R. Garnett,
+leakage in federated learning,” ser. AAAI’23/IAAI’23/EAAI’23.
+Eds., vol. 30. Curran Associates, Inc., 2017. [Online].
+AAAI Press, 2023. [Online]. Available: https://doi.org/10.1609/
+Available: https://proceedings.neurips.cc/paper_files/paper/
+aaai.v37i8.26177
+2017/file/f4b9ec30ad9f68f89b29639786cb62ef-Paper.pdf
+[12] L. Melis, C. Song, E. D. Cristofaro, and V. Shmatikov, [28] R. Guerraoui, S. Rouault, and M. T. Vuilleumier, “The hidden
+“Inference attacks against collaborative learning,” CoRR, vol.
+vulnerability of distributed learning in byzantium,” in Internaabs/1805.04049, 2018. [Online]. Available: http://arxiv.org/
+tional Conference on Machine Learning (ICML). PMLR, 2018,
+abs/1805.04049
+pp. 3521–3530.
+[13] L. Ge, H. Li, X. Wang, and Z. Wang, “A review
+[29] D. Yin, Y. Chen, K. Ramchandran, and P. L. Bartlett,
+of secure federated learning: Privacy leakage threats,
+“Byzantine-robust distributed learning: Towards optimal
+protection technologies, challenges and future directions,”
+statistical rates,” CoRR, vol. abs/1803.01498, 2018. [Online].
+Neurocomputing, vol. 561, p. 126897, 2023. [Online].
+Available: http://arxiv.org/abs/1803.01498
+Available: https://www.sciencedirect.com/science/article/pii/
+[30] L. Muñoz-González, K. T. Co, and E. C. Lupu, “ByzantineS0925231223010202
+robust federated machine learning through adaptive model
+averaging,” 2019. [Online]. Available: https://arxiv.org/abs/
+[14] A. R. Elkordy, J. Zhang, Y. H. Ezzeldin, K. Psounis, and
+S. Avestimehr, “How much privacy does federated learning
+1909.05125
+with secure aggregation guarantee?” 2022. [Online]. Available: [31] K. Bonawitz, V. Ivanov, B. Kreuter, A. Marcedone, H. B.
+https://arxiv.org/abs/2208.02304
+McMahan, S. Patel, D. Ramage, A. Segal, and K. Seth,
+“Practical secure aggregation for privacy-preserving machine
+[15] K. Naveen Kumar, C. Krishna Mohan, and L. Reddy Cenkeramaddi, “Federated learning minimal model replacement attack
+learning,” in Proceedings of the 2017 ACM SIGSAC Conference
+on Computer and Communications Security. New York, NY,
+using optimal transport: An attacker perspective,” IEEE TransUSA: Association for Computing Machinery, 2017. [Online].
+actions on Information Forensics and Security, vol. 20, pp. 478–
+Available: https://doi.org/10.1145/3133956.3133982
+487, 2025.
+[16] E. Bagdasaryan, A. Veit, Y. Hua, D. Estrin, and
+[32] L. T. Phong, Y. Aono, T. Hayashi, L. Wang, and S. Moriai,
+V. Shmatikov, “How to backdoor federated learning,”
+“Privacy-preserving deep learning via additively homomorphic
+CoRR, vol. abs/1807.00459, 2018. [Online]. Available:
+encryption,” IEEE Transactions on Information Forensics and
+http://arxiv.org/abs/1807.00459
+Security, vol. 13, no. 5, pp. 1333–1345, 2018.
+[17] A. N. Bhagoji, S. Chakraborty, P. Mittal, and S. Calo,
+[33] J. H. Cheon, A. Kim, M. Kim, and Y. Song, “Homomorphic
+“Analyzing federated learning through an adversarial lens,”
+encryption for arithmetic of approximate numbers,” in
+in Proceedings of the 36th International Conference on
+Advances in Cryptology – ASIACRYPT 2017, ser. Lecture
+Machine Learning, ser. Proceedings of Machine Learning
+Notes in Computer Science, T. Takagi and T. Peyrin,
+Research, K. Chaudhuri and R. Salakhutdinov, Eds., vol. 97.
+Eds., vol. 10624. Springer, Cham, 2017. [Online]. Available:
+PMLR, 09–15 Jun 2019, pp. 634–643. [Online]. Available:
+https://doi.org/10.1007/978-3-319-70694-8_15
+https://proceedings.mlr.press/v97/bhagoji19a.html
+[34] O. A. Wahab, A. Mourad, H. Otrok, and T. Taleb, “Federated
+[18] R. Wang, G. Zhou, M. Gao, and Y. Xiao, “Dual model
+machine learning: Survey, multi-level classification, desirable
+replacement:invisible multi-target backdoor attack based on
+criteria and future directions in communication and networking
+federal learning,” 2024. [Online]. Available: https://arxiv.org/
+systems,” IEEE Communications Surveys and Tutorials, vol. 23,
+abs/2404.13946
+no. 2, pp. 1342–1397, 2021.
+[19] C. Xie, K. Huang, P.-Y. Chen, and B. Li, “Dba: Distributed
+[35] Z. Zhang, L. Wu, C. Ma, J. Li, J. Wang, Q. Wang, and S. Yu,
+backdoor attacks against federated learning,” in International
+“Lsfl: A lightweight and secure federated learning scheme for
+Conference on Learning Representations, 2020. [Online].
+edge computing,” IEEE Transactions on Information Forensics
+Available: https://openreview.net/forum?id=rkgyS0VFvr
+and Security, vol. 18, pp. 365–379, 2023.
+[20] M. Fang, X. Cao, J. Jia, and N. Gong, “Local
+[36] Y. Dong, X. Chen, K. Li, D. Wang, and S. Zeng,
+model poisoning attacks to Byzantine-Robust federated
+“FLOD: Oblivious defender for private byzantine-robust
+learning,” in 29th USENIX Security Symposium (USENIX
+federated learning with dishonest-majority,” Cryptology ePrint
+Security 20). USENIX Association, Aug. 2020, pp. 1605–
+Archive, Paper 2021/993, 2021. [Online]. Available: https:
+1622. [Online]. Available: https://www.usenix.org/conference/
+//eprint.iacr.org/2021/993
+usenixsecurity20/presentation/fang
+[37] X. Ma, X. Sun, Y. Wu, Z. Liu, X. Chen, and C. Dong,
+[21] W. Sun, B. Gao, K. Xiong, and Y. Wang, “A gan“Differentially private byzantine-robust federated learning,”
+based data poisoning attack against federated learning
+EEE Transactions on Parallel and Distributed Systems,
+systems and its countermeasure,” 2024. [Online]. Available:
+vol. 33, no. 12, p. 3690–3701, Dec. 2022. [Online]. Available:
+https://arxiv.org/abs/2405.11440
+https://doi.org/10.1109/TPDS.2022.3167434
+[22] B. Hitaj, G. Ateniese, and F. Pérez-Cruz, “Deep models
+[38] M. Rathee, C. Shen, S. Wagh, and R. A. Popa, “ELSA: secure
+under the GAN: information leakage from collaborative deep
+aggregation for federated learning with malicious actors,”
+learning,” CoRR, vol. abs/1702.07464, 2017. [Online]. Available:
+IACR Cryptol. ePrint Arch., p. 1695, 2022. [Online]. Available:
+http://arxiv.org/abs/1702.07464
+https://eprint.iacr.org/2022/1695
+[23] X. Luo and X. Zhang, “Exploiting defenses against gan-based
+[39] P. Blanchard, E. M. E. Mhamdi, R. Guerraoui, and
+feature inference attacks in federated learning,” ACM Trans.
+J. Stainer, “Byzantine-tolerant machine learning,” CoRR, vol.
+Knowl. Discov. Data, vol. 19, no. 3, Apr. 2025. [Online].
+abs/1703.02757, 2017. [Online]. Available: http://arxiv.org/
+abs/1703.02757
+Available: https://doi.org/10.1145/3719350
+
+17
+
+[40] C. Zhang, S. Li, J. Xia, W. Wang, F. Yan, and Y. Liu,
+“Batchcrypt: eﬀicient homomorphic encryption for cross-silo
+federated learning,” ser. USENIX ATC’20.
+USA: USENIX
+Association, 2020.
+[41] G. Xu, H. Li, S. Liu, K. Yang, and X. Lin, “Verifynet: Secure
+and verifiable federated learning,” IEEE Transactions on Information Forensics and Security, vol. 15, pp. 911–926, 2020.
+[42] L. Zhao, J. Jiang, B. Feng, Q. Wang, C. Shen, and Q. Li,
+“Sear: Secure and eﬀicient aggregation for byzantine-robust
+federated learning,” IEEE Transactions on Dependable and
+Secure Computing, vol. 19, no. 5, pp. 3329–3342, 2022.
+[43] J. Zhao, H. Zhu, F. Wang, R. Lu, Z. Liu, and H. Li, “Pvd-fl: A
+privacy-preserving and verifiable decentralized federated learning framework,” IEEE Transactions on Information Forensics
+and Security, vol. 17, pp. 2059–2073, 2022.
+[44] J. Deng, C. Wang, X. Meng, Y. Wang, J. Li, S. Lin,
+S. Han, F. Miao, S. Rajasekaran, and C. Ding, “A
+secure and eﬀicient federated learning framework for NLP,”
+CoRR, vol. abs/2201.11934, 2022. [Online]. Available: https:
+//arxiv.org/abs/2201.11934
+[45] S. Addanki, K. Garbe, E. Jaffe, R. Ostrovsky, and
+A. Polychroniadou, “Prio+: Privacy preserving aggregate
+statistics,” in Security and Cryptography for Networks: 13th
+International Conference, SCN 2022, Amalfi (SA), Italy,
+September 12–14, 2022, Proceedings. Berlin, Heidelberg:
+Springer-Verlag, 2022, p. 516–539. [Online]. Available:
+https://doi.org/10.1007/978-3-031-14791-3_23
+[46] L. He, S. P. Karimireddy, and M. Jaggi, “Secure byzantinerobust machine learning,” CoRR, vol. abs/2006.04747, 2020.
+[Online]. Available: https://arxiv.org/abs/2006.04747
+[47] X. Liu, H. Li, G. Xu, Z. Chen, X. Huang, and R. Lu, “Privacyenhanced federated learning against poisoning adversaries,”
+IEEE Transactions on Information Forensics and Security,
+vol. 16, pp. 4574–4588, 2021.
+[48] J. Zhou, N. Wu, Y. Wang, S. Gu, Z. Cao, X. Dong, and K.-K. R.
+Choo, “A differentially private federated learning model against
+poisoning attacks in edge computing,” IEEE Transactions on
+Dependable and Secure Computing, vol. 20, no. 3, pp. 1941–
+1958, 2023.
+[49] C. Dong, J. Weng, M. Li, J.-N. Liu, Z. Liu, Y. Cheng, and S. Yu,
+“Privacy-preserving and byzantine-robust federated learning,”
+IEEE Transactions on Dependable and Secure Computing,
+vol. 21, no. 2, pp. 889–904, 2024.
+[50] D. Li and J. Wang, “Fedmd: Heterogenous federated learning
+via model distillation,” CoRR, vol. abs/1910.03581, 2019.
+[Online]. Available: http://arxiv.org/abs/1910.03581
+[51] M. Maniruzzaman, M. Rahman, Al-MehediHasan, and M. et al.,
+“Accurate diabetes risk stratification using machine learning:
+Role of missing value and outliers.” Journal of Medical Systems,
+vol. 42, 2018.
+[52] D. Yin, Y. Chen, K. Ramchandran, and P. L. Bartlett,
+“Byzantine-robust distributed learning: Towards optimal
+statistical rates,” CoRR, vol. abs/1803.01498, 2018. [Online].
+Available: http://arxiv.org/abs/1803.01498
+[53] K. Wei, J. Li, M. Ding, C. Ma, H. H. Yang, F. Farokhi, S. Jin,
+T. Q. S. Quek, and H. Vincent Poor, “Federated learning with
+differential privacy: Algorithms and performance analysis,”
+IEEE Press, vol. 15, p. 3454–3469, Jan. 2020. [Online].
+Available: https://doi.org/10.1109/TIFS.2020.2988575
+[54] S. P. Karimireddy, S. Kale, M. Mohri, S. J. Reddi, S. U. Stich,
+and A. T. Suresh, “SCAFFOLD: stochastic controlled averaging
+for on-device federated learning,” CoRR, vol. abs/1910.06378,
+2019. [Online]. Available: http://arxiv.org/abs/1910.06378
+[55] S.
+U.
+Stich,
+“Local
+SGD
+converges
+fast
+and
+communicates little,” in International Conference on
+Learning
+Representations,
+2019.
+[Online].
+Available:
+https://openreview.net/forum?id=S1g2JnRcFX
+
+Charuka Herath is currently pursuing a PhD
+in AI and Cybersecurity at Loughborough
+University, London. He is an alumnus of the
+University of Moratuwa, Sri Lanka, and serves
+as a Research Assistant on a post-quantum
+cryptography project with Airbus Defence and
+Space, in collaboration with Cardiff Metropolitan University and Loughborough University.
+Furthermore, he works as an ML developer
+for a collaborative project under a grant on
+Blockchain, AI and Sanctions. Additionally, he
+is an Associate Lecturer in Computing at Arden University, London.
+Before this, he worked as a Senior Software Engineer at Sysco LABS
+and WSO2 Private Limited from 2020 to 2022. His research interests
+include wireless distributed learning, large language models, one-shot
+learning, and cybersecurity.
+
+Yogachandran Rahulamathavan is a Reader
+in Cybersecurity and Privacy and joined
+Loughborough University, London in 2016.
+After obtaining a Ph.D. in Signal Processing
+from Loughborough University in 2012, Rahul
+joined the Information Security Group at City,
+University of London as a Research Fellow to
+lead signal processing in the encrypted domain
+research theme. During his time as a research
+fellow, he was a security and privacy work
+package leader for a Large-Scale Integrated
+Project, SpeechXrays, funded by the European Commission. Since
+April 2016, he joined Loughborough University’s postgraduate campus in London as a lecturer, where he was promoted to senior
+lecturer in January 2020 and to Reader in January 2024. He is the
+module leader for Cybersecurity and Forensics, Principles of Artificial Intelligence and Data Analytics and Information Management
+modules. He is one of the recipients of the British Council’s UKIndia research funding in 2017 and successfully led a project between
+Lboro, City and IIT Kharagpur. Currently, Rahul leads a team of
+three Ph.D. students and serves as the principal investigator for an
+industry-funded project supported by Airbus Defence. Rahul is a
+Programme Director for MSc Cyber Security and Data Analytics at
+Loughborough University, London.
+
+Varuna De Silva is a Professor Machine Intelligence at Loughborough University London.
+He received his PhD in Electronic Engineering
+from the University of Surrey in 2011. He
+developed award-winning algorithms at Apical
+Ltd, including patented CMOS camera technology now used in hundreds of millions of
+devices worldwide. Since 2016, he has been
+at Loughborough University, where he is a
+Professor of Machine Intelligence. His research
+focuses on neuromorphic AI, multi-agent reinforcement learning, multimodal computer vision, and simulation
+for real-world engineering. Professor De Silva is Associate Editor of
+IEEE Access, a Fellow of the Higher Education Academy, a member
+of BCS and IET, and Thematic Lead on AI and Digital Technologies
+for the UK Parliament.
+
+18
+
+Sangarapillai Lambotharan is Professor of Signal Processing and Communications and the
+Director of the Institute for Digital Technologies at Loughborough University, London. He
+received his PhD in signal processing from
+Imperial College London, U.K., in 1997. He
+was a Visiting Scientist with the Engineering
+and Theory Centre, Cornell University, USA,
+in 1996. Until 1999, he was a Post-Doctoral
+Research Associate at Imperial College London. From 1999 to 2002, he was with the
+Motorola Applied Research Group, U.K., where he investigated
+various projects, including physical link layer modelling and performance characterization of 2.5G and 3G networks. He was with
+King’s College London and Cardiff University as a Lecturer and a
+Senior Lecturer, respectively, from 2002 to 2007. His current research
+interests include 6G networks, MIMO, blockchain, machine learning,
+and network security. He has authored more than 275 journal articles
+and conference papers in these areas. He is a Fellow of IET and a
+Senior Member of IEEE. He serves as a Senior Area Editor for IEEE
+Transactions on Signal Processing.
+
+

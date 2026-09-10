@@ -1,0 +1,32 @@
+{
+  "title": "Defending against the Label-flipping Attack in Federated Learning",
+  "c_d_route": "absent",
+  "criteria": {
+    "C-a": {
+      "code": "NO",
+      "quote": "we propose a novel defense that first dynamically extracts those gradients from the peers' local updates, and then clusters the extracted gradients, analyzes the resulting clusters and filters out potential bad updates before model aggregation.",
+      "locator": "Abstract; the same three steps are enumerated at §5 (\"First, we start by extracting the gradients connected to the identified potential source and target classes ... Then, we use the k-means [13] method with two clusters ... Once the two clusters are formed, we need to decide which of them contains the potential bad updates\")"
+    },
+    "C-b": {
+      "code": "NO",
+      "quote": "the gradients corresponding to the neurons of the source and target classes in the output layer, making those gradients good discriminative features for the attack detection",
+      "locator": "Abstract / §4; the reason given is a FEATURE-SELECTION reason for one detector, and no second mechanism is paired with it"
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "In addition, we compare our approach with several state-of-the-art defenses and show its superiority at simultaneously delivering low test error, high overall accuracy, high source class accuracy, low attack success rate and stability of the source class accuracy.",
+      "locator": "§1 Contributions; §6.1 defines the metrics, including \"Attack success rate (ASR)\""
+    },
+    "C-d": {
+      "code": "NO",
+      "quote": "In addition, we compare our approach with several state-of-the-art defenses and show its superiority at simultaneously delivering low test error, high overall accuracy, high source class accuracy, low attack success rate and stability of the source class accuracy.",
+      "locator": "§6; the experimental axes are the DATA DISTRIBUTION (iid / non-iid / extreme non-iid), the attacker ratio and the competing defense, never this defense's own upstream stage against a fixed downstream one"
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "focusing on the gradients of the parameters connected to the neurons of the source and target classes in the output layer is more helpful to defend against the attack",
+      "locator": "§1 Contributions, where the paper undertakes to \"explain analytically why\"; the mechanism argument is at §4, \"the relevant neurons' errors will stay large during model training because of the contradicting objectives\""
+    }
+  },
+  "coder_note": "C-a = NO BECAUSE THE THREE STEPS ARE ONE DETECTOR, NOT TWO DEFENSES. Extract-then-cluster-then-score-then-filter is a single filtering mechanism realized in stages: the extraction is a feature choice, the k-means and the inverse-density score are the decision rule of that same filter, and what happens after the filter is plain averaging. C-a's own exclusion list rules out \"a single mechanism with hyperparameters\", and the settled reading that plain FedAvg is not a defense mechanism decides the rest -- otherwise C-a's \"filter-then-aggregate\" shape would make every filtering defense in the literature code YES, which would empty the criterion of content. Primary = NO.\n\nWhat the paper is NOT is also worth recording, because it is the paper this frame was expecting to find and did not: it explicitly contrasts itself with CONTRA, which \"integrates FGold [11] with a reputation-based mechanism\", i.e. it names a genuine two-defense composition in its related work while proposing a single-mechanism defense itself.\n\nC-d = NO on the strict reading and on rule 4 both. Every experimental axis is external to the defense -- data distribution, attacker ratio, model size, competing defense -- and no arm holds the aggregation fixed while varying the filter, or vice versa. There is no ablation table anywhere in the paper; the extractor's C-d bucket returned zero candidates over 78805 characters, and a targeted grep for ablation language found none either.\n\nC-e = YES all the same, and the pattern is the one the audit is measuring in a weaker form: the attributional claim is about which GRADIENTS carry the signal, defended analytically in §4 rather than by an intervention, and supported empirically only by the composed detector's end metrics. It is an attribution claim resting on a composed-system outcome; it simply is not an attribution about a PAIRING, because there is no pairing."
+}

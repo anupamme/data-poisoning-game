@@ -1,0 +1,1679 @@
+Shielding Federated Learning: Mitigating Byzantine Attacks with Less Constraints
+Minghui Li∗ , Wei Wan∗ , Jianrong Lu∗ , Shengshan Hu∗ , Junyu Shi∗ ,
+Leo Yu Zhang† , Man Zhou∗ , and Yifeng Zheng‡
+∗ Huazhong University of Science and Technology, Wuhan, China
+† Deakin University, Melbourne, Australia
+
+arXiv:2210.01437v2 [cs.DC] 13 Oct 2022
+
+‡ Harbin Institute of Technology, Shenzhen, China
+
+Abstract—Federated learning is a newly emerging distributed
+learning framework that facilitates the collaborative training
+of a shared global model among distributed participants with
+their privacy preserved. However, federated learning systems
+are vulnerable to Byzantine attacks from malicious participants, who can upload carefully crafted local model updates
+to degrade the quality of the global model and even leave a
+backdoor. While this problem has received significant attention
+recently, current defensive schemes heavily rely on various
+assumptions, such as a fixed Byzantine model, availability of
+participants’ local data, minority attackers, IID data distribution, etc.
+To relax those constraints, this paper presents Robust-FL,
+the first prediction-based Byzantine-robust federated learning
+scheme where none of the assumptions is leveraged. The core
+idea of the Robust-FL is exploiting historical global model to
+construct an estimator based on which the local models will
+be filtered through similarity detection. We then cluster local
+models to adaptively adjust the acceptable differences between
+the local models and the estimator such that Byzantine users
+can be identified. Extensive experiments over different datasets
+show that our approach achieves the following advantages
+simultaneously: (i) independence of participants’ local data, (ii)
+tolerance of majority attackers, (iii) generalization to variable
+Byzantine model.
+Index Terms—Federated Learning, Byzantine Attacks, Byzantine Robustness, Privacy Protection
+
+1. Introduction
+Recently emerged federated learning (FL) [29] is a new
+computing paradigm that trains a global machine learning
+model over distributed data while protecting participants’
+privacy. By distributing the model learning process to participants, FL constructs a global model from user-specific
+local models, such that participants’ data never leaves their
+own devices. In this way, the bandwidth cost is significantly
+reduced and user privacy is well protected.
+Due to the decentralized nature, FL is vulnerable to
+Byzantine attacks [12], [22], where malicious participants
+can falsify real models or gradients to damage the learning process, or directly poison the training data to make
+
+the global model learn wrong information or even leave a
+backdoor. In the literature, various attack methods have been
+proposed to demonstrate the vulnerabilities of FL. For example, pixel-pattern backdoor attack [9] adds a pre-defined
+pixel pattern to a fraction of training data and modifies
+the corresponding labels. Label flipping attack [7] will train
+the local model by combining correct samples with flipped
+labels. These two attacks aim at reducing the recognition
+rate of the local models by tampering with the training data.
+Another kind of attack method focuses on manipulating the
+local models, such as bit-flip attack [27] which modifies a
+part of the local model parameters by flipping specified bits,
+and sign-flipping attack [14] which flips the signs of local
+model parameters and enlarges the magnitudes. Recently a
+distributed backdoor attack [24] is proposed to show the
+possibility of uniting multiple participants to conduct an
+attack, where a backdoor trigger can be decomposed and
+embedded into different adversarial parties.
+To mitigate Byzantine attacks, a mounting number of
+defense schemes have been proposed [2], [3], [18], [23],
+[26]. They mainly focused on comparing participants’ local
+models to remove anomalous ones before aggregating them.
+These solutions, however, suffer from various limitations
+that make them unsuitable to be applied in practice. For example, the famous defense scheme Multi-Krum [2] assumes
+that data is independently and identically distributed (IID)
+and cannot deal with Non-IID datasets. FABA [23] assumes
+a fixed Byzantine model and needs to know the number
+of malicious participants in advance before detection. DiverseFL [18] requires a part of participants’ local dataset
+to help detect anomalous models, which apparently violates
+the privacy principle of FL. The most recently proposed
+defense FLTrust [4] is not able to identify the Byzantine
+participants. A comprehensive comparison among existing
+defensive schemes is shown in Table 1.
+To get rid of these limitations, we propose RobustFL, the first prediction-based Byzantine-robust FL scheme.
+Different from existing works that focus on making use of
+local models in the current iteration, Robust-FL aims to
+construct an estimator based on the historical global models
+from previous rounds. The local models that significantly
+differ from the current estimator are expected to have a
+higher possibility of being malicious, and will be discarded.
+In detail, we first make use of exponential smoothing to
+
+construct the estimator, which enjoys a high efficiency for
+detection, especially when there are large-scale clients in
+federated learning. We then propose using a small public
+dataset (i.e., less than 10 samples) to train an initial global
+model, which is crucial for improving the detection accuracy.
+In summary, we make the following contributions:
+•
+
+•
+
+•
+
+We propose a new Byzantine-robust federated learning scheme called Robust-FL. To the best of our
+knowledge, Robust-FL is the first predication-based
+defense scheme that can mitigate Byzantine attacks
+effectively and efficiently without relying on any
+fallacious assumptions.
+We propose incorporating clustering algorithms to
+adaptively adjust the differences between the estimator and local models, such that a boundary between
+benign and malicious models can be effectively affirmed to identify Byzantine participants.
+We conduct extensive experiments to evaluate
+Robust-FL. The results show that Robust-FL is still
+effective even more than 50% participants are compromised, the Byzantine models are variable, and the
+participants’ data are not available, while all existing
+defenses are invalid under this severe scenario.
+
+2. Related Work
+In order to resist Byzantine attacks, researchers have
+proposed many defensive schemes in recent years. We divide
+them into three categories according to the principles that the
+server relied on to detect or evade anomalous local models.
+Distance-based defenses: The first category focuses on
+comparing the distances between the local models to find
+out anomalous ones. Krum [2] aims to choose one local
+model that is closest to its K − f − 2 neighbors, where
+K is the number of participants and f is the number of
+malicious users. Since Krum converges slowly, the authors
+introduced its variant Multi-Krum, which chooses K − f
+local models for aggregation rather than just one. Similar
+to Multi-Krum, FABA [23] iteratively removes the local
+model that is farthest from the average model until the
+number of eliminated models is f . FoolsGold [7] uses cosine
+similarity to identify malicious models and then assigns
+them smaller weights to reduce their impact on the averaged
+global model. Sniper [3] selects local models for aggregation
+based on a graph which is constructed according to the
+Euclidean distances between the local models. The PCA
+scheme [20] projects local updates into two-dimensional
+space and uses a clustering algorithm to find malicious
+updates. MAB-RFL [21] is also equipped with PCA and
+clustering algorithm to identify malicious updates, in addition, a momentum based approach is applied to tackle
+the data heterogeneity (i.e., Non-IID) challenge. All these
+solutions (except MAB-RFL), however, only work well over
+independently and identically distributed (IID) data, and
+they cannot tolerate more than 50% attackers. Besides, most
+of them need to know the number of attackers in advance.
+
+Statistics-based defenses: The second category exploits
+the statistical characteristics to remove statistical outliners.
+Instead of performing detection-then-aggregation, Trimmed
+Mean [30] directly uses all the local updates to obtain a
+new global model, by computing the median or the trimmed
+mean of all local models in each dimension. Geometric
+Median [25] intends to find a new update that minimizes
+the summation of the distances between the update and each
+local model. The RFA scheme [17] computes the geometric
+median of the local models with an alternating minimization
+approach to reduce the computational overhead. Bulyan [16]
+first uses Multi-Krum to remove malicious models and
+then aggregates the rest models based on Trimmed Mean.
+SLSGD [26] also adopts Trimmed Mean as the aggregation rule, and then uses a newly proposed moving-average
+method, which considers global models in this round and the
+last round. Nevertheless, the above schemes cannot identify
+Byzantine users, and they perform poorly when there are
+more than 50% Byzantine users.
+
+Performance-based defenses: The last category depends on the validation dataset to evaluate the performance
+of the uploaded parameters. Li et al. [14] proposed using a pre-trained autoencoder to detect malicious models.
+Zeno [27] computes the stochastic descendant score for each
+gradient based on a validation dataset and then removes
+the gradients with low stochastic descendant scores. Cao
+et al. [5] proposed a Byzantine-robust distributed gradient
+algorithm, which computes a noisy gradient based on a clean
+dataset, and a gradient is accepted only when its distance
+between the noisy gradient satisfies a pre-defined condition.
+Prakash et al. [18] proposed DiverseFL, which first computes a guiding gradient for each user based on the data
+the user shares, and then two similarity metrics (Direction
+Similarity and Length Similarity) between the local gradient
+and the corresponding guiding gradient are considered, only
+when both metrics are satisfied will the gradient be accepted.
+FLTrust [4] bootstraps trust with a clean training dataset
+collected by the server. More specifically, the RELU-clipped
+cosine-similarity between each local update and the server
+update (calculated on the cleaning dataset) is employed to
+reweight the local update, such that malicious updates have
+a limited impact on the global model. However, algorithm
+[14] requires a lot of data to obtain benign models and trains
+autoencoder based on the benign models, but in reality, it is
+hard to obtain so much data. Although the rest four schemes
+require few data, they have other limitations. For instance,
+Zeno needs to know the number of attackers in advances;
+scheme [5] relies on an appropriate hyper-parameter to distinguish benign gradients from malicious ones; DiverseFL
+compels users to share their private data, which violates the
+original intention of FL; FLTrust cannot identify Byzantine
+users, which means that malicious updates can also participate in aggregation to deteriorate the accuracy of the global
+model.
+
+TABLE 1: A comprehensive comparison among existing defensive schemes. T(k, d): the average running time corresponding to the
+number of users K and the model dimension d. Note that for Bulyan C means the time complexity of the aggregation algorithm, and
+f denotes the number of attackers. Non-IID Data: whether the training data is distributed heterogeneously (Non-IID). 50%-Byzantine:
+whether the percentage of compromised users is larger than 50%. N-Independence: whether the number of attackers is NOT required
+in advance. D-Independence: whether the shared data that derived from users is NOT required in advance. Byzantine Identifiability:
+whether the Byzantine users can be identified.
+Scheme
+Multi-Krum [2]
+FABA [23]
+PCA [20]
+MAB-RFL [21]
+Trimmed Mean, Median [30]
+Bulyan [16]
+RFA [17]
+Sniper [3]
+Resampling [11]
+RSA [13]
+DiverseFL [18]
+FLTrust [4]
+Zeno [27]
+Our scheme
+
+T(K, d)
+O(K 2 d)
+O(K 2 d)
+O(K 2 d + K 3 )
+O(K 2 d + K 3 )
+O(Kd log K)
+O((K − f )C + Kd)
+O(Kd)
+O(K 2 d)
+O(K 2 d)
+O(Kd)
+O(Kd)
+O(Kd)
+O(Kd)
+O(Kd)
+
+Non-IID Data
+%
+%
+%
+!
+%
+%
+%
+%
+!
+!
+!
+!
+!
+!
+
+50%-Byzantine
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+!
+!
+!
+!
+
+3. Background
+3.1. Federated Learning
+We consider a general FL system, consisting of a central
+server and K users. Each user k (k = 1, 2, ..., K ) has a
+dataset Dk , the size of which is denoted as |Dk | = nk .
+It is worth noting that each local dataset may be subject
+to a different distribution, that is, the users’ data may be
+distributed in a Non-IID way. The users aim to collaboratively train a shared global model w. Apparently, the
+problem can be solved via minimizing
+SK the empirical loss,
+i.e., arg minw f (D, w), where D = k=1 Dk and f (D, w)
+is a loss function (e.g., mean absolute error, cross-entropy).
+However, the optimization requires all the users to share
+their raw data to a central server, which would result in a
+serious threat to user’s
+Pkprivacy. Instead, FL obtains w by
+optimizing arg minw k=1 f (Dk , w). Specifically, the FL
+system iteratively performs the following three steps until
+the global model converges:
+Step 1. In the t-th iteration, the central server broadcasts a
+global model wt to the users;
+Step 2. After receiving wt , each user k trains a new local
+k
+model wt+1
+over Dk by solving the optimizak
+tion problem arg minwt+1
+f (Dk , wt+1
+) and then
+k
+uploads it to the server;
+Step 3. The server aggregates all the local models according to user’s proportional dataset size as follows:
+wt+1 =
+
+K
+X
+nk
+k=1
+
+where n =
+
+n
+
+k
+wt+1
+,
+
+N-Independence
+%
+%
+!
+!
+!
+%
+!
+!
+%
+!
+!
+!
+%
+!
+
+D-Independence
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+%
+!
+!
+!
+
+Byzantine Identifiability
+!
+!
+!
+!
+%
+!
+%
+!
+%
+%
+!
+%
+!
+!
+
+widely used in production or economic development forecasting because of its low computational complexity and
+high precision. Next, we present two definitions that are the
+cornerstones of exponential smoothing.
+Definition 1 (First Order Exponential Smoothing): If
+(1)
+wt is the global model in the t-th iteration, and st−1 is
+the first order exponential smoothing value in the (t − 1)-th
+iteration, then the first order exponential smoothing value
+for iteration t is defined as:
+(1)
+
+st
+
+(1)
+
+= αwt + (1 − α)st−1 ,
+
+(2)
+
+where α is an empirically determined parameter ranging
+between 0 and 1, which adjusts the importance of the latest
+global models. If α = 1, then the first order exponential
+smoothing value is completely determined by the latest
+global model wt , independent of previous global models.
+On the contrary, if α = 0, then the first order exponential
+smoothing value is independent of global models, and it is
+always a constant that is determined by the initial value
+(1)
+s0 .
+Definition 2 (Second Order Exponential Smoothing):
+Based on the first order exponential smoothing value, the
+second order exponential smoothing value in the t-th iteration is defined as:
+(2)
+
+st
+
+(1)
+
+(2)
+
+= αst + (1 − α)st−1 ,
+
+(3)
+
+(2)
+
+where st−1 is the second order exponential smoothing value
+in the (t−1)-th iteration. Similarly, we can define p-th order
+exponential smoothing value.
+
+(1)
+
+4. Problem Setup
+
+PK
+
+k=1 nk .
+
+4.1. Attack Model
+
+3.2. Exponential Smoothing
+Exponential smoothing [8] is a well-known lightweight
+forecasting algorithm over time series data. It has been
+
+As is typical in off-the-shelf Byzantine robust defenses [4], [19], [21], we assume that an adversary can
+control numerous users. It is noteworthy that the adversary
+
+may control more than 50% users. However, the FL system
+must contain at least one benign participant. The adversary
+can arbitrarily manipulate the training data and the model
+parameters of the users it controls, corresponding to data
+poisoning attack and model poisoning attack respectively.
+Nevertheless, the central server and benign users are not
+under the control of the adversary. Thus the only way
+the adversary can distract the global model accuracy is by
+uploading poisoned local models through the compromised
+users. Note that the adversary can launch collusion attack,
+where all malicious models are similar or even identical
+(e.g., LIE attack [1]), to guarantee the stealthiness of the
+attack.
+
+Client Side
+
+Sever Side
+Historical Model Queue
+
+𝑤𝑤1
+
+Local SGD
+1
+Benign User
+
+Poisoning Attack
+
+2
+
+Byzantine User
+3
+Benign User
+
+⋯
+
+Poisoning Attack
+
+𝑤𝑤𝑡𝑡−1
+
+① Construct
+Estimator
+
+𝑤𝑤𝑡𝑡
+
+Benign Local Model 𝑤𝑤 1𝑡𝑡+1
+2
+Poisoned Local Model 𝑤𝑤𝑡𝑡+1
+
+Local SGD
+
+4
+Byzantine User
+⋯
+
+𝑤𝑤2
+
+Benign Local Model 𝑤𝑤 3
+𝑡𝑡+1
+
+⋯
+
+𝑤𝑤𝑡𝑡+1
+
+⑤ Add New Global
+Model 𝑤𝑤𝑡𝑡+1 to the
+③ Cluster Local Model Historical Model Queue
+Based on Scores
+④ Aggregate Low
+Score Models
+
+𝑤𝑤
+� 𝑡𝑡+1
+
+② Calculate the
+Difference Score
+
+𝑤𝑤𝑡𝑡+1
+
+⋯
+
+𝑠𝑠𝑠𝑠𝑠𝑠𝑠𝑠𝑠𝑠𝑘𝑘 = 𝑤𝑤 𝑘𝑘
+� 𝑡𝑡+1
+𝑡𝑡+1 − 𝑤𝑤
+
+Discard High Score
+Models
+
+4
+Poisoned Local Model 𝑤𝑤𝑡𝑡+1
+
+⋯
+
+Local SGD
+
+k
+Benign User
+
+𝑘𝑘
+Benign Local Model 𝑤𝑤𝑡𝑡+1
+
+⋯
+
+Broadcast Global Model to Users
+
+4.2. Defense Model
+Our defense is deployed on the central server and expected to mitigate all kinds of Byzantine attacks with less
+constrains (as described in Table 1). Specifically, the server
+does not access the raw local training data and is agnostic
+about the number of compromised users. In addition, the
+defense should identify Byzantine users accurately so as to
+reduce the frequencies that these users are selected in further
+iterations [21]. Furthermore, the defense is required to tolerate more than 50% attackers and guarantee the quality (i.e.,
+high accuracy) of the global model in both IID and NonIID scenarios, with a comparable computation overhead with
+that in FedAvg [15].
+Note that the central server is equipped with a small
+size guiding dataset like many existing defenses [4], [6],
+[27], [28]. We highlight that, in real-world scenarios, it is
+toilless for the server to gather such a guiding dataset without sacrificing user privacy (e.g., acquiring from publicly
+available datasets, manual labeling, or offering voluntarily
+by users).
+
+5. Robust-FL: Defending Against Byzantine
+Attacks via Estimation
+5.1. Key Insight
+After reviewing the existing defenses, we conclude that
+the main reason behind their limitations is that they focus
+on making use of the information of the current data in
+each iteration to detect anomalies, which is indeed a difficult
+problem. For instance, Multi-Krum tries to remove local
+models that are far from the overall distribution of the
+updates uploaded in the current iteration, Zeno evaluates the
+performance of each currently uploaded update to discards
+the bad ones. To this end, those defensive schemes have
+to make some assumptions to simplify the problem (e.g.,
+consider a fixed Byzantine model) or rely on auxiliary
+information (e.g., a clean dataset derived from users).
+However, we observe that FL is a typical sequential process and the historical time series data is naturally suitable
+for predicting and amending future data, as did in recurrent
+neural networks. In light of this, we aim to make use of the
+
+Figure 1: The overview of Robust-FL.
+
+historical data in FL and find that the past global models
+are of great value in detecting anomalous updates. In brief,
+in each iteration, Robust-FL first constructs an estimator
+based on previous global models, and then compares the
+local models with the estimator. The models that are far
+away from the estimator will be regarded as malicious and
+discarded. Then the server aggregates the local models to
+obtain a new global model and updates the estimator for the
+next iteration. A brief overview of our scheme is illustrated
+in Fig. 1. In the next sections, we will show how to construct
+the estimator by using exponential smoothing and address
+the two main technical challenges when applying it.
+
+5.2. Constructing the Estimator
+Robust-FL employs exponential smoothing to construct
+an estimator, rather than using advanced deep learning algorithms to realize the function of prediction. This is because
+the server only maintains a sequence of discrete data that is
+far from enough to train a deep predictive model. Moreover,
+exponential smoothing enjoys a low computation overhead
+that enables the server to perform the anomaly detection
+with high efficiency. In this section, we will show how the
+server computes the estimator w
+bt in the t-th iteration. Based
+on the exponential smoothing algorithm, we first derive the
+following lemma:
+Lemma 1. The estimator w
+bt and its p-th order exponential
+(p)
+smoothing value st satisfy the following property:
+(p)
+
+st
+
+=
+
+n
+X
+
+(−1)i
+
+i=0
+
+∞
+(i)
+w
+bt
+αp X i
+(p − 1 + j)!
+j (1 − α)j
+,
+i! (p − 1)! j=0
+j!
+
+(i)
+
+where w
+bt is the i-th order derivative of the estimated
+model w
+bt for i ∈ [0, n].
+(i)
+
+(p)
+
+Lemma 1 establishes the relationship between w
+bt and st ,
+(i)
+(p)
+such that we can obtain w
+bt with st , which are much
+easier to compute based on Definition 1 and 2 in Section 3.2.
+
+On the other hand, according to Taylor series, we can
+set the estimator w
+bt+T after T iterations as follows:
+w
+bt+T =
+
+n
+(i)
+X
+w
+b
+t
+
+i=0
+
+i!
+
+T i.
+
+(6)
+
+In federated learning, the global model wt is always
+adjusted towards the direction of convergence and the estimator w
+bt only needs to predict the global model for the
+next iteration, so it is reasonable to assume that w
+bt+T in
+Eq. (6) is linear, in other words, we have
+(1)
+(0)
+bt ,
+w
+bt+1 = w
+bt + w
+
+(7)
+
+where we set T = 1.
+Combining Eq. (5) and Eq. (7), we have
+w
+bt+1 =
+
+2 − α (1)
+1
+(2)
+s −
+s .
+1−α t
+1−α t
+(1)
+
+(8)
+
+(2)
+
+bt+1
+In summary, we can use st and st to update w
+easily. Note that it is not required to store all the historical
+(2)
+(1)
+global models on the central server, only st and st are
+needed to obtain the estimator. Therefore, our scheme does
+not incur additional storage overhead.
+
+5.3. Initializing Correct Bias Model
+One of the main challenges in Robust-FL is how to
+generate the initial estimator w0 . When using exponential
+smoothing to detect anomalous local models, a bad w0 will
+make the estimator converge towards the malicious local
+models.
+The traditional exponential smoothing usually takes the
+average of the first several true values as the initial values
+(1)
+(2)
+(1)
+for s0 and s0 , and then recursively computes st and
+(2)
+st . However, the solution does not apply to our scheme,
+because in the federated learning scenario, there does not
+exist a true global model at all. Another solution is to use a
+(1)
+randomly initialized global model w0 to compute s0 and
+(2)
+s0 . According to Eq. (8) the estimator for the first iteration
+is w
+b1 = w0 , which means that w
+b1 is also random. However,
+the random w
+b1 cannot guide the server to accurately identify
+malicious local models as the server might select a lot
+of malicious models at first, causing the estimated model
+to be biased towards malicious models in the subsequent
+iterations.
+
+1
+
+21
+
+0.9575
+
+0.9
+
+Computation overhead (h)
+
+0.7528
+
+0.7639
+
+0.6982
+
+0.7
+0.6
+0.5
+0.4
+
+0.4498
+0.3654
+0.3139
+
+0.3
+0.2
+
+19
+18
+
+17.41
+
+17
+16
+
+17.67
+
+17.33
+16.57
+
+16.05
+
+15.73
+
+15
+14
+13
+
+0.1
+0
+
+20.52
+
+20
+
+0.8353
+
+0.8457
+
+0.8
+
+accuracy
+
+In Robust-FL, we only consider second order exponential smoothing. Let p = 1 and p = 2, we can have:
+
+(1)
+(0) P∞
+(1) P∞
+
+bt α j=0 (1 − α)j − w
+bt α j=0 j(1 − α)j ,
+ st = w
+P∞
+(2)
+(0)
+(1)
+st = w
+bt α2 j=0 (1 + j)(1 − α)j − w
+bt α2
+
+P
+∞
+
+j
+j=0 j(j + 1)(1 − α) .
+(4)
+Rearranging Eq. (4) we can easily obtain:
+( (0)
+(1)
+(2)
+w
+bt = 2st − st ,
+
+(5)
+(1)
+(2)
+(1)
+α
+st − st
+.
+w
+bt = 1−α
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+α
+
+0.6
+
+0.7
+
+(a) Evaluation of α
+
+0.8
+
+0.9
+
+12
+
+FedAvg
+
+Robust-FL
+
+Zeno
+
+Multi-Krum
+
+Median
+
+Defensive scheme
+
+FABA
+
+Resampling
+
+(b) Evaluation of time cost
+
+Figure 2: (a) The impact of α on the accuracy of the global model;
+(b) The total time overhead after 1000 iterations.
+
+In our design, we propose to train an initial global model
+over a small amount of clean guiding dataset with a few
+iterations. In Robust-FL, the guiding data can be acquired
+from any public dataset. In our experiments, we show that
+only a small amount of public data set, e.g., 10 samples,
+can achieve satisfactory accuracy.
+
+5.4. Identifying Byzantine Users
+Accurately identifying byzantine users and discarding
+their anomalous local models is of great importance to
+improve the accuracy of the global model. However, how
+to find the boundary between normal and abnormal updates
+is challenging. Most of the existing solutions for identifying
+Byzantine users rely on the assumption that the Byzantine
+model is fixed and the number of attackers is known by
+the server in advance, which makes it much easier to find
+the boundary. For instance, FABA iteratively eliminates a
+local model that is farthest from the average model until
+the number of eliminated models is equal to the number of
+attackers. Without the assumption, FABA cannot determine
+how many local models should be eliminated.
+To identify Byzantine users without relying on any
+assumption, Robust-FL incorporates a clustering algorithm
+(e.g., k -means) based on the bias model. Specifically, we
+observe that our bias model is able to force the estimator to
+converge to benign models, making the benign models get
+much closer to the estimator than malicious ones. Therefore
+we expect that the biased model will gradually generate a
+boundary between benign and malicious models. In light
+of this, Robust-FL first calculates the distances between
+local models and the estimator, and then makes use of k means to categorize them into two classes. The class which
+has a larger distance with the estimator is regarded as the
+Byzantine users.
+
+5.5. Robust-FL: A Detailed Illustration
+Algorithm 1 gives a complete description for RobustFL. Unlike the traditional FL that broadcasts a randomly
+initialized global model to users, Robust-FL trains the initial
+model with a small amount of public guiding data to make
+the estimator be biased towards benign local models (lines
+2 to 4). After receiving all the local models, the central
+server constructs an estimator based on Eq. (8) (line 6).
+
+Intuitively, benign models will be less different from the
+estimator compared with malicious ones. So we utilize
+Euclidean distance (we call it difference score) to measure
+the differences between each local model and the estimator
+(lines 7 to 9). Then the k -means algorithm is applied to
+divide the local models into two clusters according to their
+difference scores (lines 10 to 15). The cluster with smaller
+difference scores will be regarded as benign and used for
+aggregation, while another cluster will be discarded (line
+16). Note that when performing the aggregation, Robust-FL
+uses FedAvg [15] to save the communication cost and speed
+up the training process.
+
+6. Experiments
+6.1. Experimental Setup
+1) Datasets and models: We use MNIST and CIFAR-10
+to evaluate Robust-FL under different settings. MNIST is a
+10-class handwritten digit recognition classification dataset
+contains 60k training and 10k testing greyscale handwritten
+digits of size 28×28. CIFAR-10 consists of 50k training and
+10k testing three-channel color images of 10 different items
+
+1.0
+
+0.8
+
+0.8
+
+0.6
+
+0.6
+
+0.6
+
+0.4
+
+Without Attacker
+Robust-FL
+Zeno
+Median
+FABA
+Multi-Krum
+Resampling
+
+0.0
+
+0
+
+20
+
+40
+
+ H S R F K
+
+60
+
+80
+
+ D F F X U D F \
+
+1.0
+
+0.8
+
+ D F F X U D F \
+
+ D F F X U D F \
+
+1.0
+
+0.2
+
+0.4
+Without Attacker
+Robust-FL
+Zeno
+Median
+FABA
+Multi-Krum
+Resampling
+
+0.2
+
+0.0
+
+100
+
+(a) 40% attackers
+
+0
+
+20
+
+40
+
+ H S R F K
+
+60
+
+80
+
+Without Attacker
+Robust-FL
+Zeno
+Median
+FABA
+Multi-Krum
+Resampling
+
+0.4
+
+0.2
+
+0.0
+
+100
+
+(b) 50% attackers
+
+0
+
+20
+
+40
+
+ H S R F K
+
+60
+
+80
+
+100
+
+(c) 60% attackers
+
+Figure 3: The accuracy of defensive schemes against label-flipping
+attack.
+1.0
+
+0.8
+
+0.8
+
+0.6
+
+Without Attacker
+Robust-FL
+Zeno
+Median
+FABA
+Multi-Krum
+Resampling
+
+0.4
+
+0.2
+
+0.0
+
+0
+
+20
+
+40
+
+ H S R F K
+
+60
+
+80
+
+(a) 40% attackers
+
+100
+
+1.0
+
+0.8
+
+0.6
+
+Without Attacker
+Robust-FL
+Zeno
+Median
+FABA
+Multi-Krum
+Resampling
+
+0.4
+
+0.2
+
+0.0
+
+0
+
+20
+
+40
+
+ H S R F K
+
+60
+
+80
+
+(b) 50% attackers
+
+100
+
+ D F F X U D F \
+
+1.0
+
+ D F F X U D F \
+
+ D F F X U D F \
+
+Algorithm 1 A Detailed Description of Robust-FL
+Input: The local models in t-th iteration wt1 , wt2 , ..., wtK ; the
+smoothing factor α; the first and second order exponential
+(1)
+(2)
+smoothing values st , st ; the public guiding dataset Dg ;
+the randomly initialized global model w0 ; the number of
+training iterations over the guiding dataset Tg .
+Output: The global model for the (t + 1)-th iteration:
+wt+1 .
+1: benign model ← {∅}.
+2: if t = 0 then
+3:
+w0 =SGD(w0 , Dg , Tg );
+(1)
+(2)
+4:
+s0 =w0 , s0 =w0 .
+5: else
+6:
+Construct estimator w
+bt+1 using Eq. (8).
+7:
+for k = 1, 2, 3, · · · , K do
+8:
+Calculate the difference scores:
+scorekt = wtk − w
+bt+1 ,
+9:
+end for
+10:
+Apply k -means based on scorekt to obtain two clusters. Define the class with larger distance with w
+bt+1
+as lc, otherwise as sc:
+lc, sc=KMeans(score1t ,score2t ,...,scoreK
+t ).
+11:
+for k = 1, 2, 3, · · · , K do
+12:
+if |scorekt − sc| < |scorekt − lc| then
+13:
+benign model ← benign model ∪ {wtk }.
+14:
+end if
+15:
+end for
+16:
+wt+1 = F edAvg(benign model).
+17: end if
+(1)
+(2)
+18: Calculate st+1 and st+1 according to definitions in
+Section 3.2.
+19: return wt+1 .
+
+0.6
+
+Without Attacker
+Robust-FL
+Zeno
+Median
+FABA
+Multi-Krum
+Resampling
+
+0.4
+
+0.2
+
+0.0
+
+0
+
+20
+
+40
+
+ H S R F K
+
+60
+
+80
+
+100
+
+(c) 60% attackers
+
+Figure 4: The accuracy of defensive schemes against sign-flipping
+attack.
+
+of size 32 × 32. The training samples are evenly assigned
+to the users in a random way. We train different types of
+global models on different datasets to show the generality
+of Robust-FL. Specifically, for MNIST, following previous
+work [15], we train a convolutional neural network (CNN)
+as the global model. For CIFAR-10, we use the widely used
+ResNet20 architecture [10] as the global model.
+2) Parameter setting: For MNIST, we set the number
+of users K = 30, and consider the increasing percentage of
+attackers, i.e., 40%, 50% and 60%. We set the size of guiding
+dataset Dg to 10. The randomly initialized global model
+will be trained on Dg for 10 epochs before broadcasting.
+To reduce the communication overhead, each user trains
+locally with 3 iterations to obtain the local model in each
+epoch. There are 100 epochs in total. For CIFAR-10, we set
+the number of users K = 60, and consider the percentage
+of attackers is 30%, 40% and 50%. The size of Dg is set
+to 20 and 25 iterations are required at the beginning. The
+local iterations and global epochs are set to 3 and 1, 000
+respectively.
+3) Evaluated poisoning attacks: In the literature, the
+poisoning attacks against federated learning can be divided
+into data poisoning attack and model poisoning attack. For
+data poisoning attack we consider the popular label-flipping
+attack where attackers flip their labels from i to 9 − i. For
+model poisoning attack we evaluate the representative signflipping attack where the attackers directly multiply the local
+model weight with a reverse constant −c to flip the signs
+of model and adjust its magnitudes. In our experiments,
+we set a small value c = 0.8 to reinforce its stealthiness.
+Furthermore, we also consider a stronger model poisoning
+attack LIE (short for “A little is enough” [1]), which adds
+a very small amount of noises to a benign model.
+
+6.2. Experimental Results
+We compare our proposed Robust-FL with Zeno [27],
+Multi-Krum [2], FABA [23], Median [30] and Resampling [11]. In addition, we also implement the baseline
+where all users are benign.
+
+0.6
+
+0.4
+
+Without Attacker
+Robust-FL
+Zeno
+Median
+FABA
+Multi-Krum
+Resampling
+
+0.2
+
+0.0
+
+0
+
+200
+
+400
+
+ H S R F K
+
+600
+
+800
+
+0.8
+
+0.6
+
+Without Attacker
+Robust-FL
+Zeno
+Median
+FABA
+Multi-Krum
+Resampling
+
+0.4
+
+0.2
+
+0.0
+
+1000
+
+(a) 30% attackers
+
+ D F F X U D F \
+
+0.8
+
+0.6
+
+ D F F X U D F \
+
+ D F F X U D F \
+
+0.8
+
+0
+
+200
+
+400
+
+ H S R F K
+
+600
+
+800
+
+Without Attacker
+Robust-FL
+Zeno
+Median
+FABA
+Multi-Krum
+Resampling
+
+0.4
+
+0.2
+
+0.0
+
+1000
+
+(b) 40% attackers
+
+0
+
+200
+
+400
+
+ H S R F K
+
+600
+
+800
+
+1000
+
+(c) 50% attackers
+
+Figure 5: The accuracy of defensive schemes against LIE attack.
+1.0
+
+1.0
+
+0.8
+
+0.8
+
+0.6
+
+0.6
+
+ D F F X U D F \
+
+ D F F X U D F \
+
+Impact of α on global model accuracy: In our design,
+α determines the portion of the latest global models. It is
+therefore necessary to figure out the α that provides the best
+performance. Fig. 2(a) shows the accuracy of the global
+model after 30 epochs when α varies from 0.1 to 0.9.
+The experiment is conducted on the MNIST dataset where
+the percentage of label flipping attackers is 50%. We can
+see that the accuracy of global model is lower than 45%
+when α is smaller than 0.3. This is because there is a large
+deviation between the estimator and the benign local model.
+When α increases to 0.8, Robust-FL performs best (with
+the accuracy of 96%). But a larger α does not necessarily
+indicate a better performance. For example, when α = 0.9,
+the accuracy decreases to 83%. We owe this to the fact that
+the estimator has approached to the global model, and the
+historical information cannot be fully utilized, which also
+leads to the deviation. Therefore we set α = 0.8 in our
+subsequent experiments.
+Computation overhead: From Fig. 2(b), we can see
+that the computation overhead of Robust-FL is almost the
+same as that of FedAvg, while the other schemes need
+much more time to converge, which is consistent with our
+time complexity analysis in Table 1. For instance, RobustFL took 16.05 hours to converge, whereas Zeno, Median,
+FABA, Multi-Krum and Resampling took 20.52, 16.57,
+17.33, 17.41, and 17.67 hours, respectively.
+Robustness against label-flipping attack: The experimental results over the MNIST dataset in Fig. 3 show
+that Robust-FL strengthens the plain federated learning and
+outperforms state-of-the-art solutions under label-flipping
+attack. Specifically, Robust-FL achieves about 98% accuracy
+with minor fluctuations, which implies that Robust-FL has
+almost the same performance as the baseline (i.e., without
+attacker). Zeno performs similar to our scheme. Multi-Krum
+performs well for 40% attackers, but its performance drops
+dramatically when the number of malicious users is no less
+than 50%. FABA and Median perform barely satisfactory
+in the case of 40% attackers. However, similar to MultiKrum, these two schemes also perform much worse when
+the attacker dominants. When the percentage of attackers
+becomes large (e.g., 40% − 60%), Resampling fluctuates
+heavily because it has a high probability to average a
+new sampling point between the normal models and the
+malicious models, making it difficult for the central server to
+decide whether the point should be chosen for aggregation.
+Robustness against sign-flipping attack: Fig. 4
+demonstrates that Robust-FL is resistant to sign-flipping
+attack. To be specific, Robust-FL and Zeno perform comparably with the baseline. Multi-Krum, FABA, and Median
+perform well in the case of 40% attackers, but these schemes
+become defenceless when the attackers are no less than 50%.
+This is due to the fact that these schemes tend to choose the
+majority of models with similar behavior for aggregation.
+Hence the central server is more likely to choose malicious
+local models when the number of attackers is relatively
+large. For these reasons, Resmpling performs the worst
+among the existing defences.
+Robustness against LIE attack: Fig. 5 displays the
+
+0.4
+
+Without Attacker
+Robust-FL
+Zeno
+Median
+FABA
+Multi-Krum
+Resampling
+
+0.2
+
+0.0
+0
+
+20
+
+40
+
+ H S R F K
+
+60
+
+80
+
+(a) Label-flipping attack
+
+100
+
+0.4
+
+Without Attacker
+Robust-FL
+Zeno
+Median
+FABA
+Multi-Krum
+Resampling
+
+0.2
+
+0.0
+0
+
+20
+
+40
+
+ H S R F K
+
+60
+
+80
+
+100
+
+(b) Sign-flipping attack
+
+Figure 6: Evaluations of Robust-FL over Non-IID data.
+
+accuracy of different FL defenses under LIE attack on the
+CIFAR-10 dataset. Our Robust-FL significantly outperforms
+the existing solutions. Zeno, FABA, Multi-Krum and Resampling have a similar performance in the case of 30%
+and 40% attackers, with the accuracy of 10% − 15% lower
+than Robust-FL. However, when the percentage of attackers
+is 50%, all the schemes become invalid. Under LIE attacks,
+Median performs the worst all the time. This indicates that
+LIE attack can circumvent existing defenses by adding a
+small amount of disturbances, while Robust-FL can effectively resist LIE attack.
+Evaluation over Non-IID data: Fig. 6 evaluates the performance of Robust-FL on Non-IID local training data. We
+consider label flipping and sign flipping attacks on MNIST,
+where the percentage of attackers is 50%. We generate the
+Non-IID data in the same way as [4]. Specifically, the NonIID degree is controlled by a hyper-parameter q between 0
+and 1. A larger q indicates a higher degree of Non-IID. In
+the experiments, we consider a strong Non-IID degree where
+q = 0.95. We observe that our scheme performs much better
+than any other defense and is close to the baseline. Zeno,
+which performs very well in the case of IID setting, has an
+accuracy of 15% − 30% lower than Robust-FL. The other
+defenses are completely uncompetitive.
+
+7. Conclusion
+This paper focused on defending against Byzantine
+attacks with relaxed assumptions. We proposed the first
+estimator-based Byzantine-robust scheme Robust-FL, which
+constructs an estimator based on the historical global models
+and then eliminates the model updates that significantly
+differ from the estimator. In addition, we utilized clustering
+algorithms to adjust the acceptable differences between the
+model updates and estimator adaptively such that Byzantine
+users can be identified. Experiments on different datasets
+showed Robust-FL achieved the following advantages si-
+
+multaneously (i) tolerance of majority attackers, (ii) generalization to variable Byzantine model, (iii) lower computation
+overhead.
+
+Acknowledgments
+Minghui’s work is supported in part by the National Natural Science Foundation of China (Grant No
+62202186). Shengshan’s work is supported in part by the
+National Natural Science Foundation of China (Grant Nos.
+62002126, U20A20177), and Fundamental Research Funds
+for the Central Universities (Grant No. 2020kfyXJJS075).
+Yifeng’s work is supported in part by the Guangdong Basic and Applied Basic Research Foundation (Grant No.
+2021A1515110027). Wei’s work is supported in part by Ant
+Group. Shengshan is the corresponding author.
+
+References
+[1]
+
+Baruch, G., Baruch, M., Goldberg, Y.: A little is enough: Circumventing defenses for distributed learning. In: Advances in Neural
+Information Processing Systems 32: Annual Conference on Neural
+Information Processing Systems (NeurIPS’19). pp. 8632–8642 (2019)
+
+[2]
+
+Blanchard, P., Mhamdi, E.M.E., Guerraoui, R., Stainer, J.: Machine
+learning with adversaries: Byzantine tolerant gradient descent. In:
+Advances in Neural Information Processing Systems 30: Annual
+Conference on Neural Information Processing Systems (NeurIPS’17).
+pp. 119–129 (2017)
+
+[3]
+
+[4]
+
+Cao, D., Chang, S., Lin, Z., Liu, G., Sun, D.: Understanding distributed poisoning attack in federated learning. In: Proceedings of
+the 25th IEEE International Conference on Parallel and Distributed
+Systems (ICPADS’19). pp. 233–239 (2019)
+Cao, X., Fang, M., Liu, J., Gong, N.Z.: Fltrust: Byzantine-robust
+federated learning via trust bootstrapping. In: Proceedings of the
+28th Annual Network and Distributed System Security Symposium
+(NDSS’21). (2021)
+
+[5]
+
+Cao, X., Lai, L.: Distributed gradient descent algorithm robust to an
+arbitrary number of byzantine attackers. IEEE Trans. Signal Process.
+67(22), 5850–5864 (2019)
+
+[6]
+
+Dong, Y., Chen, X., Li, K., Wang, D., Zeng, S.: FLOD: oblivious defender for private byzantine-robust federated learning with
+dishonest-majority. In: Proceedings of the 26th European Symposium
+on Research in Computer Security (ESORICS’21). vol. 12972, pp.
+497–518 (2021)
+
+[13] Li, L., Xu, W., Chen, T., Giannakis, G.B., Ling, Q.: RSA: byzantinerobust stochastic aggregation methods for distributed learning from
+heterogeneous datasets. In: Proceedings of the Thirty-Third AAAI
+Conference on Artificial Intelligence (AAAI’19). pp. 1544–1551
+(2019)
+[14] Li, S., Cheng, Y., Liu, Y., Wang, W., Chen, T.: Abnormal client behavior detection in federated learning. CoRR abs/1910.09933 (2019)
+[15] McMahan, B., Moore, E., Ramage, D., Hampson, S., y Arcas, B.A.:
+Communication-efficient learning of deep networks from decentralized data. In: Proceedings of the 20th International Conference on
+Artificial Intelligence and Statistics (AISTATS’17). vol. 54, pp. 1273–
+1282 (2017)
+[16] Mhamdi, E.M.E., Guerraoui, R., Rouault, S.: The hidden vulnerability
+of distributed learning in byzantium. In: Proceedings of the 35th
+International Conference on Machine Learning (ICML’18). vol. 80,
+pp. 3518–3527 (2018)
+[17] Pillutla, V.K., Kakade, S.M., Harchaoui, Z.: Robust aggregation for
+federated learning. CoRR abs/1912.13445 (2019)
+[18] Prakash, S., Avestimehr, A.S.: Mitigating byzantine attacks in federated learning. CoRR abs/2010.07541 (2020)
+[19] Shejwalkar, V., Houmansadr, A.: Manipulating the byzantine: Optimizing model poisoning attacks and defenses for federated learning.
+In: Proceedings of the 28th Annual Network and Distributed System
+Security Symposium (NDSS’21). (2021)
+[20] Tolpegin, V., Truex, S., Gursoy, M.E., Liu, L.: Data poisoning attacks
+against federated learning systems. In: Proceedings of the 25th European Symposium on Research in Computer Security (ESORICS’20).
+vol. 12308, pp. 480–501 (2020)
+[21] Wan, W., Hu, S., Lu, J., Zhang, L.Y., Jin, H., He, Y.: Shielding
+federated learning: Robust aggregation with adaptive client selection.
+In: Proceedings of the Thirty-First International Joint Conference on
+Artificial Intelligence (IJCAI’22). pp. 753–760 (2022)
+[22] Wan, W., Lu, J., Hu, S., Zhang, L.Y., Pei, X.: Shielding federated
+learning: A new attack approach and its defense. In: IEEE Wireless
+Communications and Networking Conference (WCNC’21). pp. 1–7
+(2021)
+[23] Xia, Q., Tao, Z., Hao, Z., Li, Q.: FABA: an algorithm for fast
+aggregation against byzantine attacks in distributed neural networks.
+In: Proceedings of the Twenty-Eighth International Joint Conference
+on Artificial Intelligence (IJCAI’19). pp. 4824–4830 (2019)
+[24] Xie, C., Huang, K., Chen, P., Li, B.: DBA: distributed backdoor
+attacks against federated learning. In: Proceedings of the 8th International Conference on Learning Representations (ICLR’20). (2020)
+[25] Xie, C., Koyejo, O., Gupta, I.: Generalized byzantine-tolerant sgd.
+Journal of Environmental Sciences (China) English Ed (2018)
+
+[7]
+
+Fung, C., Yoon, C.J.M., Beschastnikh, I.: The limitations of federated learning in sybil settings. In: Proceedings of the 23rd International Symposium on Research in Attacks, Intrusions and Defenses
+(RAID’20). pp. 301–316 (2020)
+
+[26] Xie, C., Koyejo, O., Gupta, I.: SLSGD: secure and efficient distributed
+on-device machine learning. In: Proceedings of Machine Learning and
+Knowledge Discovery in Databases - European Conference (ECML
+PKDD’19). vol. 11907, pp. 213–228 (2019)
+
+[8]
+
+G.Brown, R., F.Meyer, R.: The fundamental theorem of exponential
+smoothing. Operations Research 9(5), 673–685 (1961)
+
+[9]
+
+Gu, T., Dolan-Gavitt, B., Garg, S.: Badnets: Identifying vulnerabilities
+in the machine learning model supply chain. CoRR abs/1708.06733
+(2017)
+
+[27] Xie, C., Koyejo, S., Gupta, I.: Zeno: Distributed stochastic gradient descent with suspicion-based fault-tolerance. In: Proceedings of
+the 36th International Conference on Machine Learning (ICML’19).
+vol. 97, pp. 6893–6901 (2019)
+
+[10] He, K., Zhang, X., Ren, S., Sun, J.: Deep residual learning for
+image recognition. In: Proceedings of the 2016 IEEE Conference on
+Computer Vision and Pattern Recognition (CVPR’16). pp. 770–778
+(2016)
+[11] He, L., Karimireddy, S.P., Jaggi, M.: Byzantine-robust learning on
+heterogeneous datasets via resampling. CoRR abs/2006.09365 (2020)
+[12] Hu, S., Lu, J., Wan, W., Zhang, L.Y.: Challenges and approaches for mitigating byzantine attacks in federated learning. CoRR
+abs/2112.14468 (2021)
+
+[28] Xie, C., Koyejo, S., Gupta, I.: Zeno++: Robust fully asynchronous
+SGD. In: Proceedings of the 37th International Conference on Machine Learning (ICML’20). vol. 119, pp. 10495–10503 (2020)
+[29] Yang, Q., Liu, Y., Chen, T., Tong, Y.: Federated machine learning:
+Concept and applications. ACM Trans. Intell. Syst. Technol. 10(2),
+12:1–12:19 (2019)
+[30] Yin, D., Chen, Y., Ramchandran, K., Bartlett, P.L.: Byzantine-robust
+distributed learning: Towards optimal statistical rates. In: Proceedings of the 35th International Conference on Machine Learning
+(ICML’18). vol. 80, pp. 5636–5645 (2018)
+
+

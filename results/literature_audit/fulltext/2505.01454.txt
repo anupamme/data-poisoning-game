@@ -1,0 +1,2035 @@
+Sparsification Under Siege: Dual-Level Defense Against Poisoning in
+Communication-Efficient Federated Learning
+
+arXiv:2505.01454v5 [cs.CR] 28 Feb 2026
+
+Jin, Zhiyong1 , Runhua Xu1 , Chao Li3,4 , Yizhong Liu2 , Jianxin Li1,5 , James Joshi6
+1
+School of Computer Science and Engineering, Beihang University
+2
+School of Cyber Science and Technology at Beihang University
+3
+School of Cyberspace Science and Technology, Beijing Jiaotong University
+4
+Beijing Key Laboratory of Security and Privacy in Intelligent Transportation
+5
+Zhongguancun Laboratory
+6
+School of Computing and Information,University of Pittsburgh
+{sy2406106, runhua}@buaa.edu.cn, li.chao@bjtu.edu.cn, liuyizhong@buaa.edu.cn, lijx@buaa.edu.cn,
+jjoshi@pitt.edu
+Abstract
+Gradient sparsification, while mitigating communication bottlenecks in Federated Learning (FL),
+fundamentally alters the geometric landscape of
+model updates.
+We reveal that the resultant high-dimensional orthogonality renders traditional Euclidean-based robust aggregation metrics
+mathematically ambiguous, creating a “sparsityrobustness trade-off” that adversaries exploit to bypass detection. To resolve this structural dissonance, we propose SafeSparse, a consensus restoration framework that decouples defense into topological and semantic dimensions. Unlike prior
+arts that treat sparsification and security orthogonally, SafeSparse introduces: (1) a Structure-Aware
+Calibration mechanism utilizing Jaccard similarity to filter topological outliers induced by index poisoning; and (2) a Directional Semantic
+Alignment module employing density-based clustering on update signs to neutralize magnitudeinvariant attacks. Theoretically, we establish convergence guarantees for SafeSparse. Extensive experiments across multiple datasets and attack scenarios demonstrate that SafeSparse recovers up to
+25.7% global accuracy under coordinated poisoning, effectively closing the vulnerability gap in
+communication-efficient FL.
+
+1
+
+Introduction
+
+Federated Learning (FL) has emerged as a paradigm shift in
+distributed artificial intelligence, enabling collaborative training across decentralized edge devices while preserving data
+locality [Kairouz et al., 2021]. Despite its privacy benefits, the communication bottleneck inherent in transmitting
+high-dimensional parameter updates remains a critical hurdle. To address this, gradient sparsification techniques, such
+as Top-k selection, have become the de facto standard, reducing uplink communication overheads by orders of magni-
+
+tude (often exceeding 99%) without significantly compromising convergence [Sattler et al., 2019b; Sattler et al., 2019a;
+Han et al., 2020].
+However, we argue that this pursuit of efficiency has inadvertently introduced a fundamental structural vulnerability.
+Existing robust aggregation protocols, such as Krum [Blanchard et al., 2017], Geometric Median (RFA) [Pillutla et al.,
+2022], and FLGuardian [Zhou et al., 2025], are predicated
+on the geometric assumption of Dense Euclidean Consensus. They assume that benign updates cluster around a global
+mean in a dense vector space, allowing outliers to be detected
+via Euclidean metrics (L2 norm).
+We reveal that Top-k sparsification violates this premise.
+Mathematically, the sparsification operator acts as a nonlinear
+projection that maps updates into low-dimensional subspaces.
+In non-IID settings, this results in benign updates becoming
+sparse orthogonal, namely, their non-zero indices (masks)
+barely overlap. Consequently, Euclidean distance becomes
+mathematically ambiguous as a similarity metric; two benign clients holding disjoint but valid features may appear infinitely distant from each other. We term this phenomenon the
+Sparsity-Robustness Trade-off: the very mechanism used
+to save bandwidth destroys the geometric landscape required
+for security. By manipulating the sparse index masks (Structure) rather than just the parameter values (Semantics), malicious clients can artificially concentrate their contributions
+into specific parameter packs. This allows them to achieve
+“local dominance” in targeted subspaces even while remaining a minority globally, effectively bypassing norm-based defenses that look for global outliers.
+To resolve this geometric crisis, we propose SafeSparse,
+a consensus restoration framework that recouples sparsification and robustness through a dual-space calibration mechanism. Specifically, SafeSparse first enforces topological consensus by utilizing Jaccard similarity to filter structural outliers induced by index poisoning. It then establishes semantic alignment by mapping updates to a directional unit-sphere
+via sign-based vectors and employing density-based clustering. This approach effectively isolates the benign consensus
+cluster without relying on the flawed Euclidean magnitude,
+
+thereby neutralizing both structural and magnitude-invariant
+attacks.
+Our contributions are summarized as follows: (1) We systematically identify and formalize the geometric dissonance
+problem in sparse FL, proving that standard robust aggregators possess a theoretical failure mode when inputs are
+sparse and orthogonal. (2) We present SafeSparse, the first
+defense framework explicitly tailored to reconcile the tension between communication efficiency and robust aggregation through mask-aware and sign-aware inspection. (3) We
+provide theoretical convergence guarantees for our method
+and demonstrate through extensive experiments that SafeSparse significantly outperforms existing baselines, recovering global model accuracy in highly corrupted environments
+where traditional defenses fail.
+
+Test Accuracy
+
+Performance Distribution of Defenses
+80
+60
+40
+20
+
+k)
+ta
+c
+at
+
+an
+
+g(
+no
+Fe
+da
+v
+
+G
+
+ua
+
+rd
+i
+
+RF
+A
+
+SA
+FL
+
+PF
+L
+tD
+
+LA
+
+N
+us
+Ro
+b
+
+M
+ea
+
+Fe
+dS
+I
+
+ed
+m
+Tr
+im
+
+G
+
+n
+
+n
+ia
+ed
+M
+
+RU
+ul
+tiK
+M
+
+Fe
+da
+v
+
+g
+
+M
+
+0
+
+Defense Mechanism
+
+Figure 1: Empirical validation of poisoning vulnerability. The violin plots illustrate the accuracy distribution across 12 diverse scenarios (3 datasets × 4 attacks) as detailed in Section 4.3.
+
+2
+
+Vulnerabilities in Sparsified FL
+
+Traditional robust FL often assumes that malicious updates
+are “outliers” in the full parameter space. However, we
+identify a fundamental shift in the attack surface when
+sparsification-based communication-efficiency method is employed.
+Specifically, in the context of sparsified FL, we identify
+two distinct attack vectors. (1) Index Poisoning: Adversaries
+manipulate the sparse index masks to maximize the Malicious
+Contributor Ratio (fp ) for specific target parameters, effectively hijacking the aggregation weight of critical neurons.
+(2) Masked Value Manipulation: Adversaries inject malicious
+perturbations (e.g., sign flipping) into the selected parameters while mimicking the sparsity patterns of benign clients
+to evade detection. Unlike standard FL, where attackers are
+diluted globally, sparsification allows attackers to achieve local dominance in specific parameter packs.
+Theoretical Analysis. Unlike dense FL, sparsified aggregation allows adversaries to concentrate their influence. We
+define attack effectiveness ρ = ∥WG − WG′ ∥22 as the squared
+Euclidean distance between the poisoned global model WG
+and an ideal benign model WG′ .
+Theorem 1 (Vulnerability under Sparsified Aggregation).
+Assume the malicious perturbation per parameter pack is
+
+bounded by E[∥Wa (p) − WG′ (p)∥2 ] ≤ ϵ. The attack effectiveness ρ is upper-bounded by:
+ρ ≤ ϵ2
+
+P
+X
+
+fp2 ,
+
+(1)
+
+p=1
+
+where fp = NpA /Np is the malicious contributor ratio for
+parameter pack p.
+Theorem 1 reveals that the attack impact is determined by
+the pack-level ratio fp rather than the global attacker ratio in
+sparsified FL. By coordinating sparse masks, adversaries can
+drive fp → 1 for specific packs, exerting immense influence.
+SafeSparse mitigates this by using Jaccard and Sign-based
+filtering to minimize fp across all packs. Detailed proof is
+provided in Appendix C.
+In addition to theoretical analysis, we experimentally verified the vulnerability. As illustrated in Figure 1, we evaluate the global model accuracy across 12 diverse scenarios
+(comprising three datasets and four coordinated attacks). The
+probability density (represented by the width of the violins)
+and the quartiles (indicated by the dashed lines within) reveal a systemic performance collapse for traditional defenses.
+Specifically, mechanisms like Multi-KRUM and RFA exhibit
+extreme variance, with their interquartile ranges stretching
+significantly toward low-accuracy zones (often < 40%). This
+high instability empirically confirms Theorem 1: since these
+defenses fail to account for the mask-level distribution fp , adversaries can effectively bypass geometric filters by concentrating malicious energy to become a “local majority” within
+coordinated sparse subspaces.
+
+3
+
+SafeSparse Framework
+
+3.1
+
+Overview of SafeSparse
+
+The goal of the proposed SafeSparse framework is to enhance
+robustness against untargeted poisoning attacks in the context
+of sparsified, communication-efficient FL. As illustrated in
+Figure 2, SafeSparse is built on a common communicationefficient FL paradigm, where each client communicates with
+the server by transmitting only the most important model parameters using sparsification techniques. Specifically, each
+client performs local training on its data, applies top-k sparsification, and uploads the sparse model parameters along with
+a sparse index mask to the server. The server then aggregates
+the received sparse model updates to form the global model
+based on the sparse index mask.
+To achieve the robustness guarantee and sparsification
+communication-efficiency in SafeSparse, two key components are designed at the server side: sparse index mask inspection and model update sign similarity analysis. Specifically, the sparse index mask inspection module filters out
+clients whose model updates are inconsistent with the majority by measuring the overlap in parameter selections across
+clients using the Jaccard similarity metric. The model update
+sign similarity analysis module, another critical component of
+SafeSparse, detects adversarial behavior patterns by grouping clients with similar update directions (i.e., the signs of
+parameter differences) using cosine similarity and applying
+density-based clustering to identify malicious clients. Clients
+
+Clients
+
+Server
+Sparse model
+parameters
+
+benign
+clients
+
+1 local training
+
+...
+
+2 top-k sparsification
+
+data poisoning attacks
+
+Sparse index
+mask
+
+3 Sparse Index Mask Inspection
+
+compute
+Jaccard similarity
+
+compute
+Jaccard score
+
+4 Model Update Sign Similarity Analysis
+Sparse model
+parameters
+
+...
+
+model poisoning attacks
+
+attacker
+
+Sparse index
+mask
+
+Sparse model
+parameters
+Sparse index
+mask
+
+compute cosine similarity
+DBSCAN clustering
+based on sign directions
+
+5 Sparsified Model Aggregation
+
+Identified Benign Clients
+
+Global Model
+
+6 Model Update
+
+Figure 2: An illustration of the S AFE S PARSE training process, incorporating client-side top-k sparsification and server-side robust and
+sparsified aggregation. It also highlights the two key components of SafeSparse: Sparse Index Mask Inspection and Model Update Sign
+Similarity Analysis. The red sections indicate attackers, who may carry out data poisoning attacks (such as label flipping attack) or model
+poisoning attacks (including IPM, Gaussian, and scaling attacks) to degrade the performance of the global model.
+
+identified as potentially malicious are excluded from the subsequent sparsified communication-efficient aggregation process, ensuring that only benign clients contribute to the final
+global model.
+Security Model. In the SafeSparse framework, we consider
+a Byzantine threat model in which the proportion of adversarial participating clients is assumed to remain below 50% of
+the total clients. Each adversarial client is capable of launching poisoning attacks, aiming to manipulate the global model
+aggregation process by transmitting falsified model parameters during the FL process. This can be achieved either by directly manipulating the local model or by indirectly falsifying
+the local training samples. Consistent with the threat assumptions of existing poisoning attack studies, we assume that attackers do not have direct access to the local model updates or
+raw training data of benign participants. Furthermore, in this
+work, the primary adversarial objective is to conduct untargeted attacks designed to degrade the overall performance of
+the global model. It is important to note that privacy leakage
+threats, such as those caused by privacy inference attacks or
+gradient leakage attacks, are beyond the scope of this paper.
+
+3.2
+
+a significant degree of overlap exists among the masks generated by different clients. Leveraging this observation, we
+propose a filtering mechanism to eliminate potential adversarial clients whose sparse index masks exhibit low overlap
+with others or form isolated groups of similarity. Typically,
+clients with highly distinct sparse index masks introduce a
+significant degree of uncertainty in detecting poisoning attacks, thereby hindering the establishment of a robust defense. By filtering out these outliers, our approach enhances
+the reliability of attack detection and ensures a more consistent aggregation process.
+
+Sparsified and Robust Aggregation
+
+Structural Integrity Verification via Jaccard Filtering
+Typical sparsified frameworks rely on sparse index masks,
+which introduces the risk of Index Poisoning. As shown in
+our theoretical derivation (Appendix C), the success of an attack in sparse FL depends on the malicious contributor ratio
+fp within each parameter pack. To minimize this ratio, we
+enforce structural consensus.
+To further investigate their properties, we analyzed the
+structural characteristics of these masks and examined their
+consistency across clients. As shown in Figure 3, our empirical analysis reveals that, even under non-IID training settings,
+
+Figure 3: The heatmap of the Jaccard similarity between the sparse
+index masks of different clients on the CIFAR-10 dataset under the
+non-IID setting.
+
+Specifically, we compute the Jaccard similarity between
+the sparse index masks of different clients. Formally, for each
+client i, let Mi represent its sparse index mask, which contains the indices of the selected model parameters after top-k
+
+sparsification. The Jaccard similarity between two clients i
+and j is defined as:
+J(Mi , Mj ) =
+
+|Mi ∩ Mj |
+|Mi ∪ Mj |
+
+(2)
+
+where |Mi ∩ Mj | represents the number of common selected
+indices between the two clients, and |Mi ∪ Mj | represents the
+total number of unique selected indices.
+For each client, we compute its Jaccard score as the average
+Jaccard similarity with all other clients, defined as:
+1 X
+JSCORE (i) =
+J(Mi , Mj )
+(3)
+m−1
+j̸=i
+
+where m is the total number of participating clients. The Jaccard score quantifies the similarity of a client’s sparse index
+mask to those of the other clients in the system.
+To identify anomalous clients, we define a threshold for
+filtering as follows:
+JMAX + JMIN
+·β
+(4)
+2
+Here, Jmax and Jmin represent the highest and lowest Jaccard
+scores among all clients, respectively, and β is a manually
+tuned hyperparameter, with a default value of 0.6. Any client
+with a Jaccard score below this threshold is classified as an
+outlier and is excluded from the global model aggregation
+process.
+JTHRESHOLD =
+
+Semantic Consistency via Sign-based Clustering
+
+Consistency of the updates. Since magnitude clipping is ineffective against scaling attacks in sparse regimes, we abstract
+the updates to their sign vectors Sign(∆wi ). This transformation renders the defense robust to magnitude manipulation
+and focuses purely on the optimization direction.
+As illustrated in Figure 4, the first eight clients represent
+malicious adversaries, while the remaining twelve are benign clients. The results demonstrate that the sign similarity among malicious clients is significantly higher than that
+among benign clients in the sparsified communication scenario. Furthermore, the similarity between malicious and benign clients remains low, further emphasizing the distinct update patterns introduced by adversarial attacks. It is important
+to note that, due to the nature of sparsification, the sign similarity between any two clients can only be computed over the
+overlapping regions of their sparse index masks. In short, our
+observations reveal that the success of poisoning attacks typically relies on controlling multiple adversarial clients and injecting relatively consistent perturbations into the model updates.
+Building upon these insights, we design a Model Update
+Sign Similarity Analysis module to cluster potential malicious
+clients for detection. The process begins by computing the
+model parameter differences between the sparse model parameters uploaded by each client and the global model from
+the previous round, as ∆wi = wi − wG . These differences
+are then converted into their corresponding sign directions,
+defined as:
+
+1,
+if ∆wi > 0,
+Sign(∆wi ) =
+(5)
+−1, if ∆wi < 0,
+where wi represents the model parameters from client i, and
+wG denotes the global model parameters from the previous
+aggregation round. It is important to note that parameters for
+which no client participated in the aggregation during the previous round are excluded from the similarity calculation. This
+exclusion arises because the server lacks the corresponding
+model parameters for these positions, as they are determined
+solely by the local models of the clients, which are independently set by each client.
+Next, we compute the pairwise cosine similarity of model
+update signs between clients, considering only the overlapping portions of their sparse index masks. This restriction
+ensures that the comparison is performed on the same model
+elements between clients, thereby making the similarity measurement meaningful. The cosine similarity, cos(θi,j ), is defined as follows:
+cos(θi,j ) =
+
+Figure 4: The heatmap of sign cosine similarity among clients on
+the CIFAR-10 dataset under the non-IID setting. The first 8 clients
+are adversaries, while the remaining 12 are benign clients.
+
+While Jaccard filtering ensures structural integrity, it cannot detect malicious values within a valid mask (e.g., Label
+Flipping or IPM). To address this, we examine the Semantic
+
+⟨Sign(∆wi ), Sign(∆wj )⟩
+,
+∥Sign(∆wi )∥ · ∥Sign(∆wj )∥
+
+(6)
+
+where ⟨·, ·⟩ denotes the dot product, and ∥ · ∥ represents the
+Euclidean norm.
+Subsequently, the cosine similarity is transformed into a
+distance metric using 1 − cos(θi,j ), which quantifies the distance between the updates of two clients. The resulting distance matrix is then utilized as input to a clustering algorithm.
+Specifically, we employ the DBSCAN (Density-Based Spatial Clustering of Applications with Noise) algorithm [Ester
+
+et al., 1996] within our framework, as detailed in Algorithm
+1 in the Appendix B.1.
+To determine the optimal value of ϵ, which defines the scan
+radius for core points in DBSCAN, we utilize the K-nearest
+neighbors (KNN) method. In this approach, ϵ is set as the average distance to the n-th nearest neighbor, where n = N · γ.
+Here, N represents the total number of clients, and γ is a
+hyperparameter that controls the sensitivity of the clustering
+process. In practice, we set γ = 0.2 to balance sensitivity
+to adversarial clients and false positives. Additionally, the
+minimum number of points required to form a core point in
+DBSCAN is set to N · γ, ensuring that each cluster contains a
+sufficient number of clients. This clustering process enables
+the effective grouping of clients based on similar attack patterns, while clients exhibiting significantly different update
+behaviors are identified as outliers. The resulting clusters facilitate the detection and exclusion of malicious clients from
+the global aggregation process. Consequently, only benign
+clients are included in the final global model aggregation,
+thereby enhancing the robustness of the framework.
+Sparsified Robust Aggregation. Building on the recent
+work of Yan et al. [Yan et al., 2024], SafeSparse adopts a
+pack-level top-k sparsification method. Unlike scalar-level
+sparsification, this method groups model parameters into
+small structured packs before applying the sparsification process. By operating at the pack level, this approach preserves
+the structured information within each group, providing a
+more efficient and cohesive representation of the model updates.
+Specifically, when the server receives sparsified model
+parameters {W1 , ..., Wm } and their sparse index masks
+{M1 , ..., Mm } from m clients, it first resolves sparse index misalignment by identifying contributing clients Si =
+{j|Mj (Pi ) = 1} for each packet Pi . This alignment ensures
+structural consistency across clients’ heterogeneous sparse
+representations. The aggregation weight for client j is dy|D |
+namically assigned as Pm j|Dk | , proportional to its local
+k=1
+dataset size |Dj |. For each Pi , the server calculates the toP
+|D |
+tal aggregation weight APi = j∈Si Pm j|Dk | to quantify
+k=1
+cumulative contributions. Each model parameter Wj (Pi ) undergoes two sequential transformations: first scaled by its
+|D |
+client-specific weight Wj (Pi ) ← Wj (Pi ) ∗ Pm j|Dk | then
+k=1
+normalized by APi via Wj (Pi ) ← Wj (Pi )/APi to eliminate
+dimensional variance caused by differing
+P contributor counts.
+The aggregated parameter wiagg =
+j∈Si Wj (Pi ) is computed through weighted summation. The detailed algorithm
+is provided in Appendix B.2.
+It is important to note that our aggregation employs a dynamic normalization factor APi . Unlike standard FL averaging which divides by N , SafeSparse normalizes by the count
+of valid contributing clients for each pack. This prevents the
+“gradient vanishing” problem for rarely selected parameters
+and ensures that the global model maintains the correct scale
+of gradient descent, as guaranteed by our convergence proof
+in Appendix D.
+
+4
+
+Evaluations
+
+4.1
+
+Convergence Analysis
+
+We further establish the convergence of SafeSparse under standard assumptions and adversarial conditions (Lsmoothness, bounded variance, and Top-k properties, see Appendix D.1).
+Theorem 2 (Convergence of SafeSparse). Let α = k/d be
+the fraction of retained parameters. Under a µ-strongly con8
+vex objective and learning rate ηt = µ(t+a)
+, the global model
+T
+WG after T rounds satisfies:
+
+
+ 
+(1 − α)G2
+ρ
+D
+E[∥WGT −W ∗ ∥2 ] ≤
++O
++
+O
+T +a
+α2
+µ2
+|
+| {z }
+{z
+}
+Sparsification Error
+
+Residual Attack Impact
+
+(7)
+where D is a constant, G2 represents data heterogeneity, and
+ρ is the residual attack effectiveness defined in Theorem 1.
+Theorem 2 demonstrates that SafeSparse converges to an
+error ball whose radius is explicitly controlled by the sparsity
+ratio α and the filtering effectiveness. By filtering outliers,
+SafeSparse restricts ρ, ensuring the model converges even in
+highly adversarial sparse environments. Detailed proof is deferred to Appendix D.
+
+4.2
+
+Default Experimental Settings
+
+In the following experiments, unless stated otherwise, the default FL training setup includes 20 clients, all participating in
+each training round and performing one local training epoch.
+The attacker ratio is set to 0.4, with poisoning attacks starting at the 10th round and continuing until training ends. The
+batch size is 64, and the Adam optimizer is used with a learning rate of 0.005.
+We evaluate SafeSparse under two common data partitioning settings in FL: IID and Non-IID. In the IID setting, the
+dataset is evenly distributed among clients, with each client
+receiving an equal share of samples from all classes to ensure uniformity. Conversely, the Non-IID setting simulates
+statistical heterogeneity using a Dirichlet distribution-based
+method [Minka, 2000], where a concentration parameter α
+determines the level of data heterogeneity. For our experiments, we set α = 1 to achieve a moderate level of data
+heterogeneity among clients.
+
+4.3
+
+,
+
+Datasets and Baselines
+
+To evaluate the effectiveness and performance of SafeSparse,
+we conduct several experiments, consistent with the methodologies employed in existing related works. Specifically,
+we train a ResNet-20 model [He et al., 2016] using SafeSparse and compare it against related baselines on three public datasets: FashionMNIST [Xiao et al., 2017], CIFAR-10
+[Krizhevsky et al., 2009], and CIFAR-100 [Krizhevsky et al.,
+2009].
+SafeSparse is compared against a comprehensive set of
+baselines, including: FedAVG [McMahan et al., 2017],
+Multi-KRUM [Blanchard et al., 2017], Median [Yin et al.,
+2018], Trimmed Mean [Yin et al., 2018], FedSign [Guo et
+al., 2023], Robust-DPFL [Qi et al., 2024], LASA [Xu et al.,
+
+Figure 5: Comparison of defense effectiveness across various approaches, evaluated on FashionMNIST, CIFAR-10, and CIFAR-100 under
+Label Flip Attack (LFA), Gaussian Noise Attack (GNA), Inner Product Manipulation (IPM), and Scaling Attack in a NON-IID SETTING.
+The attacker ratio is fixed at 0.4, and the top-k sparsification rate is set to 0.5. Top-1 accuracy is used as the evaluation metric for FashionMNIST and CIFAR-10, while top-5 accuracy is adopted for CIFAR-100.
+
+2025], FLGuardian [Zhou et al., 2025], and RFA [Pillutla et
+al., 2022]. The full technical descriptions and mathematical
+formulations for each baseline are detailed in Appendix E.1.
+To evaluate SafeSparse’s resilience to poisoning attacks,
+we conducted experiments on both IID and non-IID datasets
+under four common poisoning attack scenarios: Label Flip
+Attack (LFA) [Fang et al., 2020], Gaussian Noise Attack
+(GNA) [Fang et al., 2020], Inner Product Manipulation (IPM)
+[Xie et al., 2020], and Scaling Attack [Bagdasaryan et al.,
+2020]. Detailed definitions and the implementation mechanisms for these four attack strategies are further elaborated in
+Appendix E.1.
+
+4.4
+
+Attack Effectiveness in Sparsified FL
+
+As illustrated in Figure 5, we demonstrate the failure of most
+existing defense strategies against poisoning attacks in the
+context of sparsified communication-efficient FL. Different
+types of poisoning attacks commence at the 10th training
+epoch (marked by the red dashed line), and their impact on
+common sparsified aggregation is evident. Specifically, FedAvg fails to maintain stability, particularly under Scaling
+and Inner Product Manipulation (IPM) attacks, where the test
+accuracy drops drastically after the attack begins. A complementary evaluation under the IID setting is provided in Appendix E.2, which further corroborates these vulnerabilities.
+Existing Federated Learning (FL) defenses, including
+
+Multi-KRUM, Median, and Trimmed Mean, exhibit limited
+and inconsistent resilience against poisoning attacks. Their
+effectiveness is highly sensitive to the dataset and attack type;
+for instance, while some succeed on CIFAR-10, they fail
+catastrophically under IPM or scaling attacks on CIFAR-100.
+Even advanced methods like FedSIGN and Robust-DPFL
+struggle with high-intensity attacks on complex datasets.
+These vulnerabilities are exacerbated in sparsified FL. Traditional robust aggregators rely on full, aligned updates, which
+are disrupted by the inconsistent parameter subsets inherent
+in sparsification. Similarly, anomaly detectors like FedSIGN
+lose detection granularity as sparse representations obscure
+critical patterns. This allows adversaries to exploit sparse
+indices to evade detection, highlighting an urgent need for
+sparsity-aware robust mechanisms.
+
+4.5
+
+Model Performance and Defense Effectiveness
+
+To evaluate our proposed SafeSparse, we compare the model
+performance and defense effectiveness of SafeSparse with
+those of baseline methods. As shown in Figure 5, SafeSparse
+maintains high test accuracy and stability even after the attack is introduced, outperforming other defenses in multiple
+adversarial settings. Specifically, Scaling and Inner Product
+Manipulation (IPM) attacks cause many baseline methods to
+collapse entirely, while SafeSparse remains robust, preserving high accuracy. These results indicate the effectiveness
+
+Table 1: Comparison of defense effectiveness across different β settings (Non-IID Distribution).
+Dataset
+
+Attack
+
+β = 0.20
+
+β = 0.40
+
+β = 0.60
+
+β = 0.80
+
+β = 1.00
+
+FashionMNIST
+
+LFA
+GNA
+Scaling
+IPM
+
+0.9127
+0.8990
+0.8848
+0.8988
+
+0.9258
+0.8594
+0.9092
+0.8438
+
+0.9156
+0.9251
+0.9090
+0.9165
+
+0.9000
+0.8904
+0.9161
+0.8572
+
+0.8705
+0.9183
+0.8749
+0.8761
+
+CIFAR-10
+
+LFA
+GNA
+Scaling
+IPM
+
+0.6399
+0.7243
+0.6088
+0.7151
+
+0.6706
+0.6839
+0.6888
+0.6764
+
+0.7472
+0.6537
+0.7104
+0.6887
+
+0.6836
+0.7065
+0.7019
+0.6648
+
+0.6504
+0.6409
+0.5281
+0.6519
+
+CIFAR-100
+
+LFA
+GNA
+Scaling
+IPM
+
+0.6622
+0.6775
+0.6611
+0.6723
+
+0.6780
+0.6639
+0.6784
+0.6669
+
+0.6534
+0.6875
+0.6453
+0.6671
+
+0.6626
+0.6691
+0.6658
+0.6709
+
+0.6301
+0.6561
+0.6009
+0.5675
+
+Table 2: Comparison of defense effectiveness across different γ settings (Non-IID Distribution).
+Dataset
+
+Attack
+
+0.10
+
+0.15
+
+0.20
+
+0.25
+
+0.30
+
+0.35
+
+0.40
+
+0.45
+
+0.50
+
+FashionMNIST
+
+LFA
+GNA
+Scaling
+IPM
+
+0.9163
+0.7871
+0.8746
+0.8935
+
+0.9223
+0.9110
+0.9245
+0.7162
+
+0.9102
+0.9124
+0.9061
+0.8907
+
+0.8777
+0.8300
+0.8571
+0.7216
+
+0.9044
+0.8899
+0.9107
+0.5947
+
+0.8520
+0.9242
+0.8524
+0.8159
+
+0.9216
+0.8908
+0.8912
+0.7978
+
+0.5873
+0.1069
+0.1164
+0.1226
+
+0.7200
+0.1315
+0.1365
+0.1071
+
+CIFAR-10
+
+LFA
+GNA
+Scaling
+IPM
+
+0.7376
+0.6547
+0.7044
+0.1474
+
+0.5951
+0.6479
+0.7198
+0.7043
+
+0.7104
+0.7072
+0.6897
+0.6836
+
+0.6769
+0.6185
+0.7158
+0.6756
+
+0.7297
+0.6431
+0.7256
+0.6032
+
+0.6594
+0.6995
+0.7173
+0.5381
+
+0.7169
+0.7251
+0.6854
+0.4689
+
+0.5772
+0.1311
+0.0901
+0.1370
+
+0.4913
+0.1241
+0.1034
+0.1337
+
+CIFAR-100
+
+LFA
+GNA
+Scaling
+IPM
+
+0.6525
+0.6662
+0.6810
+0.5944
+
+0.6621
+0.6599
+0.6734
+0.6525
+
+0.6572
+0.6704
+0.6684
+0.6791
+
+0.6711
+0.6786
+0.6733
+0.5347
+
+0.6669
+0.6740
+0.6547
+0.4912
+
+0.6596
+0.6840
+0.6669
+0.6531
+
+0.6561
+0.6799
+0.6599
+0.6146
+
+0.5099
+0.0589
+0.0482
+0.0617
+
+0.5271
+0.0698
+0.0572
+0.0586
+
+of SafeSparse against various poisoning attacks in adversarial federated learning environments. Detailed comparative
+results on IID datasets and the corresponding convergence
+curves are available in Appendix E.2.
+
+4.6
+
+Ablation Experiments
+
+To further evaluate the robustness and adaptability of SafeSparse, we conduct ablation experiments on its two key hyperparameters: the filtering threshold β and the clustering sensitivity γ, as illustrated in Table 1 and Table 2 , while the
+corresponding results for the IID distribution are provided in
+Appendix E.3.
+Impact of Filtering Threshold β. Filtering threshold controls the cutoff value for sparsity mask similarity when filtering out potentially poisoned clients. We experiment with
+five values: β ∈ {0.2, 0.4, 0.6, 0.8, 1.0}. As shown in our
+results, SafeSparse maintains effective defense performance
+under all settings, indicating its robustness to β variations.
+However, higher values of β (e.g., 0.8 or 1.0) lead to overfiltering, where benign clients are mistakenly excluded from
+training, reducing model diversity and performance. On the
+other hand, lower values retain more benign clients while still
+effectively filtering out attackers. We adopt β = 0.6 in our
+main experiments as it strikes a good balance between defense strength and benign client retention.
+
+Impact of Clustering Sensitivity Parameter γ. Clustering sensitivity parameter influences the neighborhood size for
+DBSCAN-based client clustering. We vary γ from 0.1 to 0.5
+in increments of 0.05. The results reveal that excessively high
+values (e.g., γ > 0.4) cause the clustering step to fail in separating attackers from benign clients, leading to ineffective
+defense.
+Impact of Attacker Ratio and Top-k Ratio. SafeSparse
+was evaluated with attacker ratios from 0.2 to 0.4 on CIFAR100. Results show that test accuracy remains stable regardless
+of the increasing proportion of malicious clients, confirming
+the robustness of our defense. See Appendix E.4 for detailed
+performance curves. We also tested sparsification ratios between 0.4 and 0.6. SafeSparse maintains strong resilience
+across all levels, though lower ratios may slightly affect attacker detection stability. Further experimental data and analysis are provided in Appendix E.5.
+
+5
+
+Conclusion
+
+In this work, we investigated the security vulnerabilities of
+federated learning in sparsification based communicationefficient scenarios under poisoning attacks and demonstrated
+the limitations of existing defense mechanisms in addressing
+these threats. To overcome these challenges, we proposed
+SafeSparse, a robust defense framework to effectively detect and mitigate adversarial clients. Through extensive ex-
+
+periments, we demonstrated that SafeSparse significantly enhances the robustness of FL in sparsification scenarios while
+preserving communication efficiency. These findings underscore the importance of developing security-aware sparsification strategies, providing a foundation for future research
+on strengthening the security of communication-efficient FL
+systems.
+
+References
+[Aji and Heafield, 2017] Alham Fikri Aji and Kenneth
+Heafield. Sparse communication for distributed gradient
+descent. arXiv preprint arXiv:1704.05021, 2017.
+[Bagdasaryan et al., 2020] Eugene Bagdasaryan, Andreas
+Veit, Yiqing Hua, Deborah Estrin, and Vitaly Shmatikov.
+How to backdoor federated learning. In International
+conference on artificial intelligence and statistics, pages
+2938–2948. PMLR, 2020.
+[Blanchard et al., 2017] Peva Blanchard,
+El Mahdi
+El Mhamdi, Rachid Guerraoui, and Julien Stainer.
+Machine learning with adversaries: Byzantine tolerant gradient descent. Advances in neural information
+processing systems, 30, 2017.
+[Cao et al., 2024] Xinyuan Cao, Tao Ouyang, Kongyange
+Zhao, Yousheng Li, and Xu Chen. Efficient multi-task
+asynchronous federated learning in edge computing. In
+2024 IEEE/ACM 32nd International Symposium on Quality of Service (IWQoS), pages 1–10. IEEE, 2024.
+[Ester et al., 1996] Martin Ester, Hans-Peter Kriegel, Jörg
+Sander, Xiaowei Xu, et al. A density-based algorithm for
+discovering clusters in large spatial databases with noise.
+In kdd, volume 96, pages 226–231, 1996.
+[Fang et al., 2020] Minghong Fang, Xiaoyu Cao, Jinyuan
+Jia, and Neil Gong. Local model poisoning attacks to
+{Byzantine-Robust} federated learning. In 29th USENIX
+security symposium (USENIX Security 20), pages 1605–
+1622, 2020.
+[Guan et al., 2023] Yixuan Guan, Xuefeng Liu, Tao Ren,
+and Jianwei Niu. Enabling communication-efficient federated learning via distributed compressed sensing. In IEEE
+Conference on Computer Communications, pages 1–10.
+IEEE, 2023.
+[Guo et al., 2023] Zhenyuan Guo, Lei Xu, and Liehuang
+Zhu. Fedsign: A sign-based federated learning framework
+with privacy and robustness guarantees. Computers & Security, 135:103474, 2023.
+[Han et al., 2020] Pengchao Han, Shiqiang Wang, and Kin K
+Leung. Adaptive gradient sparsification for efficient federated learning: An online learning approach. In 2020
+IEEE 40th international conference on distributed computing systems (ICDCS), pages 300–310. IEEE, 2020.
+[He et al., 2016] Kaiming He, Xiangyu Zhang, Shaoqing
+Ren, and Jian Sun. Deep residual learning for image recognition. In Proceedings of the IEEE conference on computer
+vision and pattern recognition, pages 770–778, 2016.
+
+[Hönig et al., 2022] Robert Hönig, Yiren Zhao, and Robert
+Mullins. Dadaquant: Doubly-adaptive quantization for
+communication-efficient federated learning. In International Conference on Machine Learning, pages 8852–
+8866. PMLR, 2022.
+[Jiang et al., 2025] Yu Jiang, Jiyuan Shen, Ziyao Liu,
+Chee Wei Tan, and Kwok-Yan Lam. Towards efficient
+and certified recovery from poisoning attacks in federated
+learning. IEEE Transactions on Information Forensics and
+Security, 2025.
+[Kairouz et al., 2021] Peter Kairouz, H Brendan McMahan, Brendan Avent, Aurélien Bellet, Mehdi Bennis, Arjun Nitin Bhagoji, Kallista Bonawitz, Zachary Charles,
+Graham Cormode, Rachel Cummings, et al. Advances
+and open problems in federated learning. Foundations and
+trends® in machine learning, 14(1–2):1–210, 2021.
+[Krizhevsky et al., 2009] Alex Krizhevsky, Geoffrey Hinton,
+et al. Learning multiple layers of features from tiny images. 2009.
+[Li et al., 2023] Zilinghan Li, Pranshu Chaturvedi, Shilan
+He, Han Chen, Gagandeep Singh, Volodymyr Kindratenko, Eliu A Huerta, Kibaek Kim, and Ravi Madduri.
+Fedcompass: efficient cross-silo federated learning on heterogeneous client devices using a computing power aware
+scheduler. arXiv preprint arXiv:2309.14675, 2023.
+[McMahan et al., 2017] Brendan McMahan, Eider Moore,
+Daniel Ramage, Seth Hampson, and Blaise Aguera y Arcas. Communication-efficient learning of deep networks
+from decentralized data. In Artificial intelligence and
+statistics, pages 1273–1282. PMLR, 2017.
+[Minka, 2000] Thomas Minka. Estimating a dirichlet distribution, 2000.
+[Mu et al., 2024] Xutong Mu, Ke Cheng, Teng Liu, Tao
+Zhang, Xueli Geng, and Yulong Shen. Fedpta: Priorbased tensor approximation for detecting malicious clients
+in federated learning. IEEE Transactions on Information
+Forensics and Security, 2024.
+[Pillutla et al., 2022] Krishna Pillutla, Sham M Kakade, and
+Zaid Harchaoui. Robust aggregation for federated learning. IEEE Transactions on Signal Processing, 70:1142–
+1154, 2022.
+[Qi et al., 2024] Tao Qi, Huili Wang, and Yongfeng Huang.
+Towards the robustness of differentially private federated
+learning. In Proceedings of the AAAI Conference on Artificial Intelligence, volume 38, pages 19911–19919, 2024.
+[Sattler et al., 2019a] Felix Sattler, Simon Wiedemann,
+Klaus-Robert Müller, and Wojciech Samek. Robust and
+communication-efficient federated learning from non-iid
+data. IEEE transactions on neural networks and learning
+systems, 31(9):3400–3413, 2019.
+[Sattler et al., 2019b] Felix Sattler, Simon Wiedemann,
+Klaus-Robert Müller, and Wojciech Samek. Sparse binary compression: Towards distributed deep learning with
+minimal communication. In 2019 International Joint Conference on Neural Networks (IJCNN), pages 1–8. IEEE,
+2019.
+
+[Shi et al., 2019] Shaohuai Shi, Xiaowen Chu, Ka Chun
+Cheung, and Simon See. Understanding top-k sparsification in distributed deep learning. arXiv preprint
+arXiv:1911.08772, 2019.
+[Wang et al., 2023] Han Wang, Luis Muñoz-González,
+Muhammad Zaid Hameed, David Eklund, and Shahid
+Raza. Sparsfa: Towards robust and communicationefficient peer-to-peer federated learning. Computers &
+Security, 129:103182, 2023.
+[Xiao et al., 2017] Han Xiao, Kashif Rasul, and Roland
+Vollgraf. Fashion-mnist: a novel image dataset for benchmarking machine learning algorithms. arXiv preprint
+arXiv:1708.07747, 2017.
+[Xie et al., 2020] Cong Xie, Oluwasanmi Koyejo, and Indranil Gupta. Fall of empires: Breaking byzantine-tolerant
+sgd by inner product manipulation. In Uncertainty in Artificial Intelligence, pages 261–270. PMLR, 2020.
+[Xu et al., 2025] Jiahao Xu, Zikai Zhang, and Rui Hu.
+Achieving byzantine-resilient federated learning via layeradaptive sparsified model aggregation. In 2025 IEEE/CVF
+Winter Conference on Applications of Computer Vision
+(WACV), pages 1508–1517. IEEE, 2025.
+[Yan et al., 2024] Nan Yan, Yuqing Li, Jing Chen, Xiong
+Wang, Jianan Hong, Kun He, and Wei Wang. Efficient and
+straggler-resistant homomorphic encryption for heterogeneous federated learning. In IEEE Conference on Computer Communications, pages 791–800. IEEE, 2024.
+[Yang et al., 2024] He Yang, Wei Xi, Yuhao Shen, Canhui Wu, and Jizhong Zhao. Roseagg: Robust defense
+against targeted collusion attacks in federated learning.
+IEEE Transactions on Information Forensics and Security,
+19:2951–2966, 2024.
+[Yin et al., 2018] Dong Yin, Yudong Chen, Ramchandran
+Kannan, and Peter Bartlett. Byzantine-robust distributed
+learning: Towards optimal statistical rates. In International conference on machine learning, pages 5650–5659.
+Pmlr, 2018.
+[Zang et al., 2024] Yu Zang, Zhe Xue, Shilong Ou,
+Lingyang Chu, Junping Du, and Yunfei Long. Efficient asynchronous federated learning with prospective
+momentum aggregation and fine-grained correction.
+In Proceedings of the AAAI Conference on Artificial
+Intelligence, volume 38, pages 16642–16650, 2024.
+[Zhang et al., 2024] Xinyu Zhang, Qingyu Liu, Zhongjie Ba,
+Yuan Hong, Tianhang Zheng, Feng Lin, Li Lu, and Kui
+Ren. Fltracer: Accurate poisoning attack provenance in
+federated learning. IEEE Transactions on Information
+Forensics and Security, 19:9534–9549, 2024.
+[Zhou et al., 2025] Xingjie Zhou, Xianzhang Chen, Shukan
+Liu, Xuehong Fan, Qiao Sun, Lin Chen, Meikang Qiu, and
+Tao Xiang. Flguardian: Defending against model poisoning attacks via fine-grained detection in federated learning.
+IEEE Transactions on Information Forensics and Security,
+2025.
+
+A
+
+Related Work
+
+A.1
+
+Communication-Efficient FL
+
+Enhancing communication efficiency is critical for improving overall performance of FL systems. The substantial volume of data exchanged between clients and servers imposes
+significant challenges, including increased latency, computational overhead, and excessive bandwidth consumption,
+which can hinder the system’s real-time capabilities. To address these issues, techniques such as sparsification[Yan et
+al., 2024; Wang et al., 2023], quantization[Guan et al., 2023;
+Hönig et al., 2022], and asynchronous communication[Cao
+et al., 2024; Zang et al., 2024; Li et al., 2023] have been
+proposed. These methods effectively reduce communication overhead, enabling FL systems to operate efficiently in
+resource-constrained environments while preserving model
+performance.
+Sparsification methods have shown greater promise compared to alternative techniques, as quantization is not suitable
+for large-scale models or low-bandwidth network environments [Shi et al., 2019], and the staleness issue introduced by
+asynchronous aggregation can affect model convergence[Li
+et al., 2023]. Sparsification aims to reduce communication
+overhead by selecting only a subset of important gradients
+or model parameters for transmission during each training
+round, while less significant information is either ignored or
+compressed. Aji et al.[Aji and Heafield, 2017] proposed a
+method that selects the top-k components with the highest
+absolute values from the gradients and designates the remaining components as residuals. Subsequent studies [Sattler et
+al., 2019a] have demonstrated that Top-k sparsification is less
+sensitive to the impact of non-IID data in FL. In the context
+of peer-to-peer federated learning(P2PFL), Wang et al.[Wang
+et al., 2023] introduced a momentum-based Top-k sparsification method, termed SparSFA, to further enhance communication efficiency.
+
+A.2
+
+Model Poisoning Attacks and Defense
+Strategies in FL
+
+The distributed architecture of FL makes it particularly vulnerable to poisoning attacks, where adversarial clients manipulate local updates to compromise the performance of the
+global model. Several types of untargeted poisoning attacks
+have been proposed in the literature. Label flip attack[Fang et
+al., 2020] manipulates local training data by flipping class labels, thereby injecting mislabeled samples that degrade the
+model’s generalization. Gaussian noise attack[Fang et al.,
+2020] generates model updates by adding random noise, leading to instability and reduced convergence quality. Inner
+product manipulation[Xie et al., 2020] strategically crafts adversarial updates to maximize the inner product with benign
+gradients, thereby amplifying their negative impact on model
+convergence. Scaling attacks[Bagdasaryan et al., 2020] introduce malicious updates that are disproportionately scaled,
+either by inflating or deflating gradient magnitudes, which
+disrupts the federated aggregation process and significantly
+impairs the effectiveness of the global model. These attacks
+demonstrate the vulnerability of FL to malicious participants,
+
+highlighting the need for robust defense mechanisms to mitigate their effects.
+To mitigate the impact of poisoning attacks in FL, various defense strategies have been proposed. These strategies can be broadly categorized into robust aggregation[Yin
+et al., 2018; Pillutla et al., 2022] rules and anomaly detection techniques[Blanchard et al., 2017; Zhou et al., 2025;
+Xu et al., 2025; Jiang et al., 2025; Yang et al., 2024;
+Mu et al., 2024; Zhang et al., 2024]. Robust aggregation
+methods, such as Median [Yin et al., 2018] and Trimmed
+Mean [Yin et al., 2018], aim to improve the resilience of the
+global model by mitigating the impact of malicious updates
+during the aggregation process. Median aggregation selects
+the component-wise median of all client updates, making it
+robust to outliers and adversarial manipulations. Trimmed
+Mean excludes a fraction of the largest and smallest update values before computing the mean, effectively mitigating
+the impact of extreme deviations introduced by adversaries.
+Anomaly detection techniques take a different approach by
+identifying and filtering out malicious clients before aggregation. In addition, Krum[Blanchard et al., 2017], a widely
+used anomaly detection-based method, selects a single client
+update that is closest to its neighbors in Euclidean space, assuming that the majority of clients are honest. By prioritizing updates that exhibit consistency with the majority, Krum
+effectively reduces the impact of outliers. However, these defense methods were primarily designed for standard FL and
+have not yet addressed attacker detection in sparse training
+scenarios.
+
+B
+
+SafeSparse Algorithm
+
+B.1
+
+Poisoning Client Filtering
+
+Algorithm 1 implements the poisoning mitigation mechanism
+of SafeSparse. The process begins with an analysis of the
+structural consistency of sparse index masks using the Jaccard similarity metric. For each given client i, its Jaccard
+score, JSCORE (i), is computed. A threshold JTHRESHOLD is then
+applied to filter out clients with JSCORE (i) < JTHRESHOLD , effectively removing outliers that exhibit abnormal sparsification patterns. For the remaining clients, parameter updates are
+transformed into binary sign directions, emphasizing update
+polarity rather than magnitude. Subsequently, the pairwise directional similarity cos(θi,j ) is calculated. The resulting distance matrix, 1−cos(θi,j ), is utilized as input to the DBSCAN
+clustering algorithm with adaptive parameters. Specifically, ϵ
+is set as the average distance to the n-th nearest neighbor,
+where n = m · γ. Clients grouped into dense clusters by DBSCAN are identified as coordinated attackers and excluded
+from the set of benign clients.
+
+Algorithm 1: Poisoning Client Filtering
+Input: Sparse model W = {W1 , . . . , Wm }, sparse
+index masks M = {M1 , . . . , Mm } of m
+clients C; filtering threshold β and clustering
+sensitivity γ.
+Output: Identified benign clients CBENIGN .
+1 function poison filtering(C, W, M, β, γ)
+2
+Initialize CBENIGN ← C ;
+3
+foreach client i in C do
+P
+1
+4
+JSCORE (i) ← m−1
+j̸=i J(Mi , Mj );
+MIN
+5
+Set filtering threshold JTHRESHOLD = JMAX +J
+∗ β;
+2
+6
+foreach client i in C do
+7
+if JSCORE (i) < JTHRESHOLD then
+8
+Exclude client i from CBENIGN
+9
+foreach remaining client i in CBENIGN do
+10
+Convert ∆wi to sign direction by Equation 5
+11
+Compute cosine similarity cos(θi,j ) by
+Equation 6;
+12
+Compute distance matrix D = 1 − cos(θi,j );
+13
+Compute neighbor count n = m ∗ γ;
+14
+Set ϵ as average distance to n-th nearest neighbor;
+15
+Apply DBSCAN clustering on D with n, ϵ;
+16
+Exclude grouped clients from CBENIGN ;
+17
+return CBENIGN
+
+a sparsification threshold and assigns a mask value of 1 to
+packs whose aggregated values exceed this threshold. The final transmission to the server includes two components: the
+sparsified model parameters and a sparse index mask, represented with 1-bit per entry, indicating the retained packs. This
+structured sparsification approach effectively preserves critical information while significantly reducing communication
+overhead. Upon receiving these sparse updates, the server
+executes the robust aggregation procedure to filter potential
+malicious contributions and reconstruct the global model, as
+detailed in Algorithm 2.
+
+C
+
+In this section, we provide the formal proof for Theorem 1,
+which quantifies the effectiveness of poisoning attacks within
+the sparsified aggregation framework. Our analysis substantiates the claim that sparsification introduces a unique vulnerability by allowing attackers to concentrate their influence on
+specific parameter subsets.
+
+C.1
+B.2
+
+Sparsified Robust Model Aggregation
+
+In the sparsified, communication-efficient aggregation process of SafeSparse, each client first flattens its local model
+parameters and organizes them into structured groups for efficient packing and transmission. Based on the specified sparsification ratio and the characteristics of its local model, the
+client computes a sparse index mask to identify which parameter packs will be retained. Specifically, the client determines
+
+Proof of Theorem 1 (Vulnerability
+Analysis)
+
+Definition and Metrics
+
+As stated in Theorem 1, we define the attack effectiveness
+ρ as the squared Euclidean distance between the poisoned
+global model WG and the ideal benign model WG′ :
+ρ = ∥WG − WG′ ∥22
+
+(8)
+
+This metric serves as a proxy for the total deviation induced
+by malicious participants.
+
+Algorithm 2: Sparsified Robust Model Aggregation
+Input: Sparse model W = {W1 , . . . , Wm }, sparse
+index masks M = {M1 , . . . , Mm }, and local
+dataset sizes {|D1 |, . . . , |Dm |} of m clients C;
+filtering threshold β, clustering sensitivity γ.
+Output: Aggregated model WG .
+1 CBENIGN ← poisoning f iltering(C, W, M, β, γ) ;
+2 foreach parameter pack Pi in global model do
+3
+Si ← ∅ ;
+4
+foreach client j in CBENIGN do
+5
+if Mj (Pi ) = 1 then
+6
+Add client j to Si ;
+P
+|D |
+7
+APi = j∈Si Pm j|Dk | ;
+k=1
+8
+Initialize aggregated model parameter wiagg = 0 ;
+9
+foreach client j ∈ Si do
+|D |
+10
+Wj (Pi ) ← Wj (Pi ) ∗ Pm j|Dk | ;
+k=1
+11
+Normalize Wj (Pi ) ← Wj (Pi )/APi ;
+12
+wiagg + = Wj (Pi ) ;
+13
+Set WG (Pi ) = wiagg ;
+14 return WG
+
+C.2
+
+Bounding the Deviation
+
+C.3
+
+Proof of the Attack Effectiveness
+
+With the definitions above, we can now derive an upper bound
+for the attack effectiveness ρ. We start by analyzing the deviation for a single pack p.
+
+
+X
+X
+1 
+WG (p) − WG′ (p) =
+Wj (p) +
+Wa (p)
+Np
+B
+A
+j∈Sp
+
+a∈Sp
+
+where Wj (p) and Wa (p) are the parameters for pack p from a
+benign client j and a malicious client a, respectively. For this
+analysis, we assume uniform weights for simplicity, though
+the principle holds for the weighted scheme in Algorithm 2.
+The ideal benign model for the same pack p would be aggregated only over the benign contributors:
+1 X
+WG′ (p) = B
+Wj (p)
+(10)
+Np
+B
+j∈Sp
+
+The core of the attack lies in the malicious parameters
+Wa (p). We can model a malicious update as a deviation from
+the ideal benign update. We assume the attacker’s update for
+
+a∈Sp
+
+− WG′ (p)
+
+
+
+=
+
+=
+
+To analyze the attack effectiveness, we first formalize the
+sparsified aggregation process from a mathematical perspective. The aggregation is performed on a pack-by-pack basis.
+Let’s consider a single parameter pack p. The set of clients
+contributing to this pack is Sp = {i ∈ C | Mi (p) = 1},
+where Mi (p) is the sparse index mask for client i at pack p.
+The size of this set is Np = |Sp |.
+This set of contributors can be split into benign and malicious subsets: SpB = Sp ∩ CB and SpA = Sp ∩ CA . Let
+their sizes be NpB = |SpB | and NpA = |SpA |, respectively, with
+Np = NpB + NpA .
+For simplicity, we model the aggregation for pack p (lines
+10-14 in Algorithm 2) as a weighted average over the contributing clients. The poisoned global model parameter for
+pack p is:
+
+
+X
+X
+1 
+WG (p) =
+Wj (p) +
+Wa (p)
+(9)
+Np
+B
+A
+j∈Sp
+
+pack p is bounded in its deviation from the ideal benign average for that pack. Let ϵ be the expected magnitude of perturbation for any parameter pack an attacker chooses to poison.
+This is formulated as:
+E[∥Wa (p) − WG′ (p)∥2 ] ≤ ϵ
+(11)
+A
+for any attacker a ∈ Sp . This value ϵ represents the potency
+of the malicious craft. A larger ϵ signifies a more aggressive
+attack.
+
+1  B ′
+Np WG (p) +
+Np
+
+X
+
+Wa (p)
+
+a∈SpA
+
+− WG′ (p)
+!
+NpB
+1 X
+Wa (p)
+− 1 WG′ (p) +
+Np
+Np
+A
+a∈Sp
+
+=
+
+−NpA
+Np
+
+1 X
+Wa (p)
+WG′ (p) +
+Np
+A
+a∈Sp
+
+1 X
+(Wa (p) − WG′ (p))
+=
+Np
+A
+a∈Sp
+
+(12)
+This equation elegantly captures the error for a single pack:
+it is the average deviation of the malicious contributors from
+the ideal benign model, scaled by the malicious-to-total contributor ratio for that pack.
+Now, we bound the squared norm of this deviation using
+the triangle inequality and our perturbation bound from Equation 11:
+2
+
+1 X
+∥WG (p) − WG′ (p)∥22 =
+(Wa (p) − WG′ (p))
+Np
+A
+a∈Sp
+
+2
+
+2
+1 X
+≤ 2
+∥Wa (p) − WG′ (p)∥2 
+Np
+A
+
+
+a∈Sp
+
+1
+≤ 2 (NpA ϵ)2 =
+Np
+
+NpA
+Np
+
+!2
+ϵ2
+
+(13)
+The total attack effectiveness ρ is the sum of these squared
+deviations over all parameter packs:
+!2
+X
+X NpA
+′
+2
+ρ=
+∥WG (p) − WG (p)∥2 ≤
+ϵ2
+(14)
+N
+p
+p
+p
+
+Let us define the malicious contributor ratio for pack p as
+fp = NpA /Np . This ratio represents the fraction of clients that
+contributed to pack p who were malicious. The final bound
+on the attack effectiveness is:
+X
+ρ ≤ ϵ2
+fp2
+(15)
+p
+
+Implications. This result highlights a critical vulnerability
+unique to communication-efficient FL using sparsification. In
+standard FL, the overall attacker ratio |CA |/|C| dilutes the
+attack’s impact across all model parameters relatively uniformly. However, Equation 15 shows that in sparsified FL,
+the attack’s impact is determined by the malicious contributor ratio fp at each parameter pack. Adversaries can exploit
+this by coordinating their sparse index masks (Ma ) to all contribute to a small, critical subset of parameter packs. For these
+targeted packs, they can drive fp close to 1, thus exerting
+immense influence and causing significant model deviation,
+even if the overall attacker ratio |CA |/|C| is low. This demonstrates that sparsification, while beneficial for efficiency, introduces a new attack vector that must be addressed by specialized defense mechanisms like SafeSparse.
+
+D
+
+Proof of Theorem 2 (Convergence Analysis)
+
+In this section, we provide the detailed derivation for the convergence guarantee of SafeSparse presented in Theorem 2.
+We analyze how the robust aggregation mechanism interacts
+with sparsification noise and adversarial bias to ensure model
+stability.
+
+D.1
+
+Assumptions and Preliminaries
+
+To facilitate the analysis, we state the following standard assumptions used in Federated Learning literature:
+Assumption 1 (L-smoothness). The local cost functions
+Fi (w) are all L-smooth: ∥∇Fi (w) − ∇Fi (v)∥ ≤ L∥w − v∥
+for any w, v.
+Assumption 2 (Bounded Variance and Heterogeneity). The
+local stochastic gradients have a variance bounded by
+σ 2 . Furthermore, the data heterogeneity (Non-IIDness) is
+bounded by G2 , such that E∥∇Fi (w) − ∇f (w)∥2 ≤ G2 .
+Assumption 3 (Top-k Compression Property). The sparsification operator S(·) satisfies the compression property
+∥S(x) − x∥2 ≤ (1 − α)∥x∥2 , where α = k/d is the fraction of parameters retained.
+Assumption 4 (Filtering Integrity). Let CB be the set of
+clients selected by SafeSparse. There exists a filtering error
+δ(β, γ) such that the residual bias from missed malicious updates or excluded benign updates is bounded: ∥E[∆wagg ] −
+∆wideal ∥ ≤ δ, where δ is monotonically decreasing with the
+accuracy of the Jaccard and Sign-based inspection.
+
+D.2
+
+Restatement of Theorem 2
+
+8
+Under Assumptions 1-4, let ηt = µ(t+a)
+be the learning rate
+for a µ-strongly convex objective. The global model WGT af-
+
+ter T rounds of SafeSparse satisfies:
+
+
+(1 − α)G2
+D
+T
+∗ 2
++O
++
+E[∥WG −W ∥ ] ≤
+T +a
+α2
+|
+{z
+}
+Sparsification Error
+
+
+ρ
+O
+µ2
+| {z }
+
+
+Residual Attack Impact
+
+(16)
+where D is a constant related to the initial distance, α is
+the sparsity ratio, and ρ is the attack effectiveness defined in
+Equation 14.
+
+D.3
+
+Formal Derivation
+
+To prove the convergence of SafeSparse, we begin by analyzing the evolution of the expected distance between the global
+model and the optimal solution across iterations. Given the
+update rule Wt+1 = Wt − ηt Gt , where Gt represents the
+robustly aggregated sparse gradient, we expand the squared
+Euclidean distance to the optimum W ∗ as follows:
+∥Wt+1 −W ∗ ∥2 = ∥Wt −W ∗ ∥2 −2ηt ⟨Gt , Wt −W ∗ ⟩+ηt2 ∥Gt ∥2
+(17)
+The core of the analysis lies in bounding the inner product term, which reflects the alignment of the aggregated update with the descent direction. In the presence of poisoning attacks, the aggregated gradient Gt deviates from the true
+population gradient ∇f (Wt ). By substituting the attack effectiveness bound derived in Section C, we can quantify this
+deviation as ∥E[Gt ] − ∇f (Wt )∥2 ≤ O(ρ). SafeSparse’s
+dual-inspection mechanism—specifically the Jaccard similarity and Sign clustering—is instrumental here; it minimizes
+ρ by effectively reducing the malicious contributor ratio fp
+across all parameter packs, thereby constraining the adversarial bias within the inner product.
+Simultaneously, we must account for the variance introduced by the sparsification process. While the Top-k operator inherently introduces a residual error proportional to
+(1 − α), SafeSparse ensures that only updates with high
+structural consensus (verified via Jaccard similarity) are aggregated. This filtering prevents the divergence of the term
+ηt2 ∥Gt ∥2 by ensuring that the sparsity masks of contributing
+clients remain coherent, even under statistical heterogeneity.
+Finally, by combining these bounds into the recursion in
+Equation 17 and applying a decaying learning rate ηt =
+8
+µ(t+a) , the inequality satisfies the conditions for a standard
+inductive proof for strongly convex functions. This leads to
+the conclusion that WGT converges to a fixed error ball at a
+rate of O(1/T ). The radius of this error ball is explicitly determined by the sparsity ratio α and the residual poisoning
+impact ρ that bypasses the filters, demonstrating that SafeSparse achieves a stable consensus in adversarial sparse environments.
+
+E
+
+Evaluations
+
+E.1
+
+Baselines
+
+To provide a comprehensive benchmark for SafeSparse, we
+compare it against a diverse set of state-of-the-art robust aggregation rules and defense mechanisms. These baselines
+range from classical statistical robust aggregators to recent
+
+Figure 6: Comparison of defense effectiveness across various approaches, evaluated on FashionMNIST, CIFAR-10, and CIFAR-100 under
+Label Flip Attack (LFA), Gaussian Noise Attack (GNA), Inner Product Manipulation (IPM), and Scaling Attack in an IID SETTING. The
+default attacker ratio is fixed at 0.4, and the top-k sparsification rate is set to 0.5. Top-1 accuracy is used as the evaluation metric for
+FashionMNIST and CIFAR-10, while top-5 accuracy is adopted for CIFAR-100.
+
+advanced methods based on clustering and signature detection. The detailed technical descriptions and their roles in our
+experimental setup are summarized as follows:
+• FedAVG [McMahan et al., 2017]: A widely used aggregation method that computes a weighted average of
+model updates from multiple clients to generate a global
+model. The weights are based on each client’s data size.
+• Multi-KRUM [Blanchard et al., 2017]: Calculates the
+Euclidean distance between each client update and all
+others. For each update, the nearest m − n − 1 distances
+are summed to compute a Kr score. The k updates with
+the smallest Kr scores form the set of honest updates
+(H), which is then aggregated using FedAVG.
+• Median [Yin et al., 2018]: Independently calculates the
+median value for each model update across all client updates and uses it as the global model update.
+• Trimmed Mean [Yin et al., 2018]: Sorts client updates
+and removes the largest and smallest k%. The mean of
+the remaining values is used as the global model update.
+In our experiments, k is set to 10 by default.
+• FedSign [Guo et al., 2023]: Identifies malicious clients
+by measuring cosine similarity between their signature
+vectors and calculating attack density. Clients with an
+
+attack density below average are considered honest, and
+their updates are aggregated using FedAVG.
+• Robust-DPFL [Qi et al., 2024]: Computes a detection
+score for each client by averaging its model parameters.
+Detection scores are clustered into two groups using Kmeans, and only updates from the cluster with higher
+average detection scores are aggregated.
+• LASA [Xu et al., 2025]: An approach that combines
+pre-aggregation sparsification with layer-wise adaptive
+aggregation. It first sparsifies updates to reduce the impact of malicious parameters, then uses a layer-wise
+adaptive filter that leverages both magnitude and direction metrics to select and aggregate benign layers.
+• FLGuardian [Zhou et al., 2025]: A layer-space defense method that detects benign clients for each layer
+using a combination of pairwise cosine/Euclidean distances and a clustering algorithm. It then assigns a trust
+score to each client and aggregates updates from clients
+with the highest scores.
+• RFA [Pillutla et al., 2022]: A robust aggregation approach that uses the geometric median of client updates
+to produce the global model. The geometric median is
+computed efficiently using a Weiszfeld-type algorithm.
+In our evaluation, we consider a threat model where a frac-
+
+Table 3: Comparison of defense effectiveness across different β settings (IID Distribution).
+Dataset
+
+Attack
+
+β = 0.20
+
+β = 0.40
+
+β = 0.60
+
+β = 0.80
+
+β = 1.00
+
+FashionMNIST
+
+LFA
+GNA
+Scaling
+IPM
+
+0.9164
+0.9218
+0.9155
+0.9177
+
+0.9175
+0.9102
+0.9201
+0.9146
+
+0.9132
+0.9113
+0.9127
+0.9141
+
+0.9156
+0.9194
+0.9165
+0.9140
+
+0.9148
+0.9166
+0.9126
+0.8712
+
+CIFAR-10
+
+LFA
+GNA
+Scaling
+IPM
+
+0.7378
+0.7293
+0.7420
+0.7209
+
+0.7279
+0.7492
+0.7368
+0.7049
+
+0.7319
+0.7511
+0.7399
+0.7416
+
+0.7324
+0.7140
+0.7446
+0.6461
+
+0.7246
+0.7288
+0.7022
+0.6371
+
+CIFAR-100
+
+LFA
+GNA
+Scaling
+IPM
+
+0.6814
+0.6864
+0.6789
+0.5748
+
+0.6876
+0.6882
+0.7006
+0.7014
+
+0.6887
+0.6981
+0.6906
+0.7096
+
+0.6897
+0.7008
+0.6976
+0.6926
+
+0.6262
+0.6904
+0.6425
+0.5736
+
+Table 4: Comparison of defense effectiveness across different γ settings (IID Distribution).
+Dataset
+
+Attack
+
+0.10
+
+0.15
+
+0.20
+
+0.25
+
+0.30
+
+0.35
+
+0.40
+
+0.45
+
+0.50
+
+F-MNIST
+
+LFA
+GNA
+Scaling
+IPM
+
+0.9181
+0.9133
+0.9160
+0.7926
+
+0.9196
+0.9171
+0.9133
+0.9144
+
+0.9208
+0.9179
+0.9185
+0.9122
+
+0.9156
+0.9156
+0.9109
+0.9137
+
+0.9163
+0.9167
+0.9197
+0.9166
+
+0.9128
+0.9213
+0.9108
+0.8959
+
+0.9185
+0.9194
+0.9146
+0.9139
+
+0.6692
+0.1038
+0.1039
+0.1017
+
+0.7368
+0.1019
+0.1042
+0.1028
+
+CIFAR-10
+
+LFA
+GNA
+Scaling
+IPM
+
+0.7271
+0.7429
+0.7442
+0.4796
+
+0.7297
+0.7143
+0.7370
+0.7148
+
+0.7227
+0.7340
+0.7328
+0.7060
+
+0.6602
+0.7388
+0.7375
+0.6479
+
+0.7479
+0.7377
+0.7146
+0.7160
+
+0.7574
+0.7278
+0.7301
+0.7198
+
+0.7492
+0.7237
+0.7273
+0.7208
+
+0.4215
+0.1029
+0.1013
+0.1031
+
+0.5004
+0.1071
+0.0973
+0.1031
+
+CIFAR-100
+
+LFA
+GNA
+Scaling
+IPM
+
+0.6969
+0.6891
+0.6853
+0.6474
+
+0.6943
+0.6929
+0.7086
+0.6486
+
+0.6878
+0.6898
+0.6822
+0.6125
+
+0.6798
+0.7024
+0.6746
+0.5579
+
+0.6795
+0.6853
+0.6897
+0.6562
+
+0.7055
+0.6812
+0.6953
+0.6201
+
+0.7126
+0.6849
+0.6856
+0.6032
+
+0.4994
+0.0594
+0.0862
+0.0457
+
+0.4923
+0.0634
+0.0532
+0.0460
+
+tion of malicious clients (up to 40%) attempt to compromise
+the global model’s integrity or prevent its convergence. We
+implement four representative poisoning attacks that target
+different stages of the local training and update process. The
+specific implementations are detailed below:
+• LFA: The attacker changes the original label l of a training sample to M − l − 1, where M is the total number of
+labels (i.e., categories) in the dataset. The attacker then
+performs local training on this modified dataset.
+• GNA: Using the mean and variance of local model, the
+attacker generates a Gaussian noise model matching the
+size of the local model and uploads it to the server.
+• IPM: The attacker manipulates the inner product between true gradients and robust aggregated gradients to
+be negative, disrupting global model convergence.
+• Scaling: The attacker amplifies local model updates by
+a large factor before uploading them to the server.
+
+Figure 6, SafeSparse consistently achieves superior test accuracy compared to state-of-the-art defense mechanisms under
+four distinct types of poisoning attacks.
+
+E.2
+
+E.4
+
+Model Performance and Defense Effectiveness
+under IID Distribution
+
+To further validate the robustness of SafeSparse, we evaluate
+its performance under the IID (Independent and Identically
+Distributed) setting across three benchmark datasets: FashionMNIST, CIFAR-10, and CIFAR-100. As illustrated in
+
+E.3
+
+Ablation Studies under IID Distribution
+
+This section supplements the main text with ablation results
+under the IID distribution, as shown in Table 3 and Table 4.
+Overall, the trends are consistent with the Non-IID analysis
+but exhibit lower variance due to the higher intrinsic similarity among benign updates.
+For the threshold β, performance remains robust until β =
+1.0, where a slight decline occurs as some beneficial gradient information is discarded. Regarding γ, the defense is
+highly effective when γ ≤ 0.40, but accuracy collapses to
+near-random levels (≈ 10%) beyond this threshold. This
+confirms that the optimal hyperparameter range is relatively
+distribution-agnostic, which simplifies parameter tuning in
+practical federated learning deployments.
+
+Impact of Attacker Ratio
+
+To further investigate the impact of the attack ratio on SafeSparse, we evaluated the defense effectiveness of various attack strategies under different attack ratios (0.2, 0.3, and 0.4)
+on the CIFAR-100 dataset. It is important to note that, in
+our Threat Assumption, the attacker ratio will not exceed
+
+Figure 7: Comparison of defense effectiveness across different attack ratios, evaluated on CIFAR-100 under LFA, GNA, IPM, and
+Scaling attacks. The top-k ratio is set to 0.5.
+
+50%. As shown in Figure 7, the results indicate that the
+defense methods are effective across all attack ratios, with
+no significant changes in performance. The test accuracy remains relatively stable regardless of the increase in attack ratio, demonstrating that our proposed defenses can effectively
+resist model poisoning attacks at various levels.
+
+E.5
+
+Impact of Top-k Sparsification Ratio
+
+To investigate how the top-k sparsification ratio affects SafeSparse under various attack strategies, we conducted experiments at different sparsification levels on the CIFAR-100
+dataset. Specifically, the top-k sparsification ratio was set
+between 0.4 and 0.6 in our experiments. As shown in Figure 8, the final convergence results indicate that the attacker
+has no significant impact on our proposed SafeSparse across
+all sparsification ratios. SafeSparse demonstrates strong resilience against four types of model poisoning attacks. However, lower sparsification ratios may lead to unstable attacker
+detection.
+
+Figure 8: Comparison of defense effectiveness across different top-k
+ratios, evaluated on CIFAR-100 under LFA, GNA, IPM attack, and
+scaling attack. The attacker ratio is set to 0.4.
+
+

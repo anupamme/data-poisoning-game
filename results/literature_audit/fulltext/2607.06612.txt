@@ -1,0 +1,2478 @@
+PRoVeFL: Private Robust and Verifiable Aggregation in Federated Learning
+Harsh Kasyapa,c,∗, Anil Kumar Pradhanb,∗, Ugur Ilker Atmacac,e,∗, Graham Cormoded , Carsten Maplec
+a Indian Institute of Technology (BHU), Varanasi, India
+b Vaulttree, , Ireland
+c University of Warwick, Coventry, UK
+d University of Oxford, Oxford, UK
+e Abdullah Gul University, Kayseri, Turkiye
+
+Abstract
+
+arXiv:2607.06612v1 [cs.CR] 7 Jul 2026
+
+Federated Learning (FL) enables multiple clients to collaboratively train machine learning models while retaining data locality,
+thereby enhancing user privacy. However, traditional FL frameworks rely on a centralized aggregation server and assume honestbut-curious clients, making them susceptible to both server-side inference and client-side poisoning attacks. Although recent
+work has explored secure and Byzantine-resilient FL protocols, they face a fundamental trade-off among privacy, integrity, and
+verifiability, and incur substantial computational and communication overhead due to the heavy use of cryptographic primitives.
+In this work, we propose PRoVeFL–a novel, modular FL framework that is Privacy-preserving, Byzantine-Robust, and ensures
+Verifiable aggregation. PRoVeFL employs multiple servers leveraging multi-key fully homomorphic encryption. Each client encrypts its local model updates and distributes encrypted shares to all servers. This design enables a hybrid computation model in
+which ciphertext operations are carefully offloaded to the plaintext domain under strict privacy constraints to efficiently evaluate
+complex statistical aggregation rules. PRoVeFL is compatible with a wide range of state-of-the-art Byzantine-robust aggregation
+algorithms (e.g., Krum, Trimmed Mean, FLTrust, norm clipping, MESAS, and more) and further enhances them with verifiability
+mechanisms that require minimal trust in at least one honest server. We evaluate it across different settings and demonstrate its
+scalability with varying numbers of parameters and participants. PRoVeFL improves runtime over the prior works, Prio and ELSA,
+based on distributed trust with comparable security guarantees, up to 100× and 10×, respectively.
+Keywords: Federated learning, Byzantine-robust aggregation, Multi-key homomorphic encryption, Verifiable aggregation,
+Privacy-preserving machine learning
+
+1. Introduction
+Federated Learning (FL) allows the development of a privacypreserving distributed machine learning (ML) model for multiple clients to jointly train, without directly sharing their local
+data [1, 2]. By decentralizing model training, FL offers significant advantages for sensitive applications such as healthcare
+and finance, where data is often fragmented between institutions, each bound by strict regulatory constraints and business
+competition [3]. In its standard design, a single server maintains
+a global ML model and incrementally updates it by aggregating
+local gradient updates sent by multiple clients. However, such a
+design is open to security and privacy threats [4]; in particular,
+an adversary can exploit model updates to infer private information [5, 6] or manipulate the aggregation process if the server
+is compromised [7], and the global model can be poisoned if
+clients are compromised [8, 9, 10].
+∗ Corresponding author. First three authors have equal contribution.
+
+Email addresses: hkasyap.cse@iitbhu.ac.in (Harsh Kasyap),
+anil@vaulttree.com (Anil Kumar Pradhan),
+ugur-ilker.atmaca@warwick.ac.uk (Ugur Ilker Atmaca),
+graham.cormode@cs.ox.ac.uk (Graham Cormode), cm@warwick.ac.uk
+(Carsten Maple)
+
+To address such threats, three interrelated properties should
+be achieved together: privacy, Byzantine robustness, and verifiability [11]. Just hiding raw data is not sufficient for privacy.
+As several studies [7, 12] have confirmed, gradient updates can
+leak private information. Thus, other privacy-enhancing technologies (PETs), such as Secure Multi-Party Computation (SMPC),
+Fully Homomorphic Encryption (FHE), and Differential Privacy (DP), are integrated to enhance privacy. While such protocols can hide clients’ updates from the server, they can also
+make it harder to identify malicious updates. Recent work has
+proposed to combine secure aggregation with robustness measures, yet these often incur high computational and communication costs or rely on relaxed trust assumptions. They are
+not flexible enough to support a variety of Byzantine-robust
+aggregation rules, and instead enforce simple heuristics, such
+as via norm clipping [11]. Other approaches, such as MUDGUARD [13], employ a privacy-preserving clustering method.
+This can protect the global model against most malicious clients,
+but it significantly increases the complexity and cost of aggregation. Similarly, ELSA [11], ACORN [14], and EIFFeL [15]
+integrate zero-knowledge proofs or integrity checks into the secure aggregation to mitigate the impact of malicious clients by
+enforcing specified bounds or norms on client updates. However, they do not align with the current round distribution of lo-
+
+cal model updates; instead, they treat the previous global model
+update as the trusted reference. It has also been shown that secure aggregations performed in vanilla FL settings are not secure, and can still leak sensitive and private information [16].
+The third critical property is the verifiability of the aggregation process. In standard FL, clients are often assumed to trust
+that the central server honestly performs the intended aggregation. However, a malicious or compromised server could deviate from the protocol by injecting maliciously crafted updates,
+omitting certain client contributions, or altering the aggregated
+result. Thus, it is important to verify that the server’s reported
+global model update truly corresponds to the correct aggregation, while correctly penalizing the malicious updates. Protocols focusing on verifiable aggregation (e.g., VerifyNet [17] or
+SVeriFL [18]) enable clients to detect server misbehaviors by
+requiring the server to produce cryptographic proofs of aggregation. However, they assume that all client updates aggregated
+are legitimate. It is a significant challenge to simultaneously
+achieve all three properties—client update privacy, Byzantine
+robustness, and server verifiability. Existing methods designed
+to achieve any of these obstruct or contradict the others.
+Fully Homomorphic Encryption (FHE) [19, 20] holds promise
+for achieving the key security properties by enabling computation directly over encrypted data and providing strong privacy
+guarantees without the need for trusted third parties. Furthermore, FHE can support Byzantine robustness and verifiability
+by enabling secure, auditable computation pipelines. Recent
+works such as FedML-HE [21], xMK-CKKS [22], and tMKCKKS [23] have demonstrated these capabilities to some extent. However, these systems still suffer from significant computational overhead and are not ready for adoption. In particular, the non-linear, comparison-based logic used in Byzantineresilient rules remains expensive to implement. Ensuring verifiability within a purely FHE-based framework often requires expensive zero-knowledge proofs or complex cryptographic commitments, further increasing costs. These limitations hinder
+scalability, make the protocols impractical for real-time systems, and restrict their applicability.
+1.1. Our Contribution.
+This paper proposes a generic Private, Robust, and Verifiable
+FL (PRoVeFL) framework to address the above challenges and
+ensure clients’ privacy, Byzantine-robustness, and aggregation
+verifiability simultaneously. PRoVeFL is scalable with a modular multi-server architecture to address the computational and
+communication inefficiencies inherent in secure aggregation protocols. Unlike a conventional single-server FL system, PRoVeFL
+partitions the model parameters (1) to distribute the computational load and (2) to enable offloading portions of the ciphertextdomain computation to the plaintext domain, without compromising privacy. This partitioning enables threshold decryption
+on a small number of servers, which would be infeasible with
+a large number of clients. By aligning the partitioning with
+CKKS-specific parameters such as the polynomial modulus degree, we maximize ciphertext packing efficiency, reduce the
+need for zero-padding, and thereby minimize computational
+and communication costs.
+
+PRoVeFL ensures that client updates remain private from
+the servers unless all of them collude. Using multi-key homomorphic encryption, the protocol guarantees privacy as long as
+at least one server is honest, extending the threat model considered in ELSA [11], and SafeFL [24]. It further extends the
+verification guarantees of MUDGUARD [13], and Franzese et
+al. [25] by verifying the correctness of the aggregation and
+the server’s enforcement of the robustness rules. PRoVeFL
+improves the scalability of the peer-to-peer approach used in
+Franzese et al. [25], and its design ensures that security and
+performance scale with the number of servers without burdening clients with additional communication or computation. A
+detailed comparison of PRoVeFL with existing FL schemes
+across key security properties is presented in Table 1.
+PRoVeFL is compatible with state-of-the-art Byzantine resilient aggregation rules. We demonstrate this by implementing
+Krum [26], Trimmed Mean [27], FLTrust [28] and MESAS [29].
+This is a significant improvement over existing approaches that
+rely solely on relaxed rules, such as norm clipping. We also
+carefully choose these aggregation rules to cover complex operations such as (coordinate-wise) sorting, pairwise comparison, and cosine similarity. A central technical idea underlying PRoVeFL is the use of a jointly generated random multiplicative mask r, which enables a carefully controlled transition
+from encrypted to plaintext computation without compromising privacy. Specifically, each client encrypts its update under the group public key and homomorphically applies the encrypted mask Enc pk (r) to its local update shares uik , yielding
+Enc pk (r · uik ). The servers then perform the necessary statistical
+operations to obtain Enc pk (r · sik ), and then collaboratively decrypt the results. Crucially, decryption reveals only the masked
+intermediate values. This allows the computationally expensive selection and filtering steps to be completed in plaintext, at
+a fraction of the cost of performing them homomorphically. In
+summary, our main contributions are as follows:
+• Privacy and Robustness: PRoVeFL is a generic and
+flexible multi-server FL framework that can integrate stateof-the-art Byzantine-robust aggregation schemes, while
+preserving the privacy of clients’ updates, utilizing multikey homomorphic encryption.
+• Efficiency: PRoVeFL improves efficiency and practicality by incorporating partial plaintext computation in the
+multi-server setting (by obfuscating ciphertexts to preserve order and privacy) and significantly reducing computation and communication costs to achieve scalability.
+• Verifiability: PRoVeFL provides verifiability for the entire aggregation process, including the guarantee of correct execution for Byzantine-robustness computations, with
+a minimal trust requirement of at least one honest server.
+• Evaluation: We evaluate PRoVeFL in different settings,
+with varying numbers of parameters, participants, and
+servers, while using state-of-the-art Byzantine-robust aggregation rules such as L2 norm, Krum, Trimmed-Mean,
+and FLTrust. The results demonstrate the practicality and
+efficiency of PRoVeFL.
+
+2
+
+Table 1: Qualitative comparison of related FL frameworks.
+Study
+SeaFlame [30]
+MUDGUARD [13]
+SafeFL [24]
+TAPFed [31]
+DefendFL [32]
+Franzese et al. [25]
+ELSA [11]
+Ma et al. [33]
+ACORN [14]
+Tang et al. [34]
+Eiffel[15]
+RoFL [35]
+Prio[36]
+Prio+[37]
+PVFL [38]
+VPPFL [39]
+PRoVeFL
+
+No. Serv.
+2
+≥2
+≥2
+>2
+1
+–
+2
+2
+1
+2
+1
+1
+≥2
+≥2
+1
+2
+≥2
+
+Priv.
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+
+Properties
+Robust. Verif.
+✓
+✗
+✓
+✓
+✓
+✗
+✗
+✓
+✓
+✗
+✓
+✓
+✓
+✗
+✗
+✓
+✓
+✗
+✓
+✗
+✓
+✗
+✓
+✗
+✓
+✗
+✓
+✗
+✗
+✓
+✓
+✓
+✓✓∗
+✓
+
+to update the global model:
+
+Threat Model
+Mal. Serv. Mal. Client
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✗
+✗
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+✗
+✓
+✗
+✓
+✗
+✓
+✗
+✓
+✗
+✗
+✗
+✓
+✓
+✓
+
+ut+1 =
+
+This process iterates until convergence.
+2.1.1. Security Threats in FL
+Despite its privacy-conscious design, FL is vulnerable to
+several security threats that can compromise data confidentiality, model integrity, and overall utility. These threats are broadly
+categorized into poisoning, inference, and aggregation attacks.
+2.1.1.1. Poisoning Attacks These attacks aim to corrupt the
+training process by injecting malicious behavior through either
+data or model updates. In data poisoning, the attacker manipulates their local dataset Di (e.g., by mislabeling or crafting samples) to influence the model’s behavior in targeted or untargeted
+ways. In model poisoning, rather than altering data, the attacker
+directly crafts the local update u(i) to introduce backdoors or
+cause a targeted degradation of the global model. Some of the
+popular state-of-the-art poisoning attacks are label poisoning
+attack [40], backdoor attack [41], LIE attack [42], Trim Attack [8] and Shejwalkar attack [43].
+
+2. Background and Related Work
+In this section, we discuss the background of federated learning (FL) and its susceptibility to poisoning, inference, and aggregation attacks. We also discuss the security building blocks
+in our framework for integrating with FL.
+
+2.1.1.2. Inference Attacks These attacks exploit the visibility
+of intermediate or final model updates to extract private information. Membership Inference Attacks [5] determine whether a
+specific data point was included in a client’s training data. Property Inference Attacks [44] reveal sensitive attributes or patterns
+from a client’s data (e.g., presence of a disease). Gradient Inversion Attacks [45] reconstruct raw training data from shared
+gradients, especially in settings with few clients or sparse updates.
+
+2.1. Federated Learning
+Federated Learning (FL) is a distributed machine learning
+paradigm designed to collaboratively train a shared global model
+across multiple clients (e.g., big institutions such as healthcare
+or financial organizations, mobile devices or sensors) without
+transferring their local datasets to a central server [1]. This
+framework is particularly useful as a first line of defense in
+privacy-sensitive applications, as it keeps raw data on-premises
+and only allows for the movement of the locally trained model.
+Formally, consider n clients, each holding a private dataset
+Di . The goal is to train a global model u ∈ Rd that minimizes
+a global loss function expressed as a weighted average of local
+empirical losses:
+
+u
+
+n
+X
+
+wi ut+1
+i .
+
+i=1
+
+∗ ✓✓refers to wide coverage of state-of-the-art robustness measures.
+
+min F(u) =
+
+n
+X
+
+2.1.1.3. Aggregation Attacks These attacks target the aggregation mechanism itself, leading to unreliable or biased global
+models [46, 47]. In traditional federated learning, the server
+is assumed to be honest but curious; however, this assumption
+may not always hold in practice. If the central server is malicious or compromised, it can deliberately perform an incorrect aggregation of client updates, thereby compromising the
+integrity and utility of the global model. A dishonest server may
+alter the aggregation logic, such as assigning skewed weights
+to specific clients, selectively dropping updates from certain
+clients (e.g., honest ones), or altering them before aggregation,
+which can lead to bias, reduced performance, or intentional
+misbehavior of the global model. A compromised server may
+collude with a subset of adversarial clients to amplify their impact by preferentially accepting their manipulated updates.
+
+wi Fi (u),
+
+i=1
+
+P
+where Fi (u) = |D1i | (x,y)∈Di ℓ(u; x, y) is the local loss function of
+client i based on its dataset Di , and ℓ is a suitable loss function
+(e.g., cross-entropy or mean squared error). The weight wi =
+Pn|Di |
+represents the proportion of data owned by the client i.
+j=1 |D j |
+The Federated Averaging (FedAvg) algorithm [2] is the most
+widely used approach in FL. In each communication round: (1)
+the server broadcasts the current global model ut to a subset of
+clients; (2) each selected client performs local training, typically several steps of gradient descent:
+
+These vulnerabilities necessitate trustworthy Byzantine resilient aggregation in privacy-preserving settings. Ensuring privacy, integrity and trust in FL is crucial for its deployment in
+real-world applications.
+
+ut+1
+= ut − η∇Fi (ut ),
+i
+where η is the learning rate; (3) clients send their locally updated models ut+1
+to the server; (4) the server aggregates them
+i
+
+2.1.2. Byzantine-Robust Aggregation Schemes in FL
+Byzantine-robust aggregation schemes are designed to protect the global model from malicious client updates. These
+3
+
+schemes apply statistical criteria to filter, select, or reweight updates before aggregation. Below, we describe three representative schemes that differ in their approach: Krum selects a single
+most-consistent update, Trimmed Mean discards coordinatewise extremes, and FLTrust weights updates by their alignment
+with a trusted reference. We later instantiate each of these
+within PRoVeFL (Section 4).
+
+2.1.2.3. FLTrust FLTrust [28] is a Byzantine-robust aggregation framework that assumes servers have access to a small,
+trusted dataset. It uses this dataset to both verify client updates and guide aggregation through a trust-weighted averaging
+scheme.
+Input:
+• A set of client updates {u1 , u2 , . . . , un } ⊂ Rd ,
+
+2.1.2.1. Krum Krum [26] is a Byzantine-robust aggregation
+rule that selects the client update most consistent with the majority of updates. This method is effective against up to f < 2n
+Byzantine clients among n total clients.
+
+• A trusted update u0 computed locally by the server on a
+small clean dataset.
+Operations: FLTrust does the following operations.
+
+Input: A set of n client updates {u1 , u2 , . . . , un } ⊂ Rd and a
+known upper bound f on the number of Byzantine clients.
+Operations: Krum performs the following operations.
+
+1. Compute trust score: For each client i, compute trust
+score as the ReLU of cosine similarity between each local
+model update with the trusted update:
+
+1. Pairwise distances: For each client i ∈ {1, . . . , n}, compute the squared Euclidean distance to all other updates:
+di j = ∥ui − u j ∥2 ,
+
+wi = max {0, cos(ui , u0 )} .
+
+∀ j , i.
+
+2. Rescale updates: Rescale each normalized client update
+by its norm and trust score:
+
+2. Score computation: For each i, sort the distances di j in
+ascending order and take the n − f − 2 least values. The
+Krum score of ui is the sum of these distances:
+X
+score(ui ) =
+di j , where Ni ⊂ {1, . . . , n} \ {i},
+
+uscaled
+= wi ·
+i
+
+∥u0 ∥
+· ui .
+∥ui ∥
+
+Aggregation: Aggregate the rescaled updates using a normalized trust-weighted average:
+Pn scaled
+i=1 u
+.
+ut+1 = Pn i
+i=1 wi
+
+j∈Ni
+
+where |Ni | = n − f − 2.
+Selection: Return ut+1 , the update with smallest score.
+2.1.2.2. Trimmed Mean Trimmed Mean [27] is a robust coordinate aggregation rule designed to tolerate up to f Byzantine
+clients. It operates by discarding the extreme values in each
+coordinate across all client updates.
+
+2.1.3. Related Work on FL Security
+Secure and Robust Federated Learning (SRFL) under a dualserver
+architecture aims to achieve privacy and robustness by
+Input: A set of n client updates {u1 , u2 , . . . , un } ⊂ Rd and a
+separating aggregation and validation roles across two non colknown upper bound f on the number of Byzantine clients.
+luding servers [48]. SRFL employs CKKS encryption, random
+Operations: Trimmed-Mean does the following operations.
+perturbation, and encrypted similarity-based verification mod1. Coordinate-wise sorting: For each coordinate j ∈ {1, . . . , d}, els to filter poisoned updates. However, it is not extensible
+to other Byzantine-robust aggregation algorithms, nor does it
+collect the j-th coordinate from all updates:
+provide cryptographic guarantees for the correctness of serverside aggregation. Using ℓ2 norm-bounding, ELSA proposes a
+V j = {u1 [ j], u2 [ j], . . . , un [ j]}.
+safe aggregation method based on a dual-server model to guarSort V j in ascending order.
+antee privacy and strong gradient filtering to achieve Byzantine robustness [24]. SeaFlame builds upon ELSA by reduc2. Trim extremes: Remove the largest f and smallest f
+ing communication costs while maintaining privacy and robustvalues from V j , for f < n/2.
+ness against gradient boosting [30]. TAPFed employs threshold cryptography for resilience to dropouts and also serves as
+Selection: Compute the mean of the remaining values:
+built-in verification, since it can tolerate some aggregators beX
+1
+ing malicious; as long as the number of honest parties exceeds a
+t+1
+u [ j] =
+v.
+n − 2f
+given threshold, the correct global model can be reconstructed
+trimmed
+v∈V j
+by the clients [31]. However, it does not provide a Byzantinerobust aggregation for client updates. RoFL [35], Prio [36], and
+This is repeated independently for each coordinate j, yielding
+Prio+ [37] ensure Byzantine robustness through lightweight agthe aggregated update.
+gregation proofs but are not built for security against adversarial
+servers. SMPC-based secure aggregation is incorporated into
+SafeFL to ensure secure aggregation, but instead of providing
+4
+
+• Each server Sk forms two plaintexts αk = s2k and βk =
+2sk , then encrypts them under the group public key:
+
+server computations, it provides a guarantee that a single malicious server cannot corrupt the computation if there is at least
+one honest server [24].
+MUDGUARD [13] and Franzese et al. [25] represent stateof-the-art frameworks to holistically address the key challenges
+mentioned above. MUDGUARD guarantees these properties
+for the malicious minority on servers and for the malicious
+majority on clients. However, it lacks support for verifying
+client-side robustness enforcement on the server. PRoVeFL improves on MUDGUARD by introducing a verifiability mechanism that enables clients to verify the correctness of the server’s
+Byzantine-robust enforcement of the aggregated model. Franzese
+et al. proposed a fully decentralised framework that is based on
+SMPC, which is a flexible and theoretically sound approach,
+but it has limited practical deployment for large-scale FL tasks.
+The proposed protocol PRoVeFL addresses these shortcomings by introducing a privacy-preserving, verifiable, and secure
+aggregation framework. The system operates under a distributedtrust model with multiple servers, assuming that only one must
+be honest, and is designed to scale efficiently as the number
+of servers increases. Table 1 presents a comparative analysis
+of key FL frameworks across privacy, robustness, verifiability,
+and threat model. While most prior work satisfies one or two
+of these properties, only PRoVeFL offers comprehensive coverage. It is the only framework that guarantees client update
+privacy, Byzantine-robust aggregation, and full server-side verifiability with a minimal trust assumption and support for modern robustness measures.
+
+ctα,k = Encpk (αk ),
+
+ctβ,k = Encpk (βk ).
+
+• The ciphertexts are broadcast and homomorphically added
+to compute:
+
+rlk = Encpk S 2
+P
+where S = nk=1 sk is the (implicit) group secret.
+The value rlk is the group relinearisation key, enabling efficient ciphertext–ciphertext multiplication while revealing no
+individual secret key material.
+(4) Encryption. Anyone can encrypt m ∈ Rq via
+Encpk (m) : u ← χ, e1 , e2 ← χ,
+(c0 , c1 ) = (bu + e1 + m, au + e2 ).
+(5) Homomorphic operations. Addition is component-wise. Mulrlk
+
+tiplication uses rlk: (c0 , c1 )∗(d0 , d1 ) −−→ (c̃0 , c̃1 ).
+(6) Threshold decryption. Each server outputs a partial decryption dk = sk c1 . Aggregating yields
+m = c0 +
+
+n
+X
+
+dk
+
+(mod q),
+
+k=1
+
+so all servers must cooperate; a single honest party can block
+decryption and thus prevents data leakage to colluding adversaries.
+
+2.2. Multi-Key Fully Homomorphic Encryption
+
+Security Building Blocks. The confidentiality and correctness
+of homomorphic evaluation rely on the decisional Ring–LWE
+assumption, the standard hardness foundation for lattice-based
+fully homomorphic encryption (BGV/CKKS).
+
+Standard single-key Fully Homomorphic Encryption (FHE)
+suffices when all data is encrypted under a single public key by
+a single client. However, this is not sufficient for federated aggregation, which involves independent clients. Multi-Key FHE
+(MK-FHE) addresses this point by deriving a joint public key
+and joint relinearisation key from individual key shares, enabling homomorphic evaluation across ciphertexts encrypted by
+multiple parties while ensuring that no single party ever learns
+the collective secret [22, 23]. The construction below follows
+the Ring-LWE instantiation used for our protocol.
+Let N be a power-of-two cyclotomic dimension with q ∈ Z
+the ciphertext modulus, and Rq = Zq [x]/(xN + 1). Assume n
+parties (aggregation servers in our protocol) are S1 , . . . , Sn .
+(1) Individual secrets. Each party draws a small secret polyno-
+
+2.2.1. The Decisional Ring-LWE Problem.
+Let N be a power of two; q a prime with q ≡ 1 (mod 2N);
+and Rq = Zq [x]/(xN + 1) the degree-N cyclotomic ring. Fix a
+noise distribution χ over Rq (e.g., a centered binomial or discrete Gaussian) with small standard deviation. For a secret
+$
+
+$
+
+$
+
+s ← χ and independently sampled a ← Rq , e ← χ, an RLWE
+sample is the pair
+(a, b = a · s + e) ∈ Rq × Rq .
+
+$
+
+mial sk ← χ ⊂ Rq and publishes a common random a ∈ Rq .
+(2) Collective public key. Each party samples an error ek ← χ
+and broadcasts bk := −ask + ek . The group public key is
+pk = b, a ,
+
+
+
+b :=
+
+The decisional RLWE problem asks to distinguish polynomially many independent RLWE samples from uniformly random
+pairs in Rq × Rq . Formally, the advantage of a probabilistic
+polynomial-time distinguisher D is,
+
+n
+X
+
+X
+P
+bk = −a nk=1 sk + e, e =
+ek ,
+| {z }
+k=1
+k
+
+AdvRLWE
+= |Pr[D(a, b) = 1 | b = a · s + e]
+D
+
+S
+
+$
+
+where the implicit group secret key S =
+structed.
+(3) Collective relinearisation key.
+
+P
+
+− Pr[D(a, u) = 1 | u ← Rq ]
+
+k sk is never recon-
+
+The Decisional RLWE Assumption states that for any PPT
+D this advantage is negligible in the security parameter.
+
+5
+
+2.3. Verifiability of Arithmetic Computations
+2.3.1. Commitment-based verification
+To enable public verification of basic arithmetic on committed values, each client publishes discrete logarithmic commitments to their data. Suppose a client sends plaintext values
+x, y ∈ Z p to the server, along with corresponding commitments:
+h1 = g x ,
+
+3.1. Threat Assumptions
+We consider a malicious threat model in which both servers
+and clients may adversarially deviate from the protocol to compromise privacy or correctness. The system consists of multiple
+clients (e.g., healthcare and financial institutions) and two (or
+more) coordinating servers for managing the FL process. Each
+client maintains a private dataset and periodically submits local
+model updates. Any subset of clients may also be malicious,
+which can submit poisoned or arbitrarily crafted local updates
+to bias or degrade the global model or attempt to extract information about an honest client’s updates by colluding with
+the malicious server or by analysing the change in successive
+global models.
+The protocol assumes that at least one of the servers is
+honest, while other servers may even collude and (1) attempt
+to learn individual client updates by deviating from the protocol
+or observing data flows, (2) manipulate the global aggregation
+process by selectively dropping or altering updates, or (3) send
+incorrect global models back to the clients, potentially disrupting model convergence.
+If a malicious server ignores all updates or selectively drops
+certain client updates, the protocol might fail to produce a global
+model. The protocol must detect such behaviour and prevent
+the malicious server from gaining information by observing
+which updates are included.
+
+h2 = gy ,
+
+where g is a generator of a cyclic group G of prime order p. It
+satisfies the following properties:
+Addition (a = x + y). The server computes a = x + y. Any
+verifier can confirm the result using the group law:
+?
+
+ga = h1 · h2 .
+Multiplication (b = x · y). The server computes b = x · y.
+Verification is done via a bilinear pairing e : G × G → GT :
+?
+
+e(g, g)b = e(h1 , h2 ).
+Security Building Blocks. Soundness of the server-side verification mechanism is guaranteed by the intractability of the Discrete Logarithm Problem in a prime-order group, which underlies the exponentiation commitments attached to every model
+coordinate.
+
+3.1.1. Security Guarantees
+Our proposed framework offers the following security guarantees:
+
+2.3.2. Discrete Logarithm Problem (DLP)
+For the commitments, h j = gui, j works in a cyclic prime
+order group (G, ·) with the generator g. Given (g, g x ), an adversary’s task is to recover x. The Discrete Logarithm Problem asserts that this inversion is infeasible for any PPT algorithm when the group order is sufficiently large (e.g., a 256-bit
+prime). The integrity of verification, therefore, reduces to DLP
+hardness.
+In summary, the confidentiality of the ciphertexts is based
+on decisional RingLWE, while the extractibility of the commitments and the integrity of the server computations are based
+on DLP. These assumptions are standard and widely deployed,
+providing strong confidence in the cryptographic foundations
+of our framework.
+
+1. Privacy of client updates: Clients’ local model updates
+remain protected throughout the training process. It ensures that even if a subset of clients or servers is compromised, the confidentiality of client data is preserved.
+2. Integrity of client updates: Ensuring that the system
+can detect and tolerate poisoned updates received from
+the malicious clients.
+3. Integrity of Aggregation: The aggregation process is
+verifiable and resistant to tampering, ensuring that the final model reflects genuine client contributions.
+
+3. Problem Overview
+
+4. Scalability and Efficiency: By distributing computational
+tasks and transitioning certain operations to the plaintext
+domain when secure to do so, the framework achieves
+practical efficiency suitable for large-scale deployments.
+
+We consider a federated learning (FL) framework comprising n clients and m servers, with n ≫ m ≥ 2.
+Client Role. Each client performs local training on its dataset
+and generates a model update vector ui . To preserve privacy,
+the client encrypts its update using a multi-key fully homomorphic encryption (MK-FHE) scheme (with decryption keys
+shared among servers), yielding a ciphertext Encpk (ui ) that supports computations over it.
+Server Role. Each server k ∈ {1, 2, . . . , m} is responsible for
+performing secure aggregation over the encrypted shares. By
+leveraging homomorphic properties of MK-FHE, servers can
+jointly compute statistical functions (e.g., sum, average, norm)
+over ciphertexts without decrypting them.
+
+4. Our proposed framework: PRoVeFL
+This section presents our Private, Robust, and Verifiable FL
+(PRoVeFL) framework. Since each Byzantine-robust aggregation scheme makes different assumptions about malicious settings and employs unique approaches, we demonstrate PRoVeFL
+using state-of-the-art poisoning-resistant algorithms such as Krum,
+Trimmed-Mean, FLTrust, and discuss its extendability to MESAS,
+
+6
+
+and FLTrust (Figure 6). It demonstrates that a single set of cryptographic building blocks underlies all three Byzantine-robust
+aggregation schemes while accommodating their distinct statistical logics.
+Generation of Published Parameters
+Setup: Fix a public generator g0 ∈ G of prime order p and the joint
+FHE public key pk.
+Step 1: Local randomness.
+$
+
+rk ← Z p
+
+by each server K.
+
+Step 2: Share publication.
+ck = Encpk (rk ),
+
+r
+
+gk = g0k mod p.
+
+Step 3: Homomorphic aggregation.
+
+Figure 1: Our Proposed Framework
+
+Encpk (r) = c1 + c2 ,
+
+r = r1 + r2 mod p.
+
+Step 4: Commitment generator.
+
+CrowdGuard, and FLAME. We intentionally selected these algorithms because they cover various types of operations, including statistical operations, client-provided private input, and
+server-provided public input.
+
+r +r2
+
+g = g1 · g2 = g01
+
+= gr0
+
+(mod p).
+
+Published information:
+• Ciphertext of the global mask: Encpk (r).
+• Commitment generator: g = gr0 mod p.
+
+4.1. System Model and Notation
+We use the following notation throughout this section. Let n
+denote the number of clients and f the upper bound on Byzantine (malicious) clients. Each client i ∈ {1, . . . , n} holds a local
+model update vector ui ∈ RN , computed as the gradient ∇Li of
+a local loss function. Let m denote the number of servers. The
+vector is deterministically split into m equal-length parts: ui =
+(ui,1 ∥ ui,2 ∥ . . . ∥ ui,m ), with ui,k ∈ RN/m for k ∈ {1, 2, . . . , m}.
+Encpk (x) denotes the encryption of x with the public key pk
+where the public key is generated as described in Section 2.2.
+Server-held ciphertexts are denoted ci,k , representing the kth
+share of the encrypted update vector for client i held with Serverk. For schemes such as FLTrust, the trusted server model update is denoted u0 with norm ∥u0 ∥, and the trust score for client
+i is denoted wi . Final aggregation steps produce the next-round
+global model update ut+1 . All cryptographic operations assume
+cyclic group G of prime order p, with associated bilinear map
+e : G × G → GT .
+Figure 1 demonstrates PRoVeFL considering the example
+of two servers and three clients. Details of the framework are
+described below.
+
+Figure 2: Distributed Generation of Mask and Commitment Generator (described for 2 Servers)
+
+4.2.1. Initialisation
+To obscure structural patterns in encrypted client updates
+and defend against inference attacks, all servers collaboratively
+generate an encrypted random multiplier Encpk (r) (Figure 2) by
+jointly contributing secret shares, ensuring that the plaintext r
+remains unknown to any single party. Each client homomorphically applies Encpk (r) to its local update Encpk (uik ), yielding
+randomized ciphertexts Encpk (r · uik ). This randomized masking step ensures that encrypted updates are obfuscated by an
+independently sampled multiplier, effectively breaking any consistent statistical correlation with the original plaintexts. As the
+random factor changes across rounds and remains secret, adversaries cannot accumulate sufficient information to reverse engineer individual updates or inter-client relations.
+4.2.2. Privacy-preserving aggregation
+Each server receives a distinct subset of these encrypted
+masked updates and independently performs the encrypted operations in any method-specific aggregation scheme, resulting
+in ciphertexts Encpk (r · sik ), where sik is the plaintext value of
+the applied statistical operation. These are then jointly decrypted
+using threshold decryption, revealing only the obfuscated values r · sik . This relies on the fact that r is unknown and freshly
+sampled each round, as discussed above.
+
+4.2. Protocol Workflow
+PRoVeFL proceeds in three stages: generation of published
+parameters, client-side and server-side operations. For ease of
+readability, we consider only two servers to describe the protocol, but it can be extended to any fixed number of servers. We
+first explain how the two servers jointly derive the global random mask and commitment generator; this protocol is summarized in Figure 2. We then present the generic encrypted aggregation pipeline, covering client uploads, server-side homomorphic processing, collaborative decryption, public verification,
+and aggregation, as shown in Figure 3. Finally, we instantiate
+the “method-specific” block of that pipeline with three state-ofthe-art defenses: Krum (Figure 4), Trimmed-Mean (Figure 5),
+
+4.2.3. Verification
+Verification follows the commitment-based framework described in Section 2.3. Each aggregation primitive produces a
+7
+
+remainder, while FLTrust computes cosine-similarity weights
+wi and outputs the normalised weighted average. These final
+operations involve only inexpensive plaintext arithmetic (minimal ciphertext arithmetic) and therefore add negligible overhead compared with the encrypted phase.
+
+Published Information:
+• FHE Encryption of Random Mask r: Encpk (r)
+• Commitment Generator: g = gr0 mod p
+Client Side Operations: Each client performs the six deterministic
+steps
+• Gradient Computation: The client computes its local model
+update ui ← ∇Li .
+
+4.2.5. Strengthened Security Model
+The proposed framework operates under a strengthened security model enabled by MK-FHE under a distributed multiserver architecture, which collectively provides strong guarantees of confidentiality and correctness. A critical security concern in this setting is the possibility of collusion between malicious clients and a compromised server: since clients know
+their own updates ui , a colluding client-server pair observing
+the masked value r · ui could recover the global mask r by simple division, subsequently unmasking all other honest clients’
+intermediate statistics. PRoVeFL addresses this through an additive blinding mechanism inspired by the order-preserving encryption scheme of Dyer et al. [49], wherein each intermediate
+masked statistic is additively blinded by an independently sam-
+
+• Deterministic Split: The update vector is split into
+equal halves (assuming 2 servers) ui = (ui,1 ∥ ui,2 ) ∈
+RN , with ui,1 , ui,2 ∈ RN/2 ,
+• FHE encryption of split-updates: for k = 1, 2, ci,k =
+ui,k . Encpk (r) = Encpk (r · ui,k ).
+• FHE Encryption
+of norm (Only for FLTrust) ei,k
+
+Encpk
+
+r
+∥ui,k ∥
+
+=
+
+[Note - It can also be calculated privately at the
+
+server side.]
+• Commitment Generation: hi,kl = gui,kl mod p, for k =
+1, 2 and l = 1, 2, . . . N.
+• Transmission: The client sends its encrypted split updates to
+the respective servers and publishes committed data to everyone.
+
+$
+
+Server Side Encrypted Operations:
+
+pled δi ←
+− {0, . . . , B − 1}. The bound B is chosen to satisfy two
+constraints simultaneously: B < r · ϵ/2 to ensure ordering is
+preserved across distinct client updates, and B > 2λ to ensure
+brute-force recovery of r is computationally infeasible. These
+constraints are jointly satisfiable by choosing r > 2λ+1 /ϵ, which
+is achievable within standard cryptographic group sizes, and
+guarantee both the correctness of ordering-dependent aggregation rules and security against mask recovery by any coalition
+of colluding clients and servers.
+
+1. Method-Specific Encrypted Aggregation: the servers invoke
+one of the sub-routines in any Byzantine-robust aggregation
+scheme.
+2. Collaborative Decryption: The results are decrypted by collecting partial decryption keys from all servers.
+3. Verification of Correct Encrypted Aggregation:
+(a) The method described in Section 2.3 is invoked by another server to verify the correctness of aggregation.
+(b) The honest servers abort if the verification fails at this
+moment.
+
+4.3. Core Aggregation Primitives
+Rather than a collection of independent protocol instantiations, PRoVeFL is a general framework for privacy-preserving
+Byzantine-robust aggregation. The framework supports a number of cryptographically-verifiable aggregation patterns that enable many existing schemes to be supported directly. Each
+primitive operates on a collection of masked, encrypted values,
+and produces outputs that can be verified before their use in
+subsequent aggregation steps. The core primitives are as follows:
+
+Server Side Plaintext Operations:
+4. If verification succeeds, join the aggregated split updates and
+compute the final trust score.
+5. Selection: This step is computed in the same way as in
+plaintext, similar to the weighted averaging adopted in any
+Byzantine-robust algorithm.
+
+Figure 3: PRoVeFL Working Mechanism.
+
+4.3.1. Linear aggregation (LA)
+Many robust aggregation methods involve linear operations
+on client updates, i.e., addition, subtraction, (weighted) averaging, and norm computation. These can be handled in an encrypted space: given the encrypted client updates Enc pk (r · ui ),
+P
+the servers can evaluate expressions of the form i αi ui homomorphically, where the parameters αi may be fixed constants, or
+public values derived elsewhere within the aggregation process.
+
+publicly verifiable proof. The peer server verifies these proofs
+by checking, for every coordinate ℓ, that the pairing or group
+?
+relation holds, e.g., gdi,ℓ = hi,ℓ (or the corresponding additive
+check for a method) holds. If any check fails, then the honest
+server refuses to release its decrypted share, causing the protocol to abort and thus prevent malformed aggregation.
+4.2.4. Collaborative decryption
+Provided that all verifications succeed, the servers send the
+decrypted shares (of intermediate calculations), and concatenate to reconstitute each full score vector. The masked plaintext aggregates are then processed exactly as in their classical
+counterparts: Krum selects the vector with the minimal score,
+Trimmed-Mean discards extreme coordinates and averages the
+
+4.3.2. Pairwise statistical evaluation (PSE)
+Many Byzantine-robust aggregation rules are based on examining all pairwise relationships between client updates, expressed as (low-degree) polynomial functions on pairs of values. This captures (squared) Euclidean distance, inner products,
+cosine similarity and other coordinate-wise differences.
+8
+
+For two encrypted updates ui and u j , servers compute encrypted statistics of the form
+
+Input: Each server k receives a set of n encrypted client updates
+
+{ci,k = Encpk r · ui,k : i = 1, 2, . . . , n}, where ui,k is kth subset of
+client update of client i.
+
+Enc pk (rc · f (ui , u j )),
+
+Server-Side Encrypted Operations
+1. For every ordered pair (i, j) the servers compute
+ 
+Encpk di jk = (ci,k − c j,k )2 , ∀ j , i.
+
+where f (·) is the low-degree polynomial function and c captures
+the degree of the operation. Higher-order statistics can also be
+handled (e.g., considering all triples of values), but are not popular in practice due to the higher costs (cubic or worse in the
+number of clients).
+
+Note that,
+ 
+
+
+Encpk di jk = Encpk (r · xi,k − r · x j,k )2 .
+2. Collaborative decryption. Decrypt to obtain
+
+4.3.3. Secure comparison and ordering (SCO)
+A common pattern in robust aggregation is to consider values in sorted order or to find a value.
+PRoVeFL allows secure comparison via computing masked
+values, which can then be collaboratively decrypted to support
+order-preserving statistics. Given two values x and y, servers
+can obtain only the masked difference r(x − y), which reveals
+the sign of (x − y) while obscuring the underlying values. This
+also enables more complex patterns, such as coordinate-wise
+sorting via compare-and-swap.
+
+di jk = (r · (xi,k − x j,k ))2 .
+Verification of Correct Computation.
+3. Servers publish e(g0 , g0 )di j,kl as a proof for the correct computation.
+4. Peer Servers: For every coordinate ℓ and pair (i, j) verify,
+?
+
+e(hikℓ (h jkℓ )−1 , hikℓ (h jkℓ )−1 ) = e(g0 , g0 )di j,kl .
+
+Plaintext operations
+5. Pairwise distances: Now, any of the servers (assuming at
+least one is honest) compute the pairwise distance with all
+decrypted di jk . The distances are scaled up by r. However,
+they preserve order, which is sufficient for Krum.
+
+4.3.4. Selection and Filtering (SF)
+The ability to compare and sort also enables various trimming and pruning rules based on top-k or bottom-k. After the
+required statistics have been computed and verified, PRoVeFL
+performs selection in the plaintext domain using only masked
+intermediate values. Since the random mask preserves the relative ordering, the selection and filtering decisions match those
+applied to the original plaintext values.
+
+6. Score computation: This step is computed as if with plaintext, as the sum of n − f − 2 distances, for each client.
+7. Selection: This step can be computed in the same way as in
+plaintext, selecting the client update with the smallest score,
+as the next global model update.
+
+4.4. Instantiation of Byzantine-Robust Aggregation Schemes
+
+Figure 4: Instantiation of Krum in PRoVeFL
+
+Any aggregation scheme can be implemented within PRoVeFL
+if it can be expressed in terms of a bounded number of applithe pairing e(·, ·) we obtain
+cations of the above primitives (LA-linear aggregation, PSE
+−1 
+∆i j,kℓ
+pairwise statistical evaluation, SCO-secure comparison and ore hi,kℓ h−1
+, g∆i j,kℓ
+j,kℓ , hi,kℓ h j,kℓ = e g
+dering, SF-selection and filtering). To exhibit its utility, we ap(substituting h x,kℓ = gux,kℓ )
+ply this principle to the design of three state-of-the-art Byzantinerobust algorithms in PRoVeFL: Krum [26], Trimmed-Mean [27],
+= e(g, g)∆i j,kℓ ·∆i j,kℓ
+FLTrust [28], and MESAS [29] defined in Section 2.1.2.
+(bilinearity: e(ga , gb ) = e(g, g)ab )
+2
+
+= e(g0 , g0 )r ·(ui,kℓ −u j,kℓ )
+
+4.4.1. PRoVeFL-enabled KRUM (Figure 4)
+Each aggregation server k receives a masked share ci,k =
+Encpk (r · ui,k ) for every client i. For every ordered pair (i, j),
+it homomorphically computes the encrypted squared Euclidean
+distance of the corresponding halves via PSE,
+
+2
+
+= e(g0 , g0 )di j,kℓ .
+2
+
+2
+
+Since the protocol establishes this relation, e(g0 , g0 )r ·(ui,kℓ −u j,kℓ ) =
+e(g0 , g0 )di j,kℓ . Because e(g0 , g0 ) generates GT , exponents coincide mod p, yielding the stated equality.
+
+
+
+Encpk di j,k = ci,k − c j,k 2 .
+Collaborative decryption exposes only the obfuscated value di j,k =
+r2 (ui,k − u j,k )2 , after which server k broadcasts a pairing commitment e(g0 , g0 ) di j,kℓ for every coordinate ℓ.
+Let ∆i j,kℓ = ui,kℓ − u j,kℓ and recall that the commitment for
+r·ui,k
+a single coordinate is hi,kℓ = gui,kℓ = g0 ℓ . Using bilinearity of
+
+9
+
+di j,kℓ = r2 · (ui,kℓ − u j,kℓ )2 mod p.
+The peer server verifies these commitments with the above test.
+The passing check guarantees that server k has performed the
+aggregation correctly. Once all checks pass, either server (at
+least one is assumed to be honest) computes the n− f −2 smallest (scaled) pairwise distances for every client, sums them to
+obtain the Krum score, and selects the update with the minimal
+score as the next global model (using SCO and SF). Because the
+
+r (ui,k − u j,k ). For each coordinate ℓ, the honest peer checks the
+di j,kℓ
+relation hi,kℓ h−1
+(mod p), thus ensuring the correctj,kℓ ≡ g0
+ness of every difference without exposing plaintext updates. A
+binary sign vector derived from the decrypted di j,k guides a homomorphic rearrangement that sorts the encrypted coordinates
+in ascending order (SCO). Servers perform a secure compareand-swap procedure, realised by Batcher’s odd-even mergesort
+network, on the ciphertexts. Batcher’s odd–even mergesort network executes a data-independent sequence of O(n log2 n) compareand-swap operations, in contrast to the O(n2 ) pairwise comparisons required by naive sorting. By integrating this network
+into Trimmed Mean, servers can efficiently perform coordinatewise sorting over encrypted client updates, reducing the number of comparisons and overall computation compared to a fully
+quadratic approach. Once sorting is complete, the largest and
+smallest f values are discarded (SF), and the remaining n − 2 f
+entries per dimension are averaged. Because the random mask
+r preserves relative ordering, this plaintext post-processing exactly reproduces the classical The trimmed-mean rule, where all
+expensive computations, i.e., sorting, are done in the combined
+plaintext-ciphertext domain.
+
+mask preserves distance ordering, the plaintext post-processing
+is identical to the classical Krum rule, while preserving privacy.
+4.4.2. PRoVeFL-enabled Trimmed-Mean (Figure 5)
+Input: Each server k receives a set of n encrypted client updates
+
+{ci,k = Encpk r · ui,k : i = 1, 2, . . . , n}, where ui,k is kth subset of
+client update of client i.
+Server-Side Encrypted Operations.
+Encrypted operations
+1. For every ordered pair (i, j) the servers compute,
+ 
+Encpk di jk = (ci,k − c j,k ), ∀ j , i.
+Note that,
+
+
+ 
+Encpk di jk = Encpk r · ui,k − r · u j,k .
+2. Collaborative decryption. Decrypt to obtain
+di jk = r · (ui,k − u j,k ).
+Verification of Correct Computation.
+di j,k
+
+3. Server publishes g0 l as a proof for correct computation (for
+every coordinate ℓ).
+4. Peer Server: For every coordinate ℓ and pair (i, j) check,
+hikℓ · (h jkℓ )−1
+
+?
+
+di j,kl
+
+mod p = g0
+
+4.4.3. PRoVeFL-enabled FLTrust (Figure 6)
+Every server Sk receives for each client i (i) a masked ciphertext share ci,k = Encpk (r · ui,k ) and (ii) the encrypted recip
+rocal norm ei = Encpk ∥ui ∥−1 ; the server itself holds the trusted
+reference vector u0 and its norm ∥u0 ∥. These computations rely
+on linear aggregation (LA). It first evaluates, under encryption,
+
+the coordinate-wise products Encpk (di ) = Encpk r · ui,k ⊙ u0 .
+A threshold decryption reveals only the masked inner product
+vector di = r · ui,k ⊙ u0 . For every coordinate ℓ the peer server
+
+mod p.
+
+Plaintext operations
+5. Coordinate-wise sorting: The sign of each coordinate of di jk
+represents the order of coordinates at that position in two updates.
+(a) From di jk , we can
+ prepare a binary sign vector sgn,
+
+
+0, if ui,kl ≤ u j,kl
+such that sgnl = 
+.
+
+1, otherwise
+
+u
+
+?
+
+verifies hi,kt,ℓℓ = gdi,ℓ ; failure of any check aborts the protocol,
+ensuring integrity via the discrete-log assumption. When all
+checks pass, the score vectors are concatenated to form di ∈
+RN . Each server then computes the client’s FLTrust weight
+PN
+wi = max{0, ℓ=1
+di,ℓ /∥u0 ∥}, a quantity still proportional to the
+true cosine similarity. Finally, the update is rescaled homomorphically (LA):
+
+(b) Then, prepare a 1 vector containing 1 in each coordinate i.e. 1 = (1, 1, . . . , 1).
+(c) Create temporary vectors as below:
+ 
+Encpk (tmp1 ) = sgn · Encpk u jk
++(1 − sgn) · Encpk (uik )
+Encpk (tmp2 ) = sgn · Encpk (uik )
+ 
++(1 − sgn) Encpk u jk .
+
+
+0∥
+Encpk (uscaled
+) = Encpk wi ∥u
+i
+∥ui ∥ ui ,
+
+(d) Encpk (tmp1 ) and Encpk (tmp2 ) are sorted vectors,
+so we can
+ assign them back to Encpk (uik ) and
+Encpk u jk , respectively. This process repeats until the
+coordinates from all local model updates are sorted.
+
+and the weighted average Encpk (ut+1 ) =
+is produced under encryption.
+
+P
+
+i wi
+
+−1 P
+
+scaled 
+i Encpk ui
+
+4.4.4. Enabling other aggregation schemes
+Beyond the three schemes instantiated above, PRoVeFL’s
+modular design extends naturally to a broad class of Byzantinerobust aggregation schemes. We observe that defenses such
+as MESAS [29], CrowdGuard [50], and FLAME [51] can be
+tailored to PRoVeFL. FLAME computes cosine similarity and
+performs clustering after that (LA, PSE). Further, it computes
+the Euclidean distance and finds the median for adaptive clipping (SCO). As discussed above, most of these statistical operations can be tailored to PRoVeFL. CrowdGuard also computes
+layer-wise Cosine and Euclidean distances, which we have already demonstrated with Krum and FLTrust. MESAS includes
+
+6. Trim extremes: This step is computed as for plaintext, pruning the top and bottom f updates.
+7. Selection: FedAvg can be applied on the selected updates.
+
+Figure 5: Trimmed-Mean in PRoVeFL.
+
+Upon receiving the masked ciphertexts ci,k = Encpk (r ui,k )
+for every client i, each server k homomorphically subtracts every ordered pair (i, j) to obtain the encrypted coordinate-wise
+differences Encpk (di j,k ) = (ci,k − c j,k ), via PSE. A collaborative decryption then reveals only the obfuscated values di j,k =
+10
+
+the public multi-key FHE key, and let
+
+Input:
+• Each server k receives a set of n encrypted client updates
+
+{ci,k = Encpk r · ui,k : i = 1, 2, . . . , n}, where ui,k is kth subset
+of client update of client i.
+
+
+• Additionally receives encrypted norm {ei = Encpk ∥uri ∥ : i =
+1, 2, . . . , n} [Note - It can also be calculated privately at the
+server side.]
+
+pre
+
+viewk
+
+
+
+ci,k , hi,kℓ , ei i,ℓ
+
+denote the entire information set available to server Sk before
+any homomorphic processing (ci,k = Encpk (r · ui,k ), hi,kℓ = gui,kℓ ,
+and, if required, ei = Encpk (∥ui ∥−1 )).
+Let
+
+post
+pre
+viewk
+= viewk ∪ di | i ∈ [n]
+
+• Server Update Vector: u0 , ∥u0 ∥
+Server-Side Encrypted Operations.
+
+be the information set after collaborative decryption, where di is
+either the masked pairwise-distance vector (Krum), the masked
+coordinate difference vector (Trimmed-Mean), or the masked
+inner-product vector (FLTrust).
+Further, each server publishes a proof element gdi ∈ G and
+extends their local view to
+
+1. Coordinate-wise products. For each client i
+Encpk (di ) = u0 ⊙ ci,k = Encpk (r · ui,k ⊙ u0 )
+2. Collaborative decryption. Decrypt to obtain di
+Verification of Correct Computation.
+di
+
+3. Server Publishes g0 l as a proof for the correct computation
+(for every coordinate ℓ).
+
+proof
+
+viewk
+
+4. Peer Server: For every ℓ check
+ut
+
+=
+
+= {gdik | i ∈ [n]}.
+
+Each peer server validates the published gdi against client
+commitments hi,kℓ using the method-specific equation:
+
+?
+
+hi,kl = gdil .
+l
+
+5. Abort on the first mismatch.
+−1  ?
+di j,kℓ
+Krum: e hi,kℓ h−1
+.
+j,kℓ , hi,kℓ h j,kℓ = e(g, g)
+
+Plaintext operations
+6. Trust score.
+
+?
+
+
+
+
+
+wi = max 
+0,
+
+
+
+di j,kℓ
+Trimmed-Mean: hi,kℓ h−1
+.
+j,kℓ = g
+
+
+
+
+ℓ=1 di,ℓ 
+.
+
+
+∥u0 ∥ 
+
+PN
+
+u
+
+7. Scaled Updates
+
+A single failure causes the honest server to withhold sharing a
+decrypted share, forcing an abort and preventing acceptance of
+the forged data.
+The sequence of Theorems 1 to 3 discussed in Appendix B
+pre
+post
+to Appendix D uses the above views viewk , viewk , and
+proof
+viewk
+to prove confidentiality and integrity for the entire protocol.
+
+!
+∥u0 ∥
+· ui ,
+wi ·
+∥ui ∥
+!
+1
+· Encpk (ui ).
+∥ui ∥
+
+Encpk (uscaled
+) = Encpk
+i
+= (wi · ∥u0 ∥) · Encpk
+8. Weighted Aggregation.
+Encpk (ut+1 ) = Pn
+
+1
+
+i=1 wi
+
+·
+
+n
+X
+
+?
+
+FLTrust: hi,kt,ℓℓ = gdi,ℓ .
+
+Encpk (uscaled
+)
+i
+
+i=1
+
+6. Evaluation
+In this section, we present a comprehensive evaluation of
+PRoVeFL, evaluating its computation, communication costs,
+robustness and verification cost analysis.
+
+Figure 6: FLTrust in PRoVeFL.
+
+six statistical operations, including cosine similarity, Euclidean
+distance, count, variance, maximum, and minimum (PSE). Subsequently, it performs multiple clustering-based statistical tests
+to prune (LA, SF). Since MESAS covers the full set of statistical operations, we describe how to tailor it to PRoVeFL. Details
+can be referred to in Appendix A.
+
+6.1. Experimental setup
+6.1.1. Implementation
+All experiments are conducted on a system with Intel Xeon
+E5-4650 v4 @ 2.20 GHz with 112 logical CPUs, and 256 GB
+RAM. We implemented our framework in C++ using the Microsoft SEAL library1 for homomorphic encryption. Our code
+is available here2 . For local model training, we used the PyTorch3 framework. We instantiated clients to run independently.
+Multi-key support and ciphertext packing are leveraged to maximize throughput. All results reported are averaged over 5 independent runs, unless specified otherwise.
+
+5. Security Analysis
+This section establishes that the proposed protocol guarantees confidentiality and integrity against both honest-but-curious
+and actively malicious aggregation servers. All reductions invoke the Decisional Ring–LWE assumption for ciphertext privacy and the hardness of the Discrete Logarithm Problem (DLP)
+in a prime-order group for commitment soundness.
+Throughout, let S1 , S2 be the two aggregation servers, pk
+
+1 https://github.com/microsoft/SEAL
+2 https://github.com/harshkasyap/provefl
+3 https://github.com/pytorch/pytorch
+
+11
+
+6.1.2. Evaluation Goals
+Our evaluation seeks to answer the following key questions:
+Efficiency. What is the computational and communication overhead introduced by encrypted computation and partial decryption, to integrate state-of-the-art Byzantine robust schemes? How
+does PRoVeFL scale with increasing number of clients, servers,
+and model size?
+Breakdown. What is the breakdown of individual components
+in PRoVeFL? We chose to show this to demonstrate the time
+savings from offloading computations to plaintext.
+Byzantine Robustness. How well does the system perform (in
+terms of accuracy) in the presence of Byzantine clients under
+various poisoning attacks (Backdoor Attack, Trim Attack) and
+state-of-the-art Byzantine robust schemes tailored to PRoVeFL?
+Comparative Performance. How does PRoVeFL compare to
+prior secure FL systems such as ELSA [11], Prio [37, 36] and
+RoFL [35]? We chose these systems to compare with, since
+they cover single-server and distributed servers and can support
+at least a Byzantine-robust scheme (norm clipping).
+Verification Cost. We analsze the verification cost incurred by
+the server to validate that the aggregation has been performed
+correctly, assuming that at least one server is honest.
+6.1.3. Parameters and Variations
+We vary the following system parameters to study performance under different settings:
+– Number of Clients (C): 10, 50, 100, 200.
+– Number of Servers (S): 2, 4, 10.
+– Dataset - Model Size (P): (1) 100k and 500k for Benchmarking; (2) 62k (CIFAR-10 S [52] - LeNet5 [53]); (3) 273k
+(CIFAR-10 L [52] - ResNet-18 [54]); (4) 818k (Shakespeare [55]
+- LSTM [56])
+– Poisoning Attacks: Trim [8] and Backdoor [41] attacks.
+– Poisoning Client Fraction (A%): 10%, 20%, 40%.
+– Byzantine-Robust Aggregation Rules: L2 norm (for comparison), Krum [26], Trimmed Mean [27], FLTrust [28].
+– Baselines: ELSA [11], RoFL [35], Prio [36, 37].
+– FHE polynomial modulus degree - 32768.
+6.2. Results
+
+Krum, Trimmed Mean, and FLTrust, with varying numbers of
+clients (10, 50, 100, 200) and server counts (2, 4, 10).
+We observe that L2 Norm exhibits the lowest and most stable computation time across all configurations, with only a modest increase as the client count grows, and minimal variation
+with server scaling. Krum incurs a high computational cost, especially with larger client counts, due to its pairwise distance
+computations. This cost is alleviated by increasing the number
+of servers. Trimmed Mean also benefits notably from increased
+server parallelism, suggesting good scalability. However, the
+costs of Krum and Trimmed Mean are inherently quadratic in
+the number of clients, since they compare all pairs of updates,
+whereas the costs of L2 norm and FLTrust are linear in the number of clients.
+Figure 8 demonstrates the server-side computation time as
+the number of clients increases across models of varying sizes
+(different datasets, two servers). The L2 Norm method, being
+the simplest, exhibits linear scaling and remains computationally efficient even with 200 clients and large models. As noted
+earlier, Krum is significantly more expensive due to pairwise
+distance calculations, resulting in prohibitive delays for largescale deployments. Trimmed-Mean offers an acceptable cost
+along with scalability. FLTrust maintains scalability similar to
+that of the L2 Norm. The costs of Krum and Trimmed Mean
+are inherently quadratic in the number of clients, since they
+compare all pairs of updates, whereas the costs of L2 norm and
+FLTrust are linear in the number of clients.
+Table 2 presents the communication cost (in GB) incurred
+under different Byzantine-robust aggregation rules as the number of clients increases, assuming two servers and a fixed model
+size of 100k parameters. L2 norm shows a constant communication cost of 0.005 GB, regardless of the number of clients. This
+is because it requires only aggregated statistics to be shared
+with the servers, making it highly communication-efficient. Krum’s
+communication cost grows to over 26 GB for 200 clients because each client must exchange partial distance computations
+with all others. Trimmed-Mean scales more moderately than
+Krum, as it requires fewer exchanges, since we utilized the index pairs from Batcher’s odd-even mergesort network. FLTrust
+has a significantly lower cost than Krum and Trimmed-Mean.
+We refer to Appendix E for the runtime breakdown.
+6.2.2. Byzantine Robustness
+Figure 9 demonstrates that all three aggregation rules (Krum,
+Trimmed-Mean, and FLTrust) maintain high accuracy even when
+clients’ updates are encrypted and subjected to increasing proportions of adversarial clients (performing Trim [8] and Backdoor [41] attacks). With no attack (both in plaintext and encrypted cases), each method achieves around 90% accuracy.
+As the adversarial fraction increases to 40%, the accuracy drop
+is minimal. These results confirm that, despite the added encryption overhead and targeted attacks, the robust aggregation
+schemes continue to behave as intended when implemented within
+PRoVeFL.
+
+6.2.1. Efficiency
+Figure 7 presents a comparative analysis of computation
+time across four Byzantine-robust aggregation rules: L2 Norm,
+Table 2: Communication cost (in GB) vs. no. of clients with 2 servers (100k
+Params).
+
+# Clients L2 norm Krum Trimmed-Mean FLTrust
+10
+0.005
+0.110
+0.061
+0.026
+50
+0.005
+3.220
+0.824
+0.132
+100
+0.005
+13.030
+2.257
+0.263
+200
+0.005
+26.180
+5.924
+0.527
+Only L2 norm values change with increasing number of servers.
+
+12
+
+L2 Norm
+Time (s)
+
+3
+2
+
+2 servers
+4 servers
+10 servers
+
+1
+0
+
+10 50 100
+200
+# Clients
+
+Trimmed Mean
+
+Krum
+1,000
+800
+600
+400
+200
+0
+
+20
+
+400
+300
+
+15
+
+200
+
+10
+
+100
+
+5
+
+0
+
+10 50 100
+200
+# Clients
+
+FLTrust
+
+10 50 100
+200
+# Clients
+
+0
+
+10 50 100
+200
+# Clients
+
+Figure 7: Computation time vs. no. of clients (and servers) for different Byzantine-robust aggregation rules (100k params).
+
+Krum
+
+L2 Norm
+Time (s)
+
+4
+3
+
+62k
+273k
+818k
+
+2
+
+600
+
+2,000
+
+40
+
+400
+1,000
+
+20
+
+200
+
+1
+0
+
+FLTrust
+
+Trimmed-Mean
+
+0
+
+10 50 100
+200
+# Clients
+
+0
+
+10 50 100
+200
+#Clients
+
+10 50 100
+200
+#Clients
+
+0
+
+10 50 100
+200
+#Clients
+
+Figure 8: Computation time vs. no. of clients (with 2 servers) for different Byzantine-robust aggregation rules across different model sizes (and datasets). 62k
+(CIFAR-10 S - LeNet5), 273k (CIFAR-10 L - ResNet-18), 818k (Shakespeare - LSTM).
+Table 3: Computation and Communication Cost (in MB) for Different Methods
+
+# Clients
+
+# Params
+
+Prio
+ELSA
+PRoVeFL (2 Servers)
+Client
+Server
+Client
+Server
+Client
+Server
+50
+100k
+14.3 (59.1)
+23.3 (0.002)
+4.6 (51.6)
+2.7 (640)
+0.182 (9.8) 0.76 (5)
+100
+100k
+14.8 (59.1)
+48.9 (0.005)
+7.1 (51.6)
+3.8 (1280)
+0.182 (10)
+1.46 (5)
+200
+100k
+16.5 (59.1)
+99.5 (0.010)
+8.4 (51.6)
+6.1 (2560)
+0.182 (10)
+2.90 (5)
+50
+500k
+63.6 (262.2) 102.9 (0.002) 17.5 (258.0) 11.2 (3200)
+0.730 (20) 1.01 (10)
+100
+500k
+67.7 (262.2) 218.4 (0.005) 23.2 (258.0) 17.3 (6400)
+0.730 (20) 1.79 (10)
+200
+500k
+78.3 (262.2) 457.9 (0.010) 38.0 (258.0) 31.4 (12800) 0.730 (20) 3.52 (10)
+Comparison of runtime (sec) and data sent (MB in parentheses; per client and per server) for relaxed L∞ defense.
+
+Trim Attack
+
+Table 4: Computation time (in seconds) and communication (in GB) for different model sizes (and datasets).
+
+Backdoor Attack
+
+91
+
+91
+
+90
+
+90
+
+89
+
+89
+
+Accuracy (%)
+
+#Params
+
+88
+87
+
+Krum
+T-Mean
+FLTrust
+
+0(P) 0 10 20 40
+Adversaries
+
+PRoVeFL (4 Servers)
+Client
+Server
+0.188 (10) 0.71 (2.5)
+0.188 (10) 1.36 (2.5)
+0.188 (10) 2.68 (2.5)
+0.742 (20) 0.93 (10)
+0.742 (20) 1.69 (10)
+0.742 (20) 3.41 (10)
+
+62k
+273k
+818k
+
+RoFL
+Time Comm
+278
+0.8
+2229
+3.8
+4742
+11.4
+
+ELSA
+Time Comm
+1.9
+0.9
+7.3
+7.3
+18.1
+18.1
+
+PRoVeFL
+Time Comm
+0.655 0.001
+0.850 0.006
+1.059 0.016
+
+88
+87
+
+6.2.3. Comparative Performance
+Table 3 compares the computation time per client and per
+server (in seconds) and the communication cost (in MB) between different methods. We assume a relaxed L∞ defense for
+comparison, because ELSA does not support complex defenses,
+whereas Prio needs adjustments to run an L2 norm defense as
+well. Prio incurs the highest overhead, with per-client costs exceeding 78s and 262MB for larger models (500k parameters),
+and server communication scaling linearly with the number of
+clients. ELSA improves client-side computation but suffers
+
+0(P) 0 10 20 40
+Adversaries
+
+Figure 9: Accuracy under Trim and Backdoor Attacks for different aggregation
+rules (CIFAR-10 L - ResNet-18). P: Plaintext, Rest: Encrypted and simulated
+with 2 servers.
+
+13
+
+overhead In all three cases, the verification effort scales linearly
+with the model dimension and is independent of the number of
+clients, ensuring scalability to high-dimensional updates.
+
+from excessive server communication and computation, particularly at larger scales (e.g., 31.4s and 12.5GB at 200 clients).
+PRoVeFL significantly reduces overhead for both clients
+and servers. In all configurations, client computation remains
+less than 1s, and communication cost is bounded (10–20MB),
+making it suitable for deployment even on edge devices. Serverside costs scale modestly with the number of clients and remain well within practical limits, while communication costs
+are held constant by efficient encrypted aggregation. Notably,
+using 4 servers instead of 2 further balances the load without
+increasing overall communication. These results demonstrate
+that PRoVeFL achieves scalability and practical efficiency, outperforming existing approaches.
+Table 4 evaluates how computation time and communication scale with increasing model size across RoFL, ELSA, and
+PRoVeFL. RoFL exhibits extremely high computation costs (up
+to 4742s) and communication overheads, making it impractical for large models. ELSA significantly reduces computation
+time compared to RoFL, but still incurs high communication
+costs that scale linearly with model size. In contrast, PRoVeFL
+maintains low and stable computation times, even for the largest
+model and drastically reduces communication overhead, up to
+17 MB. This demonstrates that PRoVeFL is far more efficient
+and scalable than existing solutions, and also supports complex
+aggregation rules.
+
+6.2.5. Limitations
+PRoVeFL is compatible with a broad class of Byzantinerobust aggregation schemes, where relevant structural properties such as ordering, sign, or magnitude ratios are preserved
+under multiplicative masking and the operations can also be
+distributed among multiple servers to jointly calculate the final value. This holds for distance-based, similarity-based, and
+sorting-based operations. However, there do exist some aggregation schemes, such as Min-Max and Min-Sum [43], that
+apply non-linear transformations to client updates or rely on
+adaptive thresholds that are themselves functions of the unmasked data, and thus cannot be straightforwardly instantiated
+in PRoVeFL.
+7. Conclusion
+This work presented a practically efficient and provably secure federated learning framework PRoVeFL based on multiparty key homomorphic encryption utilised by multiple servers.
+It is designed to address the challenges of data confidentiality
+and data aggregation integrity in the presence of malicious participants and servers. By distributing encrypted computation
+across multiple servers and introducing collaborative randomization to obfuscate sensitive intermediate values, PRoVeFL
+achieves scalability without compromising privacy. The framework supports different Byzantine-robust aggregation mechanisms, such as Krum, Trimmed Mean, FLTrust and MESAS
+directly on encrypted inputs, demonstrating resilience against
+both inference and poisoning attacks. The ability to efficiently
+integrate verification checks, traditionally impractical in pure
+FHE settings, further underscores the deployability of our solution.
+
+6.2.4. Verification Cost Analysis
+Let N be the full update dimension and n = N/2 the number of coordinates held by each server. For every coordinate
+ℓ ∈ {1, . . . , n}, the honest peer checks the proof returned by the
+other server. Table 5 counts, per coordinate, the two dominant
+operations:
+• Exp: a modular exponentiation in the source group (G or
+GT );
+• Pair: a single evaluation of the bilinear pairing e : G ×
+G → GT .
+
+CRediT authorship contribution statement
+Table 5: Verification cost per coordinate (the honest peer performs the same
+test for all n = N/m coordinates).
+
+Method
+Krum
+Trimmed-Mean
+FLTrust
+
+# Exp / coordinate
+1 (e(g, g)d )
+1 (gd )
+2 (hui t , gd )
+
+Harsh Kasyap, Anil Kumar Pradhan, and Ugur Ilker Atmaca are responsible for the design of the scheme, the experiment, and the writing of the paper. Graham Cormode and
+Carsten Maple are responsible for the design of the scheme and
+editing of the paper.
+
+# Pair / coordinate
+1 (e(·, ·))
+0
+0
+
+Declaration of competing interest
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+
+Aggregate cost Multiplying the per-coordinate counts by n
+yields the total work per round:
+Krum:
+
+n Exp + n Pair,
+
+Trimmed-Mean:
+
+n Exp,
+
+FLTrust:
+
+2n Exp.
+
+Data availability
+Public data has been used.
+
+Because a single pairing is typically an order of magnitude
+slower than a modular exponentiation, Krum incurs the highest
+14
+
+Acknowledgment
+
+[10] H. Kasyap, S. Tripathy, Sine: Similarity is not enough
+for mitigating local model poisoning attacks in federated
+This work is supported, in part, by the UKRI Prosperity
+learning, Transactions on Dependable and Secure ComPartnership Scheme (FAIR) under the EPSRC Grant EP/V056883/1;
+puting 21 (5) (2024) 4481–4494.
+EP/R007195/1 (Academic Centre of Excellence in Cyber Secu[11] M. Rathee, C. Shen, S. Wagh, R. A. Popa, Elsa: Secure
+rity Research - University of Warwick); EP/N510129/1 (The
+aggregation for federated learning with malicious actors,
+Alan Turing Institute); the Bill and Melinda Gates Foundation
+in: Symposium on Security and Privacy (SP), IEEE, 2023,
+[INV-001309]. Under the grant conditions of the Foundation,
+pp. 1961–1979.
+a Creative Commons Attribution 4.0 Generic License has already been assigned to the Author Accepted Manuscript version
+[12] H. Hu, Z. Salcic, L. Sun, G. Dobbie, X. Zhang, Source
+that might arise from this submission. The author gratefully acinference attacks in federated learning, in: International
+knowledges the support provided by the Department of Science
+Conference on Data Mining (ICDM), IEEE, 2021, pp.
+and Technology (DST), Government of India, through the IN1102–1107.
+SPIRE Faculty Fellowship scheme.
+[13] R. Wang, X. Wang, H. Chen, J. Decouchant, S. Picek,
+N. Laoutaris, K. Liang, Mudguard: Taming malicious
+majorities in federated learning using privacy-preserving
+byzantine-robust clustering, ACM Conference on Measurement and Analysis of Computing Systems 8 (3)
+(2024) 1–41.
+
+References
+[1] H. B. McMahan, E. Moore, D. Ramage, B. A. y Arcas,
+Federated learning of deep networks using model averaging, CoRR abs/1602.05629 (2016). arXiv:1602.05629.
+URL http://arxiv.org/abs/1602.05629
+
+[14] J. Bell, A. Gascón, T. Lepoint, B. Li, S. Meiklejohn,
+M. Raykova, C. Yun, ACORN: input validation for secure aggregation, in: 32nd USENIX Security Symposium
+(USENIX Security 23), 2023, pp. 4805–4822.
+
+[2] B. McMahan, E. Moore, D. Ramage, S. Hampson, B. A.
+y Arcas, Communication-efficient learning of deep networks from decentralized data, in: Artificial Intelligence
+and Statistics, PMLR, 2017, pp. 1273–1282.
+[3] Z. Tian, Y. Ding, X. Yu, E. Gong, J. Liu, K. Ren, Towards
+collaborative anti-money laundering among financial institutions, in: Web Conference, 2025, pp. 4722–4733.
+
+[15] A. Roy Chowdhury, C. Guo, S. Jha, L. van der Maaten,
+Eiffel: Ensuring integrity for federated learning, in: ACM
+SIGSAC Conference on Computer and Communications
+Security, 2022, pp. 2535–2549.
+
+[4] V. Mothukuri, R. M. Parizi, S. Pouriyeh, Y. Huang, A. Dehghantanha, G. Srivastava, A survey on security and privacy of federated learning, Future Generation Computer
+Systems 115 (2021) 619–640.
+
+[16] J. Gao, B. Hou, X. Guo, Z. Liu, Y. Zhang, K. Chen, J. Li,
+Secure aggregation is insecure: Category inference attack
+on federated learning, IEEE Transactions on Dependable
+and Secure Computing 20 (1) (2021) 147–160.
+
+[5] M. Nasr, R. Shokri, A. Houmansadr, Comprehensive privacy analysis of deep learning: Passive and active whitebox inference attacks against centralized and federated
+learning, in: IEEE symposium on security and privacy
+(SP), IEEE, 2019, pp. 739–753.
+
+[17] G. Xu, H. Li, S. Liu, K. Yang, X. Lin, Verifynet: Secure
+and verifiable federated learning, IEEE Transactions on
+Information Forensics and Security 15 (2019) 911–926.
+[18] H. Gao, N. He, T. Gao, Sverifl: Successive verifiable federated learning with privacy-preserving, Information Sciences 622 (2023) 98–114.
+
+[6] D. Manna, H. Kasyap, S. Tripathy, Milsa: Model interpretation based label sniffing attack in federated learning, in:
+International conference on information systems security,
+Springer, 2022, pp. 139–154.
+
+[19] C. Gentry, A fully homomorphic encryption scheme,
+Stanford university, 2009.
+[20] J. H. Cheon, A. Kim, M. Kim, Y. Song, Homomorphic encryption for arithmetic of approximate numbers, in: Advances in cryptology–ASIACRYPT international conference on the theory and applications of cryptology and information security, Springer, 2017, pp. 409–437.
+
+[7] C. Fu, X. Zhang, S. Ji, J. Chen, J. Wu, S. Guo, J. Zhou,
+A. X. Liu, T. Wang, Label inference attacks against vertical federated learning, in: 31st USENIX security symposium, 2022, pp. 1397–1414.
+[8] M. Fang, X. Cao, J. Jia, N. Gong, Local model poisoning
+attacks to Byzantine-Robust federated learning, in: 29th
+USENIX security symposium, 2020, pp. 1605–1622.
+
+[21] W. Jin, Y. Yao, S. Han, J. Gu, C. Joe-Wong,
+S. Ravi, S. Avestimehr, C. He, Fedml-he: An efficient
+homomorphic-encryption-based privacy-preserving federated learning system, arXiv preprint arXiv:2303.10837
+(2023).
+
+[9] V. Tolpegin, S. Truex, M. E. Gursoy, L. Liu, Data poisoning attacks against federated learning systems, in: 25th
+European symposium on research in computer security,
+Springer, 2020, pp. 480–501.
+15
+
+[22] J. Ma, S.-A. Naas, S. Sigg, X. Lyu, Privacy-preserving
+federated learning based on multi-key homomorphic encryption, International Journal of Intelligent Systems
+37 (9) (2022) 5880–5901.
+
+[34] J. Tang, H. Xu, M. Wang, T. Tang, C. Peng, H. Liao, A
+flexible and scalable malicious secure aggregation protocol for federated learning, IEEE Transactions on Information Forensics and Security (2024).
+
+[23] W. Du, M. Li, L. Wu, Y. Han, T. Zhou, X. Yang, A efficient
+and robust privacy-preserving framework for cross-device
+federated learning, Complex & Intelligent Systems 9 (5)
+(2023) 4923–4937.
+
+[35] L. Burkhalter, H. Lycklama, A. Viand, N. Küchler,
+A. Hithnawi, Rofl: Attestable robustness for secure federated learning, arXiv preprint arXiv:2107.03311 21 (2021).
+[36] H. Corrigan-Gibbs, D. Boneh, Prio: Private, robust, and
+scalable computation of aggregate statistics, in: 14th
+USENIX symposium on networked systems design and
+implementation (NSDI 17), 2017, pp. 259–282.
+
+[24] T. Gehlhar, F. Marx, T. Schneider, A. Suresh, T. Wehrle,
+H. Yalame, Safefl: Mpc-friendly framework for private
+and robust federated learning, in: IEEE Security and Privacy Workshops (SPW), IEEE, 2023, pp. 69–76.
+
+[37] S. Addanki, K. Garbe, E. Jaffe, R. Ostrovsky, A. Polychroniadou, Prio+: Privacy preserving aggregate statistics
+via boolean shares, in: International Conference on Security and Cryptography for Networks, Springer, 2022, pp.
+516–539.
+
+[25] N. Franzese, A. Dziedzic, C. A. Choquette-Choo, M. R.
+Thomas, M. A. Kaleem, S. Rabanser, C. Fang, S. Jha,
+N. Papernot, X. Wang, Robust and actively secure serverless collaborative learning, Advances in Neural Information Processing Systems 36 (2023) 39504–39528.
+
+[38] B. Yin, H. Zhang, J. Lin, F. Kong, L. Yu, Pvfl: Verifiable
+federated learning and prediction with privacy-preserving,
+Computers & Security 139 (2024) 103700.
+
+[26] P. Blanchard, E. M. El Mhamdi, R. Guerraoui, J. Stainer,
+Machine learning with adversaries: Byzantine tolerant
+gradient descent, in: Neural Information Processing Systems, 2017, pp. 118–128.
+
+[39] Y. Huang, G. Yang, H. Zhou, H. Dai, D. Yuan, S. Yu,
+Vppfl: A verifiable privacy-preserving federated learning
+scheme against poisoning attacks, Computers & Security
+136 (2024) 103562.
+
+[27] D. Yin, Y. Chen, R. Kannan, P. Bartlett, Byzantine-robust
+distributed learning: Towards optimal statistical rates, in:
+International Conference on Machine Learning, PMLR,
+2018, pp. 5650–5659.
+[28] X. Cao, M. Fang, J. Liu, N. Gong, Fltrust: Byzantinerobust federated learning via trust bootstrapping, in:
+NDSS, 2021.
+
+[40] A. Shafahi, W. R. Huang, M. Najibi, O. Suciu, C. Studer,
+T. Dumitras, T. Goldstein, Poison frogs! targeted cleanlabel poisoning attacks on neural networks, in: Neural Information Processing Systems, NIPS’18, 2018, p.
+6106–6116.
+
+[29] T. Krauß, A. Dmitrienko, Mesas: Poisoning defense for
+federated learning resilient against adaptive attackers, in:
+ACM SIGSAC Conference on Computer and Communications Security, 2023, pp. 1526–1540.
+
+[41] E. Bagdasaryan, A. Veit, Y. Hua, D. Estrin, V. Shmatikov,
+How to backdoor federated learning, in: International Conference on Artificial Intelligence and Statistics,
+PMLR, 2020, pp. 2938–2948.
+
+[30] J. Tang, H. Xu, H. Liao, Y. Zhou, Seaflame:
+Communication-efficient secure aggregation for federated learning against malicious entities, IACR Transactions on Cryptographic Hardware and Embedded Systems
+2025 (2) (2025) 69–93.
+
+[42] G. Baruch, M. Baruch, Y. Goldberg, A little is enough:
+Circumventing defenses for distributed learning, Advances in Neural Information Processing Systems 32
+(2019).
+[43] V. Shejwalkar, A. Houmansadr, Manipulating the byzantine: Optimizing model poisoning attacks and defenses
+for federated learning, in: NDSS, 2021.
+
+[31] R. Xu, B. Li, C. Li, J. B. Joshi, S. Ma, J. Li, Tapfed:
+Threshold secure aggregation for privacy-preserving federated learning, IEEE Transactions on Dependable and
+Secure Computing 21 (5) (2024) 4309–4323.
+
+[44] K. Ganju, Q. Wang, W. Yang, C. A. Gunter, N. Borisov,
+Property inference attacks on fully connected neural networks using permutation invariant representations, in:
+ACM SIGSAC conference on computer and communications security, 2018, pp. 619–633.
+
+[32] J. Liu, X. Li, X. Liu, H. Zhang, Y. Miao, R. H. Deng,
+Defendfl: A privacy-preserving federated learning scheme
+against poisoning attacks, IEEE Transactions on Neural
+Networks and Learning Systems (2024).
+
+[45] M. Fredrikson, S. Jha, T. Ristenpart, Model inversion attacks that exploit confidence information and basic countermeasures, in: ACM SIGSAC conference on computer
+and communications security, 2015, pp. 1322–1333.
+
+[33] R. Ma, K. Hwang, M. Li, Y. Miao, Trusted model aggregation with zero-knowledge proofs in federated learning,
+IEEE Transactions on Parallel and Distributed Systems
+(2024).
+16
+
+[46] X. Guo, Z. Liu, J. Li, J. Gao, B. Hou, C. Dong, T. Baker, V
+eri fl: Communication-efficient and fast verifiable aggregation for federated learning, IEEE Transactions on Information Forensics and Security 16 (2020) 1736–1751.
+
+Each server privately computes the following operations on encrypted, randomly masked client updates: cosine similarity, Euclidean distance, count, min-max, and variance. After collaborative decryption, the servers obtain only obfuscated metric
+values, which preserve relative ordering. MESAS then applies
+its statistical tests to identify significant deviations, followed by
+clustering to separate benign and malicious client updates.
+
+[47] Z. Wang, Z. Chang, J. Hu, X. Pang, J. Du, Y. Chen,
+K. Ren, Breaking secure aggregation: Label leakage from
+aggregated gradients in federated learning, in: IEEE INFOCOM 2024-IEEE Conference on Computer Communications, IEEE, 2024, pp. 151–160.
+
+Input:
+• Each server k receives a set of n encrypted client updates
+
+{ci,k = Encpk r · ui,k : i = 1, 2, . . . , n}, where uik is kth subset
+of client update of client i.
+
+[48] S. Liu, J. Ren, R. Meng, X. Yan, Y. Miao, Z. Liu, J. Peng,
+Y. Zou, Z. Wang, H. Li, et al., Secure and robust federated learning under dual-server architecture in internet of
+things, IEEE Internet of Things Journal (2025).
+
+• Additionally
+
+ receives encrypted norm and mean {ei =
+Encpk ∥uri ∥ : i = 1, 2, . . . , n}, Encpk (r · µi ) . [Note - Both encrypted norm and mean can also be calculated privately at the
+server side.]
+
+[49] A. I. C. Divisors, Order-preserving encryption using approximate integer common divisors, in: Data Privacy
+Management, Cryptocurrencies and Blockchain Technology: ESORICS International Workshops, Springer, 2017,
+p. 257.
+
+• Server Update Vector: u0 , ∥u0 ∥
+Server-Side Encrypted Operations
+1. Coordinate-wise products [Cosine Similarity].
+client i
+u0 ⊙ ci,k
+
+
+Encpk (cosi ) =
+∥u0 ∥ · Encpk ∥uri ∥
+
+[50] P. Rieger, T. Krauß, M. Miettinen, A. Dmitrienko, A.R. Sadeghi, Crowdguard: Federated backdoor detection
+in federated learning, arXiv preprint arXiv:2210.07714
+(2022).
+
+For each
+
+2. Compute (Euclidean distance)
+Encpk (euci ) = (ci,k − u0,k )2 .
+3. Find (Pairwise distance - Min/Max/COUNT)
+
+[51] T. D. Nguyen, P. Rieger, H. Chen, H. Yalame, H. Möllering, H. Fereidooni, S. Marchal, M. Miettinen, A. Mirhoseini, S. Zeitouni, et al., FLAME: Taming backdoors in
+federated learning, in: 31st USENIX Security Symposium, 2022, pp. 1415–1432.
+
+Encpk (counti ) = (ci,k − u0,k ).
+4. Calculate (Variance)
+Encpk (vari ) = (ci,k − r · µi ).
+5. Collaborative decryption.
+counti , vari .
+
+[52] A. Krizhevsky, G. Hinton, et al., Learning multiple layers
+of features from tiny images (2009).
+
+Decrypt to obtain cosi , euci ,
+
+Verification of Correct Computation.
+6. Servers publish e(g0 , g0 )di j,kl as a proof for the correct computation, for all di ∈ {cosi , euci , counti , vari }.
+
+[53] Y. LeCun, B. Boser, J. S. Denker, D. Henderson, R. E.
+Howard, W. Hubbard, L. D. Jackel, Backpropagation applied to handwritten zip code recognition, Neural computation 1 (4) (1989) 541–551.
+
+7. Peer Servers: For every coordinate ℓ and pair (i, j) verify,
+?
+
+e(hikℓ (h jkℓ )−1 , hikℓ (h jkℓ )−1 ) = e(g0 , g0 )di j,kl .
+8. Abort on the first mismatch.
+
+[54] K. He, X. Zhang, S. Ren, J. Sun, Deep residual learning
+for image recognition, in: Computer vision and pattern
+recognition, 2016, pp. 770–778.
+
+Plaintext operations
+9. Euclidean and cosine distances: Now, one of the servers
+(assuming at least one is honest) compute the total Euclidean
+and cosine distance. The distances are scaled up by r. However, they preserve order, which is sufficient.
+
+[55] S. Caldas, S. M. K. Duddu, P. Wu, T. Li, J. Konečnỳ, H. B.
+McMahan, V. Smith, A. Talwalkar, Leaf: A benchmark
+for federated settings, arXiv preprint arXiv:1812.01097
+(2018).
+
+10. Min/Max/COUNT: From all the decrypted count vectors,
+Min and Max can be calculated. Further,
+ we can prepare a
+
+
+0, if ui,kl ≤ u0,kl
+binary sign vector sgn, such that sgnl = 
+.
+
+1, otherwise
+Sum of sgn gives COUNT that how many parameter values
+have increased from the respective parameter of the previous
+global model.
+
+[56] S. Hochreiter, J. Schmidhuber, Long short-term memory,
+Neural computation 9 (8) (1997) 1735–1780.
+Appendix A. PRoVeFL-enabled MESAS (Figure A.10).
+
+11. Selection: This step can be computed same as in plaintext,
+perform pruning based on clustering, and selecting the next
+global model update.
+
+MESAS is implemented under PRoVeFL by privately computing all statistical distances from perturbed client updates and
+performing the clustering and pruning in the plaintext domain.
+
+Figure A.10: Instantiation of MESAS in PRoVeFL
+
+17
+
+Trimmed-Mean. For any fixed non-zero coordinate si, j = ui,k j −
+u j,k j , the product r si, j is uniform in Z p because r is uniform in Z×p . When si, j = 0 the value is identically 0 in
+both hybrids, which occurs with probability 1/p and is
+therefore negligible. Thus every coordinate of di is identically distributed in the two hybrids.
+
+Appendix B. Input-Phase Confidentiality
+pre
+
+Theorem 1. The pre-processing view viewk held by any single
+PPT server is computationally indistinguishable from a view
+with uniformly random ciphertexts. Consequently, the server
+learns nothing about individual client updates beyond publicsize metadata.
+Proof. IND-CPA security (decisional Ring-LWE) makes (ci,1 , ci,2 )
+indistinguishable from encryptions of uniform vectors. Commitments hi,kℓ = gui,kℓ reveal no message information under DLP
+hardness. A simulator that replaces each ciphertext by an encryption of a uniform vector produces a view that is indistinguishable from the real execution, establishing the claim.
+Appendix C. Post-Decryption Privacy
+Theorem 2. For any probabilistic polynomial-time adversary
+controlling a single server, the distribution of {di } is computationally indistinguishable from uniform; the adversary therefore gains no non-negligible information about the underlying
+plaintext updates beyond the masked vectors di .
+$
+
+Appendix D. Aggregation integrity
+Theorem 3. Any probabilistic polynomial-time (PPT) adversary A that corrupts a single aggregation server, can convince
+the honest server to accept an aggregate vector di,′ jk , di, jk
+(where di, jk is the actual computed intermediate aggregation
+vector Krum, Trimmed-Mean, or FLTrust as applicable) only
+with negligible probability.
+
+Hybrid argument. We build a sequence of hybrids H0 , H1
+and show that A cannot distinguish them.
+H0 The real execution outputting the true masked statistics
+di computed as specified below.
+
+Proof. Assume a PPT adversary A controls server S1 and causes
+the honest server S2 to accept an incorrect vector d′ , d with
+non-negligible probability ε(λ). We build a reduction B breaking the discrete logarithm (DL) problem in G.
+
+H1 Identical to H0 except that the simulator samples a fresh
+$
+
+r′ ← Z×p independent of all protocol messages and replaces every di by di′ ← f (r′ , si ), where the masking
+function f is chosen per aggregation rule:
+
+t
+
+Simulation. In H1 the simulator need not know the plaintext updates: it draws r′ and outputs independent random vectors of the correct dimensionality. Therefore H1 can be generated without access to any client secret, and A’s distinguishing
+advantage between H0 and H1 is negligible.
+Conclusion. Since H1 is independent of the underlying
+plaintext updates, the adversary extracts no non-negligible information from {di }.
+
+Proof. The global mask r ← Z×p is from a uniform distribution
+and remains secret from every individual server. Fix an arbitrary probabilistic polynomial-time adversary A that corrupts
+post
+S1 and let view1 denote the adversary’s entire view, including
+n
+the set {di }i=1 obtained after collaborative decryption.
+
+ ′2
+
+r si
+
+
+
+
+
+ ′
+′
+f (r , si ) = 
+r si
+
+
+
+
+
+r′ u ⊙ u
+
+FLTrust. Each coordinate is di, j = r ut, j ui,k j . The known constant ut, j is non-zero with overwhelming probability, so
+r ut, j is again uniform over Z×p . Multiplying by ui,k j therefore yields a uniform coordinate unless ui,k j = 0, which
+happens with negligible probability.
+
+Hybrid embedding. Given a DL instance (g0 , g0x ), B selects a
+random coordinate ℓ⋆ , embeds g0x into the proof element that S1
+must output for that coordinate, and generates all other protocol
+values honestly. Specifically, the expected proof in each method
+is replaced as follows:
+
+Krum
+Trimmed-Mean
+i,k
+
+Rule
+Krum
+Trimmed-Mean
+FLTrust
+
+FLTrust.
+
+Indistinguishability of hybrids. For each rule we argue
+post
+post
+that view1 (H0 ) and view1 (H1 ) are computationally indistinguishable:
+
+Challenge
+e(g0 , g0 ) x
+g0x
+g0x
+
+Forgery implies DL solution. If A forges a vector d′ that differs from d in ℓ⋆ yet passes the verification test, the following
+relations hold:
+
+Krum. Coordinates take the form di j,k j = r
+0 except with negligible probability. Because r is uniform non-zero, r2 is uniform over the quadratic residues
+modulo p. The set of squares forms a subgroup of index 2, whence r2 ∆2 is uniform over the same subgroup
+in both hybrids; the distributions coincide.
+2
+
+Correct proof for coord. ℓ⋆
+e(g0 , g0 )dℓ⋆
+d⋆
+g0ℓ
+d⋆
+g0ℓ
+
+∆2i j,k j with ∆i j,k j ,
+
+x
+−1
+Krum: e(hi h−1
+j , hi h j ) = e(g0 , g0 ) ,
+x
+Trimmed: hi h−1
+j = g0 ,
+u ⋆
+
+FLTrust: hi t,ℓ = g0x ,
+
+18
+
+Krum
+
+2S
+
+2S
+
+4S
+
+4S
+
+10S
+
+10S
+0
+
+0 0.2 0.4 0.6 0.8 1
+Server-Enc
+Time (s) Server-Plain
+
+Trimmed Mean
+
+Clients
+
+Clients
+
+L2 norm
+
+5
+Time (s)
+
+Client
+
+10
+
+FLTrust
+
+2S
+
+2S
+
+4S
+
+4S
+
+10S
+
+10S
+0
+
+20
+40
+Time (s)
+
+60
+
+0
+
+2
+4
+Time (s)
+
+Figure D.11: Runtime breakdown across different Byzantine-robust aggregation methods and servers (50 clients, 100k params).
+
+Krum
+
+2S
+
+2S
+
+4S
+
+4S
+
+10S
+
+10S
+0
+
+Client
+
+0.5
+
+1
+
+0
+
+1.5
+
+Server-Enc
+Time (s) Server-Plain
+
+Trimmed Mean
+
+Clients
+
+Clients
+
+L2 norm
+
+50 100 150
+Time (s)
+
+FLTrust
+
+2S
+
+2S
+
+4S
+
+4S
+
+10S
+
+10S
+0
+
+50 100 150
+Time (s)
+
+0
+
+2
+
+4 6 8 10
+Time (s)
+
+Figure D.12: Runtime breakdown across different Byzantine-robust aggregation methods and server (100 clients, 100k params).
+
+ru ⋆
+
+where hi = gui,ℓ⋆ = g0 i,ℓ . Bilinearity (or plain exponent alge
+
+
+r2 ∆2 Krum
+
+
+
+
+bra) yields x = 
+r∆
+Trimmed-Mean with ∆ = ui,ℓ⋆ −u j,ℓ⋆ ,
+
+
+
+
+r ut,ℓ⋆ FLTrust,
+0 except with probability 1/p. Because ∆ and ut,ℓ⋆ are non-zero
+and publicly known, B inverts the multiplicative constant and
+outputs x, solving DL whenever the forgery occurs.
+
+quently, a corrupt server can cause acceptance of di′j,k , di j,k
+only with negligible probability.
+
+Appendix E. Runtime Breakdown
+Figures D.11 and D.12 present a runtime breakdown of server
+(Plaintext vs. Encrypted) and client in PRoVeFL-tailored schemes,
+with different numbers of server (2, 4 and 10) and client (50
+and 100 clients). Each bar is divided into three components:
+(i) Client computation, (ii) Encrypted server-side computation,
+and (iii) Plaintext (or Plaintext-Ciphertext) server-side computation.
+Client Computation is consistently lightweight. For all aggregation methods and client counts, the client-side computation remains at 0.18s with 2 servers. It is 0.25s for 10 servers,
+because the client needs to encrypt more packets. Overall, the
+client-side overhead does not scale significantly with the number of clients or the choice of aggregation. For 100 clients,
+Krum requires more than 100s on the server, indicating a drastic increase in encrypted computation due to its pairwise distance computations. For Trimmed-mean, encrypted computation time increases with the number of clients, rising from
+14s (50 clients) to 161s (100 clients), because the number of
+pairwise comparisons increases. However, Trimmed-mean improves by big margins after increasing the number of servers.
+FLTrust shows moderate runtime overheads under encryption
+and remains efficient even with 100 clients.
+
+Extraction via the decrypted value di . After the collaborative
+decryption step each intermediate statistic di j,kℓ is revealed to
+both servers in plaintext form. Hence the reduction B can read
+the forged entry di′j,k ⋆ directly. From the verification equation
+ℓ
+that A caused to hold we obtain, for the special coordinate ℓ⋆ ,
+
+
+
+di′j,k ⋆
+
+
+ℓ
+
+
+
+
+
+di′j,k ⋆
+ℓ
+x=
+
+
+′
+
+d
+
+⋆
+
+i,ℓ
+
+
+
+u ⋆
+t,ℓ
+
+Krum, since di′j,k ⋆ = r2 ∆2 ,
+ℓ
+
+Trimmed-Mean, where di′j,k ⋆ = r∆,
+ℓ
+
+′
+FLTrust, with di,ℓ
+⋆ = r ut,ℓ⋆ .
+
+Here ∆ = ui,ℓ⋆ − u j,ℓ⋆ , 0 except with probability 1/p. Because r is uniform in Z×p and never revealed, di′j,k ⋆ is a non-zero
+ℓ
+multiple of x chosen uniformly at random, and the multiplier
+(r2 ∆2 , r∆, or r ut,ℓ⋆ ) is invertible with overwhelming probability. B therefore recovers x by a single modular division, solving
+the discrete-log instance whenever the forgery occurs.
+Success probability. The reduction fails only when the chosen coordinate is ∆ = 0 (or ut,ℓ⋆ = 0 for FLTrust), an event of
+probability at most 1/p. Thus B solves the DL with probability
+at least ε(λ)/N − negl(λ), contradicting DL hardness. Conse19
+
+

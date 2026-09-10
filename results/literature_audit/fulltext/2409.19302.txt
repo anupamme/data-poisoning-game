@@ -1,0 +1,1585 @@
+Leveraging MTD to Mitigate Poisoning Attacks in
+Decentralized FL with Non-IID Data
+Chao Feng1 , Alberto Huertas Celdrán1 , Zien Zeng1 , Zi Ye1 , Jan von der Assen1 ,
+Gérôme Bovet2 , Burkhard Stiller1
+1 Communication Systems Group, Department of Informatics, University of Zurich, 8050 Zürich, Switzerland
+
+[cfeng, huertas, vonderassen, stiller]@ifi.uzh.ch, [zien.zeng, zi.ye]@uzh.ch
+
+arXiv:2409.19302v3 [cs.CR] 12 Nov 2024
+
+2 Cyber-Defence Campus, armasuisse Science & Technology, 3602 Thun, Switzerland gerome.bovet@armasuisse.ch
+
+Abstract—Decentralized Federated Learning (DFL), a
+paradigm for managing big data in a privacy-preserving
+and distributed manner, is vulnerable to poisoning attacks
+where malicious clients tamper with data or models. Current
+defense methods often assume Independently and Identically
+Distributed (IID) data across participants, which is unrealistic
+in real-world applications. In more realistic non-IID contexts,
+existing defensive strategies face challenges when distinguishing
+between models that have been compromised and those
+that have been trained on heterogeneous data distributions
+(non-IID), leading to diminished efficacy. In response, this
+paper proposes a framework that employs the Moving Target
+Defense (MTD) approach to bolster the robustness of DFL
+models. By continuously modifying the attack surface of the
+DFL system, the framework aims to mitigate poisoning attacks
+effectively. The proposed solution includes both proactive and
+reactive modes, utilizing a reputation system that combines
+metrics of model similarity and loss, alongside various defensive
+techniques. Comprehensive experimental evaluations indicate
+that the MTD-based mechanism significantly mitigates a range
+of poisoning attack types across multiple datasets with different
+federation topologies.
+Index Terms—Moving Target Defense, Decentralized Federated
+Learning, Poisoning Attack, Model Robustness.
+
+I. I NTRODUCTION
+The rapid expansion of the Internet-of-Things (IoT) has
+generated a staggering 402.74 million Terabytes of data every
+day [1]. Federated Learning (FL), characterized by its distributed and privacy-preserving attributes, has emerged as a
+powerful paradigm for addressing the challenges associated
+with big data [2]. Nevertheless, the vanilla FL paradigm
+relies on a central server for global model aggregation, which
+introduces a processing bottleneck and the risk of singlepoint failures within the system. In response, the Decentralized
+FL (DFL) paradigm has garnered increasing attention, as it
+eliminates the client-server boundary, thereby significantly
+enhancing the system’s stability and robustness [3].
+The decentralized nature of DFL renders it susceptible to
+various forms of adversarial attacks, especially poisoning attacks [4]. Without a central server that regulates, authenticates,
+and authorizes the federation, malicious participants can exploit this structure by manipulating local data or models. This
+manipulation enables them to disseminate malicious models
+across the federation, potentially leading to the introduction
+of targeted malice or a deterioration in the integrity and
+robustness of the DFL model.
+
+Most of the conventional defenses designed to mitigate
+poisoning attacks in FL, such as Krum [5], depend on the
+similarity or distance metrics between models. These approaches implicitly presume that benign models exhibit a high
+degree of similarity, predicated on the assumption that their
+training datasets are independent and identically distributed
+(IID). However, this assumption is often unrealistic, as realworld scenarios frequently present significant variations in
+data distribution across nodes. The challenge posed by nonIID data results in increased distances between models and
+diminished similarity, thereby undermining the effectiveness
+of conventional defense mechanisms in non-IID contexts [6].
+Movement Target Defense (MTD) is an emerging cybersecurity paradigm for mitigating various attacks [7]. By
+dynamically altering the attack surface, either actively or
+passively, MTD increases the complexity and cost of successfully executing a cyberattack [8]. A limited number of
+studies have endeavored to employ MTD to mitigate security
+concerns within DFL [9], [10]. However, their performance is
+diminished in non-IID environments. Thus, there is a need to
+apply MTD to enhance the security and robustness of DFL
+models, particularly in defending against poisoning attacks.
+This work proposes an MTD-based approach to dynamically
+modify the attack surface of DFL systems and improve their
+resilience and security. Therefore, the main contributions of
+this paper are: (1) Designing an MTD-based approach to
+mitigate poisoning attacks in DFL. This approach utilizes a
+dual-reputation score system based on model similarity and
+loss, adopts proactive and reactive modes, and incorporates
+dynamic topology and aggregation strategies. (2) Employing
+the DBSCAN clustering algorithm to adjust the triggering
+threshold for MTD dynamically. (3) Implementing a prototype
+of the proposed MTD method on a real DFL platform [11]. (4)
+Conducting extensive experiments to compare the proposed
+algorithm with state-of-the-art methods, including scenarios
+with fully connected, ring, and star topologies, as well as
+untargeted poisoning and backdoor attacks on MNIST, FashionMNIST, and CIFAR10 datasets. The results demonstrate
+that the proposed MTD-based algorithm not only effectively
+mitigates poisoning attacks, outperforming existing methods,
+but also improves model performance on non-IID data.
+The remainder of this paper is organized as follows: Section II provides a summary and review of research utilizing
+
+TABLE I: MTD Applications in AI Security
+Reference
+[12] 2019
+[13] 2021
+[14] 2021
+[15] 2019
+[16] 2021
+[10] 2023
+This work
+
+Scenario
+ML
+ML
+ML
+ML
+CFL
+DFL
+DFL
+
+Method
+Diversity
+Diversity
+Shuffling
+Diversity
+Shuffling
+Shuffling
+Shuffling
+
+Target
+Model Ensemble
+Model Pool
+Model Selection
+Model Ensemble
+Client Selection
+Topology
+Topology +
+Aggregation
+
+Timing
+Proactive
+Reactive
+Proactive
+Proactive
+Proactive
+Reactive
+Proactive &
+Reactive
+
+Threat
+Adversarial Attack
+Adversarial Attack
+Backdoor
+Adversarial Attack
+Poisoning Attack
+Poisoning Attack
+Poisoning Attack
+
+MTD to address AI security challenges. Section III outlines
+the problems this paper aims to solve. Section IV details the
+design of our proposed MTD-based approach. Subsequently,
+Section V evaluates and compares the effectiveness of our
+method with state-of-the-art approaches in mitigating poisoning attacks. Section VI discusses the experimental results,
+and Section VII concludes the paper by summarizing key
+contributions and highlighting future research opportunities.
+II. BACKGROUND AND R ELATED W ORK
+Robust aggregation functions are the most commonly
+adopted defense approaches in FL against poisoning attacks [4]. Krum [5] identifies the update that is nearest to
+the average of the remaining updates, deliberately excluding
+outliers from consideration. Median [17] employs the median
+value of the updates, which exhibits reduced sensitivity to outlier effects. TrimmedMean [17] calculates the updates’ mean
+after excluding a predetermined proportion of extreme values.
+Nonetheless, these defenses predominantly utilize static strategies typically formulated for the conventional FL paradigm
+rather than for DFL. These static defenses are ineffective in addressing poisoning attacks targeting DFL systems, especially
+in non-IID environments [4].
+TABLE I provides an overview of the existing literature
+on applying MTD strategies in the context of Artificial Intelligence (AI) Security to address diverse cyber threats. In
+the traditional AI field, MTD has been employed to mitigate
+adversarial samples and poisoning attacks. [12] proposes an
+MTD approach to enhance Deep Neural Network (DNN)
+robustness by dynamically changing model parameters during inference. This makes it harder for attackers to craft
+compelling adversarial examples, improving resilience against
+white and black-box attacks. Morphence [13] is an MTD strategy generating diverse student models from a base model with
+random weight perturbations. Randomly selecting a student
+model for each inference reduces the adversarial attack success
+rate while maintaining accuracy. MT-MTD [14] presents an
+MTD framework protecting DNNs against backdoor attacks in
+edge computing. It divides training data, has an attacker train
+each dimension, and the defender randomly selects dimensions
+for consensus, increasing attack cost and maintaining accuracy.
+MTDeep [15] enhances neural network robustness using MTD
+by dynamically changing model architecture, making it harder
+for attackers to craft adversarial attacks.
+However, there is limited research on utilizing MTD
+methodology to address the security challenges of FL systems.
+[16] enhances FL security with MTD by introducing an
+
+augmented dual-shuffle mechanism. This dynamically changes
+the attack surface by shuffling client selection and model aggregation, improving system security against various poisoning
+attacks. Voyager [10] employs a reactive MTD-based aggregation protocol to bolster the resilience of DFL against poisoning
+attacks. This is achieved by dynamically manipulating the
+connectivity of the network topology. However, its efficacy
+remains to be validated in non-IID scenarios.
+In summary, MTD has been empirically demonstrated to
+address a wide range of security vulnerabilities, including
+poisoning attacks within the realm of AI security. Nonetheless,
+there remains a significant gap in the research regarding the
+application of MTD to counteract poisoning attacks in FL,
+particularly in DFL. This gap underscores the urgency of the
+topic and the need for further research. Therefore, this paper is
+motivated by the need to explore methodologies for mitigating
+various forms of poisoning attacks in non-IID environments
+through a dynamic approach.
+III. S CENARIO AND A DVERSARIAL S ETUP
+This section analyzes the challenges of mitigating poisoning
+attacks, particularly highlighting the distinct behaviors these
+attacks exhibit in IID and non-IID data environments. Additionally, it examines the adversarial setup by considering
+the attacker’s objectives, knowledge, and capabilities. This
+analysis provides a foundation for understanding the specific
+problem and scenario addressed in this paper.
+A. Poisoning Attacks in non-IID Environments
+Traditional aggregation functions utilized in FL systems,
+such as FedAvg and Krum, are based on the assumption of
+model homogeneity. This homogeneity is derived from two
+factors. First, the architectural configuration of the models
+must be uniform, meaning that the dimensions of the parameter tensors are identical. This uniformity enables the computation of statistical measures such as the mean or median of the
+model parameters or gradients. Second, it is assumed that the
+models are trained on homogeneous data samples, specifically
+that the local datasets at each client are IID. As a result,
+the local models across clients exhibit a significant similarity,
+facilitating the exclusion of potentially malicious models based
+on model similarity or distance metrics. However, this second
+assumption becomes invalid in scenarios characterized by nonIID data distributions. The lack of IID conditions leads to
+diminished model similarities, complicating identifying and
+excluding malicious models based on similarity assessments.
+To examine the impact of non-IID data on the similarity
+of local models within the DFL, this work trained three local
+models and calculated their pairwise similarities utilizing the
+MNIST [18] dataset under both IID and non-IID conditions.
+The similarity measurements were derived using the cosine
+similarity metric, as delineated in Equation 1.
+Cosine Similarity =
+
+A·B
+∥A∥∥B∥
+
+where A and B are the model parameter vectors.
+
+(1)
+
+Local Training
+
+0.75
+
+0.75
+1.00
+
+0.51
+0.49
+
+B1
+
+1.00
+
+B2
+
+B2
+
+B1
+
+1.0
+
+1.00
+0.59
+
+0.59
+1.00
+
+0.54
+0.48
+
+0.8
+
+Exchange model
+parameterswith
+neighbors
+
+0.6
+
+0.51
+
+0.49
+
+1.00
+
+B1
+
+B2
+
+M3
+
+(a) IID Data
+
+M3
+
+M3
+
+0.4
+
+0.54
+
+0.48
+
+1.00
+
+0.2
+
+B1
+
+B2
+
+M3
+
+0.0
+
+(b) non-IID Data
+
+Calculate Reputation
+Score
+
+REACTIVE
+
+Proactive or
+Reactive?
+
+PROACTIVE
+
+[Malicious Model (Mi), Benign Model (Bj)]
+
+Fig. 1: Pairwise Model Similarly in MNIST Dataset with
+Different Data Distribution
+As illustrated in Fig. 1, in both experimental configurations,
+nodes 1 and 2 were trained on normal data, whereas node 3
+was malicious, having undergone a Label Flipping attack on
+its local dataset. In Fig. 1 (a), the similarity score between
+the benign nodes (B1 and B2) was determined to be 0.75,
+whereas the similarity between the benign and malicious nodes
+was approximately 0.5, indicating a significant disparity that
+suggests the potential effectiveness of similarity- or distancebased algorithms. Conversely, when employing a non-IID data
+distribution, as depicted in Fig. 1 (b), the similarity between
+the benign nodes decreased to 0.59, while the similarity
+between benign and malicious nodes increased to 0.54. This
+shift reduces the algorithm’s ability to differentiate malicious
+nodes based on similarity.
+B. Adversarial Setup
+This section examines poisoning attacks on DFL through the
+lens of the attacker’s objectives, knowledge, and capabilities.
+Adversary Objective. For poisoning attacks on DFL systems, the primary objective of the adversary is to undermine
+the robustness of the DFL model, thereby diminishing the
+overall efficacy of the aggregated model or introducing a
+specific backdoor. The potential impact of these actions is significant. Specifically, the attacker seeks to mislead the training
+process of the aggregated model by manipulating either the
+data or the model during the training phase. This manipulation
+ultimately steers the aggregated model toward a predetermined
+outcome. In the context of untargeted attacks, the attacker
+aims for the aggregated model to fail in generating reliable
+predictions. Conversely, in targeted attacks, the intention is to
+embed a specific backdoor within the aggregated model.
+Adversary Knowledge. The attackers’ knowledge is confined to their local environment, and they lack knowledge
+beyond this scope. They can leverage local training data and
+models, and they may be aware of the models shared by
+neighboring nodes. However, they do not have access to the
+local data or reputation scores associated with benign nodes.
+Adversary Capabilities. Since the attackers have local
+knowledge of the training data and models, they can tamper
+with either the data (data poisoning) or the models (model
+
+Detected
+Suspicious
+Nodes?
+
+MTD
+MEDULE
+
+NO
+
+Apply Topology MTD:
+YES 1. Disconnect with suspicious nodes (reactive)
+or lower reputation nodes (proactive)
+2. Connect with benign nodes (reactive) or
+nodeswith higher reputation score (proactive)
+Apply Aggregation Algorithm MTD:
+1. Randomly select new aggregation function
+2. Update aggregator
+3. Exclude models from suspicious nodes
+Aggregation
+
+Continue Training
+
+Fig. 2: Overview of the MTD-based Approach
+
+poisoning), depending on the attack strategy employed by the
+attackers. However, their influence is constrained to the local
+environment, which means they can only indirectly impact the
+models of benign nodes by disseminating malicious model
+updates rather than directly altering the models of these benign
+nodes. An adversary can manipulate several malicious nodes,
+measured by the Poisoned Node ratio (PNR). This allows the
+attacker to execute attacks from multiple nodes simultaneously,
+thereby enhancing the likelihood that the benign models will
+be compromised.
+IV. MTD- BASED A PPROACH
+This section describes the MTD-based approach used to
+defend against poisoning attacks in DFL, whose overall workflow is shown in Fig.2. Since DFL has no central controller
+to manage the security of the entire federation, all decisions
+are made locally at the nodes.
+Overall, each round of model training in DFL consists of
+five steps:
+• Local Training: Each node trains a local model on its
+respective local dataset.
+• Exchange Model Parameters: Each node sends its local
+model parameters to neighboring nodes and receives
+model parameters from them.
+• Calculate Reputation Score: Each node evaluates the
+reputation score of the received models based on model
+similarity and loss on its local validation dataset. This
+evaluation helps in detecting suspicious nodes.
+
+Apply MTD Strategies: Proactively or Reactively apply
+dynamic topology and aggregation MTD strategies to
+mitigate poisoning attacks.
+• Model aggregation: Nodes aggregate models received
+from neighbors and their local model to update and
+improve their own model.
+Each iteration of the training round is conducted in a cyclical
+manner until the model reaches convergence. This process
+ensures that the defense system can dynamically adapt to
+potential threats, maintaining the integrity and performance
+of the DFL models.
+•
+
+A. Reputation System
+The reputation score serves a critical function, acting both
+as a trigger for the MTD module and as a foundational element
+for dynamic strategies. As shown in Fig.1, a reputation system
+based solely on model similarity is insufficient, especially in
+non-IID environments. Therefore, this study proposes a dual
+reputation scoring system designed to leverage the strengths
+of DFL nodes, which can effectively utilize both local models
+and local datasets. This reputation system employs model
+similarity and validation set loss metrics to compute the
+reputation score for models shared from neighboring nodes.
+This reputation score is utilized locally to assess neighboring
+nodes’ trustworthiness and determine whether the current node
+is under attack.
+Model Similarity. Cosine similarity is a commonly employed metric for quantifying the similarity between local and
+received neighbor models [10]. Cosine similarity quantifies
+the cosine of the angle between two non-zero vectors situated
+within an inner product space. As defined in Equation 1, the
+cosine similarity values are constrained within the range of
+[-1, +1].
+Neighbor Model Loss. In addition to model similarity, the
+loss of the received model on the local validation dataset is
+also evaluated. This loss measurement helps determine models
+that do not perform well on the local data, further aiding in
+identifying malicious nodes.
+The model similarity and loss of neighboring models are
+integrated into a two-dimensional vector, forming the reputation system’s metrics. The reputation score serves as the basis
+for judging the trustworthiness of neighboring models.
+B. MTD Module
+An MTD module can be characterized by a triplet <
+C, M, T >, where C signifies the configuration space within
+which the MTD module is capable of moving, M indicates
+the strategy employed for the action, and T represents the
+timing function that determines the intervals at which actions
+are executed [19]. In essence, the design of an MTD module
+necessitates addressing three fundamental questions: (1) What
+to move? (2) How to move? and (3) When to move [20]?
+What to Move? The threat model analysis delineated
+in Section III-B reveals that the attackers’ knowledge and
+capabilities are restricted to their local area. Thus, the attack
+surface for benign nodes mainly comes from the model shared
+
+Algorithm 1 Dynamic Topology Strategy
+Require: L: neighbor nodes, C: all nodes in the network, κn :
+neighbor amount threshold, nei loss: neighbor model loss
+on local validation dataset, nei similarity: similarity between neighbor model and local model, κl : loss threshold,
+κs : similarity threshold
+1: for each ci ∈ C do
+2:
+if ci ∈ L then
+3:
+if nei loss[ci ] > κl or nei similarity[ci ] < κs
+then
+4:
+L ← L − ci
+5:
+end if
+6:
+else
+7:
+if nei loss[ci ] ≤ κl and nei similarity[ci ] ≥ κs
+then
+8:
+L ← L + ci
+9:
+end if
+10:
+end if
+11: end for
+12: if mode is proactive and current neighbor ¡ κn then
+13:
+sorted nodes ← sort C by nei similarity in descending order
+14:
+for each ci ∈ sorted nodes do
+15:
+if ci ∈
+/ L then
+16:
+L ← L + ci
+17:
+if current neighbor ≥ κn then
+18:
+break
+19:
+end if
+20:
+end if
+21:
+end for
+22: end if
+
+by the malicious nodes and the aggregation functions. This
+paper posits that the configurations of neighboring connections
+in benign nodes and aggregation functions can be dynamically
+moved to mitigate the risks posed by poisoning attacks. By
+modifying the selection of neighboring nodes, benign nodes
+can effectively diminish the influence exerted by malicious
+nodes, thereby altering the network topology of the federation.
+Additionally, by varying the aggregation function, the complexity of executing a successful attack targeting a specific
+aggregation method can be significantly increased, thereby
+enhancing the system’s resilience against such threats.
+How to Move? ”How to move” refers to the principles
+and strategies used to alter system configuration elements
+to increase unpredictability and confuse attackers. This work
+develops two MTD strategies: the dynamic topology strategy
+and the dynamic aggregation algorithm strategy.
+1) Dynamic Topology Strategy: The topology strategy dynamically alters communication links between nodes, aiming
+to disrupt predictable patterns that attackers could exploit
+and prevent adversaries from persistently targeting specific
+nodes or communication paths. The topology MTD strategy
+is outlined in Algorithm 1.
+This algorithm starts by calculating how similar neighboring
+
+Algorithm 2 Dynamic Aggregation Algorithm Strategy
+
+Algorithm 3 Dynamic Reputation Threshold
+
+Require: A: aggregation algorithm pool, M : aggregated models and weights, Nm : malicious nodes
+Ensure: Updated Aggregator
+1: A ← [”Krum”, ”Median”, ”TrimmedMean”]
+▷ Set of
+aggregation algorithms
+▷ Select new
+2: A target ← random choice(A)
+aggregation algorithm
+3: A current ← A target
+▷ Change the aggregator
+4: A current.set nodes to aggregate(self.trainSet)
+5: A current.setRound(self.round)
+6: for s ∈ M .keys() do
+7:
+if s ∈
+/ Nm then
+8:
+(ms , ws ) ← M [s]
+▷ Get model and weights
+▷ Add model
+9:
+A current.addModel(s, ms , ws )
+10:
+end if
+11: end for
+
+Require: Mi′ : neighbor models, mi : local model, sensitive:
+sensitivity parameter, Di : local validation dataset
+1: Initialize trigger ← False, similarity threshold ← 0,
+loss threshold ← 10
+2: nei similarity ← [ ]
+3: nei loss ← [ ]
+4: for each mj ∈ Mi′ do
+5:
+sij ← EuclideanDistance(mi , mj )
+6:
+Append sij to nei similarity
+7:
+Lossij ← reputation loss(mj , Di )
+8:
+Append Lossij to nei loss
+9: end for
+10: Apply DBSCAN on nei similarity with eps = sensitive
+to get clusters
+11: if number of unique clusters > 1 then
+12:
+trigger ← True
+13:
+Calculate similarity threshold as the mean of the
+highest lower bound and the lowest upper bound of the
+clusters
+14: end if
+15: Apply DBSCAN on nei loss with eps = sensitive to get
+clusters
+16: if number of unique clusters > 1 then
+17:
+trigger ← True
+18:
+Calculate loss threshold as the mean of the highest
+lower bound and the lowest upper bound of the clusters
+19: end if
+20: if only one unique cluster in both similarity scores and
+loss scores then
+21:
+loss threshold ← loss score of mi
+22: end if
+23: return similarity threshold, loss threshold, trigger
+
+models are to the local model and evaluating the loss on
+the local validation dataset. These similarity and loss scores
+are then used in a DBSCAN clustering algorithm to group
+models together. This helps to identify potential malicious
+nodes within the network.
+The algorithm employs proactive and reactive approaches
+to manage the network topology. In both modes, if multiple
+clusters are detected (indicating potential malicious nodes),
+reputation thresholds are dynamically set based on cluster
+boundaries. Nodes then compare their neighbors’ reputation
+scores to these thresholds, disconnecting from those that
+fall outside the acceptable range and seeking connections
+with those that meet the criteria. If only one cluster exists
+(no malicious nodes detected), the proactive mode uses the
+local model’s loss as a threshold, while the reactive mode
+remains inactive. Both modes aim to minimize exposure to
+potentially compromised nodes and maintain a secure network
+environment.
+2) Dynamic Aggregation Algorithm Strategy: The dynamic
+aggregation algorithm strategy enhances the robustness of the
+DFL system by periodically switching between different aggregation algorithms. Each algorithm has unique strengths and
+weaknesses against different attacks. By continuously shuffling
+the strategy, the system remains resilient and reduces the
+success rate of potential attacks. The algorithm pool includes
+FedAvg, Krum, Median, and TrimmedMean. The dynamic
+aggregation algorithm strategy is outlined in Algorithm 2.
+The MTD strategy operates in two modes. In the proactive
+mode, benign nodes randomly select an algorithm from the
+pool in each round. In the reactive mode, if a non-malicious
+node detects a malicious one, it randomly selects an algorithm
+and excludes the malicious node from the aggregation process.
+This dynamic approach helps maintain the system’s security
+and integrity by adapting to potential threats.
+When to Move? In the MTD module, ”when to move”
+pertains to selecting the optimal moment to execute the
+strategies, transitioning from the existing state to an alterna-
+
+tive configuration. This work proposes two modes of MTD:
+proactive and reactive. In the proactive mode, the benign
+node modifies its connected neighbors and the aggregation
+algorithm in each round. Conversely, in the reactive mode,
+the benign node requires a triggering event before initiating
+an appropriate response.
+In conventional reactive MTD systems, the trigger of a
+strategy is primarily contingent upon a pre-established threshold [10]. However, this pre-established threshold necessitates a
+prior knowledge, which is often difficult to achieve in practice.
+Therefore, this paper proposes a dynamic threshold determination algorithm to automate acquiring the threshold for
+triggering MTD strategies. As shown in Algorithm 3, this work
+utilizes the Density-Based Spatial Clustering of Applications
+with Noise (DBSCAN) [21] algorithm to dynamically find
+the model similarity threshold, loss threshold, and the MTD
+trigger.
+DBSCAN, an unsupervised ML algorithm, clusters data
+based on its density. It groups densely packed points and
+identifies outliers in sparse regions, making it valuable for
+
+TABLE II: Experiments Configuration
+CONFIGURATION
+
+VALUE
+
+Dataset
+Dirichlet α
+Attack
+PNR
+Topology
+Baseline Algorithm
+
+MNIST, FashionMNIST, CIFAR10
+0.5
+Label Flipping, Model Poisoning, Backdoor
+10%, 30%, 50%, 70%
+Fully-Connected, Ring, Star
+FedAvg, Krum, Median, TrimmedMean
+Reactive Topology MTD Only,
+Reactive Aggregation MTD Only,
+Reactive Topology & Aggregation MTD,
+Proactive Topology & Aggregation MTD
+
+MTD Strategy
+
+analyzing complex or unknown data distributions. In this
+work, DBSCAN clusters the reputation scores of neighboring
+nodes. Despite being trained on non-IID data, benign models
+typically cluster together due to their inherent consistency.
+Malicious models, however, deviate significantly, creating distinct clusters. Multiple clusters in model similarity or loss
+indicate the presence of malicious nodes. By dynamically
+adjusting reputation thresholds based on these clusters, the
+system improves its ability to detect and mitigate attacks.
+V. D EPLOYMENT AND E XPERIMENTS
+Fedstellar [11] was selected as the platform for deploying
+and evaluating the MTD-based approach safeguarding DFL
+models against poisoning attacks. This platform supports the
+training of FL models in decentralized and centralized configurations. It facilitates the deployment of the desired scenarios to
+designated clients and manages the network dynamics among
+participants. Users can execute DFL scenarios on specific
+devices or within a virtualized environment utilizing Docker
+containers.
+A. Deployment Configuration
+This work presents the implementation of the MTD-based
+module outlined in Section IV, utilizing the Python programming language. The experimental configurations are detailed
+in TABLE II. This experiment aims to assess the performance
+of the proposed MTD module by conducting a comparative
+analysis with various baseline models across multiple datasets
+and data distributions. Additionally, different MTD modes and
+strategies are evaluated to examine their respective strengths
+and weaknesses.
+Datasets and Models. Three widely utilized benchmark
+datasets [4], along with their corresponding models, have been
+selected to assess the performance of the proposed MTD-based
+module:
+• MNIST [18] is a widely-used handwritten digits (09) dataset for image recognition, consisting of 60,000
+training images and 10,000 testing images, each in grayscale and sized 28x28 pixels. A Multilayer Perceptron
+(MLP) model is used, consisting of two fully connected
+hidden layers with 256x128. The MLP is trained for 3
+epochs per federated round, optimized using Adam with
+a learning rate of 1e−3, and cross-entropy loss is applied.
+
+FashionMNIST [22] is a dataset created as a more
+challenging alternative to MNIST for benchmarks. It
+contains 60,000 training and 10,000 testing 28x28 grayscale images across 10 fashion categories (e.g., trousers
+and coats). A small CNN with two convolutional layers
+(32 and 64 filters) is employed, followed by two fully
+connected layers. The model is trained on FashionMNIST
+for 3 epochs per round using Adam optimizer with a
+learning rate of 1e−3.
+• CIFAR10 [23] is a benchmark dataset for ML, consisting
+of 50,000 training and 10,000 testing images (32x32
+pixels) across 10 classes (e.g., airplane, automobile, bird).
+The colorful images and diverse classes make it more
+challenging than MNIST and FashionMNIST. The SimpleMobileNet [24] model is utilized. It starts with a convolutional layer (32 filters, 3x3 kernel), followed by max
+pooling. Then, five depthwise separable convolutional
+layers are used, followed by adaptive average pooling and
+a dense layer. The model is trained using Adam optimizer
+(learning rate 1e−3) for 5 epochs per round.
+•
+
+Experiments have been conducted in non-IID settings. The
+datasets were distributed according to the Dirichlet distribution
+with α parameters set to 0.5.
+Attack Setups. Three different poisoning attacks have been
+designed and implemented [4], respectively:
+Untargeted Label Flipping. In this attack, malicious
+participants alter all of the training data samples’ labels
+to incorrect values.
+• Model Poisoning. In this attack, malicious participants
+inject 50% of the Gaussian noise into their local model
+updates and share these corrupted model parameters with
+their neighbors.
+• Backdoor. The trigger developed in this experiment involved incorporating a 10x10 watermark in the upper left
+corner of the sample images corresponding with the fifth
+class across each dataset. During the testing phase, any
+images displaying a watermark in the upper left corner
+will be classified as belonging to the fifth class.
+•
+
+This experiment further examined the influence of varying
+threat levels on the performance of the baseline algorithm
+and the MTD module by manipulating the proportions of
+compromised nodes, denoted as the Poisoned Node Ratio
+(PNR). Specifically, PNR values of 10%, 30%, 50%, and
+70% were employed to characterize environments with low,
+medium, and high levels of compromise.
+Federation Setups. The experiments were performed using a federation with 10 nodes with 10 rounds. The initial
+network topology varied among fully connected ring and star
+structures. The network topology could change dynamically
+during training if the topology MTD was enabled.
+During the DFL learning process, each node acted as a
+trainer and an aggregator. Different baseline aggregation algorithms, including FedAvg, Krum, Median, and TrimmedMean,
+were compared with the proposed MTD-based approach. Four
+different combinations of MTD modes and strategies were
+
+tested, including reactive dynamic aggregation strategy, reactive dynamic topology + aggregation strategy, proactive dynamic topology + aggregation strategy, and proactive dynamic
+topology + aggregation strategy.
+
+1.0
+
+Cifar10
+
+RING
+
+Fedavg
+Krum
+Median
+Trimmedmean
+
+STAR
+
+0.8
+
+TABLE III: F1-Score for MNIST, FashionMNIST, and CIFAR10 without Attacks in Fully, Ring and Star Topology
+MNIST
+
+FashionMNIST
+
+CIFAR10
+
+Ring
+0.952
+0.951
+0.949
+0.939
+
+Star
+0.958
+0.956
+0.958
+0.957
+
+Fully
+0.893
+0.879
+0.892
+0.895
+
+Ring
+0.876
+0.871
+0.853
+0.858
+
+Star
+0.877
+0.881
+0.875
+0.881
+
+Fully
+0.729
+0.693
+0.730
+0.728
+
+Ring
+0.660
+0.642
+0.629
+0.629
+
+Star
+0.695
+0.686
+0.707
+0.691
+
+0.867
+0.852
+0.848
+0.843
+
+0.894
+0.872
+0.878
+0.886
+
+0.818
+0.759
+0.803
+0.830
+
+0.781
+0.752
+0.751
+0.744
+
+0.792
+0.785
+0.805
+0.788
+
+0.584
+0.457
+0.552
+0.553
+
+0.445
+0.436
+0.434
+0.435
+
+0.487
+0.458
+0.487
+0.475
+
+MNIST
+
+0.6
+0.4
+0.2
+0.0
+1.0
+0.8
+
+FASHIONMNIST
+F1-SCORE
+
+FashionMNIST
+
+0.6
+0.4
+0.2
+0.0
+1.0
+0.8
+
+CIFAR10
+F1-SCORE
+
+This experiment first evaluates the performance of different
+algorithms across multiple topologies when there is no attack
+to compare their robustness against poisoning attacks comprehensively.
+As illustrated in TABLE III, factors such as the aggregation
+algorithms, data distribution, and network topology significantly influence the performance of the DFL model. In general, the FedAvg and TrimmedMean algorithms demonstrate
+superior performance in a non-attack scenario, followed by the
+Median and Krum algorithms. The models exhibit enhanced
+performance within a fully connected topology, while a decline
+in effectiveness is observed under Star and Ring topologies.
+This suggests that a denser network topology facilitates more
+efficient information exchange among DFL nodes. Moreover,
+the model’s performance deteriorates as the degree of nonIID data increases (i.e., alpha value decreases). With no
+attacks, and when alpha is equal to 0.5, the average F1-Score
+of the model is about 0.91 on the MNIST dataset, 0.8 on
+FashionMNIST, and 0.55 on CIFAR10. On the MNIST and
+FashionMNIST datasets, when alpha decreases from 100 to
+0.5, the F1-Score decreases by about 0.05. However, on the
+CIFAR10 dataset, there is a decrease of about 0.15, indicating
+that non-IID significantly impacts the effectiveness of the DFL
+model.
+This result establishes a foundational benchmark in the
+absence of an attack. Additionally, it shows that the robustness
+of the DFL model can be influenced by moving the topology
+and aggregation algorithms. Furthermore, it underscores the
+necessity for optimizing defenses in non-IID scenarios. Subsequent experiments are conducted within non-IID scenarios,
+with an alpha value of 0.5.
+Untargeted Label Flipping. In this experiment, adversarial
+participants manipulate the local training dataset by arbitrarily
+changing the labels associated with their data samples. This
+study assesses defense mechanisms against untargeted label
+flipping using the average F1-Score of benign nodes during the
+final iteration of the DFL process as the evaluation metric. An
+
+F1-SCORE
+
+B. Experiments
+
+Non-IID α Agg.
+Fully
+FedAvg
+0.963
+Krum
+0.955
+100
+Median
+0.960
+Trimmed- 0.965
+Mean
+FedAvg
+0.919
+Krum
+0.847
+0.5
+Median
+0.910
+Trimmed- 0.919
+Mean
+
+FULLY
+
+Reactive Aggregtion Mtd
+Reactive Topology Mtd
+Reactive Topology+Aggregtion Mtd
+Proactive Topology+Aggregtion Mtd
+
+MNIST
+0.6
+
+0.4
+0.2
+0.00.010
+
+30
+
+50
+
+0.2
+
+PNR [%]
+
+70 10 0.4 30
+
+50
+
+PNR [%]
+
+0.6
+
+70 10
+
+30.8
+
+50
+
+PNR [%]
+
+701.0
+
+Fig. 3: Average F1-Score Results for Label Flipping
+
+elevated F1-Score suggests that the benign nodes experience
+minimal disruption from malicious nodes, thereby indicating
+greater effectiveness of the defense mechanisms.
+The experiments compare the defense effectiveness of the
+proposed MTD strategies and the baseline algorithms in
+three datasets with three different topologies, and the results
+are shown in Fig.3. In low-threat environments (PNR equal
+to 10%), the MTD strategies and the baseline algorithms
+effectively mitigate label-flipping attacks. However, as the
+PNR increases to 50%, the baseline algorithms’ performance
+declines across all three datasets with three topologies. When
+the PNR reaches 70%, the average F1 Scores for the FedAvg,
+Krum, Median, and TrimmedMean algorithms plummet to
+below 0.2 for all datasets within a fully connected topology.
+This significant reduction indicates that malicious nodes have
+substantially compromised the integrity of the benign nodes.
+Conversely, MTD-based strategies, particularly those employing dynamic topologies, whether reactive or preventive,
+prove effective in safeguarding benign nodes. Even at a PNR
+of 70%, enforcing dynamic topology strategies yields average
+F1-Scores exceeding 0.9 for the MNIST dataset, 0.8 for
+FashionMNIST, and 0.7 for CIFAR10. However, strategies
+relying solely on dynamic aggregation algorithms do not
+exhibit a comparative advantage, delivering results similar to
+baseline algorithms. In conclusion, dynamic topology-based
+MTD strategies, encompassing both reactive and preventive
+modes, can effectively mitigate label flipping attacks.
+
+1.0
+
+Cifar10
+
+FULLY
+
+Reactive Aggregtion Mtd
+Reactive Topology Mtd
+Reactive Topology+Aggregtion Mtd
+Proactive Topology+Aggregtion Mtd
+
+RING
+
+Fedavg
+Krum
+Median
+Trimmedmean
+
+STAR
+
+1.0
+
+Cifar10
+
+MNIST
+
+0.6
+0.4
+0.2
+
+0.2
+
+0.8
+
+FashionMNIST
+
+FASHIONMNIST
+ASR-backdoor
+
+0.6
+0.4
+0.2
+
+0.8
+0.6
+0.4
+0.2
+
+0.0
+1.0
+
+0.0
+1.0
+
+0.8
+
+0.8
+
+CIFAR10
+
+ASR-backdoor
+
+FASHIONMNIST
+F1-SCORE
+
+0.4
+
+0.0
+1.0
+
+FashionMNIST
+
+CIFAR10
+F1-SCORE
+
+STAR
+
+0.6
+
+0.0
+1.0
+
+MNIST
+
+0.6
+0.4
+0.2
+
+0.00.010
+
+RING
+
+Fedavg
+Krum
+Median
+Trimmedmean
+
+0.8
+ASR-backdoor
+
+MNIST
+
+F1-SCORE
+
+0.8
+
+FULLY
+
+Reactive Aggregtion Mtd
+Reactive Topology Mtd
+Reactive Topology+Aggregtion Mtd
+Proactive Topology+Aggregtion Mtd
+
+30
+
+50
+
+0.2
+
+PNR [%]
+
+70 10 0.4 30
+
+50
+
+PNR [%]
+
+0.6
+
+70 10
+
+30.8
+
+50
+
+PNR [%]
+
+701.0
+
+MNIST
+0.6
+
+0.4
+0.2
+0.00.010
+
+30
+
+50
+
+0.2
+
+PNR [%]
+
+70 10 0.4 30
+
+50
+
+PNR [%]
+
+0.6
+
+70 10
+
+30.8
+
+50
+
+PNR [%]
+
+701.0
+
+Fig. 4: Average F1-Score Results for Model Poisoning
+
+Fig. 5: Average ASR-backdoor Results for Backdoor
+
+Model Poisoning. In this attack, the model weights in
+malicious nodes are randomly changed by Gaussian noise
+before sending to the neighbors in each round. As with label
+flipping attacks, the average F1-Score is used to evaluate the
+effectiveness of the defense algorithms, and the results are
+shown in Fig.4.
+Similar to label flipping attacks, baseline defenses are
+effective when the PNR equals 10%. However, it is noteworthy
+that the FedAvg algorithm shows significant vulnerability even
+at a PNR of 10%. When the PNR increases to 30%, the
+performance of the baseline algorithms drops dramatically.
+When the PNR is increased to 50%, the baseline algorithms’
+performance drops to nearly 0.1 on all three datasets, indicating that these defenses cannot mitigate poisoning attacks
+in such scenarios. In contrast, the defense strategies using
+MTD, especially the dynamic topology defense, can protect
+the DFL from model poisoning attacks. The F1-Score stays at
+0.95 on the MNIST, 0.82 on the FashionMNIST, and 0.7 on
+the CIFAR10, even though the PNR grows from 10% to 70%.
+Given that the attack strategy employed in this experiment
+is a random weight attack, the dynamic aggregation algorithm
+fails to demonstrate its advantage. To summarize, the defense
+strategies based on MTD effectively mitigate model poisoning
+attacks within non-IID environments.
+Backdoor. In backdoor attacks, adversarial participants endeavor to induce the misclassification of inputs to a specified
+target label lt through the deployment of a synthetic trigger. In
+
+this experiment, this trigger is exemplified by the depiction of
+an ”X” on images drawn from three datasets. The performance
+of defense mechanisms is assessed using the Attack Success
+Rate (ASR) metric [25], as delineated in Equation (2). Here,
+cij denotes the count of instances with a true label yi that are
+predicted to belong to label ŷj . The variable L signifies the
+collection of labels present within the respective dataset, while
+B denotes the subset of data specifically associated with the
+backdoor attack.
+P|L|
+ASR =
+
+j=0 cj,t − ct,t
+
+|B| − ct,t
+
+(2)
+
+A higher ASR means that more malicious samples are
+misclassified, i.e., the backdoor is successfully implanted, thus
+indicating a poorer defense. A good defense against backdoor
+attacks should be able to reduce the ASR. Fig.5 presents the
+results of evaluating backdoor attacks under three topologies
+on three datasets.
+As illustrated in Fig.5, the ASR increases with the increase
+of PNR for the baseline algorithms and the MTD-based
+algorithms, indicating the limitations of the MTD algorithms
+proposed in this paper when mitigating the backdoor attacks.
+Notably, although these MTD algorithms do not entirely
+succeed in countering the backdoor attack, the defense strategy
+that integrates a dynamic aggregation function and dynamic
+topology in both proactive and reactive modes demonstrates
+the lowest ASR across the three datasets utilizing fully con-
+
+1.0
+
+MNIST
+
+FASHIONMNIST
+
+Fedavg
+Krum
+Median
+Trimmedmean
+
+CIFAR10
+
+Non-IID α Attack
+MNIST
+FashionMNIST CIFAR10
+0.5
+Lable Flipping
+0.896±0.024 0.784±0.099
+0.494±0.042
+Model Poisoning 0.879±0.021 0.799± 0.039 0.511±0.069
+
+0.8
+0.6
+0.4
+0.2
+
+types: label flipping and model poisoning. A Dirichlet α
+parameter of 0.5 is utilized for this assessment. The results
+are summarized in TABLE IV, indicating that the federated approach utilizing the MTD algorithm remains resilient
+against poisoning attacks in a large network. This observation
+underscores the adaptability and scalability of the proposed
+algorithms across networks of varying sizes.
+
+MODELF1-SCORE
+POISONING
+
+0.0
+1.0
+0.8
+
+FashionMNIST
+
+BACKDOOR
+ASR-backdoor
+
+TABLE IV: F1 Score with Reactive Dynamic Topology MTD
+across Three Datasets, with a PNR Rate of 30%, Alpha Value
+of 0.5, and Fully Connected Topology
+
+0.6
+0.4
+0.2
+
+VI. D ISCUSSION
+
+0.0
+1.0
+0.8
+MNIST
+0.6
+
+0.4
+0.2
+0.00.010
+
+30
+
+50
+
+0.2
+
+PNR [%]
+
+70 10 0.4 30
+
+50
+
+PNR [%]
+
+0.6
+
+70 10
+
+30.8
+
+50
+
+PNR [%]
+
+701.0
+
+Fig. 6: Performance of the Algorithms against poisoning
+attack on three Datasets with Fully connected topology when
+Dirichlet α=0.1
+
+nected and star topologies. This result suggests that the MDTbased approach has advanced over the baseline algorithms in
+combating backdoor attacks.
+Extreme Non-IID Scenario. To investigate the effectiveness of the algorithms proposed in this study within extreme
+non-IID environments, this experiment is established to evaluate the performance of the reference algorithms alongside the
+MTD algorithms. This assessment is conducted under various
+attack scenarios within a fully-connected network, utilizing a
+Dirichlet α parameter of 0.1, as depicted in Fig.6.
+The results indicate a general decline in the performance of
+all models across the three datasets, attributable to the heightened levels of non-IID conditions. Furthermore, regarding
+label flipping and model poisoning attacks, the results reveal
+that the extent of non-IID does not significantly impact the
+effectiveness of the MTD algorithms. Specifically, the defenses
+employing the reactive dynamic topology strategy and those
+integrating both dynamic topology and dynamic aggregation
+functions outperform the other algorithms.
+Scalability. To investigate the scalability of the algorithm
+presented in this paper, an experimental setup is conducted
+utilizing 20 nodes with a fully connected topology. This
+scenario involved simulating an environment where 30% of the
+nodes are attacked. The performance of the reactive dynamic
+topology algorithm is evaluated under two specific attack
+
+Extensive experiments have demonstrated that the proposed
+MTD-based approach can effectively mitigate poisoning attacks in non-IID environments.
+A. Reduced effectiveness in the backdoor. Nevertheless,
+despite this approach demonstrating superiority over existing
+state-of-the-art algorithms, there is potential for enhancement
+in addressing targeted attacks, such as backdoor attacks. To
+investigate the reasons behind the sub-optimal performance
+of the MTD-based approach in backdoor attacks, this work
+analyzes the distribution of reputation scores generated by
+benign nodes. It is conducted under conditions where the PNR
+is set at 10% and within a fully connected topology. The
+comparison is performed across three datasets, focusing on
+model poisoning and backdoor attack scenarios.
+As illustrated in Fig.7, the reputation score assigned to benign nodes about their neighboring nodes exhibits a noticeable
+polarization in the model poisoning attack scenario. Specifically, the reputation score for benign nodes is significantly
+higher than for malicious nodes. In contrast, this polarization
+is absent in backdoor attacks, where the distribution of the
+reputation score is more centralized. Notably, the reputation
+score enforces the MTD strategies. Thus, the effectiveness of
+MTD strategies is diminished in backdoor attack scenarios.
+B. Enhanced performance in non-IID settings. It is essential to highlight that the proposed solution enhances the model
+performance of DFL in non-IID environments, especially
+
+REPUTATION SCORE
+
+LABEL
+FLIPPING
+F1-SCORE
+
+Cifar10
+
+Reactive Aggregtion Mtd
+Reactive Topology Mtd
+Reactive Topology+Aggregtion Mtd
+Proactive Topology+Aggregtion Mtd
+
+1.00
+0.75
+0.50
+0.25
+0.00
+
+Model Poisoning
+Backdoor
+
+Cifar10
+
+FashionMNIST
+
+MNIST
+
+Fig. 7: Distribution of Reputation Score on MNIST, FashionMNIST, CIFAR10 dataset when PNR equals 10%
+
+when using the dynamic topology strategy. The average F1Score achieved by the proposed approach reaches 0.95 for
+the MNIST dataset, 0.83 for FashionMNIST, and 0.70 for
+CIFAR10 when using the reactive dynamic topology strategy,
+as illustrated in Fig.3 and 4. These results indicate that the
+algorithm not only mitigates the impacts of poisoning attacks
+but also enhances model performance in non-IID settings. The
+effectiveness of the dynamic topology lies in its tendency
+to facilitate connections and aggregations among nodes that
+exhibit high similarity, diminishing the impact of non-IID data.
+C. Trade-off. Regarding trade-off, the algorithm proposed in
+this paper increases the computational complexity compared
+to reference models, but the increased complexity is within
+polynomial complexity. However, the reference algorithms,
+including Krum, also need to calculate the distance of the
+models. Therefore, when evaluating the advantages in terms
+of security afforded by implementing MTD, this study posits
+that the additional computational complexity is justifiable. Regarding network overhead, the algorithms introduced herein do
+not necessitate any supplementary transmission of information,
+thus avoiding any additional burden on network overhead.
+VII. C ONCLUSION AND F UTURE W ORK
+This work proposes an MTD-based approach to mitigate
+poisoning attacks in DFL, especially in non-IID environments.
+It introduces a dual-reputation score mechanism assessing
+model similarity and loss, with proactive and reactive MTD
+modes using dynamic topology and aggregation strategies. By
+leveraging the DBSCAN clustering algorithm, the approach
+dynamically adjusts thresholds, overcoming the limitations
+of fixed threshold defenses. The dynamic topology enhances
+node connections aligned with local models. Experiments on
+MNIST, FashionMNIST, and CIFAR10 datasets demonstrate
+the approach’s effectiveness against untargeted attacks and
+superior performance over state-of-the-art aggregation algorithms, offering a robust security framework for non-IID data.
+Future research will investigate integrating additional MTD
+strategies to comprehensively address the diverse landscape
+of poisoning attacks and enhance resilience against optimized
+and dynamic attack methodologies. Further optimization of the
+MTD-based approach, particularly in the context of backdoor
+attacks, will also be explored. Additionally, the research scope
+will be extended to related domains, including the application
+of the MTD paradigm to counter various other types of attacks
+targeting DFL, such as Membership Inference Attacks.
+ACKNOWLEDGMENT
+This work was supported partially by (a) the University
+of Zürich UZH, (b) the Swiss Federal Office for Defense
+Procurement (armasuisse) with the CyberMind project (CYDC-2020003).
+R EFERENCES
+[1] “Amount of data created daily,” 2024, accessed: 27 September 2024.
+[Online]. Available: https://explodingtopics.com/blog/data-created-daily
+[2] B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A. y Arcas,
+“Communication-efficient learning of deep networks from decentralized
+data,” in Artificial intelligence and statistics. PMLR, 2017, p. 1273.
+
+[3] E. T. M. Beltrán, M. Q. Pérez, P. M. S. Sánchez, S. L. Bernal,
+G. Bovet, M. G. Pérez, G. M. Pérez, and A. H. Celdrán, “Decentralized
+federated learning: Fundamentals, state of the art, frameworks, trends,
+and challenges,” IEEE Communications Surveys & Tutorials, 2023.
+[4] C. Feng, A. H. Celdrán, J. von der Assen, E. T. M. Beltrán, G. Bovet,
+and B. Stiller, “Dart: A solution for decentralized federated learning
+model robustness analysis,” Array, 2024.
+[5] P. Blanchard, E. M. El Mhamdi, R. Guerraoui, and J. Stainer, “Machine learning with adversaries: Byzantine tolerant gradient descent,”
+Advances in neural information processing systems, vol. 30, 2017.
+[6] A. K. Singh, A. Blanco-Justicia, and J. Domingo-Ferrer, “Fair detection
+of poisoning attacks in federated learning on non-iid data,” Data Mining
+and Knowledge Discovery, vol. 37, no. 5, pp. 1998–2023, 2023.
+[7] J. Zheng and A. S. Namin, “A survey on the moving target defense
+strategies: An architectural perspective,” Journal of Computer Science
+and Technology, vol. 34, pp. 207–233, 2019.
+[8] G.-l. Cai, B.-s. Wang, W. Hu, and T.-z. Wang, “Moving target defense:
+state of the art and characteristics,” Frontiers of Information Technology
+& Electronic Engineering, vol. 17, no. 11, pp. 1122–1153, 2016.
+[9] E. T. Martı́nez Beltrán, P. M. Sánchez Sánchez, S. López Bernal,
+G. Bovet, M. Gil Pérez, G. Martı́nez Pérez, and A. Huertas Celdrán,
+“Mitigating communications threats in decentralized federated learning
+through moving target defense,” Wireless Networks, pp. 1–15, 2024.
+[10] C. Feng, A. H. Celdrán, M. Vuong, G. Bovet, and B. Stiller, “Voyager:
+Mtd-based aggregation protocol for mitigating poisoning attacks on dfl,”
+pp. 1–9, 2024.
+[11] E. T. M. Beltrán, Á. L. P. Gómez, C. Feng, P. M. S. Sánchez, S. L.
+Bernal, G. Bovet, M. G. Pérez, G. M. Pérez, and A. H. Celdrán,
+“Fedstellar: A platform for decentralized federated learning,” Expert
+Systems with Applications, vol. 242, 2024.
+[12] A. Roy, A. Chhabra, C. A. Kamhoua, and P. Mohapatra, “A moving
+target defense against adversarial machine learning,” in Proceedings of
+the 4th ACM/IEEE Symposium on Edge Computing, 2019, pp. 383–388.
+[13] A. Amich and B. Eshete, “Morphence: Moving target defense against
+adversarial examples,” in Annual Computer Security Applications Conference, 2021, pp. 61–75.
+[14] Y. Qiu, J. Wu, S. Mumtaz, J. Li, A. Al-Dulaimi, and J. J. Rodrigues,
+“Mt-mtd: Muti-training based moving target defense trojaning attack
+in edged-ai network,” in ICC 2021-IEEE International Conference on
+Communications. IEEE, 2021, pp. 1–6.
+[15] S. Sengupta, T. Chakraborti, and S. Kambhampati, “Mtdeep: boosting
+the security of deep neural nets against adversarial attacks with moving
+target defense,” in Decision and Game Theory for Security: 10th
+International Conference, GameSec 2019, Stockholm, Sweden, October
+30–November 1, 2019, Proceedings 10. Springer, 2019, pp. 479–491.
+[16] Z. Zhou, C. Xu, M. Wang, T. Ma, and S. Yu, “Augmented dual-shufflebased moving target defense to ensure cia-triad in federated learning,”
+in 2021 IEEE Global Communications Conference. IEEE, 2021.
+[17] D. Yin, Y. Chen, R. Kannan, and P. Bartlett, “Byzantine-robust distributed learning: Towards optimal statistical rates,” in International
+Conference on Machine Learning. PMLR, 2018, pp. 5650–5659.
+[18] Y. LeCun and C. Cortes, “Mnist handwritten digit database.”
+[19] S. Sengupta, A. Chowdhary, A. Sabur, A. Alshamrani, D. Huang, and
+S. Kambhampati, “A survey of moving target defenses for network
+security,” IEEE Communications Surveys & Tutorials, vol. 22, no. 3,
+pp. 1909–1941, 2020.
+[20] R. Zhuang, S. A. DeLoach, and X. Ou, “Towards a theory of moving
+target defense,” in Proceedings of the first ACM workshop on moving
+target defense, 2014, pp. 31–40.
+[21] M. Ester, H.-P. Kriegel, J. Sander, X. Xu et al., “A density-based
+algorithm for discovering clusters in large spatial databases with noise,”
+in kdd, vol. 96, no. 34, 1996, pp. 226–231.
+[22] H. Xiao, K. Rasul, and R. Vollgraf, “Fashion-mnist: a novel image
+dataset for benchmarking machine learning algorithms,” arXiv preprint
+arXiv:1708.07747, 2017.
+[23] A. Krizhevsky, G. Hinton et al., “Learning multiple layers of features
+from tiny images,” 2009.
+[24] D. Sinha and M. El-Sharkawy, “Thin mobilenet: An enhanced mobilenet
+architecture,” in 2019 IEEE annual ubiquitous computing, electronics &
+mobile communication conference. IEEE, 2019, p. 0280.
+[25] C. Feng, A. H. Celdrán, J. Baltensperger, E. T. M. Beltrán, P. M. S.
+Sánchez, G. Bovet, and B. Stiller, “Sentinel: An aggregation function to
+secure decentralized federated learning,” in 27th European Conference
+on Artificial Intelligence (ECAI), 2024.
+
+

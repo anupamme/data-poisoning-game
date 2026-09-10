@@ -1,0 +1,1984 @@
+FedSurrogate: Backdoor Defense in Federated
+Learning via Layer Criticality and Surrogate
+Replacement
+
+arXiv:2605.11122v1 [cs.CR] 11 May 2026
+
+Fatima Z. Abacha1 , Sin G. Teo2 , Yuanxiang Wu3 , Lucas C. Cordeiro1 ,
+and Mustafa A. Mustafa1,4
+1
+
+2
+
+The University of Manchester, UK
+Institute for Infocomm Research, A*STAR, Singapore
+3
+Monash University, Australia
+4
+COSIC, KU Leuven, Belgium
+fatima.abacha@postgrad.manchester.ac.uk
+
+Abstract. Federated Learning remains highly susceptible to backdoor
+attacks–malicious clients inject targeted behaviours into the global model.
+Existing defenses suffer from substantial false-positive rates under realistic non-independent and identically distributed (non-IID) data, incorrectly flagging benign clients and degrading model accuracy even when
+adversaries are correctly identified. We present FedSurrogate, a novel
+backdoor defense that addresses this limitation by combining bidirectional gradient alignment filtering with layer-adaptive anomaly detection. FedSurrogate performs selective clustering on security-critical layers
+identified via directional divergence analysis, concentrating the detection
+signal on a low-dimensional subspace. A bidirectional soft-filtering stage
+screens trusted clients for residual contamination while rescuing false
+positives from suspects, substantially reducing misclassifications under
+heterogeneous conditions. Rather than removing confirmed malicious updates, FedSurrogate replaces them with downscaled surrogate updates
+from structurally similar benign clients, preserving gradient diversity
+while neutralising adversarial influence. Extensive evaluations demonstrate that FedSurrogate maintains false-positive rates below 10% across
+all datasets and attack types, compared to 31-32% for the nearest comparably effective baseline, while achieving superior main-task accuracy and
+maintaining attack success rates below 2.1% across all tested datasets
+and attack types under challenging non-IID settings.
+
+Keywords: Federated Learning · Non-IID Data · Backdoor Defense · Backdoor
+Attack .
+
+1
+
+Introduction
+
+Federated learning (FL) [17] enables multiple parties to collaboratively train a
+shared model while keeping their data local, making it appealing for privacysensitive domains. However, the same client autonomy that preserves privacy
+
+2
+
+F. Abacha et al.
+
+also allows adversaries to poison their local updates, thereby compromising the
+global model [23]. A particularly insidious variant is the backdoor attack, in
+which an adversary embeds a hidden trigger during training so that the global
+model behaves normally on clean inputs but consistently misclassifies any triggerbearing input into an adversary-chosen label [1,22]. Because such triggers remain
+dormant under benign conditions and readily evade anomaly-based defenses,
+backdoor attacks pose a key threat to the trustworthiness of FL systems [18].
+Several approaches have already been proposed to counter backdoor attacks.
+Cosine-similarity methods (FoolsGold [8]) assume that malicious updates are
+highly correlated, which does not hold for non-independent and identically distributed (non-IID) data. Trust-based approaches (FLTrust [3]) require clean
+server-side reference data, which is often unavailable in practice. More recent
+defenses (FLAME [19], FedGrad [20], Snowball [21], AlignIns [26], FLShield [12])
+integrate techniques such as clustering, clipping, noise injection, spectral analysis, and sub-model validation to improve robustness. While these methods
+demonstrate empirical viability, they remain sensitive to statistical heterogeneity across clients and often incur high false-positive rates (FPRs), leading to the
+exclusion of benign participants and a substantial decline in global model performance, while alignment-based variants face a complementary weakness against
+stealth-optimised attacks (Neurotoxin [27]) that embed the backdoor in lowmagnitude coordinates while preserving the overall gradient direction. Moreover,
+existing defenses typically treat all model layers uniformly during detection, ignoring the well-documented observation that backdoor attacks concentrate their
+poison in a small subset of layers [29], thereby diluting the adversarial signal
+across millions of clean parameters and reducing detection sensitivity. Recent
+reweighting-based aggregators (SPMC [11]) attempt to recover utility by softening the exclusion of suspicious clients, but apply their adjustment uniformly
+across the full parameter vector, conflating the layers that carry the backdoor
+with those that carry the legitimate task knowledge. In summary, the effectiveness of existing defenses is limited by high false-positive rates, vulnerability to
+stealth-optimized attacks, and fixed or global views of client updates, which fail
+to isolate the layers where adversarial signals concentrate.
+We propose FedSurrogate, a novel defense that addresses these limitations
+through three complementary stages: (i) Layer Criticality Analysis (LCA) that
+measures per-layer directional divergence across client updates to identify the
+small subset of security-critical layers where backdoor signals concentrate, followed by density-based clustering restricted to those layers; (ii) bidirectional
+soft-filtering that applies gradient-alignment metrics to screen the trusted set
+for missed adversaries and rescue false positives from the suspect pool; and
+(iii) surrogate-replacement that substitutes only the LCA-identified critical layers of each confirmed malicious update with the corresponding layers from a
+structurally similar benign client, preserving the main-task knowledge in the remaining layers and downscaling the resulting surrogate to prevent aggregation
+imbalance. The design builds on the observation that model parameters faithfully encode the statistical properties of the data on which they are trained,
+
+FedSurrogate
+
+3
+
+allowing benign client weights to act as surrogates for the data of compromised
+peers without explicit data sharing [15,9,7].
+Our main contributions are: (1) We introduce Layer Criticality Analysis,
+a per-round, directional-divergence-based mechanism for dynamically identifying the layers most informative for distinguishing benign from malicious updates. Unlike prior work that pre-selects layers heuristically or operates on the
+full parameter vector, LCA localises detection to a low-dimensional, high-signal
+subspace. (2) We propose FedSurrogate, a three-stage server-side defense built
+on LCA that combines bidirectional gradient-alignment filtering with surrogate
+replacement, distinguishing the latter empirically from reweighting-style aggregation. (3) We evaluate FedSurrogate across four benchmarks and two architectures against seven defenses under centralised, distributed, and stealth-optimised
+attacks. FedSurrogate maintains high main task accuracy within 3 percentage
+points of FedAvg, and attack success rate below 2.1% across all settings, achieves
+the lowest FPR on every dataset-attack combination, and degrades gracefully
+under increased malicious client ratios and larger client populations.
+
+2
+
+Background and Related Work
+
+Backdoor attacks in FL. There are different types of such attacks in FL.
+Centralized backdoor attacks (CBA): a single malicious client modifies a subset
+of its local samples, e.g., altering pixel regions and relabelling them to a target
+class, then optimizing its model to fit both benign and triggered data [1]. Once
+aggregated, the global model inherits the trigger-to-target mapping while preserving clean accuracy. Distributed backdoor attacks (DBA): To enhance stealth
+and persistence, adversaries decompose the trigger across multiple compromised
+clients [25]. Each malicious client trains on a distinct fragment, e.g., a different
+pixel segment, so that no individual update reveals the full pattern; aggregation
+reconstructs the complete trigger behaviour in the global model. This decomposition resists single-client inspection and allows the backdoor to persist even
+when only a subset of adversaries participates in a given round. Neurotoxin: Unlike CBA and DBA, which modify inputs directly, Neurotoxin [27] targets the
+durability of the backdoor by projecting malicious updates onto parameter coordinates that benign clients rarely update. By perturbing only the bottom-k%
+of gradient magnitudes observed in recent rounds, the adversary avoids being
+overwritten by subsequent benign aggregation, allowing the backdoor to survive
+long after the adversary stops participating. This makes Neurotoxin stealthier
+and more resilient than attacks that perturb the full parameter space, and poses
+a harder challenge for defenses that rely on detecting anomalous update directions or norms.
+Defenses against backdoor attacks in FL.
+Early defenses such as Krum and MultiKrum [2] mainly focused on robust
+aggregation algorithms that select the client update(s) closest to the majority in
+parameter space. Their aim is to make aggregation itself inherently resilient to
+adversarial contribution. However, their guarantees assume bounded adversary
+
+4
+
+F. Abacha et al.
+
+counts and collapse when benign variance, typical under heterogeneous data,
+mimics adversarial noise. More recent schemes focus on detection-and-mitigation
+defenses in order to identify and exclude or down-weight poisoned updates.
+FoolsGold [8] penalizes clients whose updates exhibit high pairwise cosine
+similarity, assuming that colluding adversaries produce near-identical directions;
+it performs poorly under non-IID conditions, where benign updates may also
+align. FedGrad [20] uses final-layer gradient similarity to flag anomalies, but suffers from high FPRs that erode global accuracy. FLAME [19] combines HDBSCAN clustering, gradient clipping, and noise injection, but frequently misclassifies benign clients in heterogeneous settings, and its injected noise degrades
+main-task accuracy. FLShield [12] validates client updates against held-out data
+at trusted participants and filters those whose behavioural signatures deviate
+from the consensus; its reliance on validation proxies makes it sensitive to benign data heterogeneity, where legitimate updates can appear inconsistent with
+the reference behaviour. Snowball [21] couples K-Means clustering with a VAEbased anomaly detector; it performs well on simple datasets (MNIST) but degrades sharply on more complex ones (CIFAR-10) at high poisoning ratios, and
+its retention parameter can also over-reject benign clients. AlignIns [26] exploits
+directional and sign-alignment signals, but like other detection-based methods
+remains sensitive to benign update variability under heterogeneity. SPMC [11]
+forms coalitions of mutually consistent clients and reweights updates according to coalition membership, but its consistency criterion degrades when benign
+clients are distributionally diverse, admitting stealthy adversaries that align with
+any sufficiently large coalition.
+Overall, existing defenses either rely on restrictive assumptions on client distributions and adversarial behaviour, or introduce high FPRs that degrade main
+accuracy under realistic heterogeneous conditions. These limitations motivate
+FedSurrogate, a defense that accurately detects and mitigates backdoors while
+preserving benign knowledge across diverse data distributions.
+
+3
+
+Threat Model and Design Goals
+
+We consider a standard FL setting with a central server and a set of participating
+clients N = {1, . . . , N }. In each communication round, the server distributes
+the current global model to the clients, each client performs local training on its
+private data, and returns a model update which the server aggregates.
+Honest-majority assumption. In line with previous studies [19,21], we
+assume an honest majority among clients: a subset F ⊂ N may be adversarial but |F | < N/2, so that benign clients collectively outweigh the malicious
+minority. We assume the server is honest-but-curious and uncompromised, and
+that adversaries cannot access or modify benign clients’ local data or updates.
+We characterise the regime in which this assumption holds empirically in the
+Appendix (see Fig. 5).
+Adversary model. Malicious clients have full control over their local data
+and training procedure, can craft arbitrary model updates including scaled or
+
+FedSurrogate
+
+5
+
+maliciously modified parameters, and may coordinate with other malicious clients
+to mount distributed attacks. The adversary’s objective is to induce the global
+model to misclassify trigger-bearing inputs to a selected target label while preserving main-task accuracy on clean data, so that the attack remains undetected
+by basic validation. We focus on targeted attacks that implant backdoors into
+the global model, and our evaluation considers three attack families that capture the primary mechanisms of trigger insertion, distributed coordination, and
+stealth-optimised evasion: CBA [1], DBA [25]; and Neurotoxin [27] (see Sect. 2).
+Design goals of FedSurrogate. Given the adversary model, FedSurrogate
+is designed to identify and neutralise malicious clients while maintaining global
+model utility. The defense pursues three primary goals: accurate identification of
+malicious clients across all three attack families even under non-IID heterogeneity
+and low poisoning ratios; low false-positive rate since incorrectly flagging an
+honest client whose data contribution would otherwise enrich the global model
+can meaningfully degrade utility; and preservation of main-task accuracy both
+under attack and in non-adversarial rounds, ensuring that the defense behaves
+as a benign aggregation mechanism when no attack is present and does not
+introduce unnecessary disruption to the training process.
+
+4
+
+Design of FedSurrogate
+
+We present FedSurrogate, a multi-stage server-side defense that mitigates backdoor attacks in FL while explicitly addressing the over-rejection of benign clients
+under non-IID data heterogeneity which drives the high FPRs of existing detectionbased defenses. The framework integrates three complementary stages: (i) Layer
+Criticality Analysis and coarse clustering, (ii) bidirectional gradient alignment
+filtering, and (iii) surrogate replacement with controlled down-weighting. Figure 1 illustrates the framework, and Algorithm 1 presents the full procedure.
+Stage 1: Layer Criticality Analysis and Coarse Clustering. After each
+communication round, the server receives updated models {θi }N
+i=1 and computes
+per-client updates ∆i = θi − θG . Rather than clustering on entire model parameters, FedSurrogate restricts clustering to a small set of security-critical layers
+identified automatically at each round through Layer Criticality Analysis (LCA).
+Layer Criticality Analysis. We observe that backdoor poisoning causes
+directional disagreement in specific layers: malicious clients push these layers towards the trigger-target mapping while benign clients do not. For each candidate
+layer ℓ, we compute the mean pairwise cosine distance across client updates,
+!
+X
+⟨∆ℓi , ∆ℓj ⟩
+2
+1−
+,
+(1)
+dℓ =
+N (N − 1) i<j
+∥∆ℓi ∥2 ∥∆ℓj ∥2
+and normalise it relative to the per-round median, d˜ℓ = dℓ /median({dℓ′ }). Since
+˜ = 1 by construction, layers form the critical layer set when their
+median(d)
+normalised score exceeds
+L∗ = {ℓ : d˜ℓ > 1 + σ · MAD( ˜
+d)},
+
+(2)
+
+6
+
+F. Abacha et al.
+
+local training
+
+Global
+Model
+
+Model
+updates
+
+θG
+broadcast
+
+Start / next round
+
+Server
+θ′G
+=
+R
++
+Sr
++
+Tc
+
+Aggregation
+
+submit
+
+Clients
+
+R
+
+F flagged
+
+Sr
+
+Layer
+Swap
+Sr
+Surrogate
+
+Tc
+
+rescue R
+S
+T donor
+
+demote
+Tc
+Tc
+
+Stage 3
+
+S
+
+F
+
+Tc
+
+Stage 2
+
+Fig. 1: Overview of the FedSurrogate defense pipeline. Stage 1 performs densitybased clustering on layers identified via Layer Criticality Analysis, producing a
+coarse trusted set Tc and a suspect set S. Stage 2 applies bidirectional gradientalignment scoring to demote residual adversaries from Tc and rescue false positives R from S. Stage 3 substitutes only the critical layers of confirmed malicious
+clients F with those of their nearest donor from Tc ∪ R.
+
+where σ controls selection sensitivity. In practice, we select the top-k layers by
+normalised divergence score (k = 5 in all experiments), which provides a stable
+selection size across rounds. Unlike prior work [20] that pre-selects a fixed layer,
+L∗ is recomputed dynamically per round and architecture, adapting to where
+adversarial signals concentrate under current attack and model state.
+Coarse clustering. For each client, we form a feature vector vi = ∆i [L∗ ]
+from updates restricted to the critical layers identified by LCA, and compute the
+pairwise cosine distance matrix Dij = 1−v⊤
+i vj /(∥vi ∥2 ∥vj ∥2 ). Cosine distance is
+chosen over Euclidean because it is invariant to per-client gradient magnitudes,
+which vary substantially under non-IID data volumes. We apply HDBSCAN [16]
+to D, and under the honest-majority assumption the largest cluster Cmax (with
+|Cmax | ≥ 0.5N +1) is taken as the coarse trusted set Tc , with the remaining clients
+forming the suspect set S. We label Tc as coarse because under realistic nonIID conditions it may contain residual adversaries while S frequently contains
+misclassified benign clients; correcting both error types is the role of Stage 2.
+Stage 2: Bidirectional Gradient Alignment Filter. While LCA-driven clustering provides an effective first pass, it incurs substantial FPRs when client data
+distributions are heterogeneous, and at the same time sophisticated adversaries
+craft updates whose global statistics blend into the coarse trusted set. We thus
+introduce a bidirectional filter that simultaneously screens Tc for residual con-
+
+FedSurrogate
+
+7
+
+Algorithm 1 FedSurrogate
+1: Input:
+2:
+{θi }N
+▷ client models, global model, persistent client score memory
+i=1 , θG , H
+3:
+Lr , ζ, k, γs , γr
+▷ rescue layers, thresholds, shrink factors
+4: Output:
+′
+5:
+θG
+, T, F
+▷ Updated global model, trusted set, malicious set
+6: Stage 1: Layer Criticality Analysis and Coarse Clustering
+7:
+∆ ← ClientUpdates({θi }, θG )
+▷ per-client deltas
+8:
+L∗ ← LCA(∆, k)
+▷ layers with anomalous cross-client divergence
+9:
+Tc ← HDBSCAN(∆[L∗ ])
+▷ largest cluster = coarse trusted
+10:
+S ← [N ] \ Tc
+11: Stage 2: Bidirectional Gradient Alignment Filter
+12:
+ŝ ← AlignScore({θi }, θG , Lr )
+▷ cosine alignment on mid-deep layers
+13:
+H ← UpdateMemory(H, ŝ, r)
+▷ cumulative running average
+14:
+(2a) Screen trusted set: demote IQR outliers
+15:
+D ← IqrOutliers(H[Tc ])
+16:
+Tc ← Tc \ D; S ← S ∪ D
+17:
+(2b) Rescue false positives from suspects
+18:
+ε ← min(ζ, median(H[S]))
+19:
+R ← {j ∈ S : H[j] ≤ ε}
+20:
+F ← S \ R; T ← Tc ∪ R
+21: Stage 3: Surrogate Replacement
+22:
+Sr ← ∅
+▷ surrogate-replaced set
+23: for all f ∈ F do
+24:
+d∗ ← NearestDonor(f, T , L∗ )
+25:
+θ̃f ← ReplaceCriticalLayers(θf , θd∗ , L∗ )
+▷ swap only L∗ from donor
+26:
+Sr ← Sr ∪ {θ̃f }
+27: end for
+28: Weighted Aggregation
+29:
+λi ← 1 for i ∈ Tc ; γs for i ∈ R; γr for i ∈ Sr
+1 P
+′
+← P
+30:
+θG
+i∈Tc ∪R∪Sr λi θ̃i
+i λi
+′
+31: return θG , T , F
+
+tamination and rescues clients from S whose flagging is driven by heterogeneity
+rather than maliciousness.
+Mid-deep layer scoring. Rather than reusing the dynamic set L∗ from
+Stage 1, gradient alignment scoring operates on a fixed, architecture-dependent
+set of mid-deep layers Lr (in ResNet-18, Lr = {layer2.1, layer3, fc}; in
+the simple CNN, Lr = {fc1, fc2}, the two network architectures we used).
+These are chosen because they capture both trigger-level feature encodings and
+classification-level backdoor signals while remaining stable across rounds. This
+stability is essential: a fixed reference set ensures that cumulative alignment
+scores remain comparable across rounds, whereas the dynamic L∗ would introduce round-to-round noise into the temporal aggregation.
+Reference statistics and alignment score. For each client cj , we extract
+the mid-deep weights wj = θj [Lr ] and compute the corresponding gradient gj =
+
+8
+
+F. Abacha et al.
+
+wj − θG [Lr ]. Reference statistics are computed
+not
+Pover all clients,
+Pjust suspects,
+∗
+∗
+using sample-size-weighted
+averaging
+w
+=
+ω
+w
+and
+g
+=
+i
+i
+i
+i ωi gi , where
+P
+ωi = ni / j nj and ni is the sample count at client i. Computing references over
+the full population prevents Byzantine coordination from biasing the baseline.
+We then define the instantaneous alignment score
+ŝj =
+
+(wj − w∗ )⊤ g∗
+,
+∥wj − w∗ ∥2 · ∥g∗ ∥2
+
+(3)
+
+which is high for benign clients whose loss-minimisation objectives broadly align
+with g∗ and low for adversaries pursuing conflicting objectives. Scores are normalised to [0, 1] via min-max scaling and aggregated across rounds
+(r)
+
+sj
+
+=
+
+1
+mj − 1 (r−1)
+(r)
+· sj
++
+· ŝ ,
+mj
+mj j
+
+(4)
+
+where mj counts the rounds cj has been scored. Temporal aggregation distinguishes persistent adversarial behaviour from transient heterogeneity-induced
+anomalies, allowing benign clients misclustered in a single round to accumulate
+evidence of their legitimacy.
+Bidirectional correction. To detect residual adversaries that evaded Stage 1,
+we apply an inter-quartile range (IQR) test to the cumulative scores of coarse
+trusted clients: clients whose score exceeds the upper fence τscr = q3 +1.5(q3 −q1 )
+are demoted from Tc to S. To rescue false positives among suspects, we compute
+an adaptive cutoff
+
+ε = min ζ, median({sj : j ∈ S}) ,
+(5)
+where ζ caps the threshold to prevent it from drifting upward when an adversary attempts to pollute the suspect pool with benign-looking updates. Clients
+satisfying sj ≤ ε are rescued, yielding R = {j ∈ S : sj ≤ ε}, F = S \ R, and
+T = Tc ∪ R. Thus, Stage 2 partitions S into a rescued set R (false positives returned to the trusted pool) and a confirmed-malicious set F . The median-based
+threshold is adaptive: under a strong attack the suspect pool contains mostly
+true adversaries and the median is high, making rescue conservative; under benign heterogeneity the median is low and rescue is permissive.
+Stage 3: Surrogate Replacement. The confirmed-malicious set F from Stage 2
+is passed to Stage 3, where each flagged client is replaced with a surrogate
+drawn from the trusted set T = Tc ∪ R, producing a surrogate-replaced set
+Sr = {θ̃f : f ∈ F} that participates in aggregation in place of F . This keeps all
+N clients contributing to aggregation, avoiding the reduction in effective sample
+size that outright exclusion would impose.
+Donor selection and surrogate replacement. For each f ∈ F, a donor
+is selected from T by nearest-neighbour search on the Stage 1 distance matrix,
+d∗ (f ) = arg mind∈T D[f, d], ensuring that the donor has parameter structure
+similar to the flagged client. Rather than replacing the entire model, which discards legitimate local knowledge, we perform a layer-selective replacement that
+
+FedSurrogate
+
+substitutes only the critical layers L∗ :
+( ℓ
+θd∗ (f )
+θ̃fℓ =
+θfℓ
+
+if ℓ ∈ L∗ ,
+otherwise.
+
+9
+
+(6)
+
+As L∗ is the same set on which clustering and donor selection operate, the replacement targets precisely the layers where the adversarial signal concentrates,
+neutralising the backdoor while preserving the flagged client’s non-critical contributions.
+Differential aggregation weights. To mitigate the risk that adversaries craft
+updates close to benign gradients [6,1], we apply differential weights to the sets:
+
+
+1.0 if i ∈ Tc ,
+(7)
+λi = γs if i ∈ R,
+
+
+γr if i ∈ Sr ,
+with γs = 0.7 for rescued clients and γr = 0.3 for surrogate-replaced clients,
+reflecting residual uncertainty from Stage 1 flagging and bounding contributions
+when donor selection is suboptimal, respectively. The global model is updated:
+1
+′
+θG
+= P
+
+X
+
+i λi i∈Tc ∪R∪Sr
+
+λi θ̃i ,
+
+(8)
+
+where θ̃i = θi for i ∈ Tc ∪ R and θ̃i is constructed via Eq. (6) for i ∈ Sr .
+
+5
+
+Experimental Setup and Results
+
+Datasets and model architectures. We evaluate on four image-classification
+benchmarks of increasing complexity: MNIST [5], Fashion-MNIST [24], CIFAR10 [14], and CIFAR-100 [14]. To simulate heterogeneous client data distributions
+typical of FL, we partition each dataset using a Dirichlet distribution with concentration parameter α = 0.5, in line with prior work [19,20,21]. For MNIST
+and Fashion-MNIST we use a 4-layer CNN (2 convolutional layers and 2 fullyconnected layers); for CIFAR-10 and CIFAR-100 we adopt ResNet-18 [10] to
+handle the increased complexity of natural images.
+FL configuration and hyperparameters. All experiments adopt synchronous FL with one central server and N = 20 clients, each participating in
+every communication round. Benign clients perform E = 2 local epochs of SGD,
+while malicious clients perform E = 5 epochs in line with prior backdoor evaluation practice [1,25]. Learning rates are η = 0.01 for the CNN and η = 0.1 for
+ResNet-18, with batch size b = 32, and R = 100 communication rounds. 5
+Backdoor attacks and adversary configuration. We evaluate under
+three backdoor attack families: (i) CBA [1], where each malicious client injects
+5
+
+Our code is public and available at: https://github.com/fabacha/
+FedSurrogate-Backdoor-Defense-in-FL.git
+
+10
+
+F. Abacha et al.
+
+the full trigger; (ii) DBA [25], where the trigger is decomposed across multiple
+adversaries; and (iii) Neurotoxin [27], a stealth-optimised attack. Triggers follow
+established patterns: for CIFAR-10/100, a 3×3 red square in the lower-right corner with target label automobile (class 1); for MNIST/Fashion-MNIST, a 3 × 3
+white patch with target label 1. Unless otherwise specified, MCR = 0.2 and each
+malicious client poisons 30% of its local data (pdr = 0.3).
+Baseline defenses and evaluation metrics. We compare FedSurrogate
+against seven state-of-the-art defenses: FoolsGold [8], FLAME [19], FedGrad [20],
+Snowball⊟6 [21], AlignIns [26], FLShield [12], and SPMC [11]. We report four
+primary metrics: Main-task Accuracy (MTA), the top-1 accuracy on the clean
+test set; Attack Success Rate (ASR), the proportion of trigger-bearing test inputs
+misclassified to the target label (lower is better); True-Positive Rate (TPR),
+the proportion of malicious clients correctly detected; and False-Positive Rate
+(FPR), the proportion of benign clients incorrectly flagged (lower is better).
+Baseline validation on MNIST and Fashion-MNIST. Table 1 reports
+MTA and ASR for all defenses on MNIST and Fashion-MNIST, two benchmarks
+of increasing complexity that serve as initial validation rather than a strong test
+of robustness, consistent with prior observations that simple datasets tend to
+overestimate defense performance [13]. On MNIST, most defenses mitigate all
+three attacks, with average ASR well below one percent and MTA preserved
+within a fraction of a point of FedAvg. On Fashion-MNIST, where non-IID variation under Dirichlet partitioning is more pronounced, meaningful differences
+emerge: FoolsGold and AlignIns show sharply elevated ASR, indicating difficulty in distinguishing benign heterogeneity from adversarial deviation; SPMC
+fails to defend across both datasets; FLShield mitigates the centralised attack
+but collapses on the stealthier distributed and Neurotoxin variants; and FLAME,
+FedGrad, and Snowball⊟ achieve low ASR but at the cost of 3–8 percentage
+point MTA drops due to excessive benign filtering. FedSurrogate achieves the
+highest average MTA among effective defenses on both datasets (99.10% on
+MNIST, 88.78% on Fashion-MNIST) while maintaining average ASR at 0.09%
+and 0.16% respectively, introducing no measurable utility loss on MNIST and remaining within 1.27 points of FedAvg on Fashion-MNIST. These results confirm
+that the robustness of FedSurrogate is structural rather than dataset-specific.
+CIFAR-10 and CIFAR-100: realistic image classification. Table 2
+reports MTA and ASR on CIFAR-10 and CIFAR-100, evaluated with ResNet18 under the same non-IID partitioning. On CIFAR-10, FedSurrogate achieves
+both the highest average MTA and the lowest average ASR among all defenses at
+87.65% and 1.77% respectively. On CIFAR-100, where the expanded label space
+sharpens the non-IID effect, FedSurrogate maintains the highest average MTA at
+66.68% with the second-lowest average ASR at 0.24%, narrowly behind AlignIns
+at 0.18%. Notably, AlignIns shows a marked improvement on CIFAR-100 compared to its selective failures on the simpler datasets, which we attribute to the
+wider diversity of benign update directions under fine-grained class partitioning
+6
+
+We use Snowball⊟ to denote the variant of Snowball without the VAE warm-up
+stage, adopted to fit our R = 100 round budget.
+
+FedSurrogate
+
+11
+
+Table 1: MTA and ASR results of baselines and FedSurrogate on non-IID MNIST
+and Fashion-MNIST. Results are shown in %. All experiments use pdr=0.3 on
+non-IID partitions (α=0.5). The best result in each column is bold and the
+second best is underlined, considering only defenses that achieve both: MTA
+within 5% of FedAvg’s MTA, and successfully mitigate the attacks (ASR < 5%),
+marked in light grey . ∆ row shows absolute change relative to FedAvg.
+Dataset Methods
+
+CBA
+
+DBA
+
+Neurotoxin
+
+Avg. MTA↑ Avg. ASR↓
+
+MTA↑ ASR↓ MTA↑ ASR↓ MTA↑ ASR↓
+
+Fashion-MNIST
+
+MNIST
+
+FedAvg
+
+99.15 99.97 99.17 99.20 99.15 99.90
+
+99.16
+
+99.69
+
+98.80 0.62
+91.98 99.84
+98.88 0.14
+99.14 99.92
+98.78 0.11
+99.02 0.07
+99.22 99.93
+
+98.81
+95.64
+98.90
+99.17
+98.83
+99.05
+99.25
+
+2.63
+33.52
+0.13
+99.63
+0.07
+35.04
+99.71
+
+FedSurrogate 99.11 0.09 99.13 0.08 99.07 0.11
+
+FoolsGold [8]
+98.79 0.16 98.84 7.12
+FedGrad [20]
+97.12 0.34 97.82 0.38
+FLAME [19]
+98.91 0.12 98.90 0.12
+FLShield [12]
+99.14 99.92 99.23 99.04
+Snowball⊟ [21] 98.83 0.05 98.89 0.06
+AlignIns [26]
+99.11 99.93 99.03 5.12
+SPMC [11]
+99.28 99.97 99.25 99.24
+
+99.10
+
+0.09
+
+∆ vs FedAvg
+
+↓0.04
+
+↓99.79
+
+↓0.06
+
+↓99.60
+
+FedAvg
+
+90.37 97.71 90.08 96.57 89.70 97.03
+
+90.05
+
+97.10
+
+FoolsGold [8]
+FedGrad [20]
+FLAME [19]
+FLShield [12]
+Snowball⊟ [21]
+AlignIns [26]
+SPMC [11]
+
+90.28 97.81
+82.45 0.26
+86.91 0.22
+89.21 0.30
+81.18 0.28
+86.75 95.42
+90.03 98.16
+
+89.75 97.41
+82.44 0.26
+86.52 0.23
+91.32 98.80
+73.71 0.14
+86.67 95.93
+91.31 98.63
+
+90.04
+82.43
+86.79
+89.99
+75.03
+86.91
+90.36
+
+97.47
+0.26
+0.22
+64.17
+1.70
+95.45
+97.98
+
+FedSurrogate 88.99 0.17 88.99 0.18 88.35 0.14
+
+88.78
+
+0.16
+
+↓1.27
+
+↓96.94
+
+∆ vs FedAvg
+
+↓1.38
+
+↓99.88
+
+↓97.54
+
+↓0.04
+
+↓99.12
+
+90.08 97.19
+82.41 0.26
+86.94 0.22
+89.45 93.42
+70.19 4.69
+87.32 95.00
+89.74 97.16
+
+↓1.09
+
+↓96.39
+
+↓0.08
+
+↓1.35
+
+↓96.89
+
+making tightly clustered malicious updates easier to isolate; however, AlignIns
+pays a 1.24-point MTA penalty relative to FedSurrogate.
+Among the remaining baselines, FLAME is the only defense that consistently suppresses the backdoor across both datasets, but incurs substantial MTA
+reductions of 4.35 and 9.93 percentage points on CIFAR-10 and CIFAR-100
+respectively due to over-filtering. FLShield and SPMC fail to defend on both
+datasets, with average ASR exceeding 72%, while FedGrad collapses entirely on
+Neurotoxin with ASR reaching 99.93–99.97%, and Snowball⊟ over-filters to the
+point of rendering the global model unusable, with MTA dropping to 54.86%
+on CIFAR-10 and 44.93% on CIFAR-100. Together, this confirms that FedSurrogate is the only defense that consistently maintains both high MTA and low
+
+12
+
+F. Abacha et al.
+
+Table 2: MTA and ASR results of baselines and FedSurrogate on non-IID CIFAR10 and CIFAR-100. Results are shown in %. All experiments use pdr=0.3 with
+ResNet-18 on non-IID partitions (α=0.5). The best result in each column is bold
+and the second best is underlined, considering only defenses that achieve both:
+MTA within 5% of FedAvg’s MTA, and successfully mitigate the attacks (ASR
+< 5%), marked in light grey . ∆ row shows absolute change relative to FedAvg.
+Dataset Methods
+
+CBA
+
+DBA
+
+Neurotoxin
+
+Avg. MTA↑ Avg. ASR↓
+
+CIFAR-100
+
+CIFAR-10
+
+MTA↑ ASR↓ MTA↑ ASR↓ MTA↑ ASR↓
+FedAvg
+
+90.25 99.77 90.15 46.42 89.74 99.53
+
+90.05
+
+81.91
+
+FoolsGold [8]
+FedGrad [20]
+FLAME [19]
+FLShield [12]
+Snowball⊟ [21]
+AlignIns [26]
+SPMC [11]
+
+87.34
+80.88
+83.24
+90.05
+69.85
+87.79
+90.18
+
+86.13 1.48
+82.26 99.93
+83.48 1.33
+89.66 99.57
+34.21 9.78
+87.23 93.23
+89.30 99.76
+
+86.34
+81.74
+83.30
+89.86
+54.86
+87.59
+89.72
+
+25.87
+33.89
+1.79
+75.98
+5.08
+60.67
+79.40
+
+FedSurrogate 87.92 1.59 88.10 1.66 86.93 2.06
+
+70.43
+0.86
+1.91
+99.74
+5.03
+87.76
+99.51
+
+85.55 5.71
+82.08 0.88
+83.19 2.12
+89.86 28.62
+60.52 0.42
+87.75 1.03
+89.67 38.93
+
+87.65
+
+1.77
+
+∆ vs FedAvg
+
+↓2.33
+
+↓97.47
+
+↓2.40
+
+↓80.14
+
+FedAvg
+
+69.84 99.03 69.36 34.41 70.04 96.43
+
+69.75
+
+76.62
+
+FoolsGold [8]
+FedGrad [20]
+FLAME [19]
+FLShield [12]
+Snowball⊟ [21]
+AlignIns [26]
+SPMC [11]
+
+64.52 0.27
+60.75 0.13
+56.20 0.48
+69.30 95.75
+47.42 0.67
+66.45 0.18
+69.72 96.83
+
+67.28 0.19
+44.64 99.97
+57.01 0.12
+70.25 88.64
+40.24 0.34
+63.49 0.20
+70.55 96.38
+
+66.41
+55.02
+56.75
+69.69
+44.93
+65.44
+69.93
+
+3.60
+33.46
+0.29
+73.10
+0.37
+0.18
+72.63
+
+66.81
+
+0.31
+
+66.68
+
+0.24
+
+↓3.23
+
+↓96.12
+
+↓3.07
+
+↓76.38
+
+↓98.18
+
+↓2.05
+
+↓44.76
+
+67.44 10.35
+59.68 0.28
+57.03 0.26
+69.52 34.91
+47.14 0.09
+66.39 0.15
+69.52 24.67
+
+FedSurrogate 66.66 0.24 66.58 0.18
+∆ vs FedAvg
+
+↓3.18
+
+↓98.79
+
+↓2.78
+
+↓34.23
+
+↓2.81
+
+ASR across all four datasets, with the gap to competing methods widening as
+task complexity increases.
+Detection performance across all datasets. Table 3 reports the perdefense ability to correctly classify malicious and benign clients across all four
+datasets and three attacks. FedSurrogate achieves consistently high TPR (98.8100%) while maintaining the lowest FPR among all defenses on every datasetattack combination, with FPR values of 1.1-1.2% on the MNIST family and
+2.3-9.1% on the CIFAR family, substantially below those of every other effective
+baseline. The remaining defenses fall into two failure regimes that persist across
+datasets: methods such as FedGrad, FLAME, and Snowball⊟ achieve high TPR
+but at FPR values exceeding 31%, 48%, and 87% respectively, indicating that
+they reject the majority of benign clients alongside the true adversaries; while
+
+FedSurrogate
+
+13
+
+FLShield, AlignIns, and SPMC fail to detect adversaries reliably, with TPR values frequently below 35% on the MNIST family and only AlignIns recovering
+on CIFAR-100 for the reasons discussed earlier. FedGrad additionally collapses
+entirely on Neurotoxin across both CIFAR datasets, with TPR dropping to 1.0%
+and FPR reaching 98–100%, mirroring its ASR collapse in Table 2 and reinforcing that detection signals tuned to conventional backdoor patterns generalise
+poorly to stealth-optimised attacks. It is worth noting that FedSurrogate attains TPR values slightly below 100% in several settings, most notably 98.8%
+on Neurotoxin under CIFAR-100 and 99.0% on Neurotoxin under CIFAR-10, yet
+still achieves the lowest or near-lowest ASR in those same settings, as reported
+in Tables 1 and 2. We attribute this to the Layer Criticality Analysis stage,
+which restricts both clustering and gradient-alignment scoring to the small subset of layers carrying the backdoor signal, so that the rare malicious update
+slipping through detection in one round contributes a backdoor signal that is
+too weak to accumulate meaningfully across the training trajectory, particularly
+once subsequent rounds catch and replace the adversary. Together, these results
+confirm that FedSurrogate maintains a high-utility global model while admitting
+the overwhelming majority of honest clients into aggregation, reducing the systematic exclusion of benign participants that characterises the more aggressive
+baseline defenses.
+Sensitivity to the threshold parameter ζ. The threshold ζ governs how
+aggressively FedSurrogate discriminates between benign and malicious clients
+during the bidirectional gradient alignment stage. To assess sensitivity and justify our chosen value, we sweep ζ ∈ {0.1, 0.2, 0.3, 0.4, 0.5} on CIFAR-10 with
+pdr=0.3 and report TPR, FPR, and Matthews Correlation Coefficient (MCC),
+the latter providing a more reliable single summary than F1 for imbalanced binary classification [4]. As shown in Fig. 2, TPR remains at its maximum of 0.998
+for ζ ∈ {0.1, 0.3, 0.4} and declines only at ζ = 0.5, while FPR falls steadily from
+0.247 at ζ = 0.1 to 0.037 at ζ = 0.4. MCC exhibits a clear elbow at ζ = 0.4, rising
+sharply from 0.721 at ζ = 0.3 to 0.915 before plateauing at 0.924 for ζ = 0.5. We
+therefore select ζ = 0.4 as the operating point: it is the largest threshold that
+retains the maximum observed TPR, yields a near-optimal MCC within 0.009
+of the maximum, and reduces FPR by 76% relative to ζ = 0.3.
+
+0.998
+
+0.998
+
+0.30
+
+0.998
+
+0.25
+0.995
+
+0.996
+0.994
+0.992
+
+0.990
+
+0.990
+0.988
+0.986
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.247
+
+0.240
+
+0.20
+
+0.155
+
+0.15
+0.10
+0.05
+0.00
+
+0.1
+
+0.2
+
+0.3
+
+0.037
+
+0.030
+
+0.4
+
+0.5
+
+Matthews Corr. Coef.
+
+True Positive Rate
+
+0.998
+
+False Positive Rate
+
+1.000
+
+1.00
+0.95
+0.915 0.924
+0.90
+0.85
+0.80
+0.721
+0.75
+0.70
+0.65 0.614 0.619
+0.60
+0.55
+0.1
+0.2
+0.3
+0.4
+0.5
+
+Fig. 2: Sensitivity of FedSurrogate’s detection performance to the threshold ζ on
+CIFAR-10 (pdr=0.3).
+
+14
+
+F. Abacha et al.
+
+Table 3: Detection performance on non-IID settings. All experiments use
+pdr=0.3, non-IID (α=0.5). The best result in each column is bold and the
+second best is underlined, considering only defenses that have TPR > 90% and
+FPR < 10%, marked in light grey .
+
+CIFAR-100
+
+CIFAR-10
+
+F-MNIST
+
+MNIST
+
+Dataset
+
+†
+
+CBA
+
+Method
+
+DBA
+
+Neurotoxin
+
+TPR↑
+
+FPR↓
+
+TPR↑
+
+FPR↓
+
+TPR↑
+
+FPR↓
+
+†
+
+FoolsGold [8]
+FedGrad [20]
+FLAME [19]
+FLShield [12]
+Snowball⊟ [21]
+AlignIns [26]
+SPMC [11]
+
+99.5
+100
+100
+22.8
+100
+35.7
+1.0
+
+7.7
+57.4
+31.9
+1.8
+87.6
+49.2
+7.2
+
+97.5
+99.3
+100
+25.8
+100
+81.2
+1.0
+
+7.5
+57.2
+31.9
+1.4
+87.6
+41.2
+7.2
+
+98.0
+45.5
+100
+6.2
+100
+99.3
+1.0
+
+7.0
+80.2
+32.0
+6.6
+87.6
+27.8
+7.2
+
+FedSurrogate
+
+100
+
+1.1
+
+100
+
+1.1
+
+99.5
+
+1.2
+
+†
+
+34.7
+100
+100
+99.0
+100
+29.7
+1.0
+
+27.3
+48.4
+31.5
+1.0
+87.6
+57.5
+7.2
+
+28.7
+100
+99.8
+25.5
+99.8
+37.5
+1.0
+
+27.6
+48.7
+31.5
+1.0
+87.7
+58.0
+7.2
+
+32.5
+100
+100
+6.8
+100
+32.8
+1.0
+
+26.9
+48.4
+31.4
+5.8
+87.6
+56.2
+7.2
+
+FoolsGold [8]
+FedGrad [20]
+FLAME [19]
+FLShield [12]
+Snowball⊟ [21]
+AlignIns [26]
+SPMC [11]
+FedSurrogate
+
+100
+
+1.1
+
+99.8
+
+1.2
+
+100
+
+1.2
+
+FoolsGold [8]†
+FedGrad [20]
+FLAME [19]
+FLShield [12]
+Snowball⊟ [21]
+AlignIns [26]
+SPMC [11]
+
+62.0
+100
+99.8
+12.5
+100
+33.5
+1.0
+
+42.1
+71.5
+31.9
+9.3
+87.6
+40.3
+7.2
+
+58.0
+100
+99.8
+12.5
+100
+35.0
+1.0
+
+39.9
+54.2
+31.9
+5.4
+87.6
+42.2
+7.2
+
+99.3
+1.0
+100
+12.0
+100
+30.5
+1.0
+
+32.5
+98.0
+31.9
+6.5
+87.6
+41.9
+7.2
+
+FedSurrogate
+
+99.8
+
+9.1
+
+99.5
+
+5.2
+
+99.0
+
+8.3
+
+FoolsGold [8]†
+FedGrad [20]
+FLAME [19]
+FLShield [12]
+Snowball⊟ [21]
+AlignIns [26]
+SPMC [11]
+
+84.0
+100
+100
+28.7
+100
+100
+1.0
+
+21.8
+44.1
+31.9
+1.6
+87.6
+6.2
+1.0
+
+77.0
+100
+100
+33.3
+100
+100
+1.0
+
+10.6
+43.1
+31.9
+5.9
+87.6
+9.7
+1.0
+
+99.8
+1.0
+100
+25.8
+100
+95.8
+1.0
+
+1.0
+100
+31.9
+1.1
+87.6
+28.9
+1.0
+
+FedSurrogate
+
+99.3
+
+5.9
+
+99.8
+
+2.3
+
+98.8
+
+7.9
+
+Weight-based: clients with weight < 0.5 classified as detected.
+
+Evaluation with larger federations. We additionally evaluate FedSurrogate on larger client populations to characterise how its detection capability and
+utility cost scale with the size of the federation. We sweep n ∈ {20, 40, 60, 80, 100}
+on CIFAR-10 with ResNet-18 under the centralised backdoor attack, holding
+MCR = 0.2 and pdr = 0.3 fixed, and additionally run an attack-free FedAvg
+baseline at each client count to isolate the utility cost of the defense from the
+intrinsic effects of finer partitioning. As shown in Fig. 3, ASR remains tightly
+
+FedSurrogate
+90 89.20
+
+87.92
+
+20.0
+FedAvg MTA (clean)
+FedSurrogate MTA (under CBA)
+FedSurrogate ASR (under CBA)
+
+87.00
+
+15.0
+
+86
+84
+
+84.33
+
+10.0
+
+81.10
+79.95
+
+80
+
+76
+
+12.5
+
+83.37
+
+82
+
+78
+
+17.5
+
+1.59
+
+1.39
+
+20
+
+40
+
+79.50
+2.49
+
+79.89
+
+60
+
+80
+
+Number of clients (n)
+
+Attack Success Rate (%)
+
+Main Task Accuracy (%)
+
+88
+
+15
+
+2.02
+
+ASR = 5%
+
+7.5
+5.0
+2.5
+1.76
+
+77.44
+100
+
+0.0
+
+Fig. 3: Scalability of FedSurrogate on CIFAR-10 with ResNet-18 as the number of clients n increases from 20 to 100, holding MCR = 0.2 and pdr = 0.3.
+FedSurrogate ASR (right axis) remains below 2.5% across the full sweep, while
+FedSurrogate MTA (left axis) tracks the attack-free FedAvg baseline closely,
+with the gap fluctuating between 1.21 and 3.87 percentage points and showing
+no upward trend. The MTA degradation observed in both curves reflects the
+intrinsic difficulty of federated training under finer non-IID partitioning rather
+than over-filtering by the defense. The dotted line at ASR = 5% marks a conventional defense-success threshold for reference.
+bounded between 1.39% and 2.49% across the full sweep with no monotonic
+trend, indicating that the detection capability of FedSurrogate does not degrade
+as the client population grows. The MTA of FedSurrogate declines from 87.92%
+at n = 20 to 77.44% at n = 100, but the attack-free FedAvg baseline exhibits a
+comparable decline from 89.20% to 79.95% over the same range, confirming that
+the loss reflects FL convergence under finer non-IID partitioning rather than
+defense over-filtering [15,28]. The gap between FedSurrogate and undefended FedAvg fluctuates between 1.21 and 3.87 percentage points with no upward trend,
+showing that the residual utility cost of the defense remains bounded and does
+not scale with the client population.
+Resilience to Adaptive and Layer-Aware Attacks. We evaluate FedSurrogate under a stronger adversarial setting where the attacker has full knowledge of
+the defense pipeline. We consider three attacks: the LP attack [29], which identifies backdoor-critical layers via forward and backward layer substitution and
+poisons only those layers while keeping the rest benign; and two defense-aware
+attacks that we design. The Adaptive Cosine Similarity Attack (CSA) assumes
+each malicious client first trains a benign reference model on clean data, then disguises the backdoored model by optimising a layer-wise cosine similarity loss between the backdoor update and the benign update. The Adaptive Critical Layer
+Attack (CLA) extends CSA by selecting the top-k layers with the highest cosine
+similarity and replacing their benign parameters with backdoored ones, while
+
+16
+
+F. Abacha et al.
+
+keeping the remaining layers benign. We set the cosine similarity loss weight to
+λ = 1 for CNN and λ = 5 for ResNet-18, searched from {0.5, 1, 2, 5, 10}, and
+k = 2 for CNN and k = 4 for ResNet-18.
+
+Table 4: FedSurrogate against adaptive and layer-aware attacks (MCR = 0.2,
+pdr = 0.3).
+Dataset
+
+Attack MTA↑ ASR↓ TPR↑ FPR↓
+
+CIFAR-10
+
+LP [29]
+CSA
+CLA
+
+84.69
+87.54
+87.59
+
+1.08
+1.28
+2.54
+
+95.5
+99.8
+99.8
+
+16.4
+9.9
+3.1
+
+LP [29]
+CIFAR-100 CSA
+CLA
+
+63.81
+66.80
+66.51
+
+0.18
+0.26
+0.22
+
+99.8
+100
+100
+
+1.8
+2.8
+1.2
+
+As shown in Table 4, FedSurrogate maintains ASR below 2.6% against all
+three attacks on both datasets. The LP attack causes the most noticeable impact on CIFAR-10, with MTA dropping to 84.69% and FPR rising to 16.4%,
+as its minimal-layer poisoning creates a harder separation problem for densitybased clustering; on CIFAR-100, LP has minimal effect. The defense-aware CSA
+and CLA attacks are effectively neutralised: the cosine-alignment regularisation makes the malicious update directionally similar to benign updates, but
+the temporal score aggregation in Stage 2 still accumulates sufficient evidence
+across rounds to distinguish persistent adversaries from transient heterogeneity.
+Notably, CLA achieves the lowest FPR across both datasets (3.1% and 1.2%)
+because its non-selected layers are genuinely benign, but this evasion strategy
+simultaneously limits the attack’s effectiveness as reflected in the low ASR.
+
+6
+
+Conclusion
+
+We presented FedSurrogate, a server-side defense against backdoor attacks in
+FL. FedSurrogate integrates a Layer Criticality Analysis mechanism to identify,
+in each round, a small subset of model layers carrying the strongest backdoor
+signal through directional cosine divergence and restricts both clustering and
+gradient-alignment scoring to that subspace. Building on LCA, we design a bidirectional alignment filter that rescues benign clients erroneously flagged under
+non-IID heterogeneity, and a surrogate-replacement mechanism that substitutes
+only the critical layers of confirmed malicious updates with downscaled benign
+counterparts, preserving main-task knowledge while neutralising the backdoor.
+Across four benchmarks, two architectures, and three attack families including
+the stealth-optimised Neurotoxin attack, FedSurrogate consistently ranks among
+the top methods in utility and security, achieves the lowest FPR across all settings, and remains robust to larger client populations and operating points.
+
+FedSurrogate
+
+17
+
+References
+1. Bagdasaryan, E., Veit, A., Hua, Y., Estrin, D., Shmatikov, V.: How to backdoor
+federated learning. In: International conference on artificial intelligence and statistics. pp. 2938–2948. PMLR (2020)
+2. Blanchard, P., El Mhamdi, E.M., Guerraoui, R., Stainer, J.: Machine learning with
+adversaries: Byzantine tolerant gradient descent. Advances in neural information
+processing systems 30 (2017)
+3. Cao, X., Fang, M., Liu, J., Gong, N.Z.: Fltrust: Byzantine-robust federated learning
+via trust bootstrapping. arXiv preprint arXiv:2012.13995 (2020)
+4. Chicco, D., Jurman, G.: The advantages of the matthews correlation coefficient
+(mcc) over f1 score and accuracy in binary classification evaluation. BMC genomics
+21(1), 6 (2020)
+5. Deng, L.: The mnist database of handwritten digit images for machine learning
+research [best of the web]. IEEE signal processing magazine 29(6), 141–142 (2012)
+6. Fang, M., Cao, X., Jia, J., Gong, N.: Local model poisoning attacks to {ByzantineRobust} federated learning. In: 29th USENIX security symposium (USENIX Security 20). pp. 1605–1622 (2020)
+7. Fraboni, Y., Vidal, R., Kameni, L., Lorenzi, M.: Clustered sampling: Low-variance
+and improved representativity for clients selection in federated learning. In: International conference on machine learning. pp. 3407–3416. PMLR (2021)
+8. Fung, C., Yoon, C.J., Beschastnikh, I.: Mitigating sybils in federated learning poisoning. arXiv preprint arXiv:1808.04866 (2018)
+9. Ghosh, A., Chung, J., Yin, D., Ramchandran, K.: An efficient framework for clustered federated learning. Advances in neural information processing systems 33,
+19586–19597 (2020)
+10. He, K., Zhang, X., Ren, S., Sun, J.: Deep residual learning for image recognition. In:
+Proceedings of the IEEE conference on computer vision and pattern recognition.
+pp. 770–778 (2016)
+11. He, W., Huang, W., Yang, B., Liu, S., Ye, M.: Spmc: Self-purifying federated backdoor defense via margin contribution. In: Forty-second International Conference on
+Machine Learning (2025)
+12. Kabir, E., Song, Z., Rashid, M.R.U., Mehnaz, S.: Flshield: a validation based federated learning framework to defend against poisoning attacks. In: 2024 IEEE
+Symposium on Security and Privacy (SP). pp. 2572–2590. IEEE (2024)
+13. Khan, M.A., Shejwalkar, V., Houmansadr, A., Anwar, F.M.: On the pitfalls of security evaluation of robust federated learning. In: 2023 IEEE Security and Privacy
+Workshops (SPW). pp. 57–68. IEEE (2023)
+14. Krizhevsky, A., Hinton, G., et al.: Learning multiple layers of features from tiny
+images (2009)
+15. Li, T., Sahu, A.K., Zaheer, M., Sanjabi, M., Talwalkar, A., Smith, V.: Federated
+optimization in heterogeneous networks. Proceedings of Machine learning and systems 2, 429–450 (2020)
+16. McInnes, L., Healy, J., Astels, S., et al.: hdbscan: Hierarchical density based clustering. J. Open Source Softw. 2(11), 205 (2017)
+17. McMahan, B., Moore, E., Ramage, D., Hampson, S., y Arcas, B.A.:
+Communication-efficient learning of deep networks from decentralized data. In:
+Artificial intelligence and statistics. pp. 1273–1282. Pmlr (2017)
+18. Naseri, M., Han, Y., De Cristofaro, E.: Badvfl: Backdoor attacks in vertical federated learning. In: 2024 IEEE Symposium on Security and Privacy (SP). pp.
+2013–2028. IEEE (2024)
+
+18
+
+F. Abacha et al.
+
+19. Nguyen, T.D., Rieger, P., Chen, H., Yalame, H., Möllering, H., Fereidooni, H.,
+Marchal, S., Miettinen, M., Mirhoseini, A., Zeitouni, S., et al.: {FLAME}: Taming
+backdoors in federated learning. In: 31st USENIX security symposium (USENIX
+Security 22). pp. 1415–1432 (2022)
+20. Nguyen, T.D., Nguyen, A.D., Nguyen, T.H., Wong, K.S., Pham, H.H., Nguyen,
+T.T., Le Nguyen, P.: Fedgrad: Mitigating backdoor attacks in federated learning
+through local ultimate gradients inspection. In: 2023 International Joint Conference
+on Neural Networks (IJCNN). pp. 01–10. IEEE (2023)
+21. Qin, Z., Chen, F., Zhi, C., Yan, X., Deng, S.: Resisting backdoor attacks in federated learning via bidirectional elections and individual perspective. In: Proceedings
+of the AAAI Conference on Artificial Intelligence. vol. 38, pp. 14677–14685 (2024)
+22. Sun, Z., Kairouz, P., Suresh, A.T., McMahan, H.B.: Can you really backdoor federated learning? arXiv preprint arXiv:1911.07963 (2019)
+23. Tolpegin, V., Truex, S., Gursoy, M.E., Liu, L.: Data poisoning attacks against federated learning systems. In: European symposium on research in computer security.
+pp. 480–501. Springer (2020)
+24. Xiao, H., Rasul, K., Vollgraf, R.: Fashion-mnist: a novel image dataset for benchmarking machine learning algorithms. arXiv preprint arXiv:1708.07747 (2017)
+25. Xie, C., Huang, K., Chen, P.Y., Li, B.: Dba: Distributed backdoor attacks against
+federated learning. In: International conference on learning representations (2019)
+26. Xu, J., Zhang, Z., Hu, R.: Detecting backdoor attacks in federated learning via direction alignment inspection. In: Proceedings of the Computer Vision and Pattern
+Recognition Conference. pp. 20654–20664 (2025)
+27. Zhang, Z., Panda, A., Song, L., Yang, Y., Mahoney, M., Mittal, P., Kannan, R.,
+Gonzalez, J.: Neurotoxin: Durable backdoors in federated learning. In: International conference on machine learning. pp. 26429–26446. PMLR (2022)
+28. Zhao, Y., Li, M., Lai, L., Suda, N., Civin, D., Chandra, V.: Federated learning
+with non-iid data. arXiv preprint arXiv:1806.00582 (2018)
+29. Zhuang, H., Yu, M., Wang, H., Hua, Y., Li, J., Yuan, X.: Backdoor federated learning by poisoning backdoor-critical layers. In: International Conference on Learning
+Representations. vol. 2024, pp. 40241–40266 (2024)
+
+FedSurrogate
+
+19
+
+Appendix
+Ablation Studies
+
+Main Task Accuracy (%)
+
+89
+88
+
+87.51 %
+
+87
+
++1.56
+
+86
+
+85.95 %
+
+87.92 %
++0.41
+
+85
+Clustering
+only
+
++ Surrogate
+Replacement
+
++ Rescue
+
+Fig. 4: Ablation study of FedSurrogate components on CIFAR-10 with centralized
+backdoor attack (CBA) Each component contributes incrementally to MTA,
+with the rescue stage providing the largest single gain (+1.56%).
+
+Effect of Donor Selection Strategy
+Table 5: Effect of the donor selection metric in the surrogate replacement stage
+of FedSurrogate on CIFAR-10 (CBA, pdr=0.3, n=20). Cosine similarity is the
+default in our implementation.
+Donor Metric
+
+MTA↑
+
+ASR↓
+
+Euclidean distance
+Cosine similarity (ours)
+
+85.86
+87.92
+
+1.56
+1.59
+
+Donor selection metric. Table 5 compares metrics for Stage 3 donor selection.
+Cosine similarity yields a 2.06pp MTA improvement over Euclidean distance
+at identical ASR, as it matches donors by directional alignment rather than
+magnitude.
+Sensitivity to malicious client ratio. Fig. 5 reports MTA and ASR as MCR
+increases from 0.10 to 0.45 on CIFAR-10 (ResNet-18, CBA, pdr = 0.3). FedSurrogate maintains ASR below 1.6% for MCR ≤ 0.35, with MTA degrading mildly
+from 87.89% to 85.06%. Beyond this point, ASR rises to 15.32% at MCR = 0.40
+and 74.94% at MCR = 0.45, while MTA remains stable at 84–85%, indicating
+that detection failures manifest as missed adversaries rather than false rejections. We characterise FedSurrogate as effective for MCR ≤ 0.35, well above the
+standard setting of MCR = 0.2.
+
+F. Abacha et al.
+Reduced
+effectiveness Ineffective
+
+Main Task Accuracy (%)
+
+92
+
+MTA
+ASR
+
+90
+88
+
+74.94 80
+
+87.92
+
+87.89
+
+86.00
+
+86
+
+60
+
+85.06
+
+85.00
+
+84
+
+84.04 40
+
+15.32
+
+82
+80
+
+100
+
+1.30
+
+1.59
+
+1.58
+
+1.50
+
+10%
+
+20%
+
+30%
+
+35%
+
+Malicious Client Ratio (%)
+
+40%
+
+20
+45%
+
+Attack Success Rate (%)
+
+20
+
+0
+
+Fig. 5: Robustness of FedSurrogate against increasing Malicious Client Ratio
+(MCR) on CIFAR-10 under the CBA attack (Dirichlet α=0.5, n=20 clients). The
+defense maintains ASR below 2% for MCR ≤ 35%, enters a reduced-effectiveness
+regime at MCR = 40% (ASR = 15.32%) where the attack partially succeeds but
+remains substantially mitigated relative to the undefended case, and becomes
+ineffective at MCR = 45% (ASR = 74.94%)
+
+Table 6: MTA and ASR results of baselines and FedSurrogate on IID CIFAR-10
+and CIFAR-100. Results are shown in %. The best result in each column is bold
+and the second best is underlined, considering only defenses that achieve both:
+MTA within 5% of FedAvg’s MTA, and successfully mitigate the attacks (ASR
+< 5%), marked in light grey .
+Dataset Methods
+
+CBA
+
+DBA
+
+Neurotoxin
+
+Avg. MTA↑ Avg. ASR↓
+
+CIFAR-10
+
+MTA↑ ASR↓ MTA↑ ASR↓ MTA↑ ASR↓
+FedAvg
+
+92.04 99.34 92.27 21.21 92.16 97.62
+
+92.16
+
+72.72
+
+FoolsGold [8]
+FedGrad [20]
+FLAME [19]
+FLShield [12]
+Snowball⊟ [21]
+AlignIns [26]
+SPMC [11]
+
+91.22 0.28
+89.10 0.60
+88.88 0.76
+91.97 96.97
+89.17 0.40
+91.42 0.23
+91.77 99.09
+
+90.96 0.37 90.88 0.74
+90.21 0.43 85.06 99.92
+88.83 0.70 88.06 0.66
+91.68 34.56 91.48 95.43
+87.67 0.50 84.59 0.76
+90.65 0.27 90.83 0.29
+92.07 31.84 91.80 98.25
+
+91.02
+88.12
+88.59
+91.71
+87.14
+90.97
+91.88
+
+0.46
+33.65
+0.71
+75.65
+0.55
+0.26
+76.39
+
+91.15
+
+0.48
+
+91.22
+
+0.37
+
+71.21 98.19 71.28 26.68 70.84 93.54
+
+71.11
+
+72.80
+
+69.28
+58.57
+59.60
+70.89
+53.44
+68.76
+71.56
+
+2.29
+33.47
+0.25
+69.86
+0.13
+0.15
+67.65
+
+69.15
+
+0.18
+
+FedSurrogate 91.17
+
+CIFAR-100
+
+FedAvg
+
+0.28
+
+0.34
+
+FoolsGold [8]
+69.91 0.12 68.89 6.59
+FedGrad [20]
+63.38 0.23 63.87 0.21
+FLAME [19]
+59.66 0.33 59.26 0.30
+FLShield [12]
+70.78 93.81 71.14 26.83
+Snowball⊟ [21] 56.68 0.20 48.80 0.13
+AlignIns [26]
+68.97 0.18 69.25 0.18
+SPMC [11]
+71.87 96.07 71.60 12.91
+FedSurrogate
+
+68.92
+
+0.23
+
+91.35
+
+69.05 0.16
+48.47 99.98
+59.89 0.13
+70.74 88.95
+54.83 0.06
+68.06 0.09
+71.20 93.97
+
+69.34 0.17 69.18
+
+0.14
+
+

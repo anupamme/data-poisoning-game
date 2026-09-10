@@ -1,0 +1,810 @@
+FORTA: Byzantine-Resilient FL Aggregation via
+DFT-Guided Krum
+
+arXiv:2507.14588v1 [cs.CR] 19 Jul 2025
+
+Usayd Shahul† and J. Harshan∗,†
+† Bharti School of Telecomunication Technology and Management, ∗ Department of Electrical Engineering,
+Indian Institute of Technology Delhi, India
+Abstract—Secure federated learning enables collaborative
+model training across decentralized users while preserving data
+privacy. A key component is secure aggregation, which keeps
+individual updates hidden from both the server and users,
+while also defending against Byzantine users who corrupt the
+aggregation. To this end, Jinhyun So et al. recently developed
+a Byzantine-resilient secure aggregation scheme using a secretsharing strategy over finite-field arithmetic. However, such an
+approach can suffer from numerical errors and overflows when
+applied to real-valued model updates, motivating the need for
+secure aggregation methods that operate directly over the real
+domain.
+We propose FORTA, a Byzantine-resilient secure aggregation
+framework that operates entirely in the real domain. FORTA
+leverages Discrete Fourier Transform (DFT) codes for privacy
+and employs Krum-based outlier detection for robustness. While
+DFT decoder is error-free under infinite precision, finite precision
+introduces numerical perturbations that can distort distance
+estimates and allow malicious updates to evade detection. To
+address this, FORTA refines Krum using feedback from DFT
+decoder, improving the selection of trustworthy updates. Theoretical analysis and experiments show that our modification of
+Krum offers improved robustness and more accurate aggregation
+than standard Krum.
+Index Terms—Federated Learning, Security, Byzantine Users,
+DFT Codes
+
+I. I NTRODUCTION
+Federated learning (FL) enables decentralized model training across distributed devices without collecting raw datasets
+centrally [1]. In this setting, a central server coordinates the
+process by broadcasting a global model, which each user trains
+locally before sending updates back for aggregation. This process continues until the global model stabilizes and achieves
+reasonable performance. Despite not sharing raw datasets,
+local updates can still leak sensitive information. In particular, adversaries can exploit gradient inversion techniques to
+reconstruct private training datasets [2], [3]. Moreover, FL is
+also vulnerable to Byzantine attacks, where malicious users
+send corrupted updates to degrade model performance. As
+shown in [4], even a single malicious user can significantly
+skew aggregation under schemes like FedAvg [1]. To defend
+against Byzantine faults, a common strategy is to compare
+local updates from different users and filter out anomalous
+ones at the server [4]–[6]. However, these strategies require the
+server to access individual updates thereby posing a privacy
+risk. Thus, designing FL systems that are both Byzantineresilient and privacy-preserving presents a fundamental challenge, i.e., Byzantine resilience requires visibility into updates,
+
+while privacy demands that updates remain hidden. Therefore,
+reconciling these conflicting goals is nontrivial.
+Recent works [7], [8] have explored secure aggregation
+techniques that integrate Byzantine resilience while preserving
+privacy. These methods typically rely on cryptographic primitives such as secret sharing and commitment schemes to enable
+privacy-preserving computations over masked model updates.
+The central idea is to allow the server to assess the reliability of
+user updates, often through pairwise distance-based anomaly
+detection, without directly accessing individual model parameters. By leveraging coded computing or homomorphic
+properties, these methods enable secure distance computation
+while maintaining robustness against adversarial manipulations. Once malicious updates are identified as outliers, only
+the selected user updates contribute to the final model aggregation, ensuring both resilience to Byzantine attacks and privacy
+preservation. In particular, the approach presented in [7] uses
+secret sharing over finite fields to enable secure distance
+computation. However, its effectiveness depends heavily on the
+choice of the field size. Accurate distance recovery requires
+a large field size, which introduces the following challenges:
+First, a large field size leads to high computational overhead
+in modular arithmetic and interpolation, especially in largescale FL settings. Second, since model updates are real-valued
+(floating point), quantizing them into a finite field can cause
+accuracy loss due to overflows and rounding errors. Therefore,
+in practice, finite field based secure aggregation must trade off
+between a small field size which risks reconstruction errors
+and large field size that increases cost. These limitations
+hinder the scalability and accuracy of existing finite-fieldbased approaches, thereby opening up new alternatives in the
+real domain.
+A. Contributions
+We propose Fourier-Based Outlier-Resilient Trust Aggregation (FORTA), a secure aggregation framework for FL that
+operates entirely in the real domain. Unlike schemes that
+rely on finite-field arithmetic, FORTA eliminates quantization
+and enables direct aggregation of real-valued model updates.
+It is designed to: (i) preserve privacy, (ii) ensure robustness
+against adversarial updates, and (iii) remain effective under
+finite precision constraints.
+A key challenge in FL is defending against model poisoning attacks, where Byzantine users inject malicious updates.
+FORTA addresses this by integrating the Krum aggregation
+
+rule [4], which identifies non-malicious users based on pairwise distances between updates. To preserve privacy, it leverages Analog secret sharing [9], enabling secure distance computation without exposing raw updates. However, Byzantine
+users can corrupt secret shares to distort distances as well. To
+correct this, FORTA uses Discrete Fourier Transform (DFT)based error correction algorithm. Yet, real-domain decoding
+is vulnerable to finite precision errors, which adversaries can
+exploit to evade detection. To overcome this, we incorporate
+joint decoding and feedback from the decoder to enhance
+robustness. Our main contributions are:
+1) Real-domain secure aggregation with Krum: We
+introduce a real-domain secure aggregation framework
+combining analog secret sharing with Krum-based outlier detection, enabling privacy-preserving pairwise distance computation without quantization.
+2) GMM-based error localization for finite precision:
+We propose a joint decoding strategy based on Gaussian Mixture Models (GMMs) that improves adversarial
+localization by distinguishing structured attacks from
+precision noise in the DFT decoder.
+3) Subtle attack via finite precision exploitation: Despite
+combining Krum with GMM-based decoding, we identify a novel attack strategy where Byzantine users craft
+perturbations that closely mimic finite-precision noise.
+This exploits imperfections in DFT decoder accuracy to
+bypass distance-based outlier detection and compromise
+secure aggregation.
+4) Modified Krum with DFT-guided feedback: To
+counter this vulnerability, FORTA introduces a modified Krum rule that integrates frequency-based feedback
+from the DFT decoder. This enhances the selection of
+reliable users, significantly improving robustness under
+precision-aware Byzantine attacks.
+5) Theoretical and empirical validation: We provide
+theoretical resilience guarantees for our modified Krum
+and validate its performance on MNIST and CIFAR-10,
+showing improved robustness under Byzantine attacks.
+Secure Aggregation
+
+P
+
+Outlier Detection (S)
+
+i∈S
+
+(t)
+
+wi 
+
+w(t+1) = w(t) − η (t)
+
+P
+
+j∈S
+
+(t)
+
+wj
+
+Global Model Update
+
+Server
+Secret Sharing
+
+···
+Local Models
+(t)
+w1
+user 1
+
+(t)
+
+w2
+user 2
+
+(t)
+
+w3
+user 3
+
+(t)
+
+w4
+user 4
+
+II. S YSTEM OVERVIEW
+We consider an FL setup with N users and a central
+server. Each user i ∈ [N ] holds a private dataset Di and can
+communicate with the server (user-to-server link) and with
+other users (user-to-user link) in a fully connected topology,
+as shown in Fig. 1. The goal is to collaboratively train a global
+model w(t) ∈ Rd at iteration t ≥ 0 that minimizes the global
+N
+1 X
+loss L(w) =
+ni Li (w), where Li (w) is the local loss
+N i=1
+over Di . The training proceeds in rounds as follows:
+• Broadcast: The server sends the current global model
+w(t) to all users.
+(t)
+• Local Update: Upon receiving the global model w ,
+(t)
+each user i ∈ [N ] computes local update as wi =
+(t)
+g(w(t) , ξi ), where g is an estimate of the gradient
+(t)
+∇L(w (t) ) of the loss function L, and ξi denotes the
+mini-batch of data sampled by user i in iteration t,
+(t)
+and the stochastic gradient satisfies Eξ(t) [g(w (t) , ξi )] =
+i
+
+∇Li (w(t) ).
+• Aggregation: The server performs secure aggregation
+with outlier detection to filter unreliable updates and re(t)
+(t)
+fine the model as w (t+1) = w(t) −η (t) f (w 1 , . . . , wN ),
+(t)
+where η is the learning rate and f is a robust aggregation rule over the filtered set.
+Training continues iteratively until the global model reaches
+convergence, implying that the model stabilizes with minimal
+changes in subsequent iterations.
+A. Threat Model
+Our FL setup involves up to A Byzantine users which
+are malicious participants aiming to disrupt model training
+process. These users may launch model poisoning attacks by
+submitting corrupted updates to bias the global model and
+degrade performance. More subtly, they may inject controlled
+perturbations during the protocol execution, aiming to corrupt
+the aggregated results or delay the learning process. We
+also assume an honest-but-curious server that follows the
+protocol but seeks to infer private information from user
+updates. Additionally, up to T users may collude, pooling
+private information in attempts to reconstruct others’ local updates. This combination of threats namely, poisoned updates,
+protocol-level attacks, privacy violations, and user collusion
+can severely compromise model accuracy and convergence.
+A robust defense must therefore ensure privacy preservation,
+detect outliers, and remain resilient under finite precision
+errors. We now proceed to formally describe the technical
+details of FORTA.
+III. FORTA
+
+(t)
+
+wN
+user N
+
+Secret sharing of local updates via inter-user links
+Fig. 1: Secure FL framework with outlier detection.
+
+In each round t of FL, the FORTA framework performs a
+three-step pipeline that ensures privacy-preserving and robust
+aggregation in the presence of Byzantine users. These steps,
+repeated until convergence of the global model, consist of:
+secret sharing of local updates over infinite fields, outlier
+detection with feedback from the DFT decoder, and secure
+
+aggregation of selected users followed by a global model
+update. We now describe each component in detail.
+A. Secret Sharing of Local Updates over Infinite Fields
+Our approach, inspired by analog secret sharing [9], operates in the real domain, encoding updates into polynomials
+with additive Gaussian noise. This enables privacy preservation without requiring discretization. However, in finite
+precision settings, numerical errors inevitably arise due to
+floating-point operations, introducing an additional noise term.
+(t)
+Let user i hold a local model update wi ∈ Rd . For
+(t)
+notational simplicity, we omit the superscript (t) in wi
+throughout the rest of the paper. Initially, the server and
+users agree on N distinct elements {ωi }i∈[N ] , where each
+ωi = e2πιi/N , and ι denotes the imaginary unit with ι2 = −1.
+Thus, each ωi is an N th root of unity in the complex plane.
+These points serve as evaluation points for the secret-sharing
+polynomials. To ensure privacy, user i constructs a secretsharing polynomial Pi : C → Cd of degree T in indeterminate
+x, given by:
+Pi (x) = wi +
+
+T
+X
+
+r ij xj + ǫi ,
+
+(1)
+
+j=1
+
+where T represents the maximum number of colluding users,
+wi ∈ Rd is the user’s local model update, r ij ∈ Cd
+are independent and identically distributed (i.i.d.) random
+vectors, where each individual entry of rij is also i.i.d. The
+entries of r ij are drawn from a circularly symmetric complex
+Gaussian distribution with zero mean and variance σn2 /T
+(k)
+rij ∼ N (0, σn2 /T ), ∀k ∈ {1, . . . , d}, ǫi ∈ Rd represents
+the finite precision noise, which arises due to numerical errors
+and follows an arbitrary distribution.
+To securely distribute the secret shares of wi , user i
+evaluates polynomial Pi (x) at the agreed-upon roots of unity.
+The corresponding secret share that user i sends to user j is
+given by:
+sij = Pi (ωj ).
+(2)
+This ensures that no subset of fewer than T + 1 users can
+reconstruct w i . While the secret-sharing mechanism ensures
+that local updates remain private, it does not prevent Byzantine
+users from submitting maliciously altered updates. Since the
+server does not directly observe individual updates, it must
+rely on an additional mechanism to detect and mitigate such
+Byzantine behavior. To achieve this, we employ an outlier
+detection mechanism based on pairwise distances between
+model updates, specifically leveraging the Krum aggregation
+rule [4]. To enable distance computation, each user locally
+computes differences between the secret shares they receive.
+These masked differences act as proxies for the true pairwise
+differences and are sent to the server for reconstruction. We
+describe this process in detail below.
+1) Pairwise Difference Computation by Users: User i computes pairwise differences between the secret shares received
+from all user pairs j, k ∈ [N ] as:
+dijk = sji − ski .
+
+(3)
+
+These differences are sent to the server by every user. Since
+the computation is performed on secret shares, user i does not
+learn the actual updates w j or wk , thus preserving privacy.
+2) Reconstructing True Pairwise Differences at the Server:
+Upon receiving these pairwise differences {dijk } from all
+users, the server collects N such evaluations for each pair
+(j, k), forming a structured sequence of vectors. However,
+since Byzantine users may send corrupted vectors, the server
+must correct those errors before reconstruction. To ensure
+correctness, the server uses the polynomial structure of the
+pairwise differences of secret shares, which allows to exploit
+redundancy for error correction. Specifically, we express the
+difference of secret sharing polynomials as:
+hjk (x) = Pj (x) − Pk (x)
+= (wj − wk ) +
+
+T
+X
+t=1
+
+(r jt − r kt )xt + (ǫj − ǫk ),
+
+where hjk (x) ∈ Cd is a vector-valued polynomial of degree
+at most T , and each evaluation hjk (ωi ) ∈ Cd represents the
+masked pairwise difference sent by user i. The server thus
+receives N such evaluations
+for each pair (j, k),  forming
+
+a matrix C jk = hjk (ω1 ), hjk (ω2 ), . . . , hjk (ωN ) , where
+C jk ∈ Cd×N . Each row of this matrix corresponds to a
+scalar-valued codeword of length N , i.e., for each coordinate
+(l)
+l ∈ {1, . . . , d}, the server can extract the codeword cjk =
+
+(l)
+(l)
+(l)
+(l)
+hjk (ω1 ), hjk (ω2 ), . . . , hjk (ωN ) , where hjk (x) denotes
+the l-th coordinate of the vector-valued polynomial hjk (x).
+By considering the coefficients of hljk (x) as message symbols and viewing its evaluations at the N -th roots of unity as
+a codeword, the server essentially obtains a noisy codeword
+
+from an (N, T + 1) DFT code. Since there are N2 unique
+distance pairs and d coordinates, the server is tasked with
+decoding a total of N2 d scalar codewords from an (N, T +1)
+DFT code. These codewords may contain adversarially corrupted entries and are further affected by finite precision noise.
+To decode each of them, the server applies a DFT decoder
+(l)
+to every scalar codeword cjk independently. This yields the
+coefficients of the corresponding scalar message polynomial
+(l)
+hjk (x), from which the server evaluates the polynomial at
+x = 0 to recover the l-th component of the pairwise difference.
+Aggregating these decoded components server reconstructs the
+full pairwise difference vector as hjk (0) = wj − w k + ǫjk ,
+from which it obtains djk := kwj − w k + ǫjk k2 , where,
+εjk denotes the decoding error arising from finite precision
+arithmetic.
+In practice, the effectiveness of DFT-based reconstruction
+and specifically the ability to localize and correct adversarial
+corruptions relies critically on estimating the number of errors on each codeword. However, in finite precision settings,
+independent decoding of codewords becomes unreliable due
+to precision noise in the error localization step, allowing
+carefully crafted adversarial perturbations to evade detection.
+Prior work [10] shows that joint error localization, leveraging
+statistical patterns across multiple codewords significantly
+
+improves detection accuracy in such environments. Building
+on this insight, we develop a joint decoding strategy based
+on Gaussian Mixture Model (GMM) clustering, which isolates
+adversarial indices by statistically separating them from noiseaffected but honest evaluations. The output is a frequency
+profile, denoted by f , of length N, that tracks how often
+each user is flagged as adversarial across all codewords.
+This frequency profile is used both to localize errors during
+decoding and to guide the outlier detection step. Full technical
+details will be provided in the extended journal version of this
+work.
+B. Outlier Detection with feedback from DFT decoder
+[4] assigns each user i a score Si =
+PThe Krum algorithm
+2
+kw
+−
+w
+k
+,
+where
+Mi ⊂ [N ] \ {i} denotes the
+i
+j
+j∈Mi
+N − A − 2 users whose updates are closest (in Euclidean
+distance) to wi . This score reflects how well wi aligns with
+the majority. Krum then selects the top m users with the
+lowest scores, assuming non malicious users are mutually
+closer than Byzantine users. However, under finite precision,
+both adversarial perturbations and precision noise can distort
+scores, causing Byzantine users to appear benign. To mitigate
+this, we incorporate feedback from the DFT decoder’s frequency profile built from joint GMM-based decoding across
+all codewords to assess adversarial likelihood.
+a) Error Localization Feedback: The frequency profile
+yields a vector f where fi denotes how often user i is
+flagged as adversarial. We convert this into soft confidences
+i /τ )
+, with temperature
+via softmax function as λi = PNexp(f
+j=1 exp(fj /τ )
+τ controlling sharpness. These soft confidences are then used
+to modulate the original Krum scores, biasing the selection
+against frequently flagged users.
+b) Modified Scoring: We define a stabilized baseline
+score Smin := min1≤i≤N Si /(N − A − 2), and compute the
+modified Krum score:
+Simod := λi Si + (1 − λi )Smin .
+
+(4)
+
+This balances geometric consistency from Krum and statistical
+suspicion from the DFT decoder as a result users frequently
+flagged as adversarial retain higher influence from Si , while
+less suspicious ones are nudged closer to Smin .
+c) Selection: The server then selects the m users with
+the smallest Simod for secure aggregation.
+C. Secure Aggregation of Selected Users
+In the final phase, the server securely aggregates updates
+from the selected users, denoted by U ⊂ [N ] without the
+knowledge of individual updates. The server broadcasts U, and
+each user i computes P
+the sum of secret shares received from
+users in U as si =
+j∈U sji , and sends si to the server.
+From these,
+the
+server
+reconstructs the aggregated model
+P
+w
+via
+a
+DFT decoder as discussed before.
+update
+j
+j∈U
+Then the global model is then updated as: w (t+1) = w(t) −
+P
+(t)
+η (t) j∈U wj . This ensures robust and privacy-preserving
+aggregation, leveraging DFT decoder along with modified
+Krum.
+
+IV. ROBUSTNESS GUARANTEES
+In this section, we formally analyze the robustness of our
+proposed user selection strategy that integrates error localization feedback with the classical Krum rule. Our goal is
+to theoretically demonstrate how incorporating feedback from
+the DFT decoder improves resilience against Byzantine users.
+To facilitate this demonstration, we begin by recollecting the
+definition of robustness given in [4], commonly referred to
+as (α, A)-Byzantine Resilience which quantifies the deviation
+between the output of the selection rule (in our case, the
+modified Krum) and the true gradient vector in the presence
+of up to A Byzantine users.
+Definition 1 (α, A-Byzantine Resilience) Let 0 ≤ α < π2
+and 0 ≤ A ≤ N . Consider i.i.d. vectors w1 , . . . , wN ∈ Rd ,
+with wi ∼ G representing true local updates, such that E[G] =
+g and E[kG − gk2 ] = dσg2 , which includes arbitrary (possibly
+adversarial) vectors b1 , . . . , bA . A function f is said to be
+(α, A)-Byzantine resilient if, for any set of Byzantine indices
+{j1 , . . . , jA }, f (w 1 , . . . , bj1 , . . . , bjA , . . . , wN ) satisfies the
+inequality g⊤ E[f ] ≥ (1 − sin α)kgk2 , where g is the expected
+true update direction. This ensures that the output produced by
+f remains sufficiently aligned with the true update, even in the
+presence of adversarial interference. In our scenario, however,
+the server does not directly access the local model updates
+w1 , . . . , wN ∈ Rd . Instead, it operates on noisy pairwise differences of the form ∆jk := wj − wk + εjk , ∀j 6= k where
+εjk ∈ Rd denotes additive noise arising from finite-precision
+arithemtic. To reconcile this setting with the assumptions of the
+above definition, we conceptually reinterpret these differences
+to define surrogate updates that stand in for local updates in
+the theoretical analysis. These adjusted updates preserve the
+key statistical properties required for the robustness guarantee,
+as described next.
+We assume that each εjk is an i.i.d. d-dimensional vector
+such that εjk ∼ F with E[F ] = 0, E[kF k2 ] = dσε2 . To
+align with the theoretical framework of the original Krum
+analysis, which assumes access to (possibly perturbed) individual updates, we reinterpret each noisy pairwise difference,
+∆jk = wj − wk + εjk as arising from two independently
+perturbed updates, i.e., wj + ε1jk and w k − ε2jk , where we
+model the pairwise noise εjk ∼ N (0, σε2 I d ) as the sum of two
+i.i.d. Gaussian vectors, i.e., εjk = ε1jk +ε2jk , with ε1jk , ε2jk ∼
+N (0, 12 σε2 I d ). This decomposition ensures that the total noise
+variance in the pairwise difference remains σε2 , while enabling
+the construction of surrogate updates of the form v j :=
+wj + ε1jk , v k := wk − ε2jk . Then, each v i ∈ Rd satisfies
+E[v i ] = g and Var(v i ) = d(σg2 + 12 σε2 ). While the entries
+of each v i remain independent, corresponding coordinates
+across different vectors become correlated due to shared noise
+(k)
+(k)
+terms across pairwise interactions, i.e., Corr(v j , v k ) >
+0 for some j 6= k. This deviation from independence necessitates a careful reinterpretation of robustness guarantees.
+Nevertheless, we show that resilience can still be established
+under this noise-injected model by appropriately bounding the
+second moment of the adjusted updates. We now proceed to
+
+(k)
+
+(k)
+
+(k)
+
+Cov v i
+
+(k)
+
+,v j
+
+.
+Corr(v i , v j ) = ρkij , ∀i 6= j, where ρkij =
+σ′2
+Then, the Krum function fkr is (α, A)-Byzantine resilient with
+√
+2η(N, A) d σ ′
+π
+sin α =
+, where 0 ≤ α < .
+(5)
+kgk
+2
+
+We now state a similar result for the modified Krum
+function. To formalize this result, we begin by introducing
+the relevant quantities and assumptions. Let λi ∈ [0, 1]
+denote a decoder-derived confidence indicating the likelihood of user
+Define
+ i being Byzantine.
+
+ random variables
+λi
+λi
+T ∼ max λk , Q ∼ max 1 − λk , with corresponding
+2
+means µT , µQ and variances σT2 , σQ
+. The modified Krum
+S0
+mod
+, where
+score P
+is given by Si
+= λi Si + (1 − λi ) N −A−2
+2
+Si = j→i kv i − v j k , and S0 = minj∈S Sj is the minimum
+original score. The notation j → i indicates that v j is among
+the N − A − 2 closest vectors to v i , and S denotes the set of
+original (unweighted) scores.
+d
+
+Theorem 2. Assume 2A + 2 < N and v 1 , . . . , v N ∈ R
+denote the surrogate updates computed from noisy pairwise differences, such that each v i has i.i.d. entries
+with
+
+EG,F [v i ] = g, EG,F kvi − gk2 = d σg2 + 12 σε2 = dσ ′2 ,
+but corresponding coordinates across different vectors are
+(k)
+(k)
+correlated,
+i.e.,
+Corr(v i , v j ) = ρkij , ∀i 6= j, where ρkij =
+
+
+(k)
+
+Cov v i
+
+V. E XPERIMENTAL R ESULTS
+We evaluate the robustness of modified Krum against FedAvg and the original Krum under Byzantine attacks. FedAvg
+serves as a baseline without outlier detection, making it
+highly vulnerable to adversarial updates. The original Krum
+filters outliers solely based on pairwise distances, while our
+modified Krum incorporates feedback from the DFT decoder
+to enhance Byzantine detection. Experiments are conducted
+on i.i.d. MNIST and CIFAR-10 datasets using N = 30 users,
+with T = 9 colluding users and A = 10 Byzantine users.
+Each user trains locally for a few epochs before aggregation.
+Byzantine users launch model poisoning attacks, adding noise
+or scaling updates, and inject noise into secret shares to corrupt
+pairwise distances, as outlined in the threat model. We select
+m = 8 updates per round for aggregation. Figures 2a and 2b
+show the test accuracy over training rounds. As expected,
+FedAvg performs poorly under attack. Original Krum offers
+better performance than FedAvg but suffers in test accuracy
+when compared to modified Krum, validating the benefits of
+DFT-guided Krum.
+1.0
+
+0.7
+0.6
+
+0.8
+
+Fed Avg
+Krum
+Modified Krum
+
+0.6
+0.4
+
+Test Accuracy
+
+Theorem 1. Assume that 2A + √
+2 < N and the fold σ ′ < kgk, where
+lowing inequality
+holds
+2η(N,
+A)
+r
+
+2 (N −A−1)
+η(N, A) =
+N − A + A(N −A−2)+A
+, and σ ′ =
+N −2A−2
+q
+σg2 + 21 σε2 . Let v 1 , . . . , v N ∈ Rd denote the surrogate updates computed from noisy pairwise differences,
+such that  each v i has i.i.d. entries with EG,F [v i ] =
+g, EG,F kv i − gk2 = d σg2 + 12 σε2 , but corresponding coordinates across different vectors are
+correlated, i.e.,
+
+
+
+then the modified Krum function offers improved robustness
+over the original Krum function, i.e., α′ < α.
+
+Test Accuracy
+
+formalize resilience guarantees of Krum under noisy surrogate
+updates.
+
+0.5
+
+Fed Avg
+Krum
+Modified Krum
+
+0.4
+0.3
+0.2
+
+0.2
+0
+
+25
+
+50
+
+75
+
+100
+
+Rounds
+
+125
+
+150
+
+175
+
+200
+
+0.1
+
+0
+
+50
+
+(a) MNIST
+
+100
+
+150
+
+200
+
+Rounds
+
+250
+
+300
+
+350
+
+(b) CIFAR-10
+
+Fig. 2: Test accuracy over training rounds on i.i.d. MNIST and
+CIFAR-10 datasets, comparing FedAvg, Krum, and Modified
+Krum under Byzantine attacks.
+
+(k)
+
+,v j
+
+. Assume further that there exist finite constant
+C1 > 0 such that
+i norm
+h the secondi moment ofheach squared
+σ′2
+
+2
+
+.
+term satisfies E kv i − v j k4 ≤ C1 · E kv i − v j k2
+If
+the
+following
+condition
+holds
+q
+η′
+ΨQ )4dσ ′2 + (N − A)4dσ ′2 < kgk,
+A(η ′ ΨT + N −A−2
+
+−A−1)
+N −A−2
++ A(N
+ΨT
+=
+where η ′
+=
+N −2A−2 q
+N −2A−2 ,
+p
+2
+2
+2
+2
+(σT + µT ) · C1 , ΨQ =
+(σQ + µQ ) · C1 , then the
+modified Krum function fmod-kr is (α′ , A)-Byzantine resilient,
+where
+q
+η′
+ΨQ )4dσ ′2 + (N − A)4dσ ′2
+A(η ′ ΨT + N −A−2
+′
+.
+sin α =
+kgk
+(6)
+
+Corollary 1. Let α and α′ denote the deviation angles
+associated with the original and modified Krum functions as
+stated in Theorems 1 and 2, respectively.
+ If the following
+η′
+ΨQ + (N − A) < η 2 ,
+inequality holds A η ′ ΨT + N −A−2
+
+VI. C ONCLUSION
+In this paper, we introduced FORTA, a real-domain secure
+aggregation framework for FL that simultaneously ensures
+privacy and Byzantine resilience. By employing analog secret
+sharing, FORTA preserves the fidelity of real-valued model
+updates without quantization. To defend against finely-crafted
+precision-aware attacks, we integrated decoder-derived feedback into a modified Krum aggregator, dynamically reweighting user contributions based on estimated adversarial likelihood. Our theoretical analysis and experiments on MNIST and
+CIFAR-10 demonstrated that FORTA significantly outperforms
+standard Krum and FedAvg under Byzantine threats.
+Future work will focus on reducing the computational
+and communication overhead of analog sharing, as well as
+establishing theoretical guarantees for convergence for the
+modified Krum under adversarial conditions.
+
+R EFERENCES
+[1] B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A. y. Arcas,
+“Communication-Efficient Learning of Deep Networks from Decentralized Data,” in Proceedings of the 20th International Conference on
+Artificial Intelligence and Statistics, vol. 54 of Proceedings of Machine
+Learning Research, pp. 1273–1282, 20–22 Apr 2017.
+[2] J. Geiping, H. Bauermeister, H. Dröge, and M. Moeller, “Inverting
+gradients - how easy is it to break privacy in federated learning?,” in
+Proceedings of the 34th International Conference on Neural Information
+Processing Systems, NIPS ’20, (Red Hook, NY, USA), Curran Associates Inc., 2020.
+[3] L. Zhu, Z. Liu, and S. Han, “Deep leakage from gradients,” in Advances
+in Neural Information Processing Systems, vol. 32, Curran Associates,
+Inc., 2019.
+[4] P. Blanchard, E. M. El Mhamdi, R. Guerraoui, and J. Stainer, “Machine learning with adversaries: Byzantine tolerant gradient descent,”
+in Advances in Neural Information Processing Systems, vol. 30, Curran
+Associates, Inc., 2017.
+[5] E. M. E. Mhamdi, R. Guerraoui, and S. Rouault, “The Hidden Vulnerability of Distributed Learning in Byzantium,” in Proceedings of the 35th
+International Conference on Machine Learning, pp. 3518–3527, PMLR,
+2018.
+[6] D. Yin, Y. Chen, R. Kannan, and P. Bartlett, “Byzantine-robust distributed learning: Towards optimal statistical rates,” in Proceedings of
+the 35th International Conference on Machine Learning, vol. 80 of
+Proceedings of Machine Learning Research, pp. 5650–5659, PMLR,
+10–15 Jul 2018.
+[7] J. So, B. Güler, and A. S. Avestimehr, “Byzantine-resilient secure
+federated learning,” IEEE Journal on Selected Areas in Communications,
+vol. 39, no. 7, pp. 2168–2181, 2021.
+[8] T. Jahani-Nezhad, M. A. Maddah-Ali, and G. Caire, “Byzsecagg: A
+byzantine-resistant secure aggregation scheme for federated learning
+based on coded computing and vector commitment.” arXiv:2302.09913,
+2025. [Online]. Available: https://arxiv.org/abs/2302.09913.
+[9] M. Soleymani, H. Mahdavifar, and A. S. Avestimehr, “Privacypreserving distributed learning in the analog domain.” arXiv:2007.08803,
+2020. [Online]. Available: https://arxiv.org/abs/2007.08803.
+[10] R. Borah and J. Harshan, “On securing analog lagrange coded computing
+from colluding adversaries,” in 2024 IEEE International Symposium on
+Information Theory (ISIT), pp. 3279–3284, 2024.
+
+

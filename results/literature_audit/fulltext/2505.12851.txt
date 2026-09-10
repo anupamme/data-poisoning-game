@@ -1,0 +1,1203 @@
+FLTG: Byzantine-Robust Federated Learning
+via Angle-Based Defense and Non-IID-Aware
+Weighting
+Yanhua Wen1 , Lu Ai1 , Gang Liu2B , Chuang Li1 , and Jianhao Wei1
+
+arXiv:2505.12851v1 [cs.CR] 19 May 2025
+
+1
+
+Hunan University of Technology and Business and also with Xiangjiang
+Laboratory, Hunan 410205, China
+yanhua-wen@hutb.edu.cn, 1392054016@qq.com, chuangli@hutb.edu.cn
+jianhao@hutb.edu.cn
+2
+Shenzhen Institute for Advanced Study, University of Electronic Science and
+Technology of China, Shenzhen 518055, China
+gliu29@uestc.edu.cn
+
+Abstract. Byzantine attacks during model aggregation in Federated
+Learning (FL) threaten training integrity by manipulating malicious
+clients’ updates. Existing methods struggle with limited robustness under high malicious client ratios and sensitivity to non-i.i.d. data, leading
+to degraded accuracy. To address this, we propose FLTG, a novel aggregation algorithm integrating angle-based defense and dynamic reference selection. FLTG first filters clients via ReLU-clipped cosine similarity, leveraging a server-side clean dataset to exclude misaligned updates.
+It then dynamically selects a reference client based on the prior global
+model to mitigate non-i.i.d. bias, assigns aggregation weights inversely
+proportional to angular deviations, and normalizes update magnitudes to
+suppress malicious scaling. Evaluations across datasets of varying complexity under five classic attacks demonstrate FLTG’s superiority over
+state-of-art methods under extreme bias scenarios and sustains robustness with higher proportion(over 50%) malicious clients.
+Keywords: Federated Learning; Byzantine Robustness; Cosine Similarity Aggregation; Non-IID Data; Model Poisoning Attacks
+
+1
+
+Introduction
+
+Federated Learning(FL)[1],[2] is a decentralized machine learning [3] approach
+that enables clients to collaboratively train a model without exposing their
+private data. Each client trains a local model using its own data and sends
+only model updates (e.g., gradients)[4] to a central server for aggregation. This
+framework ensures data privacy by keeping sensitive original data local, while
+still benefiting from the collective knowledge of all participants. FL is particularly well-suited for applications involving mobile devices[5], blockchain [6], and
+healthcare[7], where data security is paramount.
+
+However, federated learning (FL) still encounters a number of challenges
+when applied in real-world scenarios. Its decentralized structure makes it susceptible to malicious disruptions, particularly during the model sharing phases,
+which can expose it to Byzantine attacks. Among the primary threats are data
+poisoning attacks[8] and local model poisoning attacks[9],[10],[11], both of which
+can severely affect the global model’s training performance, jeopardizing the security and stability of the entire FL framework. To tackle this security challenge,
+various Byzantine-robust FL approaches have been proposed[7],[11], [12],[13],[14],
+[15],[16], [17], [18]. The majority of these methods detect malicious clients by analyzing discrepancies in model updates, either through comparisons with other
+client models or the server model. These solutions face two critical limitations:
+(1) sensitivity to non-IID data – conventional similarity metrics (e.g., Euclidean
+distance in Krum, coordinate-wise trimming in Trim-mean) fail to disentangle
+malicious updates from legitimate yet divergent updates caused by data heterogeneity, leading to over-filtering and model bias; (2) fragility under high malicious ratios – most methods degrade sharply when malicious clients dominate,
+as static reference models or fixed thresholds become ineffective against adaptive
+poisoning strategies.
+To address the aforementioned challenge, based on the two main categories of
+defense aggregation methods in federated learning, we select angle-based defense
+techniques to detect malicious clients. Compared with angle-based approaches,
+distance-based methods have the following disadvantages: First, distance-based
+methods typically require strict assumptions, such as knowing the number of
+malicious clients in advance, which are hard to meet in real federated learning
+environments. Second, computing Euclidean or Mahalanobis distance requires
+extensive mathematical operations on model parameters, which becomes computationally expensive, especially for high-dimensional models. Third, distancebased approaches are generally more effective at detecting attacks that manipulate update magnitudes, whereas angle-based methods are better suited for
+detecting directional anomalies in gradients. In our study, we not only focus on
+the direction of the gradients but also normalize the gradients to account for
+their magnitudes. This combination gives our method a robustness advantage
+that cannot be achieved by distance-based methods.
+Based on the advantages of the aforementioned angle-based techniques, we
+propose a Byzantine-Robust aggregation algorithm, FLTG. First, we compute
+the cosine similarity between each client’s model update and the server’s model
+update. Next, we perform additional operations on the subset of clients whose
+cosine similarity is greater than zero. To reduce the effects of non-iid (nonindependent and identically distributed) data, we identify the client within this
+subset that exhibits the largest angular difference from the global model in the
+previous round. We then calculate the cosine similarity between this reference
+client and the rest of the clients in the subset. We hypothesize that clients more
+similar to the reference client should have lower aggregation weights. Subsequently, we normalize the model updates of the client subset, scaling them to
+align with the server’s model update on the same hypersphere in the vector
+
+space. This step helps mitigate the influence of malicious model updates with
+large deviations. Finally, FLTG computes a weighted average of the normalized
+model updates to complete the aggregation. In conclusion, the main contributions of our work are as follows.
+• Innovative Byzantine-Robust Aggregation Mechanism. We integrate
+ReLU-based cosine similarity screening strategy and dynamic reference selection strategy driven by historical global model updates, ensuring adaptive
+defense against evolving attacks while minimizing over-filtering of legitimate
+non-IID updates.
+• Enhanced Robustness to Non-IID Scenario. We introduce a global
+model-guided scoring system, distinguishing malicious deviations from benign data heterogeneity. The inverse-proportional weighting of angular differences mitigates root dataset bias and client non-IID impacts.
+• Comprehensive Resilience Validation. We rigorously evaluate FLTG
+across diverse datasets (MNIST, CIFAR-10), model architectures (CNN,
+ResNet20), and six attack scenarios (e.g., label-flipping, Krum attack). FLTG
+sustains robustness even with >50% malicious clients, outperforming stateof-the-art methods in accuracy and attack resistance.
+
+2
+
+Background and Related Works
+
+2.1
+
+Federated Learning
+
+Federated Learning (FL) is a decentralized machine learning method where multiple clients collaboratively train a shared model without directly exchanging
+their data. Each client trains a local model using its own data and only shares
+model updates (such as gradients) with a central server. This approach ensures
+data privacy while enabling the construction of a global model. The implementation of Federated Learning follows these three steps (as shown in Fig. 1): The
+server sends the global model to clients, who then train local models and send
+updates back. The server aggregates these updates to update the global model.
+Step III:The server aggregates local model updates
+and uses them to update the global model.
+
+Step II:The clients
+train local models
+and send them to
+the server.
+
+Step I:The server
+sends the global
+model to the clients.
+
+Fig. 1: Federated Learning Framework.
+
+2.2
+
+Byzantine-Robust Federated Learning
+
+Byzantine-Robust Federated Learning (BR-FL) aims to maintain the reliability and integrity of model aggregation in the presence of malicious participants.
+While privacy-preserving techniques in Federated Learning (FL) focus mainly on
+safeguarding sensitive data, BR-FL addresses the challenge of ensuring the accuracy and trustworthiness of models despite adversarial attacks, such as Byzantine failures, where participants may submit corrupted or misleading updates
+to disrupt the training process. To combat this issue, a variety of Byzantinerobust aggregation strategies have been proposed. Aggregation rules are vital in
+Federated Learning, as they directly influence the system’s ability to effectively
+mitigate malicious behavior. In the following section, we will introduce several
+classical aggregation algorithms.
+2.3
+
+Byzantine-Robust Aggregation Rules
+
+Krum[12]: Krum is designed to assess the similarity between each client’s model
+update and those of other clients using the squared Euclidean distance. The
+server evaluates each update by computing the sum of squared distances to its
+n−f −2 closest neighbors, where n is the total number of clients and f represents
+the number of malicious clients. The update with the smallest sum of distances is
+selected as the global model update, thereby reducing the influence of malicious
+clients. Krum has been proven to tolerate up to f malicious clients, provided
+that the condition n > 2f + 2 is met. The aggregation process for Krum is
+formulated as follows:
+X
+g = g i∗ , i∗ = arg min
+∥g i − g j ∥22 ,
+(1)
+i∈{1,...,n}
+
+j∈N (i)
+
+where g i and g j denote the model updates from clients i and j, respectively,
+and N (i) represents the set of n−f −2 closest neighbors of g i , determined based
+on the squared Euclidean distance.
+Trim-mean[13]: Trimmed-Mean is a coordinate-wise aggregation method
+that enhances robustness by filtering out extreme values. Specifically, for each
+parameter, it discards the k largest and k smallest values before computing
+the mean of the remaining ones. The trim parameter k, which determines the
+number of values removed, must be at least equal to the number of malicious
+clients to ensure resilience against attacks. This approach allows Trim-Mean to
+tolerate up to k < n2 malicious clients, meaning it remains effective as long as
+fewer than 50% of participants are adversarial. The aggregation process follows
+this formulation:
+X
+1
+g = [g 1 , g 2 , . . . , g d ] , g j =
+g ij ,
+(2)
+n − 2k
+i∈Sj
+
+where g ij denotes the j-th parameter in the i-th client’s model update, and
+Sj represents the set of remaining values for the j-th parameter after removing
+
+the k highest and lowest values. Here, n refers to the total number of clients.
+The final aggregated update g is composed of all parameter values g 1 , g 2 , . . . , g d ,
+where d represents the total number of parameters in the model.
+Median[13]: The Median aggregation method operates in a coordinate-wise
+manner, determining the global model update by computing the median value
+of each parameter across all client updates. This approach enhances robustness
+by mitigating the influence of extreme values. The aggregation process is mathematically defined as follows:
+
+g = [g 1 , g 2 , . . . , g d ] , g j = median {g ij : i ∈ [n]} ,
+(3)
+where g ij denotes the j-th parameter in the model update from client i,
+and n represents the total number of participating clients. The final aggregated
+update g consists of all parameter values g 1 , g 2 , . . . , g d , with d being the total
+number of model parameters.
+FLTrust[11]: FLTrust introduces a defense mechanism in which the server
+manually collects a small, trustworthy dataset—referred to as the root dataset
+that remains untainted by poisoning attacks. Using this dataset, the server trains
+a reference model, known as the server model, analogous to how each client trains
+its local model. To assess the reliability of client updates, FLTrust computes
+a trust score (TS) for each client based on the cosine similarity between the
+client’s model update and the server model update. These trust scores serve
+as weights during the aggregation process. Additionally, FLTrust reduces the
+impact of malicious updates by normalizing each client’s model update, adjusting
+its magnitude to align with that of the server model update. The aggregation
+process follows the formula:
+g = Pn
+
+1
+
+n
+X
+
+j=1 T Sj i=1
+
+T Si · ḡ i ,
+
+(4)
+
+where T Sj represents the trust score assigned to client j, and ḡ i denotes the
+normalized model update of client i.
+
+3
+
+Problem Setup
+
+3.1
+
+Attack Model
+
+In federated learning (FL), adversaries can either compromise existing clients
+or introduce fake ones to launch attacks. These malicious clients generate corrupted local updates with the intent of manipulating the global model, a strategy
+known as Byzantine attacks[9],[11],[10]. The goal of such attacks is to disrupt
+the collaborative training process and degrade the global model’s performance.
+Consistent with prior work on poisoning attacks, we classify adversaries based
+on their level of knowledge. In the partial knowledge setting, attackers have access to their own local training data, model updates, loss functions, learning
+rates, batch sizes, and other related parameters. In the full knowledge setting,
+
+adversaries have complete visibility into the entire FL training process, including
+local training data, model updates across iterations, aggregation rules, and all
+relevant parameters.
+To evaluate the robustness of our method, we conduct experiments under the
+full knowledge setting. In this scenario, we assume the server remains uncompromised and does not collaborate with any clients. However, the server operates
+under an honest-but-curious model: it strictly follows the aggregation protocol
+without selectively discarding updates but may attempt to infer private client
+information by analyzing both local and global model updates during training
+rounds. The main types of threats considered include:
+• Data Poisoning Attacks [11]: Adversaries alter training labels without changing input features, such as in label flipping attacks where malicious clients’
+labels are changed to a target class or reassigned randomly. Detecting these
+attacks is difficult as the server cannot directly access client data.
+• Model Poisoning Attacks [9]: These attacks modify local model updates
+strategically. If the aggregation mechanism doesn’t filter them out, it can
+lead to significant performance loss or failure of the global model to converge.
+• Backdoor Attacks [10]: These attacks embed hidden triggers in training data.
+Models trained on this data will misclassify inputs containing the trigger,
+producing the attacker’s intended output. For instance, in image classification, an attacker might insert a subtle pattern in images and mislabel them.
+The model will only be compromised when it encounters this pattern during
+inference.
+3.2
+
+Design Goals
+
+We aim to develop a Byzantine-robust federated learning framework that focuses
+on server-side defense mechanisms. The framework is designed to ensure fidelity,
+meaning the global model’s accuracy remains uncompromised in the absence
+of malicious clients. Simultaneously, it guarantees robustness, maintaining high
+global model accuracy even under adversarial attacks. To achieve these objectives, our proposed framework must be effective across different datasets, attack
+strategies, and scenarios with highly heterogeneous data distributions. Furthermore, it should remain functional even when the fraction of malicious clients
+exceeds 50%.
+3.3
+
+System Model
+
+Our system architecture, consistent with FLTrust[11], involves the server maintaining a small, clean dataset (referred to as the root dataset) and following the
+standard three-step federated learning process outlined in Section 2.1. However,
+a key distinction exists in the second step: while clients train their local models,
+the server also trains a model on the root dataset, known as the server model.
+This additional step enables the server to utilize its own model update as a
+
+trusted reference during aggregation. Specifically, in the third step, the server
+compares client model updates against the server model update, leveraging directional similarity to detect and mitigate malicious contributions. For a detailed
+breakdown of the workflow, please refer to Algorithm 1.
+Algorithm 1 Federated Learning Framework
+Require: A set of n clients S = {C1 , C2 , . . . , Cn }, with their corresponding training
+datasets {D1 , D2 , . . . , Dn }, server’s root dataset D0 , global learning rate α, local
+learning rate β, total global rounds R, η clients selected per round, local epochs e,
+and batch size b.
+Ensure: Global model G.
+1: G ← random initialization.
+2: for t = 1, 2, . . . , R do
+3:
+// Step I: The server sends the global model to clients.
+4:
+The server randomly samples η clients C1 , C2 , . . . , Cη from {1, 2, . . . , n} and
+sends G to them.
+5:
+// Step II: Training local models and server model.
+6:
+// Client side.
+7:
+for all i = C1 , C2 , . . . , Cη do
+8:
+git = ModelUpdate(Gt , Di , b, β, e).
+9:
+Send git to the server.
+10:
+end for
+11:
+// Server side.
+12:
+g0t = ModelUpdate(Gt , D0 , b, β, e).
+13:
+// Step III: Updating the global model via aggregating the local model updates.
+14:
+for all i = C1 , C2 , . . . , Cη do
+15:
+Scorei , ḡit ← FLTG.
+16:
+end for
+Pη
+t
+1
+17:
+g t = Pη Score
+j=1 ScoreCj · ḡCj .
+j=1
+
+Cj
+
+18:
+Gt = Gt−1 + α · g t .
+19: end for
+20: return G.
+
+4
+
+Method
+
+4.1
+
+Overview
+
+Federated learning is highly susceptible to Byzantine attacks, particularly model
+poisoning attacks, where adversaries manipulate the updates of compromised
+clients to influence the aggregation process. These manipulations can alter both
+the direction and magnitude of model updates. To enhance robustness, it is essential to address both factors effectively. Our approach revolves around computing
+the cosine similarity between each local model update and the server model
+update. To filter out potentially malicious updates, we apply ReLU-clipped filtering, excluding clients whose cosine similarity falls below zero. To further mitigate the impact of data non-IID, we introduce a scoring mechanism based on the
+
+global model, ensuring a more balanced and fair weighting of client contributions
+during aggregation. After filtering, we normalize the magnitude of the remaining
+local model updates, reducing the influence of model poisoning attacks. Finally,
+we aggregate the filtered and normalized updates using a weighted averaging
+process to obtain the global model update. The full workflow of our proposed
+FLTG framework is detailed in Algorithm 2, with the following Details section
+providing an in-depth explanation of its core techniques.
+
+Algorithm 2 FLTG
+Require: The server randomly selects η clients C1 , C2 , . . . , Cη from the set
+S = {C1 , C2 , . . . , Cn }, with their corresponding encrypted local model updates
+t
+t
+t
+gC
+, gC
+, . . . , gC
+, server’s model update g0t , the current round t, the global model
+η
+1
+2
+update from the previous round g t−1 .
+Ensure: Scorei , ḡit .
+1: Scorei = Score′i = Score′′i = 0.
+2: Initialize S ′ .
+3: for i = C1 , C2 , . . . ,Cη do 
+4:
+
+Score′i = ReLU
+
+t
+⟩
+⟨git ,g0
+t∥
+∥git ∥·∥g0
+
+.
+
+5:
+if Score′i > 0 then
+6:
+Add i to the client subset S ′ .
+7:
+end if
+8: end for
+9: if t == 1 then
+10:
+for i ∈ S ′ do
+11:
+Scorei = Score′i .
+12:
+end for
+13: else
+14:
+for i ∈ S ′ do
+⟨git ,g t−1 ⟩
+15:
+Score′′i = ∥gt ∥·∥g
+t−1 ∥ .
+i
+16:
+end for
+17:
+ref = arg mini∈S ′ (Score′′i ).
+18:
+for i ∈ S ′ do
+t
+⟩
+⟨git ,gref
+19:
+Scorei = 1 − ∥gt ∥·∥g
+.
+t
+∥
+i
+
+ref
+
+20:
+end for
+21: end if
+22: for i ∈ S ′ t do
+∥g ∥
+23:
+ḡit = ∥g0t ∥ · git .
+i
+24: end for
+25: return Scorei , ḡit .
+
+4.2
+
+Details
+
+Our new aggregation rule implements a more reasonable scoring mechanism and
+stronger robustness.Fig. 2. illustrates our aggregation rule.
+
+<latexit sha1_base64="6pajcONhgT0HC+/g34AzsmjRknI=">AAACY3ichVFNSwJBGH7cvkwrzToEEUhidJIxwqKT0KWjH/kBJrK7jra47i67q2DSH/Ba0KFTQUT0M7r0Bzr4AzpER4MuHXpdF6KkeoeZeeaZ93nnmRnJUBXLZqzvESYmp6ZnvLM+/9z8QiC4GMpbesuUeU7WVd0sSqLFVUXjOVuxVV40TC42JZUXpMb+cL/Q5qal6Nqh3TF4uSnWNaWmyKJNVKoSjLAYcyI8DuIuiMCNlB68xRGq0CGjhSY4NNiEVYiwqJUQB4NBXBld4kxCirPPcQofaVuUxSlDJLZBY51WJZfVaD2saTlqmU5RqZukDCPKntgdG7BHds9e2MevtbpOjaGXDs3SSMuNSqC3kn3/V9Wk2cbxl+pPzzZq2HW8KuTdcJjhLeSRvn1yMcjuZaLdDXbNXsn/FeuzB7qB1n6Tb9I8cwkffUD853OPg/xWLJ6IJdLbkWTY/QovVrGOTXrvHSRxgBRydG4VPZzh3PMs+IWQsDxKFTyuZgnfQlj7BNo3iV8=</latexit>
+
+<latexit sha1_base64="6pajcONhgT0HC+/g34AzsmjRknI=">AAACY3ichVFNSwJBGH7cvkwrzToEEUhidJIxwqKT0KWjH/kBJrK7jra47i67q2DSH/Ba0KFTQUT0M7r0Bzr4AzpER4MuHXpdF6KkeoeZeeaZ93nnmRnJUBXLZqzvESYmp6ZnvLM+/9z8QiC4GMpbesuUeU7WVd0sSqLFVUXjOVuxVV40TC42JZUXpMb+cL/Q5qal6Nqh3TF4uSnWNaWmyKJNVKoSjLAYcyI8DuIuiMCNlB68xRGq0CGjhSY4NNiEVYiwqJUQB4NBXBld4kxCirPPcQofaVuUxSlDJLZBY51WJZfVaD2saTlqmU5RqZukDCPKntgdG7BHds9e2MevtbpOjaGXDs3SSMuNSqC3kn3/V9Wk2cbxl+pPzzZq2HW8KuTdcJjhLeSRvn1yMcjuZaLdDXbNXsn/FeuzB7qB1n6Tb9I8cwkffUD853OPg/xWLJ6IJdLbkWTY/QovVrGOTXrvHSRxgBRydG4VPZzh3PMs+IWQsDxKFTyuZgnfQlj7BNo3iV8=</latexit>
+
+Step I
+
+Local model updates
+g1t，g2t ，g3t ，g4t
+<latexit sha1_base64="OkHdxHkRBjcmHDDhFbZKW0vdIWk=">AAACanichVG7SgNBFD1Z3/EVtVFsxBixCjcqKlYBG0tfeUCMYXedxMXN7rI7CWjID9hZCVopiIifYeMPWPgJol0EGwtvNguiQb3DzJw5c8+dMzOaYxqeJHoKKR2dXd09vX3h/oHBoeHIyGjasyuuLlK6bdpuVlM9YRqWSElDmiLruEIta6bIaIdrzf1MVbieYVs78sgR+bJasoyioauSqUypsLBXk/VCJEpx8mOqHSQCEEUQG3bkBrvYhw0dFZQhYEEyNqHC45ZDAgSHuTxqzLmMDH9foI4wayucJThDZfaQxxKvcgFr8bpZ0/PVOp9icndZOYUYPdItNeiB7uiZPn6tVfNrNL0c8ay1tMIpDJ+Mb7//qyrzLHHwpfrTs0QRK75Xg707PtO8hd7SV4/PGturW7HaLF3RC/u/pCe65xtY1Tf9elNsXSDMH5D4+dztID0fTyzFlzYXo0kKvqIXk5jGHL/3MpJYxwZSvrtTnOMi9KqMKhPKZCtVCQWaMXwLZeYTcsGMeA==</latexit>
+
+<latexit sha1_base64="uet953t/zdswfC+TJHLkFm8ockk=">AAACanichVG7SgNBFD1Z3/GRqI1iE4wRq3BXJIqVYGPpKybgI+yuY1yyL3YnAQ3+gJ2VoJWCiPgZNv6AhZ8g2inYWHizWRAN6h1m5syZe+6cmdE9ywwk0WNMaWvv6Ozq7on39vUPJJKDQxuBW/UNkTdcy/WLuhYIy3REXprSEkXPF5qtW6KgVxYb+4Wa8APTddblgSe2ba3smHumoUmmCuWSulOXR6VkmrIURqoVqBFII4plN3mNLezChYEqbAg4kIwtaAi4bUIFwWNuG3XmfEZmuC9whDhrq5wlOENjtsJjmVebEevwulEzCNUGn2Jx91mZQoYe6IZe6Z5u6Yk+fq1VD2s0vBzwrDe1wisljkfW3v9V2TxL7H+p/vQssYe50KvJ3r2QadzCaOprh6eva/OrmfokXdIz+7+gR7rjGzi1N+NqRayeI84foP587lawMZ1Vc9ncykx6gaKv6MYYxjHF7z2LBSxhGfnQ3QnOcB57UYaUUWWsmarEIs0wvoUy8QluuYx2</latexit>
+
+<latexit sha1_base64="QUy4uX3FBC5A9Ezov9QNzjzKbO4=">AAACanichVFNLwNBGH66vqo+WnUhLqKIU/O2kRIniYujoq2EanbXqE23u5vdaZNq/AE3JwknEhHxM1z8AQc/QbiRuDh4u91EaPBOZuaZZ97nnWdmNMc0PEn0GFK6unt6+8L9kYHBoeFobCSe9+yaq4ucbpu2u6WpnjANS+SkIU2x5bhCrWqmKGiVldZ+oS5cz7CtTdlwRLGqli1j39BVyVShXErvNuVRKZagJPkx2QlSAUggiDU7do0d7MGGjhqqELAgGZtQ4XHbRgoEh7kimsy5jAx/X+AIEdbWOEtwhspshccyr7YD1uJ1q6bnq3U+xeTusnISM/RAN/RK93RLT/Txa62mX6PlpcGz1tYKpxQ9Htt4/1dV5Vni4Ev1p2eJfSz6Xg327vhM6xZ6W18/PH3dWFqfac7SJT2z/wt6pDu+gVV/06+yYv0cEf6A1M/n7gT5dDKVSWay84llCr4ijAlMYY7fewHLWMUacr67E5zhPPSixJVxZaKdqoQCzSi+hTL9CXC9jHc=</latexit>
+
+<latexit sha1_base64="YRjKKLHywfhNtyT/QL1FMRXLFqM=">AAACanichVFNLwNBGH66vqo+WnUhLqKIU/NWmhIniYujoq2EanbXqE23u5vdaZNq/AE3JwknEhHxM1z8AQc/QbiRuDh4u91EaPBOZuaZZ97nnWdmNMc0PEn0GFK6unt6+8L9kYHBoeFobCSe9+yaq4ucbpu2u6WpnjANS+SkIU2x5bhCrWqmKGiVldZ+oS5cz7CtTdlwRLGqli1j39BVyVShXErvNuVRKZagJPkx2QlSAUggiDU7do0d7MGGjhqqELAgGZtQ4XHbRgoEh7kimsy5jAx/X+AIEdbWOEtwhspshccyr7YD1uJ1q6bnq3U+xeTusnISM/RAN/RK93RLT/Txa62mX6PlpcGz1tYKpxQ9Htt4/1dV5Vni4Ev1p2eJfSz6Xg327vhM6xZ6W18/PH3dWFqfac7SJT2z/wt6pDu+gVV/06+yYv0cEf6A1M/n7gT5+WQqk8xk04llCr4ijAlMYY7fewHLWMUacr67E5zhPPSixJVxZaKdqoQCzSi+hTL9CXTFjHk=</latexit>
+
+<latexit sha1_base64="o0sHGgz1SLaLVezpt+Hq5vtqs5I=">AAACY3ichVFNSwJBGH7cvkwrzToEEUhmdJIxwqKT0KWjH/kBJrK7jrW47i67q2DSH/Ba0KFTQUT0M7r0Bzr4AzpER4MuHXpdF6KkeoeZeeaZ93nnmRnJUBXLZqznEcbGJyanvNM+/8zsXCA4H8pbetOUeU7WVd0sSqLFVUXjOVuxVV40TC42JJUXpPreYL/Q4qal6NqB3TZ4uSEeaUpNkUWbqFQlGGEx5kR4FMRdEIEbKT14i0NUoUNGEw1waLAJqxBhUSshDgaDuDI6xJmEFGef4xQ+0jYpi1OGSGydxiNalVxWo/WgpuWoZTpFpW6SMowoe2J3rM8e2T17YR+/1uo4NQZe2jRLQy03KoHuUvb9X1WDZhvHX6o/PduoYcfxqpB3w2EGt5CH+tbJRT+7m4l21tk1eyX/V6zHHugGWutNvknzzCV89AHxn889CvKbsXgilkhvRZJr7ld4sYxVbNB7byOJfaSQo3Or6OIM555nwS+EhMVhquBxNQv4FsLKJ9triWM=</latexit>
+
+hg1t , g0t i
+kg1t k · kg0t k
+
+<latexit sha1_base64="G8q8Y1PHLnC8HUw267k6FyuOuoA=">AAACrHichVFNaxRBEH2Z+BHXj6zxIuSyuEQ8yFITJIoQCHjQY742CWxvhp5O72RI78ww07uQzO4f8A948KQgIsFf4cW7eAjoDxCPEbx4sGZ2QDSo1XR31at61a+7/cSEmSU6mXKmz52/cHHmUu3ylavXZuvX57ayeJAq3VaxidMdX2bahJFu29AavZOkWvZ9o7f9g0dFfnuo0yyMo017mOhuXwZR2AuVtAx59cdCxZmw+9pKz10WvVSqXBgZBUY3As/dtXcDj3atSEtonItRiYqRUHuxLaIiOxp79Sa1qLTGWcetnCYqW43rryGwhxgKA/ShEcGybyCR8ejABSFhrIucsZS9sMxrjFFj7oCrNFdIRg94DTjqVGjEcdEzK9mKTzE8U2Y2sEAf6Q2d0ns6pi/046+98rJHoeWQd3/C1Yk3+/Tmxvf/svq8W+z/Yv1Ts0UPD0qtIWtPSqS4hZrwh0fPTjceri/kt+klfWX9L+iE3vENouE39WpNrz9HjT/A/fO5zzpbiy13qbW0dq+5QtVXzGAet3CH3/s+VvAEq2jzuW/xAZ/w2Wk5m07H6U5KnamKcwO/mdP7Ceg/pqc=</latexit>
+
+&
+t
+Server model update g0
+&
+t 1
+Global model update g
+
+cos ✓1 =
+
+<latexit sha1_base64="hqRwzCX9kIaGrHqhkqkaj51uFow=">AAACanichVHLSsNAFD2Nr1ofrXWjuBGr4qrciqi4Ety4rI+2go+SxLEG0yQk00IN/QF3rgRdKYiIn+HGH3DhJ4juFNy48CYNiIp6h5k5c+aeO2dmNMc0PEn0EFPa2js6u+LdiZ7evv5kaiBd9Oyaq4uCbpu2u6GpnjANSxSkIU2x4bhCrWqmKGkHS8F+qS5cz7CtddlwxHZVrVjGnqGrkqlSpUw7vmyWUxnKUhijP0EuAhlEkbdTV9jCLmzoqKEKAQuSsQkVHrdN5EBwmNuGz5zLyAj3BZpIsLbGWYIzVGYPeKzwajNiLV4HNb1QrfMpJneXlaOYoHu6phe6oxt6pPdfa/lhjcBLg2etpRVOOXk0tPb2r6rKs8T+p+pPzxJ7mA+9GuzdCZngFnpLXz88eVlbWJ3wJ+mCntj/OT3QLd/Aqr/qlyti9QwJ/oDc9+f+CYrT2dxsdnZlJrNI0VfEMYIxTPF7z2ERy8ijELo7xinOYs9KWhlWRlqpSizSDOJLKOMfbLWMdQ==</latexit>
+
+g
+
+<latexit sha1_base64="o0sHGgz1SLaLVezpt+Hq5vtqs5I=">AAACY3ichVFNSwJBGH7cvkwrzToEEUhmdJIxwqKT0KWjH/kBJrK7jrW47i67q2DSH/Ba0KFTQUT0M7r0Bzr4AzpER4MuHXpdF6KkeoeZeeaZ93nnmRnJUBXLZqznEcbGJyanvNM+/8zsXCA4H8pbetOUeU7WVd0sSqLFVUXjOVuxVV40TC42JJUXpPreYL/Q4qal6NqB3TZ4uSEeaUpNkUWbqFQlGGEx5kR4FMRdEIEbKT14i0NUoUNGEw1waLAJqxBhUSshDgaDuDI6xJmEFGef4xQ+0jYpi1OGSGydxiNalVxWo/WgpuWoZTpFpW6SMowoe2J3rM8e2T17YR+/1uo4NQZe2jRLQy03KoHuUvb9X1WDZhvHX6o/PduoYcfxqpB3w2EGt5CH+tbJRT+7m4l21tk1eyX/V6zHHugGWutNvknzzCV89AHxn889CvKbsXgilkhvRZJr7ld4sYxVbNB7byOJfaSQo3Or6OIM555nwS+EhMVhquBxNQv4FsLKJ9triWM=</latexit>
+
+hg2t , g0t i
+kg2t k · kg0t k
+
+<latexit sha1_base64="D27TJMRPt6mX7hOab1c4TgSqVIg=">AAACrHichVFNaxRBEH2Z+JGsH1njRfCyuEQ8yFK7SBQhEPCgx3xtEtjeDD2d3smQ3plhpnchmd0/4B/w4EkhiIi/wkvuwUNAf4B4jODFgzWzA6JBraa7q17Vq37d7cUmSC3R6ZQzfeHipcszs5UrV69dn6vemN9Mo0GidFtFJkq2PZlqE4S6bQNr9HacaNn3jN7y9p/k+a2hTtIgCjfsQay7femHQS9Q0jLkVp8KFaXC7mkr3daS6CVSZcLI0De65rutHXvfd2nHiqSAxpkYFagYCbUb2TzKs6OxW61TgwqrnXeapVNHaStR9Q0EdhFBYYA+NEJY9g0kUh4dNEGIGesiYyxhLyjyGmNUmDvgKs0VktF9Xn2OOiUacpz3TAu24lMMz4SZNSzQR3pLZ3RM7+gL/fhrr6zokWs54N2bcHXszj2/tf79v6w+7xZ7v1j/1GzRw6NCa8Da4wLJb6Em/OHhi7P1x2sL2V16TV9Z/ys6pQ98g3D4TR2t6rWXqPAHNP987vPOZqvRXGwsrj6oL1P5FTO4jTu4x+/9EMt4hhW0+dz3OMEnfHYazobTcbqTUmeq5NzEb+b0fgLutqaq</latexit>
+
+>tixetal/<vl4BfPh4ltAfRoZRJW1Kop8wpQPp2TD4c2QGuxnC8IIsWyz9/SDxYOOHF1HFLNzZWZe5OfqJzBW7cnf/A9jgHtDWqWtxvtGs3cMdPG0f2fBp6mS9ye9FX7lzOet0RXIvTHyu9K5rCZhHAnT69LF+4cAPZV1/fbtx2o0WFm2bZReO6hm1esqW833MS3dPS3bDQ3DLNKTsuTex+0gqfY6s1Zu1jY7r+Muw2O2Q4UCnruGBMC3L4SGj5xs6uw9yCqghbPH4QvJGIgNCsoSgBOMK7oh6OJPKDCiRgaX6YElyZI1lKj5CDlk7b1Ht1itrHSwbjV68Cr2t3fDLvukYbWqmTcdRUAMyQIq2Ttg56qY8TzBMRxQ9T57mDP0UmwwD1TfTvPR3Vnd0Sj5xiOA9mu7ozkD33PTmMz8OUrBIzaG8xCLVxuAA8zyBxD7zETEFsySFpNA+0QQ3Y7Ly1lxuwWZAi6jMGH8KVERXCzKRwIEIF+hE+EzXZ1DFBNgS7GVhci3YCAAA>"=o+t/95jBpz4ZOiM5KkGrMbdSvif"=46esab_1ahs tixetal<
+
+cos ✓2 =
+
+g0t
+<latexit sha1_base64="AVzzqyR1p2sC8uieT4jUoVWPYhU=">AAACbHichVG7SgNBFD1Z3/GR+CgEEcSgWIUbERUrwcbSRGMUH2F3HePivtidBHTJD9haWKiFgoj4GTb+gEU+QQQbBRsLbzYLoqLeYWbOnLnnzpkZzTUNXxLVYkpTc0trW3tHvLOruyeR7O1b9Z2yp4u87piOt6apvjANW+SlIU2x5npCtTRTFLT9hfp+oSI833DsFXngii1LLdnGrqGrkqn1UjGg6nYgq8VkitIUxshPkIlAClEsOclrbGIHDnSUYUHAhmRsQoXPbQMZEFzmthAw5zEywn2BKuKsLXOW4AyV2X0eS7zaiFib1/WafqjW+RSTu8fKEYzRA93QC93TLT3S+6+1grBG3csBz1pDK9xi4mhw+e1flcWzxN6n6k/PEruYDb0a7N0Nmfot9Ia+cnjysjyXGwvG6ZKe2P8F1eiOb2BXXvWrrMidIs4fkPn+3D/B6mQ6M52ezk6l5in6inYMYRQT/N4zmMcilpDncy0c4wznsWdlQBlShhupSizS9ONLKOMfrj+NgQ==</latexit>
+
+<latexit sha1_base64="ET4nsOnBmFrSZTqUcoE/OnxCMh8=">AAACanichVG7SgNBFD1Z3/GRGBvFRowRG8NdERWrgI2lrzzAF7vrGBc3u8vuJBCDP2BnJZhKQUT8DBt/wMJPEO0UbCy82SyIBvUOM3PmzD13zszormX6kugxorS1d3R2dfdEe/v6B2LxwUTOd8qeIbKGYzleQdd8YZm2yEpTWqLgekIr6ZbI64dLjf18RXi+6dgbsuqK7ZJWtM1909AkU/niTk1Oq8e78SSlKYixVqCGIIkwVpz4NbawBwcGyihBwIZkbEGDz20TKgguc9uoMecxMoN9gWNEWVvmLMEZGrOHPBZ5tRmyNq8bNf1AbfApFnePlWNI0QPd0Cvd0y090cevtWpBjYaXKs96Uyvc3djJ8Pr7v6oSzxIHX6o/PUvsYyHwarJ3N2AatzCa+srR2ev64lqqNkmX9Mz+L+iR7vgGduXNuFoVa3VE+QPUn8/dCnIzaXUuPbc6m8xQ+BXdGMU4pvi955HBMlaQDdyd4hz1yIuSUEaU0WaqEgk1Q/gWysQnCz+MRA==</latexit>
+
+<latexit sha1_base64="Myn7Lvt2BTQW30eUnLPxfQuOnsE=">AAACbXichVHLSgMxFD0d3/VVFUFQRKxVVyUjouJKcONSra3FtpSZMdXBeTGTFmrpD7gWXIiCgoj4GW78ARf9BHHhooIbF95OB0SLekOSk5N7bk4S1TF0TzBWC0lt7R2dXd094d6+/oHByNBwyrOLrsaTmm3YblpVPG7oFk8KXRg87bhcMVWD76pH64393RJ3Pd22dkTZ4TlTObD0gq4pgqi9rDjkQslX5Go+EmVx5sdUK5ADEEUQm3bkFlnsw4aGIkxwWBCEDSjwqGUgg8EhLocKcS4h3d/nqCJM2iJlccpQiD2i8YBWmYC1aN2o6flqjU4xqLuknEKMPbE7VmeP7J49s49fa1X8Gg0vZZrVppY7+cGTscT7vyqTZoHDL9WfngUKWPG96uTd8ZnGLbSmvnR8Vk+sbscqs+yavZD/K1ZjD3QDq/Sm3Wzx7XOE6QPkn8/dClILcXkpvrS1GF2bCb6iG+OYxjy99zLWsIFNJOlcC6e4wGXoVRqVJqTJZqoUCjQj+BbS3CdYJY3B</latexit>
+
+✓1
+<latexit sha1_base64="aT1cqGvVTQ60F/xJHcI0BDexzWs=">AAACbXichVHLSgMxFD0dX7W+qiIIihTra1UyRVRcCW5c9mGr+KDMjKkOzouZtKCDP+BacCEKCiLiZ7jxB1z4CeLChYIbF96ZDoiKekOSk5N7bk4S1TF0TzD2EJOamlta2+LtiY7Oru6eZG9f2bNrrsZLmm3Y7qqqeNzQLV4SujD4quNyxVQNvqLuLgb7K3XuerptLYs9h2+ayralV3VNEUStbYgdLpSKnz2oJNMsw8JI/QRyBNKIImcnr7CBLdjQUIMJDguCsAEFHrV1yGBwiNuET5xLSA/3OQ6QIG2NsjhlKMTu0rhNq/WItWgd1PRCtUanGNRdUqYwzu7ZNXthd+yGPbL3X2v5YY3Ayx7NakPLnUrP4WDx7V+VSbPAzqfqT88CVcyFXnXy7oRMcAutoa/vH78U5wvj/gS7YE/k/5w9sFu6gVV/1S7zvHCCBH2A/P25f4JyNiPPZGby0+mFsegr4hjCKKbovWexgCXkUKJzLRzhFGexZ2lAGpZGGqlSLNL040tIkx9aJo3C</latexit>
+
+✓2
+
+g1t
+<latexit sha1_base64="O7Ze1CAOb0DV9voM/tY3g97Kvjk=">AAACbHichVG7SgNBFD1Z3/GR+CgEEcSgWIW7IipWARvL+IgPfITddYyL+2J3EtAlP2BrYaEWCiLiZ9j4AxZ+ggg2CjYW3mwWREW9w8ycOXPPnTMzumeZgSR6SCgNjU3NLa1tyfaOzq5UurtnOXDLviEKhmu5/qquBcIyHVGQprTEqucLzdYtsaLvzdb2VyrCD0zXWZL7nti0tZJj7piGJplaKxVDtboVymoxnaEsRTH0E6gxyCCOvJu+wga24cJAGTYEHEjGFjQE3NahguAxt4mQOZ+RGe0LVJFkbZmzBGdozO7xWOLVesw6vK7VDCK1wadY3H1WDmGE7umaXuiObuiR3n+tFUY1al72edbrWuEVU4f9i2//qmyeJXY/VX96ltjBdOTVZO9exNRuYdT1lYPjl8WZhZFwlC7oif2f0wPd8g2cyqtxOS8WTpDkD1C/P/dPsDyeVSezk/MTmRzFX9GKAQxjjN97CjnMIY8Cn2vjCKc4SzwrfcqAMlhPVRKxphdfQhn9ALBEjYI=</latexit>
+
+<latexit sha1_base64="lVx0rSuBHKMWa+ZcImt/5lhyvK4=">AAACbXichVHLSgMxFD0d3/VVFUFQRKyvVcmoqLgS3LhUa1VsS5kZ0zo4L2bSgg7+gGvBhSgoiIif4cYfcOEniAsXFdy48M50QLSoNyQ5Obnn5iRRHUP3BGNPMamhsam5pbUt3t7R2dWd6Ond9Oyyq/GMZhu2u60qHjd0i2eELgy+7bhcMVWDb6n7y8H+VoW7nm5bG+LA4XlTKVl6UdcUQdROTuxxoRT8maNCIslSLIyReiBHIIkoVu3EDXLYhQ0NZZjgsCAIG1DgUctCBoNDXB4+cS4hPdznOEKctGXK4pShELtPY4lW2Yi1aB3U9EK1RqcY1F1SjmCcPbJbVmUP7I49s49fa/lhjcDLAc1qTcudQvfxQPr9X5VJs8Del+pPzwJFLIRedfLuhExwC62mrxyeVtOL6+P+BLtiL+T/kj2xe7qBVXnTrtf4+hni9AHyz+euB5vTKXkuNbc2m1wai76iFYMYxRS99zyWsIJVZOhcCyc4x0XsVeqXhqThWqoUizR9+BbS5CdcJ43D</latexit>
+
+✓3
+
+<latexit sha1_base64="J4qzx89xifmIHX+ToDKNCHFmpgM=">AAACbXichVHLSgMxFD0d3/XRqgiCIsX6WpWMiIorwY1LbW0VH5SZMW2HzouZtKCDP+BacCEKCiLiZ7jxB1z4CeLChYIbF96ZDoiKekOSk5N7bk4S1TF0TzD2EJOamlta29o74p1d3T2JZG9fwbNrrsbzmm3Y7oaqeNzQLZ4XujD4huNyxVQNvq5Wl4L99Tp3Pd221sSew3dMpWzpJV1TBFGb26LChVL0Zw6KyTTLsDBSP4EcgTSiWLGTV9jGLmxoqMEEhwVB2IACj9oWZDA4xO3AJ84lpIf7HAeIk7ZGWZwyFGKrNJZptRWxFq2Dml6o1ugUg7pLyhTG2T27Zi/sjt2wR/b+ay0/rBF42aNZbWi5U0wcDube/lWZNAtUPlV/ehYoYT70qpN3J2SCW2gNfX3/+CW3kB33J9gFeyL/5+yB3dINrPqrdrnKsyeI0wfI35/7JyhMZ+TZzOzqTHpxLPqKdgxhFFP03nNYxDJWkKdzLRzhFGexZ2lAGpZGGqlSLNL040tIkx9eKI3E</latexit>
+
+✓4
+
+g0t
+
+g
+
+g2t
+<latexit sha1_base64="ilrizZ30xTAl7iaifMwVds1p6sM=">AAACbHichVG7SgNBFD1Z3/GR+CiEIIhBsQo3IipWgo2lr5hI1LC7jnFxX+xOArrkB2wtLNRCQUT8DBt/wMJPEMFGwcbCm82CqKh3mJkzZ+65c2ZGc03Dl0QPMaWpuaW1rb0j3tnV3ZNI9vat+U7F00VOd0zHK2iqL0zDFjlpSFMUXE+olmaKvLY3X9/PV4XnG469KvddsWmpZdvYMXRVMrVeLgUTta1A1krJNGUojOGfIBuBNKJYdJJX2MA2HOiowIKADcnYhAqfWxFZEFzmNhEw5zEywn2BGuKsrXCW4AyV2T0ey7wqRqzN63pNP1TrfIrJ3WPlMEbpnq7phe7ohh7p/ddaQVij7mWfZ62hFW4pcTi48vavyuJZYvdT9adniR3MhF4N9u6GTP0WekNfPTh+WZldHg3G6IKe2P85PdAt38CuvuqXS2L5BHH+gOz35/4J1iYy2anM1NJkeo6ir2hHCiMY5/eexhwWsIgcn2vhCKc4iz0rA0pKGWqkKrFI048voYx9ALJJjYM=</latexit>
+
+<latexit sha1_base64="xP/5tia5fjB/+6V7wrsRfXKhqSE=">AAACbHichVG7SgNBFD1Z3/GR+CiEIIhBsQo3IipWgo2lr5hI1LC7jnFxX+xOArrkB2wtLNRCQUT8DBt/wMJPEMFGwcbCm82CqKh3mJkzZ+65c2ZGc03Dl0QPMaWpuaW1rb0j3tnV3ZNI9vat+U7F00VOd0zHK2iqL0zDFjlpSFMUXE+olmaKvLY3X9/PV4XnG469KvddsWmpZdvYMXRVMrVeLgWTta1A1krJNGUojOGfIBuBNKJYdJJX2MA2HOiowIKADcnYhAqfWxFZEFzmNhEw5zEywn2BGuKsrXCW4AyV2T0ey7wqRqzN63pNP1TrfIrJ3WPlMEbpnq7phe7ohh7p/ddaQVij7mWfZ62hFW4pcTi48vavyuJZYvdT9adniR3MhF4N9u6GTP0WekNfPTh+WZldHg3G6IKe2P85PdAt38CuvuqXS2L5BHH+gOz35/4J1iYy2anM1NJkeo6ir2hHCiMY5/eexhwWsIgcn2vhCKc4iz0rA0pKGWqkKrFI048voYx9ALZTjYU=</latexit>
+
+g4t
+
+g3t
+
+hg4t , g0t i
+kg4t k · kg0t k
+
+<latexit sha1_base64="AB1LV0qaMV4qIgKu/K6sqi8JouM=">AAACrHichVFNaxRBEH0Zv5L1I6teBC+LS8SDLLWyRBGEgAc95muTwPZm6On0Tob0zgwzvQtxdv+Af8CDJ4UQgvgrvOQePAT0B4jHCF5ySM3sgGhQq+nuqlf1ql93e7EJUkt0POVcuHjp8pXpmcrVa9dvzFZv3lpLo0GidFtFJko2PJlqE4S6bQNr9EacaNn3jF73dp7n+fWhTtIgClftbqy7femHQS9Q0jLkVl8IFaXCbmsr3dYz0UukyoSRoW90zXdbm/ah79KmFUkBjTMxKlAxEmorsnmUZ0djt1qnBhVWO+80S6eO0haj6j4EthBBYYA+NEJY9g0kUh4dNEGIGesiYyxhLyjyGmNUmDvgKs0VktEdXn2OOiUacpz3TAu24lMMz4SZNczRZzqgEzqkD/SNTv/aKyt65Fp2efcmXB27s6/vrPz8L6vPu8X2L9Y/NVv08KTQGrD2uEDyW6gJf/jqzcnK0+W57D69p++s/x0d0ye+QTj8ofaW9PJbVPgDmn8+93ln7VGjOd+YX2rVF6j8imncxT084Pd+jAW8xCLafO5HHOELvjoNZ9XpON1JqTNVcm7jN3N6Z/ukprA=</latexit>
+
+cos ✓4 =
+
+g
+
+<latexit sha1_base64="66FLMAsAVhZi5dqxVktFiJ34q40=">AAACbHichVG7SgNBFD1Z3/EVH4UgghgUq3CjEsVKsLH0laj4CLvrGJfsi91JQJf8gK2FhVooiIifYeMPWOQTRLBRsLHwZrMgKuodZubMmXvunJnRXNPwJVE1pjQ0NjW3tLbF2zs6u7oTPb053yl5usjqjul465rqC9OwRVYa0hTrridUSzPFmlacr+2vlYXnG469Kg9csW2pBdvYM3RVMrVRyAeTlZ1AVvKJJKUojOGfIB2BJKJYdBLX2MIuHOgowYKADcnYhAqf2ybSILjMbSNgzmNkhPsCFcRZW+IswRkqs0UeC7zajFib17WafqjW+RSTu8fKYYzSA93QC93TLT3S+6+1grBGzcsBz1pdK9x899HAytu/Kotnif1P1Z+eJfYwE3o12LsbMrVb6HV9+fDkZWV2eTQYo0t6Yv8XVKU7voFdftWvlsTyKeL8Aenvz/0T5CZS6UwqszSVnKPoK1oxiBGM83tPYw4LWESWz7VwjDOcx56VfmVQGaqnKrFI04cvoYx9ALROjYQ=</latexit>
+
+g4t
+
+g3t
+<latexit sha1_base64="66FLMAsAVhZi5dqxVktFiJ34q40=">AAACbHichVG7SgNBFD1Z3/EVH4UgghgUq3CjEsVKsLH0laj4CLvrGJfsi91JQJf8gK2FhVooiIifYeMPWOQTRLBRsLHwZrMgKuodZubMmXvunJnRXNPwJVE1pjQ0NjW3tLbF2zs6u7oTPb053yl5usjqjul465rqC9OwRVYa0hTrridUSzPFmlacr+2vlYXnG469Kg9csW2pBdvYM3RVMrVRyAeTlZ1AVvKJJKUojOGfIB2BJKJYdBLX2MIuHOgowYKADcnYhAqf2ybSILjMbSNgzmNkhPsCFcRZW+IswRkqs0UeC7zajFib17WafqjW+RSTu8fKYYzSA93QC93TLT3S+6+1grBGzcsBz1pdK9x899HAytu/Kotnif1P1Z+eJfYwE3o12LsbMrVb6HV9+fDkZWV2eTQYo0t6Yv8XVKU7voFdftWvlsTyKeL8Aenvz/0T5CZS6UwqszSVnKPoK1oxiBGM83tPYw4LWESWz7VwjDOcx56VfmVQGaqnKrFI04cvoYx9ALROjYQ=</latexit>
+
+<latexit sha1_base64="xP/5tia5fjB/+6V7wrsRfXKhqSE=">AAACbHichVG7SgNBFD1Z3/GR+CiEIIhBsQo3IipWgo2lr5hI1LC7jnFxX+xOArrkB2wtLNRCQUT8DBt/wMJPEMFGwcbCm82CqKh3mJkzZ+65c2ZGc03Dl0QPMaWpuaW1rb0j3tnV3ZNI9vat+U7F00VOd0zHK2iqL0zDFjlpSFMUXE+olmaKvLY3X9/PV4XnG469KvddsWmpZdvYMXRVMrVeLgWTta1A1krJNGUojOGfIBuBNKJYdJJX2MA2HOiowIKADcnYhAqfWxFZEFzmNhEw5zEywn2BGuKsrXCW4AyV2T0ey7wqRqzN63pNP1TrfIrJ3WPlMEbpnq7phe7ohh7p/ddaQVij7mWfZ62hFW4pcTi48vavyuJZYvdT9adniR3MhF4N9u6GTP0WekNfPTh+WZldHg3G6IKe2P85PdAt38CuvuqXS2L5BHH+gOz35/4J1iYy2anM1NJkeo6ir2hHCiMY5/eexhwWsIgcn2vhCKc4iz0rA0pKGWqkKrFI048voYx9ALZTjYU=</latexit>
+
+hg3t , g0t i
+kg3t k · kg0t k
+
+<latexit sha1_base64="5aQJyjKySxPwPygf3/uRmUj4a4A=">AAACrHichVFNaxRBEH0Zv+IazaoXwcuSJcGDLLWJRBGEgAc95muTwPZm6On0Tob0zgwzvQtxdv+Af8CDJwURkfyKXLyLh0D8AeIxghcP1swOSBLUarq76lW96tfdXmyC1BIdTTgXLl66fGXyauXa1PUb09WbtzbSqJ8o3VKRiZItT6baBKFu2cAavRUnWvY8oze9vad5fnOgkzSIwnW7H+tOT/ph0A2UtAy51WdCRamwu9pKd+GJ6CZSZcLI0De65rsL2/a+79K2FUkBjTIxLFAxFGonsnmUZ4cjt1qnBhVWO+80S6eO0paj6nsI7CCCQh89aISw7BtIpDzaaIIQM9ZBxljCXlDkNUaoMLfPVZorJKN7vPoctUs05DjvmRZsxacYngkza5ilL/SBTugTfaRv9OuvvbKiR65ln3dvzNWxO/3yztrP/7J6vFvs/mH9U7NFF48KrQFrjwskv4Ua8wcvXp2sPV6dzeboLX1n/W/oiA75BuHgh3q3oldfo8If0Dz73OedjflGc7GxuPKgvkTlV0ziLmZwj9/7IZbwHMto8bkH+IxjfHUazrrTdjrjUmei5NzGKXO6vwH1Laat</latexit>
+
+cos ✓3 =
+
+<latexit sha1_base64="AVzzqyR1p2sC8uieT4jUoVWPYhU=">AAACbHichVG7SgNBFD1Z3/GR+CgEEcSgWIUbERUrwcbSRGMUH2F3HePivtidBHTJD9haWKiFgoj4GTb+gEU+QQQbBRsLbzYLoqLeYWbOnLnnzpkZzTUNXxLVYkpTc0trW3tHvLOruyeR7O1b9Z2yp4u87piOt6apvjANW+SlIU2x5npCtTRTFLT9hfp+oSI833DsFXngii1LLdnGrqGrkqn1UjGg6nYgq8VkitIUxshPkIlAClEsOclrbGIHDnSUYUHAhmRsQoXPbQMZEFzmthAw5zEywn2BKuKsLXOW4AyV2X0eS7zaiFib1/WafqjW+RSTu8fKEYzRA93QC93TLT3S+6+1grBG3csBz1pDK9xi4mhw+e1flcWzxN6n6k/PEruYDb0a7N0Nmfot9Ia+cnjysjyXGwvG6ZKe2P8F1eiOb2BXXvWrrMidIs4fkPn+3D/B6mQ6M52ezk6l5in6inYMYRQT/N4zmMcilpDncy0c4wznsWdlQBlShhupSizS9ONLKOMfrj+NgQ==</latexit>
+
+<latexit sha1_base64="D7LImWCHdqS+qgs+71dsuFbOsAY=">AAACY3ichVFNSwJBGH7cvkwrzToEEUhidAgZIyw6CV06+pEfYCK761iL6+6yuwom/QGvBR06FUREP6NLf6CDP6BDdDTo0qHXdSFKqneYmWeeeZ93npmRDFWxbMZ6HmFsfGJyyjvt88/MzgWC86G8pTdNmedkXdXNoiRaXFU0nrMVW+VFw+RiQ1J5QarvDfYLLW5aiq4d2G2DlxvikabUFFm0iUpVghEWY06ER0HcBRG4kdKDtzhEFTpkNNEAhwabsAoRFrUS4mAwiCujQ5xJSHH2OU7hI22TsjhliMTWaTyiVcllNVoPalqOWqZTVOomKcOIsid2x/rskd2zF/bxa62OU2PgpU2zNNRyoxLoLmXf/1U1aLZx/KX607ONGnYcrwp5NxxmcAt5qG+dXPSzu5loZ41ds1fyf8V67IFuoLXe5Js0z1zCRx8Q//ncoyC/GYsnYon0ViS54X6FF8tYxTq99zaS2EcKOTq3ii7OcO55FvxCSFgcpgoeV7OAbyGsfALd04lr</latexit>
+
+<latexit sha1_base64="6pajcONhgT0HC+/g34AzsmjRknI=">AAACY3ichVFNSwJBGH7cvkwrzToEEUhidJIxwqKT0KWjH/kBJrK7jra47i67q2DSH/Ba0KFTQUT0M7r0Bzr4AzpER4MuHXpdF6KkeoeZeeaZ93nnmRnJUBXLZqzvESYmp6ZnvLM+/9z8QiC4GMpbesuUeU7WVd0sSqLFVUXjOVuxVV40TC42JZUXpMb+cL/Q5qal6Nqh3TF4uSnWNaWmyKJNVKoSjLAYcyI8DuIuiMCNlB68xRGq0CGjhSY4NNiEVYiwqJUQB4NBXBld4kxCirPPcQofaVuUxSlDJLZBY51WJZfVaD2saTlqmU5RqZukDCPKntgdG7BHds9e2MevtbpOjaGXDs3SSMuNSqC3kn3/V9Wk2cbxl+pPzzZq2HW8KuTdcJjhLeSRvn1yMcjuZaLdDXbNXsn/FeuzB7qB1n6Tb9I8cwkffUD853OPg/xWLJ6IJdLbkWTY/QovVrGOTXrvHSRxgBRydG4VPZzh3PMs+IWQsDxKFTyuZgnfQlj7BNo3iV8=</latexit>
+
+Normalization & Aggregation
+
+Step II
+
+g1t
+<latexit sha1_base64="O7Ze1CAOb0DV9voM/tY3g97Kvjk=">AAACbHichVG7SgNBFD1Z3/GR+CgEEcSgWIW7IipWARvL+IgPfITddYyL+2J3EtAlP2BrYaEWCiLiZ9j4AxZ+ggg2CjYW3mwWREW9w8ycOXPPnTMzumeZgSR6SCgNjU3NLa1tyfaOzq5UurtnOXDLviEKhmu5/qquBcIyHVGQprTEqucLzdYtsaLvzdb2VyrCD0zXWZL7nti0tZJj7piGJplaKxVDtboVymoxnaEsRTH0E6gxyCCOvJu+wga24cJAGTYEHEjGFjQE3NahguAxt4mQOZ+RGe0LVJFkbZmzBGdozO7xWOLVesw6vK7VDCK1wadY3H1WDmGE7umaXuiObuiR3n+tFUY1al72edbrWuEVU4f9i2//qmyeJXY/VX96ltjBdOTVZO9exNRuYdT1lYPjl8WZhZFwlC7oif2f0wPd8g2cyqtxOS8WTpDkD1C/P/dPsDyeVSezk/MTmRzFX9GKAQxjjN97CjnMIY8Cn2vjCKc4SzwrfcqAMlhPVRKxphdfQhn9ALBEjYI=</latexit>
+
+<latexit sha1_base64="o0sHGgz1SLaLVezpt+Hq5vtqs5I=">AAACY3ichVFNSwJBGH7cvkwrzToEEUhmdJIxwqKT0KWjH/kBJrK7jrW47i67q2DSH/Ba0KFTQUT0M7r0Bzr4AzpER4MuHXpdF6KkeoeZeeaZ93nnmRnJUBXLZqznEcbGJyanvNM+/8zsXCA4H8pbetOUeU7WVd0sSqLFVUXjOVuxVV40TC42JJUXpPreYL/Q4qal6NqB3TZ4uSEeaUpNkUWbqFQlGGEx5kR4FMRdEIEbKT14i0NUoUNGEw1waLAJqxBhUSshDgaDuDI6xJmEFGef4xQ+0jYpi1OGSGydxiNalVxWo/WgpuWoZTpFpW6SMowoe2J3rM8e2T17YR+/1uo4NQZe2jRLQy03KoHuUvb9X1WDZhvHX6o/PduoYcfxqpB3w2EGt5CH+tbJRT+7m4l21tk1eyX/V6zHHugGWutNvknzzCV89AHxn889CvKbsXgilkhvRZJr7ld4sYxVbNB7byOJfaSQo3Or6OIM555nwS+EhMVhquBxNQv4FsLKJ9triWM=</latexit>
+
+g
+
+<latexit sha1_base64="o0sHGgz1SLaLVezpt+Hq5vtqs5I=">AAACY3ichVFNSwJBGH7cvkwrzToEEUhmdJIxwqKT0KWjH/kBJrK7jrW47i67q2DSH/Ba0KFTQUT0M7r0Bzr4AzpER4MuHXpdF6KkeoeZeeaZ93nnmRnJUBXLZqznEcbGJyanvNM+/8zsXCA4H8pbetOUeU7WVd0sSqLFVUXjOVuxVV40TC42JJUXpPreYL/Q4qal6NqB3TZ4uSEeaUpNkUWbqFQlGGEx5kR4FMRdEIEbKT14i0NUoUNGEw1waLAJqxBhUSshDgaDuDI6xJmEFGef4xQ+0jYpi1OGSGydxiNalVxWo/WgpuWoZTpFpW6SMowoe2J3rM8e2T17YR+/1uo4NQZe2jRLQy03KoHuUvb9X1WDZhvHX6o/PduoYcfxqpB3w2EGt5CH+tbJRT+7m4l21tk1eyX/V6zHHugGWutNvknzzCV89AHxn889CvKbsXgilkhvRZJr7ld4sYxVbNB7byOJfaSQo3Or6OIM555nwS+EhMVhquBxNQv4FsLKJ9triWM=</latexit>
+
+<latexit sha1_base64="MyJcouLtMbbyHkNc7PHV9/shS2g=">AAACY3ichVFNSwJBGH7cvkwrzToEEUhidJIxwqKT0KWjH/kBJrK7jra47i67q2DSH/Ba0KFTQUT0M7r0Bzr4AzpER4MuHXpdF6KkeoeZeeaZ93nnmRnJUBXLZqzvESYmp6ZnvLM+/9z8QiC4GMpbesuUeU7WVd0sSqLFVUXjOVuxVV40TC42JZUXpMb+cL/Q5qal6Nqh3TF4uSnWNaWmyKJNVKoSjLAYcyI8DuIuiMCNlB68xRGq0CGjhSY4NNiEVYiwqJUQB4NBXBld4kxCirPPcQofaVuUxSlDJLZBY51WJZfVaD2saTlqmU5RqZukDCPKntgdG7BHds9e2MevtbpOjaGXDs3SSMuNSqC3kn3/V9Wk2cbxl+pPzzZq2HW8KuTdcJjhLeSRvn1yMcjuZaLdDXbNXsn/FeuzB7qB1n6Tb9I8cwkffUD853OPg/xWLJ6IJdLbkWTM/QovVrGOTXrvHSRxgBRydG4VPZzh3PMs+IWQsDxKFTyuZgnfQlj7BN5tiW0=</latexit>
+
+<latexit sha1_base64="55BiPEssxWJ0BtdRumAGyHFqzhU=">AAACl3ichVFBS9xAFP6Mttq1rateFC+Li6Wn5UWKiiAKgnh0tauC0ZCMs9tgNgnJ7ILG/QP+AQVPFUTE/+DFg/4BD/6E4lGhlx76djZQWmn7Qma+98373nwz40a+lyiihy6ju+fV696+N7n+t+/eD+QHh9aTsBELWRGhH8abrpNI3wtkRXnKl5tRLJ2668sNd2+xvb7RlHHihcFntR/J7bpTC7yqJxzFlJ2ftFwnTmst29xRc1Y1dkRqHdZs2lHWYUtDU0NL7IaqoDM7X6QS6Si8BGYGishiJcxfwMIuQgg0UIdEAMXYh4OEvy2YIETMbSNlLmbk6XWJFnKsbXCV5AqH2T0ea5xtZWzAebtnotWCd/H5j1lZwATd0yU90R1d0Tf68ddeqe7R9rLPs9vRysgeOBpZ+/5fVZ1nhS+/VP/0rFDFjPbqsfdIM+1TiI6+eXD8tDa7OpF+oDN6ZP9f6YFu+ARB81mcl+XqKXL8AOaf1/0SrE+WzKnSVPlTcYGyp+jDGMbxke97GgtYxgoqvO8JrnGLO2PUmDeWjOVOqdGVaYbxWxjlnyiqnew=</latexit>
+
+ḡ
+g
+<latexit sha1_base64="6SurzOyqOUivwqYzXQjwRqbx8gI=">AAACl3ichVFBSxtBFP5cWxvTqtFeWnoJDRZP4SUUK4IoCCXHRI0JuLrsjpN0cbO77E4Ccc0f6B9Q8GShlNL/0EsP9Q/04E+QHi300kNfJgtFpfqWnfneN+97882ME3purIguxozxBw8nHmUms4+fTE3P5GbntuOgGwlZF4EXRE3HjqXn+rKuXOXJZhhJu+N4suEcrA/XGz0ZxW7gb6l+KHc7dtt3W66wFVNWrmw6dpS0B1Z5T62YrcgWiXnUtmhPmUcDDcsammI/UHmdWbkCFUlH/jYopaCANKpB7hNM7COAQBcdSPhQjD3YiPnbQQmEkLldJMxFjFy9LjFAlrVdrpJcYTN7wGObs52U9Tkf9oy1WvAuHv8RK/OYpx/0ma7onL7QJf35b69E9xh66fPsjLQytGbeP9v8fa+qw7PCu3+qOz0rtLCkvbrsPdTM8BRipO8dHl9tLm/MJ6/oA/1k/2d0Qd/4BH7vl/hYkxunyPIDlG5e922wXS6WFouLtdeFNUqfIoMXeIkFvu83WEMFVdR53xN8xXecG8+NVeOtURmVGmOp5imuhVH7Cy7lne8=</latexit>
+
+ḡ
+
+g
+g
+
+kg t k
+ḡ2t = 0t · g2t
+kg2 k
+<latexit sha1_base64="dOu99BMtsKPIkw6xyOfGfvz1Dog=">AAACl3ichVFBSxtBFP6yrW2a1prqpeIlGBRP4UVLWgRRKIjHRBsVXF12x0m6uNlddieBdJM/4B9ooScFkdL/4KUH/QMe/AnFo4VeeujLZEFasX3Lznzvm/e9+WbGCT03VkRXGePBw5FHj7NPck+fjT4fy78Y34yDdiRkXQReEG07diw915d15SpPboeRtFuOJ7ecg7eD9a2OjGI38N+pbih3W3bTdxuusBVTVn7edOwoafathT21ZDYiWyRmr2nRnjJ7fQ0XNDTFfqAKOrPyRSqRjsJdUE5BEWlUg/wpTOwjgEAbLUj4UIw92Ij520EZhJC5XSTMRYxcvS7RR461ba6SXGEze8Bjk7OdlPU5H/SMtVrwLh7/ESsLmKFL+kI3dEFf6Tv9urdXonsMvHR5doZaGVpjhy83fv5X1eJZ4f2t6p+eFRp4o7267D3UzOAUYqjvfPh4s7G4PpPM0jFds/8juqJvfAK/80Oc1OT6Z+T4Acp/X/ddsDlfKldKldqr4gqlT5HFFKYxx/f9GitYQxV13vcTznCOC2PSWDZWjbVhqZFJNRP4I4zabzUgnfI=</latexit>
+
+<latexit sha1_base64="y6U7AabEShA3x4wq+gG3lwRwpe8=">AAACbnichVHLSsNAFD2N7/qqCiKIKJaKq3KjouJKcOPSV1uhakniWINpEpJpQYs/4F5cCIqCiPgZbvwBF/0EcSNUcOPC2zQgWtQbJnPmzD13ztzRXcv0JVElojQ1t7S2tXdEO7u6e3pjff1p3yl6hkgZjuV4m7rmC8u0RUqa0hKbrie0gm6JjH6wVNvPlITnm469IQ9dsV3Q8ra5ZxqaZCq7pWteOX+cm96RuVickhTEWCNQQxBHGCtO7BZb2IUDA0UUIGBDMragwecvCxUEl7ltlJnzGJnBvsAxoqwtcpbgDI3ZA/7neZUNWZvXtZp+oDb4FIuHx8oxJOiJ7qhKj3RPz/Txa61yUKPm5ZBnva4Vbq73ZGj9/V9VgWeJ/S/Vn54l9jAfeDXZuxswtVsYdX3p6Ky6vrCWKE/Q
+
+ḡ
+<latexit
+
+kg t k
+ḡ1t = 0t · g1t
+kg1 k
+
+kg t k
+ḡ3t = 0t · g3t
+kg3 k
+
+g2t
+<latexit sha1_base64="ilrizZ30xTAl7iaifMwVds1p6sM=">AAACbHichVG7SgNBFD1Z3/GR+CiEIIhBsQo3IipWgo2lr5hI1LC7jnFxX+xOArrkB2wtLNRCQUT8DBt/wMJPEMFGwcbCm82CqKh3mJkzZ+65c2ZGc03Dl0QPMaWpuaW1rb0j3tnV3ZNI9vat+U7F00VOd0zHK2iqL0zDFjlpSFMUXE+olmaKvLY3X9/PV4XnG469KvddsWmpZdvYMXRVMrVeLgUTta1A1krJNGUojOGfIBuBNKJYdJJX2MA2HOiowIKADcnYhAqfWxFZEFzmNhEw5zEywn2BGuKsrXCW4AyV2T0ey7wqRqzN63pNP1TrfIrJ3WPlMEbpnq7phe7ohh7p/ddaQVij7mWfZ62hFW4pcTi48vavyuJZYvdT9adniR3MhF4N9u6GTP0WekNfPTh+WZldHg3G6IKe2P85PdAt38CuvuqXS2L5BHH+gOz35/4J1iYy2anM1NJkeo6ir2hHCiMY5/eexhwWsIgcn2vhCKc4iz0rA0pKGWqkKrFI048voYx9ALJJjYM=</latexit>
+
+<latexit sha1_base64="ET4nsOnBmFrSZTqUcoE/OnxCMh8=">AAACanichVG7SgNBFD1Z3/GRGBvFRowRG8NdERWrgI2lrzzAF7vrGBc3u8vuJBCDP2BnJZhKQUT8DBt/wMJPEO0UbCy82SyIBvUOM3PmzD13zszormX6kugxorS1d3R2dfdEe/v6B2LxwUTOd8qeIbKGYzleQdd8YZm2yEpTWqLgekIr6ZbI64dLjf18RXi+6dgbsuqK7ZJWtM1909AkU/niTk1Oq8e78SSlKYixVqCGIIkwVpz4NbawBwcGyihBwIZkbEGDz20TKgguc9uoMecxMoN9gWNEWVvmLMEZGrOHPBZ5tRmyNq8bNf1AbfApFnePlWNI0QPd0Cvd0y090cevtWpBjYaXKs96Uyvc3djJ8Pr7v6oSzxIHX6o/PUvsYyHwarJ3N2AatzCa+srR2ev64lqqNkmX9Mz+L+iR7vgGduXNuFoVa3VE+QPUn8/dCnIzaXUuPbc6m8xQ+BXdGMU4pvi955HBMlaQDdyd4hz1yIuSUEaU0WaqEgk1Q/gWysQnCz+MRA==</latexit>
+
+<latexit sha1_base64="D7LImWCHdqS+qgs+71dsuFbOsAY=">AAACY3ichVFNSwJBGH7cvkwrzToEEUhidAgZIyw6CV06+pEfYCK761iL6+6yuwom/QGvBR06FUREP6NLf6CDP6BDdDTo0qHXdSFKqneYmWeeeZ93npmRDFWxbMZ6HmFsfGJyyjvt88/MzgWC86G8pTdNmedkXdXNoiRaXFU0nrMVW+VFw+RiQ1J5QarvDfYLLW5aiq4d2G2DlxvikabUFFm0iUpVghEWY06ER0HcBRG4kdKDtzhEFTpkNNEAhwabsAoRFrUS4mAwiCujQ5xJSHH2OU7hI22TsjhliMTWaTyiVcllNVoPalqOWqZTVOomKcOIsid2x/rskd2zF/bxa62OU2PgpU2zNNRyoxLoLmXf/1U1aLZx/KX607ONGnYcrwp5NxxmcAt5qG+dXPSzu5loZ41ds1fyf8V67IFuoLXe5Js0z1zCRx8Q//ncoyC/GYsnYon0ViS54X6FF8tYxTq99zaS2EcKOTq3ii7OcO55FvxCSFgcpgoeV7OAbyGsfALd04lr</latexit>
+
+g3t
+<latexit sha1_base64="66FLMAsAVhZi5dqxVktFiJ34q40=">AAACbHichVG7SgNBFD1Z3/EVH4UgghgUq3CjEsVKsLH0laj4CLvrGJfsi91JQJf8gK2FhVooiIifYeMPWOQTRLBRsLHwZrMgKuodZubMmXvunJnRXNPwJVE1pjQ0NjW3tLbF2zs6u7oTPb053yl5usjqjul465rqC9OwRVYa0hTrridUSzPFmlacr+2vlYXnG469Kg9csW2pBdvYM3RVMrVRyAeTlZ1AVvKJJKUojOGfIB2BJKJYdBLX2MIuHOgowYKADcnYhAqf2ybSILjMbSNgzmNkhPsCFcRZW+IswRkqs0UeC7zajFib17WafqjW+RSTu8fKYYzSA93QC93TLT3S+6+1grBGzcsBz1pdK9x899HAytu/Kotnif1P1Z+eJfYwE3o12LsbMrVb6HV9+fDkZWV2eTQYo0t6Yv8XVKU7voFdftWvlsTyKeL8Aenvz/0T5CZS6UwqszSVnKPoK1oxiBGM83tPYw4LWESWz7VwjDOcx56VfmVQGaqnKrFI04cvoYx9ALROjYQ=</latexit>
+
+<latexit sha1_base64="a78qM31OJqiD8iv/KIj/bmaFI5g=">AAACY3ichVFNSwJBGH7cvkwrzToEEUhieJIxwqKT0KWjH/kBJrK7jrW47i67q2DSH/Ba0KFTQUT0M7r0Bzr4AzpER4MuHXpdF6KkeoeZeeaZ93nnmRnJUBXLZqzvESYmp6ZnvLM+/9z8QiC4GCpYesuUeV7WVd0sSaLFVUXjeVuxVV4yTC42JZUXpcbecL/Y5qal6NqB3TF4pSkeaUpdkUWbqHQ1GGFx5kR4HCRcEIEbaT14i0PUoENGC01waLAJqxBhUSsjAQaDuAq6xJmEFGef4xQ+0rYoi1OGSGyDxiNalV1Wo/WwpuWoZTpFpW6SMowoe2J3bMAe2T17YR+/1uo6NYZeOjRLIy03qoHeSu79X1WTZhvHX6o/PduoY8fxqpB3w2GGt5BH+vbJxSC3m412N9g1eyX/V6zPHugGWvtNvsnw7CV89AGJn889Dgqb8UQynsxsRVIx9yu8WMU6YvTe20hhH2nk6dwaejjDuedZ8AshYXmUKnhczRK+hbD2CdyfiWc=</latexit>
+
+<latexit sha1_base64="dMfVBfu1fDhGcdgsCGamSj+TchQ=">AAACxHichVHLLgRBFD3ae7wGG4mNmBASJtUIYiESCZZeg8TQ6W5lVNR0d7prJqEzPsAPWFiRiIjPEIkfsPAJYonYWLjT04kguJ2uOnXOPbduVVmeFIFi7KFKq66pratvaEw0Nbe0tiXbO9YCt+DbPGO70vU3LDPgUjg8o4SSfMPzuZm3JF+39mfL+nqR+4FwnVV14PGtvJlzxK6wTUWUkTSyppOTfGB+O1TDemkoq4Tc4WGYK5UMfVsNTv+hj/6jj5BuJFMszaLo+Qn0GKQQx6KbvEQWO3Bho4A8OBwowhImAvo2oYPBI24LIXE+IRHpHCUkyFugLE4ZJrH7NOZotRmzDq3LNYPIbdMukn6fnD3oY/fsij2zO3bNHtn7r7XCqEa5lwOarYqXe0bbcdfK27+uPM0Ke5+uP3tW2MVk1Kug3r2IKZ/CrviLhyfPK1PLfWE/O2dP1P8Ze2A3dAKn+GJfLPHlUyToAfTv1/0TrI2k9fH0+NJYamYofooGdKMXA3TfE5jBAhaRoX1v8YQXvGpzmtQCrVBJ1apiTye+hHb0AXLIrzQ=</latexit>
+
+\(Gt 1 , g̃1t ) > \(Gt 1 , g̃3t ) > \(Gt 1 , g̃2t )
+
+sha1_base64="fivSdbMrGkK5MiOZ4zpBj59/t+o=">AAACY3ichVG7SgNBFD1ZXzE+Eh+FIEIwRKzCXREVK8HGMj6iAZWwuxl1yL7Y3QQ0+ANpFSysFETEz7DxByz8AAuxVLCx8GazIBrUO8zMmTP33Dkzo7um9AOix5jS0dnV3RPvTfT1DwwmU0PDm75T9QxRMBzT8Yq65gtT2qIQyMAURdcTmqWbYkuvLDf3t2rC86VjbwSHrti1tH1b7klDC5jKl1IZylEY6XagRiCDKPJO6ho7KMOBgSosCNgIGJvQ4HPbhgqCy9wu6sx5jGS4L3CMBGurnCU4Q2O2wuM+r7Yj1uZ1s6Yfqg0+xeTusTKNLD3QDb3SPd3SM338Wqse1mh6OeRZb2mFW0o2xtbf/1VZPAc4+FL96TnAHhZCr5K9uyHTvIXR0teOzl7XF9ey9Sm6pBf2f0GPdMc3sGtvxtWqWDtHgj9A/fnc7WBzJqfO5eZWZzNLFH1FHOOYxDS/9zyWsII8CnxuGQ2c4DT2pPQpw8poK1WJRZoRfAtl4hPfB4lv</latexit>
+
+<latexit sha1_base64="MZCOBpkyt2CygICmYV/m2VjKBgs=">AAADK3ichVFBS9xAFH6JtdWt1lgvgpfQRSkoy2RXtkUQBC8e3d2uChsNyTi7DSaZkMwu1ZA/4B/w4ElBREp/hSC9lx629NpD6dFCLz30JRuQatQXMvPmm+9775sZy3fsUBDSl+ShJ8NPn42MFp6Pjb+YUCZfboS8G1DWpNzhwZZlhsyxPdYUtnDYlh8w07UctmntrSb7mz0WhDb33ol9n227Zsez2zY1BUKGctXZEeqyqrcDk0a6YB9E1KA8YLERUS1WdbrLhapzLJF0iDqxoaFgXr1FLedSy3nUSi61siPinP55jXIqxoZSJCWShno30bKkCFmsc+UcdNgFDhS64AIDDwTmDpgQ4tcCDQj4iG1DhFiAmZ3uM4ihgNoushgyTET3cOzgqpWhHq6TmmGqptjFwT9ApQqz5Cu5INfkM/lIfpK/99aK0hqJl32crYGW+cbE4XTjz6MqF2cB729UD3oW0Ia3qVcbvfspkpyCDvS9g6PrxlJ9Npojp+QX+j8hfXKJJ/B6v+lZjdWPoYAPoN2+7rvJRrmkVUvV2mJxpZw9xQjMwCt4jff9BlZgDdahCVRakOpSS9LlT/IX+Zv8fUCVpUwzBf+F/OMfaaPYCw==</latexit>
+
+gt 1
+
+Scorec1 · g t1 + Scorec2 · g t2 + Scorec3 · g t3
+gt =
+Scorec1 + Scorec2 + Scorec3
+
+<latexit sha1_base64="A5LJQ8DJ3gCKvdCcOZq18Rnuiq4=">AAACkXichVFNSxtRFD1Oq7XRaqybghtpUFLQcKeIXyAEuxG6UWNMINFh5vmMg/PFzEtAh/wBl25cuLIgUvoH3Npu+ge68CcUlwrddOHNZKC0Ur3DvHveeffcd957VuDYkSK67tGePe/te9H/MjMw+GpoODvyejPym6GQZeE7fli1zEg6tifLylaOrAahNF3LkRVr/0NnvdKSYWT73oY6COSWazY8e9cWpmLKyE7VXVPthW5cEn4o20YsDL29pE/XhR/l40bb0LfVVJrfGdkcFSiJ8YdAT0EOaaz62QvUsQMfAk24kPCgGDswEfFXgw5CwNwWYuZCRnayLtFGhrVNrpJcYTK7z2ODZ7WU9Xje6RklasG7OPyHrBzHBP2gz3RL3+kL/aTf/+0VJz06Xg44W12tDIzhozelX0+qXM4Ke39Uj3pW2MV84tVm70HCdE4huvrW4cltaXF9Ip6kT3TD/s/omr7xCbzWnThfk+unyPAD6P9e90Ow+b6gzxZm12ZyRUqfoh9jeIs83/cciljBKsq87zEucYWv2qi2oBW15W6p1pNqRvFXaB/vAeIemrc=</latexit>
+
+Scorec1 = 1
+<latexit sha1_base64="kbilbg/7QgUrYCIpkLqTjOjK+P4=">AAACkXichVFNSxxBEH2OGnXVuMZLwIu4KAq61CyiMRBY4kXwom5WBVeHmbZdB+eLmd4FM+wfyDEXDzkphCD+Aa+JF/+AB3+C5GgglxxSMzsgiag1TNfr1/WqX3dbgWNHiuimQ+vs6n7R09uX6x8YfDmUH361EfmNUMiq8B0/3LLMSDq2J6vKVo7cCkJpupYjN63DpWR9synDyPa9D+ookDuuWffsfVuYiikjP1NzTXUQunFF+KFsGbEwSq13+mxN+NFUXG8Z+q6aSXJpV00b+QIVKY2xh0DPQAFZrPr5b6hhDz4EGnAh4UExdmAi4m8bOggBczuImQsZ2em6RAs51ja4SnKFyewhj3WebWesx/OkZ5SqBe/i8B+ycgwTdE1ndEdXdE639OfRXnHaI/FyxNlqa2VgDH16Xfn9rMrlrHBwr3rSs8I+3qRebfYepExyCtHWNz8e31Xerk/Ek3RKP9n/Cd3QJZ/Aa/4SX9fk+hfk+AH0/6/7IdgoFfX54vzaXKFM2VP0YhTjmOL7XkAZy1hFlff9jAt8xw9tRFvUytr7dqnWkWlG8E9oK38B5jqauQ==</latexit>
+
+Scorec2 = 1
+<latexit sha1_base64="gCebOQgB9JwdqF1npXVebGzuRLs=">AAACkXichVHLShxBFD12jI8x6iRuBDeSwaCgw20V8wBh0E3AjTqOCo423WU5NvaL7poB08wPuHTjwpWCSPAH3CbZ5Aey8BPEpYKbLHK7pyGoJN6m6546dc+tU1VW4NiRIrpq0160v+zo7OrO9bzq7evPv36zGvn1UMiK8B0/XLfMSDq2JyvKVo5cD0JpupYj16y9+WR9rSHDyPa9FbUfyE3XrHn2ji1MxZSRH6+6ptoN3bgs/FA2jVgYU81ZfaIq/Gg0rjUNfUuNJ3lqS40Z+QIVKY3hp0DPQAFZLPr5c1SxDR8CdbiQ8KAYOzAR8bcBHYSAuU3EzIWM7HRdookca+tcJbnCZHaPxxrPNjLW43nSM0rVgndx+A9ZOYwR+kVf6ZZ+0gVd0+9/9orTHomXfc5WSysDo/9gsHz/rMrlrLD7V/Vfzwo7+JB6tdl7kDLJKURL3/hydFv+tDwSv6NTumH/J3RFP/gEXuNOnC3J5WPk+AH0x9f9FKxOFvWZ4szSdKFE2VN0YQhvMcr3/R4lfMYiKrzvIS7xDd+1Ae2jVtLmWqVaW6YZwIPQFv4A6laauw==</latexit>
+
+Scorec3 = 1
+
+cos(g1t , g1t )
+cos(g1t , g2t )
+cos(g1t , g3t )
+
+F g 2 I ustrat on of FLTG
+
+Cosine Similarity Filtering with ReLU Function: Attackers can man pu ate the d rect on of ma c ous c ents mode updates to nterfere w th the
+g oba mode update To counter th s we treat the server mode update as a
+trusted reference Cos ne s m ar ty a w de y used metr c for eva uat ng the angu ar re at onsh p between two vectors s emp oyed to measure the d rect ona
+a gnment between each oca mode update and the server mode update If the
+cos ne s m ar ty s negat ve the correspond ng update cou d adverse y affect the
+g oba aggregat on To prevent th s we app y the ReLU funct on to fi ter out
+such updates The process s forma y defined as fo ows
+cos θ =
+
+⟨g t g t0 ⟩
+∥g t ∥ ∥g t0 ∥
+
+(5)
+
+where g t0 denotes the server mode update at round t ∥ ∥ represents the ℓ2
+norm of a vector and ⟨a b⟩ s the nner product of vectors a and b
+The ReLU funct on as fo ows
+(
+0 fx<0
+ReLU(x) =
+(6)
+x fx≥0
+
+Non-IID-Aware Weighting Mechanism: The non-IID nature of data
+distribution is a crucial factor in federated learning, as it can substantially affect
+model performance. To alleviate the impact of non-IID data and assign more appropriate aggregation weights to clients, we integrate the global model into the
+process, leveraging its comprehensive knowledge. Beyond handling non-IID challenges, we observed that simply filtering clients based on directional similarity
+does not entirely eliminate the risk of including malicious updates in the aggregation. To further mitigate their influence, we aim to assign lower aggregation
+weights to such clients. Our approach is structured as follows. All subsequent
+computations are performed on the subset S of clients that remain after applying the ReLU function. Within this subset, we first identify the client whose
+model update exhibits the lowest cosine similarity with the previous round’s
+global model. This client’s model update serves as a reference. We then compute the cosine similarity between this reference update and the updates from
+other clients in S. The principle behind our weighting mechanism is that clients
+with greater similarity to the reference update should receive lower aggregation
+weights. The scoring function that determines these weights is defined as follows:
+Scorecj = 1 − cos(g tref , g tj ),
+
+(7)
+
+where cj represents a client in subset S, g tj denotes its corresponding encrypted model update at round t, and g tref refers to the encrypted model update
+of the reference client in S.
+Normalizing the magnitudes of local model updates: As mentioned
+earlier, model updates encompass both direction and magnitude. Attackers may
+also alter the magnitude of malicious clients’ updates to compromise the global
+model update. To counteract this, we apply normalization to each client’s model
+update, reducing the impact of such attacks. This normalization step also mitigates the influence of positive random scaling factors that clients may introduce
+to obscure their updates before submission while preserving the data’s utility.
+By leveraging the server model update as a reference, the normalization process projects all local updates onto the same hypersphere within the vector space.
+Specifically, each client’s update is scaled by its ℓ2 norm to form a unit vector.
+The normalization operation is defined as follows:
+g tj =
+
+∥g t0 ∥ t
+·g ,
+∥g tj ∥ j
+
+(8)
+
+where g̃ tj represents the obfuscated model update of client j in subset S at
+round t, ∥g tj ∥ is its corresponding ℓ2 norm, ∥g t0 ∥ denotes the ℓ2 norm of the
+server model update, and g tj represents the normalized model update of client
+j.
+Aggregating the local model updates: In the final step, we calculate the
+weighted average of the normalized model updates from all clients to obtain the
+global model update. The aggregation formula is given by:
+
+g = Pk
+
+1
+
+k
+X
+
+j=1 Scorej j=1
+
+Scorej · g j ,
+
+(9)
+
+where j denotes a client in the subset S, consisting of k clients in total,
+Scorej represents the weight assigned to client j based on its contribution, and
+g j is the normalized model update from client j.
+
+5
+
+Evaluation
+
+In this section, we present experimental results that evaluate the performance
+of our proposed method, FLTG, under existing poisoning attacks. We used the
+MNIST and CIFAR-10 datasets, with the number of clients set to 100 for both.
+The degree of non-IIDness in the data distribution among clients is represented
+by q, where a larger value indicates a higher degree of non-IIDness. The size
+of the Root Dataset is 100, and its Bias Probability is p, where a larger value
+indicates a greater degree of bias.
+
+Table 1: Performance on MNIST under Standard Attacks.
+FedAvg
+
+Krum
+
+Trim-mean
+
+Median
+
+No attack
+0.9999
+0.9374
+0.9790
+0.9790
+LF attack
+0.9790
+0.9374
+0.9895
+0.9790
+Krum attack
+0.9374
+0.0141
+0.9686
+0.9686
+Trim attack
+0.8749
+0.9374
+0.9061
+0.9061
+Scaling attack 1.0103/0.0000 0.9278/1.0000 0.9794/0.9900 0.9794/0.9900
+Adaptive attack
+0.9583
+0.9375
+0.9271
+0.9062
+
+FLTrust
+
+FLTG
+
+1
+1
+1
+1
+1/1
+1
+
+1.0190
+1.0169
+1.0115
+1.0080
+1.0197/1.0012
+1.0184
+
+Notes: Scaling attack results are formatted as ”Accuracy/Backdoor Defense Success Rate.”
+
+As shown in Table 1, we use the same experimental settings in FLTrust[11]: 5
+types of standard attacks with a non-IID degree q = 0.1, a bias probability p =
+0.1, and 20% malicious clients. Note that we only reproduced FLTrust [11] and
+use its results as the normalization bridge for performance comparison with other
+baseline methods. We calculate the ratio between the accuracy of other methods
+relative to FLTrust to ensure the fairness and consistency. We first calculated
+the ratio a as the accuracy of the locally reproduced FLTrust divided by the
+official FLTrust accuracy. Then, we multiplied the official performance values of
+each method by this ratio. Finally, we obtained the performance comparison of
+each method under the local hardware environment by dividing the result by the
+accuracy of the locally reproduced FLTrust. For instance, under scaling attacks,
+FLTrust achieved normalized accuracy and defense success rates of 1.0, while
+Median lagged by 2.06% and 1%, respectively. In contrast, FLTG outperformed
+FLTrust with 1.97% higher accuracy and a 0.12% improvement in defense rate.
+Notably, FLTG maintained near-optimal accuracy even in no-attack scenarios,
+demonstrating its compatibility with benign environments.
+
+Table 2: Impact of Root Dataset Bias.
+Attack
+
+Method
+
+0.1
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+No attack
+
+FLTrust
+FLTG
+
+0.9574
+0.9681
+
+0.9531
+0.9592
+
+0.9613
+0.9640
+
+0.9552
+0.9652
+
+0.9510
+0.9620
+
+0.3546
+0.9196
+
+LF attack
+
+FLTrust
+FLTG
+
+0.9564
+0.9661
+
+0.9587
+0.9671
+
+0.9595
+0.9675
+
+0.9526
+0.9692
+
+0.9562
+0.9640
+
+0.0980
+0.1261
+
+Krum attack
+
+FLTrust
+FLTG
+
+0.9457
+0.9509
+
+0.9445
+0.9532
+
+0.9421
+0.9504
+
+0.9101
+0.9107
+
+0.9384
+0.9429
+
+0.1330
+0.0980
+
+Trim attack
+
+FLTrust
+FLTG
+
+0.9541
+0.9576
+
+0.9404
+0.9550
+
+0.9452
+0.9502
+
+0.9343
+0.9524
+
+0.9316
+0.9515
+
+0.0980
+0.0980
+
+Scaling attack
+
+FLTrust 0.9558 / 0.0072 0.9494 / 0.0093 0.9577 / 0.0194 0.9501 / 0.9020 0.9535 / 0.9020 0.0980 / 0.9020
+FLTG 0.9688 / 0.0060 0.9565 / 0.0077 0.9651 / 0.0139 0.9612 / 0.0285 0.9683 / 0.0465 0.0980 / 0.9020
+
+Adaptive attack
+
+FLTrust
+FLTG
+
+0.9452
+0.9573
+
+0.9275
+0.9500
+
+0.9366
+0.9536
+
+0.0980
+0.9434
+
+0.0980
+0.9369
+
+0.0980
+0.0980
+
+In Table 2, to investigate FLTG’s tolerance to root dataset bias, we set q = 0.1
+and varied the root dataset bias probability p from 0.1 to 1.0 FLTG consistently
+outperformed FLTrust across all bias levels. In the no-attack scenario with extreme bias (p = 1.0), FLTrust’s accuracy dropped significantly to 0.3546, while
+FLTG maintained an accuracy of 0.9196. This demonstrates FLTG’s ability to
+effectively mitigate the impact of data heterogeneity, even when the root dataset
+is highly skewed.
+
+50
+
+CIFAR-10, non-iid=0.5, Bias probability=0.5
+
+80
+
+90 95
+
+Fraction of malicious clients (%)
+
+(a) Bias probability=0.1
+
+FLTrust
+FLTG
+FedAVG No attack
+
+20
+
+50
+
+0.7
+0.6
+0.5
+0.4
+0.3
+0.2
+0.1
+
+CIFAR-10, non-iid=0.5, Bias probability=0.8
+
+Testing accuracy
+
+Testing accuracy
+
+FLTrust
+FLTG
+FedAVG No attack
+
+20
+
+0.7
+0.6
+0.5
+0.4
+0.3
+0.2
+0.1
+
+Testing accuracy
+
+CIFAR-10, non-iid=0.5, Bias probability=0.1
+0.70
+0.65
+0.60
+0.55
+0.50
+0.45
+0.40
+
+80
+
+90 95
+
+Fraction of malicious clients (%)
+
+(b) Bias probability=0.5
+
+FLTrust
+FLTG
+FedAVG No attack
+
+20
+
+50
+
+80
+
+90 95
+
+Fraction of malicious clients (%)
+
+(c) Bias probability=0.8
+
+Fig. 3: Impact of Root Dataset Bias Probability and Malicious Client Ratio on
+Model Robustness under Adaptive Poisoning Attack.
+
+In Figure 3, we have replaced the dataset with the more complex CIFAR10 dataset under higher non-IID (q=0.5), and employed the stronger model
+poisoning attack, Min-max[19]. The figure shows a comparison of FLTG’s performance against FLTrust under varying bias probabilities and fractions of malicious clients, along with FedAvg under no-attack conditions. The experiments
+demonstrate that FLTG outperforms FLTrust in terms of both bias probability
+tolerance and resilience to varying proportions of malicious clients. Specifically,
+at a bias probability of 0.8, where conditions are most challenging, FLTG still
+manages to maintain a relatively higher testing accuracy than FLTrust, indicating its robustness against high levels of dataset bias and malicious client
+
+influence. These results highlight the effectiveness of FLTG in maintaining performance under more complex and adversarial conditions.
+
+Testing accuracy rate
+
+Testing accuracy rate
+
+FLTrust
+FLTG
+FedAVG No attack
+
+20
+
+50
+
+CIFAR-10, non-iid=0.5, Bias probability=0.1
+0.70
+0.65
+0.60
+0.55
+0.50
+0.45
+0.40
+
+80
+
+90 95
+
+Fraction of malicious clients (%)
+
+(a) Non-iid=0.1
+
+FLTrust
+FLTG
+FedAVG No attack
+
+20
+
+50
+
+CIFAR-10, non-iid=1.0, Bias probability=0.1
+
+0.17
+0.16
+0.15
+0.14
+0.13
+0.12
+0.11
+0.10
+
+FLTrust
+FLTG
+FedAVG No attack
+
+Testing accuracy rate
+
+CIFAR-10, non-iid=0.1, Bias probability=0.1
+
+0.70
+0.65
+0.60
+0.55
+0.50
+0.45
+
+80
+
+90 95
+
+Fraction of malicious clients (%)
+
+(b) Non-iid=0.5
+
+20
+
+50
+
+80
+
+90 95
+
+Fraction of malicious clients (%)
+
+(c) Non-iid=1.0
+
+Fig. 4: Impact of Client Non-IID Degree and Malicious Client Ratio on Model
+Robustness under Adaptive Poisoning Attack.
+
+Finally, in Figure 4, we also use the CIFAR-10 dataset. We fix p=0.1 and use
+the Min-max attack to study the performance of FLTG compared to FLTrust
+under varying levels of non-IID and fractions of malicious clients, as well as
+the performance of FedAvg under no-attack conditions. Specifically, in subplot
+(a) of Figure 4, where the non-IID level is set to 0.1, FLTG not only surpasses
+FLTrust but also achieves a higher testing accuracy rate than FedAvg in noattack scenarios, even at a low fraction of malicious clients, such as 20%. This
+indicates that even at a relatively low level of non-IID distribution and under
+attack by a relatively small proportion of malicious clients, FLTG is still able to
+effectively maintain high performance.
+
+6
+
+Conclusion and Future Work
+
+This paper introduces FLTG, a new aggregation algorithm for defending against
+Byzantine attacks in federated learning. Using cosine similarity screening and
+model update normalization, FLTG enhances model convergence and resilience
+to poisoning attacks. Future work will focus on improving privacy and efficiency
+in federated learning, aiming for a balance between privacy, accuracy, and computational cost. We will also conduct scalability evaluations in large-scale federated learning environments and investigate how performance changes as the
+number of clients increases, in order to broaden its applicability and enhance
+the practical relevance of the paper.
+Acknowledgments. This research was supported in part by the National Social
+Science Foundation Youth Program (Grant No. 24CGL104), Hunan Provincial
+Natural Science Foundation of China (No. 2023JJ40237), and the Youth Program of Hunan Provincial Department of Education (Grant No. 23B0598, No.
+22B0648).
+
+References
+1. Konecnỳ, J., McMahan, H.B., Felix, X.Y., Richtárik, P., Suresh, A.T., Bacon,
+D.: Federated learning: Strategies for improving communication efficiency. CoRR
+(2016)
+2. McMahan, B., Moore, E., Ramage, D., Hampson, S., y Arcas, B.A.:
+Communication-efficient learning of deep networks from decentralized data. In:
+Artificial intelligence and statistics, pp. 1273–1282. PMLR (2017)
+3. He, K., Zhang, X., Ren, S., Sun, J.: Deep residual learning for image recognition. In:
+Proceedings of the IEEE conference on computer vision and pattern recognition,
+pp. 770–778 (2016)
+4. Zeng, H., Li, J., Lou, J., Yuan, S., Wu, C., Zhao, W., Wu, S., Wang, Z.: Bsr-fl: An
+efficient byzantine-robust privacy-preserving federated learning framework. IEEE
+Transactions on Computers (2024)
+5. Gong, B., Xing, T., Liu, Z., Xi, W., Chen, X.: Towards hierarchical clustered
+federated learning with model stability on mobile devices. IEEE Trans. Mob.
+Comput. (2024)
+6. Li, Y., Xia, C., Li, C., Wang, T.: Brfl: A blockchain-based byzantine-robust federated learning model. Journal of Parallel and Distributed Computing 196 (2025)
+7. Zhang, L., Fang, G., Tan, Z.: Fedccw: a privacy-preserving byzantine-robust federated learning with local differential privacy for healthcare. Cluster Computing
+28(3), 1–21 (2025)
+8. Biggio, B., Nelson, B., Laskov, P.: Poisoning attacks against support vector machines. Omnipress (2012)
+9. Fang, M., Cao, X., Jia, J., Gong, N.Z.: Local model poisoning attacks to byzantinerobust federated learning. In: USENIX Security Symposium (2020)
+10. Bagdasaryan, E., Veit, A., Hua, Y., Estrin, D., Shmatikov, V.: How to backdoor
+federated learning (2018)
+11. Cao, X., Fang, M., Liu, J., Gong, N.Z.: Fltrust: Byzantine-robust federated learning
+via trust bootstrapping. In: Network and Distributed System Security Symposium
+(2021)
+12. Blanchard, P., Mhamdi, E.M.E., Guerraoui, R., Stainer, J.: Machine learning with
+adversaries: byzantine tolerant gradient descent. Curran Associates Inc. (2017)
+13. Yin, D., Chen, Y., Ramchandran, K., Bartlett, P.: Byzantine-robust distributed
+learning: Towards optimal statistical rates (2018)
+14. Mai, P., Yan, R., Pang, Y.: Rflpa: A robust federated learning framework against
+poisoning attacks with secure aggregation. Advances in Neural Information Processing Systems 37, 104,329–104,356 (2025)
+15. Bao, W., Wu, J., He, J.: Boba: Byzantine-robust federated learning with label
+skewness. In: International Conference on Artificial Intelligence and Statistics, pp.
+892–900. PMLR (2024)
+16. Dong, Y., Chen, X., Li, K., Wang, D., Zeng, S.: Flod: Oblivious defender for private
+byzantine-robust federated learning with dishonest-majority (2021)
+17. Miao, Y., Xie, R., Li, X., Liu, Z., Choo, K.K.R., Deng, R.H.: Efficient and secure
+federated learning against backdoor attacks. IEEE Transactions on Dependable
+and Secure Computing (2024)
+18. Wang, Y., Zhu, T., Chang, W., Shen, S., Ren, W.: Model poisoning defense on
+federated learning: A validation based approach (2020)
+19. Shejwalkar, V., Houmansadr, A.: Manipulating the byzantine: Optimizing model
+poisoning attacks and defenses for federated learning. In: NDSS (2021)
+
+

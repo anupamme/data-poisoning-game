@@ -1,0 +1,32 @@
+{
+  "title": "Distributed Attacks over Federated Reinforcement Learning-enabled Cell Sleep Control",
+  "c_d_route": "absent",
+  "criteria": {
+    "C-a": {
+      "code": "NO",
+      "quote": "We propose a refined-Krum defense model based on the existing secure FL aggregation method Krum [9].",
+      "locator": "§1; the paper's own enumeration of the single mechanism's stages is at §V, \"It can be concluded into four steps, which are calculating the similarity gaps, estimating the number of malicious participants, identifying malicious participants and secure aggregation\""
+    },
+    "C-b": {
+      "code": "NO",
+      "quote": "In this subsection, we first introduce the Krum defense scheme and then illustrate how the refined-Krum model is defined.",
+      "locator": "§V; no second mechanism is paired with refined-Krum anywhere in the paper, and therefore no reason for pairing is given"
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "The proposed refinedKrum scheme outperforms the existing Krum scheme and can effectively prevent wireless networks from malicious attacks, improving the system energy-efficiency performance.",
+      "locator": "§I and §VII; the reported outcome is the whole system's own metric, \"Simulation results Firstly, we compare the simulation results of FL and independent learning-based cell sleep control in a fully secure environment\" (§VI), with Figure 4 \"The system energy-efficiency under different attacks\""
+    },
+    "C-d": {
+      "code": "NO",
+      "quote": "Compared with the existing Krum defense scheme, it can achieve a better defense effect without knowing the number of attackers.",
+      "locator": "§I; the experimental axes in §VI are the ATTACK (free rider, Byzantine data poisoning, backdoor), the number of attackers, and refined-Krum against Krum against no defense -- a menu of alternative defenses, never one stage varied against another held fixed"
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "Although the Krum defense scheme is proven to be effective in some cases, choosing only a local model for global aggregation is quite unstable and it may not get the full benefit of FL.",
+      "locator": "§V-2 Refined-Krum; the attribution is to a mechanism property of the baseline aggregator (single-model selection causes instability), and it is what the refinement is built to remove"
+    }
+  },
+  "coder_note": "C-a = NO: ONE MECHANISM IN FOUR STEPS, AND THE FOURTH STEP'S NAME IS MISLEADING. The paper's own step list ends in \"secure aggregation\", which reads at a glance like a cryptographic component that Amendment 3 would have to adjudicate. It is not one. §V defines it as the filtering itself: \"After identifying the malicious participants, we can perform secure aggregation by admitting only benign models into the global model aggregation.\" There is no encryption, no MPC and no privacy mechanism in this paper -- a targeted grep for secure-aggregation, multi-party and encryption language returns five hits, all of them either this filtering step or a citation to Krum. The screening tag 'secure-agg' is therefore a false positive of the same kind as SPFL's 'reputation' tag, and Amendment 3 is not engaged at all here: the four steps are the stages of a single Krum-derived filter, which C-a excludes as \"a single mechanism with hyperparameters\".\n\nC-d = NO ON THE STRICT READING AND ON RULE 4 BOTH. Refined-Krum against Krum is a whole-mechanism comparison and the difference between them is in the aggregation step itself -- Krum selects one local model, refined-Krum admits the estimated benign set -- so it varies the DOWNSTREAM mechanism, and it is in any case a menu of alternative defenses, which C-a's and C-d's exclusions both name. Nothing in §VI holds a downstream stage fixed while varying an upstream one; the extractor's C-d bucket returned a single candidate over 30105 characters and it is a description of the global-model broadcast, not a contrast. Rule 4's benefit of the doubt has nothing to attach to.\n\nTHIS IS THE SMALLEST INCLUDED PAPER IN THE FRAME (30105 characters of extracted text, a 6-page conference paper) AND ITS THREE EMPTY BUCKETS ARE A PROPERTY OF THE PAPER, NOT OF THE AID. The C-c bucket returned zero candidates because the paper's outcome metric is system energy-efficiency rather than accuracy or ASR; the C-e bucket returned two candidates, neither of them the sentence coded above, which a targeted grep for refined-Krum found. Its inclusion is correct under the frozen screen -- it proposes and evaluates a defense against poisoning in FL -- and it is a useful row precisely because it is the null shape: a single-mechanism defense, validated end to end, with no internal contrast anywhere. Rows like this one are what keep the C-d rate from being an artifact of only looking at large pipeline papers."
+}

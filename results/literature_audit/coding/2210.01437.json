@@ -1,0 +1,33 @@
+{
+  "title": "Shielding Federated Learning: Mitigating Byzantine Attacks with Less Constraints",
+  "short_name": "Robust-FL",
+  "c_d_route": "hyperparameter-sweep",
+  "criteria": {
+    "C-a": {
+      "code": "NO",
+      "quote": "The core idea of the Robust-FL is exploiting historical global model to construct an estimator based on which the local models will be filtered through similarity detection. We then cluster local models to adaptively adjust the acceptable differences between the local models and the estimator such that Byzantine users can be identified.",
+      "locator": "Abstract; restated at §1, \"we first make use of exponential smoothing to construct the estimat[or]\""
+    },
+    "C-b": {
+      "code": "NO",
+      "quote": "Different from existing works that focus on making use of local models in the current iteration, Robust-FL aims to construct an estimator based on the historical global models from previous rounds.",
+      "locator": "§1; the design reason given is temporal (history vs current round), not a reason for pairing two mechanisms"
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "Figure 2: (a) The impact of α on the accuracy of the global model; (b) The total time overhead after 1000 iterations.",
+      "locator": "§5, Figure 2; the per-attack accuracy curves compare Robust-FL against Zeno, Median, FABA, Multi-Krum and Resampling"
+    },
+    "C-d": {
+      "code": "YES",
+      "quote": "Figure 2: (a) The impact of α on the accuracy of the global model",
+      "locator": "§5, Figure 2(a) -- alpha is the exponential-smoothing coefficient of the upstream estimator, swept with the downstream similarity filter and aggregation unchanged"
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "Key Insight After reviewing the existing defenses, we conclude that the main reason behind their limitations is that they focus on making use of the information of the current data in each iteration to detect anomalies, which is indeed a difficult problem.",
+      "locator": "§2 Key Insight; the corresponding claim about competing schemes is at §5, \"This is due to the fact that these schemes tend to choose the majority of models with similar behavior for aggregation\""
+    }
+  },
+  "coder_note": "C-a = NO: THE CLUSTERING IS THE FILTER'S THRESHOLD RULE, NOT A SECOND DEFENSE. Robust-FL predicts what each client's update should look like from the history of global models (exponential smoothing), filters on similarity to that prediction, and clusters the local models only in order to set the filter's tolerance adaptively. One detector with an adaptive threshold. C-a's own exclusion list rules out \"a single mechanism with hyperparameters\", and what is downstream of the filter is plain averaging, which the settled reading does not count as a defense. Primary = NO.\n\nC-d = YES BY RULE 4, AND THE ROUTE IS A HYPERPARAMETER SWEEP, WHICH IS WHY THIS RECORD CARRIES c_d_route. Figure 2(a) sweeps alpha, the smoothing coefficient of the upstream estimator, with the downstream similarity filter and aggregation fixed, and reads the global model's accuracy off it. That is not the component-level contrast FLAME's Table 1 runs, and the appendix table must stratify the two rather than pool them: rule 4 is frozen and says any experiment PLAUSIBLY holding a downstream mechanism fixed while varying an upstream stage is coded YES even if imperfect, so the code is YES, but a reader is entitled to see how many of the C-d = YES rows are of this weaker kind. This is the third hyperparameter-sweep route in the frame (with 2110.02940's cluster size and 2206.12100's user clusters) and the stratification is now clearly load-bearing, not bookkeeping.\n\nC-e = YES but note what it attributes: the failure of OTHER defenses to their use of single-round information, and its own success to the use of history. It is a mechanism claim about a design principle, not about which of two composed stages did the work -- there being no two stages here."
+}

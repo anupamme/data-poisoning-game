@@ -1,0 +1,32 @@
+{
+  "title": "BROADCAST: Reducing Both Stochastic and Compression Noise to Robustify Communication-Efficient Federated Learning",
+  "c_d_route": "analytic",
+  "criteria": {
+    "C-a": {
+      "code": "NO",
+      "quote": "Our work is among the first attempts to jointly consider Byzantine-robust aggregation and compression in federated learning.",
+      "locator": "§1 Contributions; the purpose of the compression stage is stated in the Abstract, \"Various recent works have proposed to compress the local stochastic gradients to mitigate the communication overhead\""
+    },
+    "C-b": {
+      "code": "NO",
+      "quote": "We theoretically point out that different to the attacks-free compressed stochastic gradient descent (SGD), its vanilla combination with geometric median-based robust aggregation seriously suffers from the compression noise in the presence of Byzantine attacks.",
+      "locator": "Abstract"
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "We present numerical experiments to illustrate the effectiveness of BROADCAST and compare it with existing Byzantine-robust distributed learning algorithms.",
+      "locator": "§6 Numerical Experiments, Figure 5 (classification accuracy under no attack, Gaussian, sign-flipping and zero-gradient attacks)"
+    },
+    "C-d": {
+      "code": "YES",
+      "quote": "If δ is 0, meaning that no compression is applied, the learning error in BROADCAST is in the same order as that of the Byzantine-robust SAGA without compression.",
+      "locator": "§5.3, after Theorem 2 (Eq. 38-39); the same variation is run in the other direction at §3.3 \"Impact of Compression and Stochastic Noise\""
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "The reason is intuitive: Since even the compressed messages sent from the regular workers are noisy, it is difficult to recognize the malicious ones among them.",
+      "locator": "§3.3 Impact of Compression and Stochastic Noise"
+    }
+  },
+  "coder_note": "C-a = NO UNDER AMENDMENT 3: THE SECOND COMPONENT IS COMPRESSION, AND THE PAPER SAYS IT IS FOR COMMUNICATION. Only one component here resists malicious updates (geometric-median aggregation); the compressor exists to cut the communication bottleneck and the variance-reduction step exists to cancel stochastic noise. Neither is a defense by stated purpose. Primary = NO.\n\nTHE FINDING IN THIS ROW IS C-d, AND IT IS A ROUTE NEITHER THE PRE-REGISTRATION NOR THE PAPER ANTICIPATED: BROADCAST RUNS THE IDENTIFYING CONTRAST ANALYTICALLY. §3.3 holds the downstream mechanism fixed (geometric-median aggregation), holds the attack fixed (Byzantine workers), varies the upstream stage (compression on, with compression noise delta; compression off), and reads the downstream mechanism's loss of suppression off that variation -- \"even with unbiased compressors, the Byzantine-robust compressed SGD still suffers from\" the compression noise, and the reason given is that the noise destroys the very signal the median needs to recognize malicious workers. §5.3 then runs the same variation in the other direction on the composed system: set delta = 0 and BROADCAST's learning error returns to the uncompressed Byzantine-robust SAGA's order. The intervention is in the error bound rather than in a table, and the frozen C-d text does not require an experiment -- it requires that the upstream stage be varied with the downstream mechanism and the attack held fixed, which this is. Rule 4's benefit of the doubt would reach the same code if the analytic form were thought insufficient.\n\nThis is the third distinct route to C-d in six coded papers, and they are worth naming together because the appendix table will otherwise read as though C-d means one thing: FLAME/FLTrust vary a defense stage in a table; SHARE and zPROBE sweep a hyperparameter of a stage they introduced; BROADCAST varies an upstream stage inside a convergence bound. Only the first was foreseen.\n\nC-e is unambiguous and is a MECHANISM claim in the strict sense -- it says why the composition behaves as it does, in terms of what the upstream stage does to the downstream stage's input. The paper is a counterexample to the sharp reading of our own related-work sentence, and it is a 2021 preprint, i.e. it predates the claim."
+}

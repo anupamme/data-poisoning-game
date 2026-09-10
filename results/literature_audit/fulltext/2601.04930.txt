@@ -1,0 +1,3033 @@
+arXiv:2601.04930v2 [cs.DC] 30 Jun 2026
+
+Privacy-Preserving Federated Averaging with Byzantine
+Aggregators in Asynchronous Networks
+Antonella Del Pozzo
+
+Achille Desreumaux
+
+Mathieu Gestin
+
+Université Paris Saclay, CEA LIST
+France
+
+Université Paris Saclay, CEA LIST
+France
+
+Université Paris Saclay, CEA LIST
+France
+
+Alexandre Rapetti
+
+Sara Tucci
+
+Université Paris Saclay, CEA LIST
+France
+
+Université Paris Saclay, CEA LIST
+France
+
+Abstract
+Federated Learning requires secure aggregation to prevent gradient
+leakage, yet existing protocols suffer from key limitations: they
+assume synchrony, require heavy peer-to-peer coordination, and
+do not tolerate aggregators that halt or omit messages. These constraints make current secure aggregation schemes impractical in
+large-scale, unreliable distributed settings.
+To overcome these limitations, we introduce a new secure aggregation protocol that operates in fully asynchronous networks —
+where messages may be arbitrarily delayed — and tolerates fully
+Byzantine aggregators that are capable of arbitrary deviations including premature halting. Our design combines several key mechanisms: clustering clients under verifiable coordinators, lightweight
+LWE-based masking (with masking components distributed across
+aggregators), and differential privacy applied to both intermediary
+and final aggregated models. We further propose verifiable shuffling of clients across clusters, which prevents any client from being
+systematically excluded by a Byzantine coordinator, and a fair inclusion mechanism that ensures the inclusion of straggling clients
+whose messages are late. The protocol eliminates all client-to-client
+communication, and its communication overhead scales only with
+the number of aggregators—never with the number of clients. It
+also ensures equal representation of clients across rounds, avoiding
+bias and preventing unbalanced privacy risks among clients.
+Overall, our protocol provides the first secure aggregation primitive that is both privacy-preserving and robust to fully Byzantine
+behavior in asynchronous networks, closing the gap between prior
+secure aggregation assumptions and real-world distributed systems.
+
+Keywords
+Asynchronous communications, Federated averaging, Fairness
+
+1
+
+Introduction
+
+Federated Learning (FL) is a paradigm where multiple clients collaboratively train a machine learning model while keeping their
+data local. A central aggregator collects, at each training round, the
+local model updates, called gradients, to compute a global model
+that is then redistributed to clients for the next round. Training
+proceeds through successive rounds until convergence.
+The main advantage of FL lies in preserving data privacy, since
+raw data never leaves the clients. However, recent studies have
+revealed that gradient reconstruction attacks [46, 47, 49], where an
+adversary corrupts the central aggregator or intercepts gradients
+
+exchanged in the network, can reconstruct original data samples
+used during training.
+To mitigate such privacy risks, several approaches have been
+proposed, including local differential privacy [1], homomorphic
+encryption [16, 43], and secure aggregation [10]. Each of these
+techniques, however, comes with important limitations. Local differential privacy injects noise into gradients, but when applied
+at the granularity of individual updates, the amount of noise required to ensure meaningful privacy substantially degrades global
+model accuracy. Homomorphic encryption enables computation
+over encrypted gradients, yet its computational and communication
+overhead remains prohibitive for large-scale models or resourceconstrained clients. Secure aggregation avoids these costs because
+masking is lightweight and ciphertexts retain the size of the input.
+Still, most secure aggregation protocols [8, 10, 40] require extensive
+peer-to-peer coordination among clients, increasing per-client message complexity and creating mutual dependencies. Approaches
+that reduce this communication burden continue to rely on serverside computations that constitute a single point of failure [41].
+Indeed, to the best of our knowledge, existing secure aggregation
+protocols do not account for aggregators that may experience availability faults and halt the protocol at arbitrary points. Network
+assumptions pose a further limitation. Many protocols assume synchrony—i.e., bounded message delays—or do not explicitly model
+the network. In contrast, realistic deployments must operate in
+asynchronous settings, where message delays may be arbitrary,
+possibly under adversarial influence. In such settings, slow or straggling clients may be systematically excluded from the aggregation,
+while fast clients may become disproportionately represented, potentially biasing the aggregated model (especially in the presence
+of non-independent and identically distributed (non-i.i.d.) data) or
+exposing fast clients to increased privacy risks.
+In this paper, we present a new secure aggregation protocol
+that extends the state of the art to operate in asynchronous networks and tolerate fully Byzantine aggregators. Here, fully means
+that aggregators may deviate in truly arbitrary ways: not only by
+attempting to illicitly reveal private information or corrupt the
+aggregated model (as in standard secure aggregation), but also by
+halting during protocol execution or selectively omitting messages.
+Importantly, our goal is to achieve a synchronous federated
+learning scheme, in which training proceeds in rounds. Although a
+fully asynchronous federated learning scheme might appear more
+natural in an asynchronous network [50], it is not attractive in
+
+,,
+
+Antonella Del Pozzo, Achille Desreumaux, Mathieu Gestin, Alexandre Rapetti, and Sara Tucci
+
+our setting. Prior work has shown that asynchronous FL can reduce model utility and accuracy, especially in the presence of stale
+updates, straggler clients, non-i.i.d. data, and heterogeneous participants [31, 48]. Moreover, recent empirical evidence suggests
+that asynchronous FL may also exacerbate privacy and fairness
+disparities across clients [31]. We therefore adopt a different approach: although the network is fully asynchronous, training is still
+organized into well-defined rounds. In other words, our approach
+aims to preserve the benefits of synchronous FL while operating
+over asynchronous communications.
+This approach leverages a distributed architecture, where in
+each round clients are partitioned into clusters, and each cluster is
+verifiably assigned to a specific proxy aggregator, called a coordinator. Each client prepares its model update by masking it using
+lightweight Learning With Errors (LWE) techniques [40] and generating shares of the mask, one for each aggregator. Each client
+then encrypts these shares under the aggregators’ keys and sends
+the encrypted shares to its coordinator, which redistributes them
+to the corresponding aggregators. The aggregators then collaboratively perform verifiable secure aggregation using the received
+shares: each coordinator securely computes the aggregated model
+for its cluster, assisted by the shares previously distributed to other
+aggregators. In addition, each client contributes a small differential
+privacy (DP) noise component that remains after aggregation and
+provides privacy guarantees for the aggregated model.
+In our design, clients do not communicate with each other, and
+the communication overhead is proportional mainly to the number
+of aggregators—a quantity we expect to be significantly smaller
+than the number of clients.
+A key aspect of our solution is the verifiable shuffling of clusters:
+at every round, clients are randomly reassigned to coordinators.
+This prevents any client from being systematically paired with a
+Byzantine coordinator that might drop its updates or omit returning
+the aggregated model. Moreover, because each cluster has a single
+coordinator that serializes the input shares for that cluster, there is
+no need to run a Byzantine Fault-Tolerant (BFT) consensus protocol [12, 17], which would otherwise be required when client shares
+are sent directly to multiple potentially Byzantine aggregators [9].
+Avoiding BFT consensus is essential both to prevent high communication overhead and to ensure that our protocol operates correctly
+in an asynchronous network. Importantly, periodic shuffling is also
+key to convergence: by reassigning clients to different aggregators
+at each round, updates are gradually mixed across clusters, allowing the global model to align even though aggregators do not run
+consensus to produce a unique model at each round.
+The second key aspect of our solution is the inclusion of straggling
+clients. Our inclusion mechanism at the aggregator side increases
+the likelihood of choosing clients that have been silent in previous
+rounds, ensuring that every participant is equally represented in
+expectation. Crucially, both the shuffling and inclusion mechanisms
+are designed to be non-manipulable by Byzantine aggregators.
+Overall, our solution enables, for the first time, privacy preserving and fair federated learning in asynchronous networks with
+potentially fully Byzantine aggregators, closing a long-standing
+gap between the assumptions made in secure aggregation and the
+realities of large-scale, unreliable distributed systems.
+
+The paper is organized as follows. Section 2, presents building
+blocks. Section 3, studies state-of-the-art privacy preserving federated learning protocols. Section 4 details the model and the formal
+problem statement of this paper. Section 5, presents an overview of
+our protocol. Section 6 details the working of the protocol. Finally,
+performances of our protocol are evaluated and compared to the
+state of the art in Section 7.
+
+2
+
+Background
+
+Federated Learning with FedAvg. We base our protocol on FedAvg [28] as, in the context of heterogeneous data, it is the most
+efficient building block to create a privacy preserving Federated
+Learning (FL) mechanism [26, 34]. FedAvg works by letting a set
+of 𝑛𝑐 clients collaboratively train a global model 𝑤 ∈ R𝑑 under the
+coordination of a central server, without sharing their raw data.
+Each client 𝑐𝑖 holds a private dataset of size 𝑚𝑖 and defines a local objective function 𝑓𝑖 : R𝑑 → R. The global learning task is to
+minimize the aggregated objective:
+min 𝑓 (𝑤) =
+𝑤
+
+𝑛
+𝑐
+∑︁
+
+𝑚𝑖
+𝑓𝑖 (𝑤),
+𝑀
+𝑖=1
+
+𝑀=
+
+𝑛
+𝑐
+∑︁
+
+𝑚𝑖 .
+
+𝑖=1
+
+FL proceeds in communication rounds. At each round 𝜏, the
+server selects a subset C𝜏 of 𝑘 ≤ 𝑛𝑐 clients and sends them the
+current global model 𝑤 𝜏 . Each selected client 𝑐𝑖 performs 𝐸 local
+epochs of stochastic gradient descent (SGD) on its private data.
+During SGD, the client processes its dataset in mini-batches of size
+𝐵, where 𝐵 denotes the number of samples used to compute one
+stochastic gradient estimate.
+After running SGD, client 𝑖 obtains an updated local model 𝑤𝑖𝜏
+and sends the update 𝑔𝑖𝜏 = 𝑤 𝜏 − 𝑤𝑖𝜏 to the server, which aggregates
+the received updates using the FedAvg rule:
+∑︁
+∑︁ 𝑚𝑖
+𝑔𝑖𝜏 ,
+𝑚 C𝜏 =
+𝑚𝑖 .
+𝑤 𝜏+1 = 𝑤 𝜏 −
+𝜏
+𝑚
+C
+𝑐 ∈ C𝜏
+𝑐 ∈ C𝜏
+𝑖
+
+𝑖
+
+Differential Privacy. Differential Privacy (DP) [18] makes it possible to publish statistics about a dataset while preserving individuals’
+privacy. DP relies on the notion of adjacent datasets. Two datasets
+are said to be adjacent if their data differ by exactly one element. The
+idea is to build a mechanism that transforms a dataset’s statistics in
+a way that two adjacent datasets’ statistics are indistinguishable, up
+to an 𝜖 factor, usually by injecting controlled noise. The original DP
+definition, called 𝜖-DP, was given for a parameter 𝜖, a mechanism
+M : R → S and two adjacent datasets 𝑅1 and 𝑅2 as:
+𝑃𝑟 [M(𝑅1 ) ∈ 𝑆] ≤ 𝑒 𝜖 𝑃𝑟 [M(𝑅2 ) ∈ 𝑆], ∀𝑆 ∈ S.
+In this framework, the parameter 𝜖 is interpreted as a privacy budget: it quantifies the maximum privacy loss that the mechanism is
+allowed to incur. A smaller budget corresponds to stronger privacy
+guarantees, while a larger budget permits more information leakage. When a DP mechanism is applied repeatedly, as is the case in
+federated learning, where such mechanisms run across multiple
+training rounds, the privacy loss accumulates over time and must
+remain within the overall budget.
+Privacy preserving FL systems use a mechanism based on Gaussian noise to provide privacy. However, proving 𝜖-DP guarantees of
+this mechanism is deemed impractical. For this reason, federated
+
+Privacy-Preserving Federated Averaging with Byzantine Aggregators in Asynchronous Networks
+
+learning systems do not rely on plain 𝜖-DP for privacy accounting, but instead use (𝛼, 𝜖)-Rényi DP [30] or (𝛼, 𝜖)-RDP. 1 In the
+RDP framework, each invocation of a mechanism incurs a privacy
+cost 𝜖 (𝛼) at a given Rényi order 𝛼. This cost plays the role of a
+privacy budget for that round. Because RDP composes additively,
+the total privacy budget consumed after 𝑇 rounds is simply the
+sum of the individual costs. Moreover, when privacy is enforced
+through Gaussian noise with variance 𝜎 2 , RDP cost admits a simple
+closed-form expression for 𝑇 rounds:𝜖 (𝛼) = 𝛼 · 𝑇 /2𝜎 2 .
+Homomorphic commitments. A commitment scheme is a cryptographic scheme that makes it possible to create an element 𝐶
+from a value 𝑣 that is binding to 𝑣 while hiding the value. It has
+an operation Commit(𝑣) which outputs the commitment 𝐶 to the
+value 𝑣. The scheme also supports an operation Open(𝐶, 𝑣) that
+outputs 1 if 𝐶 is a commitment to 𝑣. We require that these commitments are additionally homomorphic, i.e., we have an operation
+⊕ such that Commit(𝑣) ⊕ Commit(𝑣 ′ ) = Commit(𝑣 + 𝑣 ′ ). Such
+commitment schemes can be built using modular exponentiation
+in groups where solving the discrete logarithm is hard (as in [38]),
+or discrete logarithm-based polynomial commitments [25].
+Secret Sharing. Secret Sharing (SS) is a mechanism used to share
+a value in a privacy preserving manner. A (𝑥, 𝑦)-SS scheme has
+2 operations: SS.Share and SS.Recover. SS.Share takes an input 𝑧
+and outputs 𝑥 “shares”. An adversary that is given at most 𝑦 − 1
+shares cannot learn anything about 𝑧. However, given any 𝑦 ≤ 𝑥
+shares, 𝑧 can be reconstructed using the SS.Recover operation. We
+use additionally homomorphic SS schemes. They make it possible
+to sum shares and reconstruct the sum of those shares without
+revealing the individual unsummed values to any participant. We
+use the ⊕ operator to denote this homomorphic addition.
+Furthermore, in Section 6.4, we use a Publicly Verifiable, Additionally Homomorphic SS (PVAHSS) scheme. A PVAHSS scheme
+is an SS scheme with verifiability properties. We require any actor
+to be able to use an algorithm PVAHSS.Verify to verify that the
+reconstruction is executed honestly. The PVAHSS.Verify algorithm
+takes as input a proof built during the creation of the shares and
+outputs True if the reconstruction of the secret value was lawful.
+We further require that the proof is additionally homomorphic to
+enable verification of the reconstruction of the sum of shares. Finally, we require the ability to detect a misbehaving actor that sums
+wrong shares thanks to a PVAHSS.PartialVerify function. Some
+prior works proposed some of these features [13, 15, 22, 33, 42], but
+they either do not provide all features, or are designed for any type
+of computations rather than additions, and are thus too complex
+for our usage. To solve this problem, we propose to use additionally
+homomorphic commitment schemes for both proofs.
+
+3
+
+Related Work
+
+Preamble. In the FL literature, the term Byzantine is often used
+with different scopes. For the sake of clarity, in our review of related work, we distinguish four notions. In secure aggregation,
+adversaries target confidentiality; we call them privacy-Byzantine
+1 RDP measures privacy loss using the Rényi divergence, parameterized by an order 𝛼 >
+1 that controls the sensitivity of the divergence. Importantly, RDP guarantees bound
+privacy loss in expectation, while 𝜖 -DP mechanism provides a uniform guarantee.
+
+,,
+
+adversaries. They may deviate by colluding to recover individual
+updates or by manipulating masking shares. In verifiable secure
+aggregation, adversaries may also target integrity; we call them
+integrity-Byzantine adversaries. For instance, they may deviate by
+submitting malformed vectors or computing incorrect aggregation
+shares. When adversaries target the model by submitting syntactically well-formed updates that nevertheless sabotage convergence,
+e.g., poisoned gradients or models, we call them model-Byzantine
+adversaries. Fully Byzantine adversaries, on the other hand, strictly
+subsume the above notions and also capture attacks against availability. They may deviate arbitrarily from the protocol, including
+by halting, omitting or equivocating messages. When the context
+is clear, we simply write Byzantine.
+Secure Aggregation. Bonawitz et al. [10] introduced secure aggregation for FL via pairwise random masks that cancel upon aggregation. The protocol assumes a synchronous network and provides
+privacy against an honest-but-curious or privacy-Byzantine server,
+while considering clients to be potentially privacy-Byzantine or
+dropping out. To handle dropouts, the protocol employs a doublemasking mechanism: each client also secret-shares the seed of an
+additional mask with all other clients, allowing the server to reconstruct the seed of any missing participant, which limits the number
+of tolerated dropouts. Subsequent works show that replacing the
+fully connected client graph with a logarithmic-degree k-regular
+graph significantly reduces communication costs [8, 37]. These
+works focus on secure aggregation but do not apply differential
+privacy to safeguard the published aggregate.
+FLDP [40] addresses this limitation by introducing a differentially private aggregation protocol based on Learning With Errors
+(LWE)[36] reducing the complexity of Bonawitz et al. [10]. Each
+client masks its gradient using an LWE-based scheme, then sends
+it to the server. Clients further reconstruct the sum of their masks
+and transmit it to the server, which recovers the global sum by subtracting this aggregated mask from the sum of masked gradients.
+All the previous solutions assume a single server. This implies
+that clients must collaborate to support mask removal and/or to
+tolerate dropouts, which means that there is no client-to-client
+independence. Prio [14] (and its evolution Prio+ [2]), like our
+approach, addresses this problem by replicating the server. Unlike
+our protocol, all servers are assumed to be honest. In a similar
+vein, Elsa [35] considers two servers, allowing one server and some
+clients to be Byzantine. In the case of a Byzantine server, the inputs
+of honest clients are guaranteed to remain private.
+Verifiable Secure Aggregation. FlexScaAgg [41] proposes a solution that includes verifiable aggregation, enabling clients to check
+the integrity of the computation. For secure aggregation, the protocol uses two non-colluding entities—the server and the initiator—each generating a random seed for every client. Clients expand
+these seeds into two independent masks. Neither the server nor
+the initiator can recover individual updates on their own; only by
+collaborating can they compute the true sum. Unlike our solution,
+that tolerates only honest-but-curious clients, this mechanism can
+tolerate integrity-Byzantine clients, up to 𝑛 − 2. Its main limitation,
+however, is availability: if either server or initiator fails, the protocol halts. Besides [41], few schemes address verifiable aggregation,
+allowing users to check the correctness of aggregation results, such
+
+,,
+
+Antonella Del Pozzo, Achille Desreumaux, Mathieu Gestin, Alexandre Rapetti, and Sara Tucci
+
+Property
+
+Bonawitz [10]
+
+Bell [8]
+
+FLDP [40]
+
+FlexScaAgg [41]
+
+This paper
+
+×
+
+×
+
+✓
+
+×
+
+✓
+
+Security & Privacy
+Final and intermediary model privacy
+Robustness & Liveness
+Model-Byzantine aggregator tolerance
+
+×
+
+×
+
+×
+
+✓
+
+✓
+
+Aggregator omission fault tolerance
+
+×
+
+×
+
+×
+
+×
+
+✓
+
+×
+
+×
+
+×
+
+×
+
+✓
+
+Client-to-client independence
+
+×
+
+×
+
+×
+
+✓
+
+✓
+
+One-shot clients
+
+×
+
+×
+
+×
+
+×
+
+✓
+
+Communication assumptions
+
+Sync
+
+Unspecified
+
+Unspecified
+
+Unspecified
+
+Async
+
+Fairness & Participation
+Straggler management (slow vs fast clients)
+Architecture & Efficiency
+
+Communication & computation complexity
+Client bits complexity
+
+O (𝑁𝑔 + 𝑛𝑐 )
+
+O (𝑁𝑔 + log 𝑛𝑐 )
+
+O (𝑁𝑔 + 𝑁𝑠 + 𝑛𝑐 )
+
+O (𝑁𝑔 𝑛𝑎 )
+
+O (𝑁𝑔 + 𝑁𝑠 𝑛𝑎 )
+
+Server bits complexity
+
+O (𝑛𝑐 (𝑁𝑔 + 𝑛𝑐 ))
+
+O (𝑛𝑐 (𝑁𝑔 + log 𝑛𝑐 ))
+
+O (𝑁𝑔 𝑛𝑐 + 𝑁𝑠 )
+
+O (𝑁𝑔 (𝑛𝑐 + 𝑛𝑎 ))
+
+O (𝑁𝑔 (𝑛𝑐 + 𝑛𝑎 ) + 𝑛𝑐 (𝑁𝑠 + 𝑛𝑎 ))
+
+Client message complexity
+
+O (𝑛𝑐 )
+
+O (log 𝑛𝑐 )
+
+O (𝑛𝑐 )
+
+O (𝑛𝑎 )
+
+O (𝑛𝑎 )
+
+Server message complexity
+
+O (𝑛𝑐 )
+
+O (𝑛𝑐 )
+
+O (𝑛𝑐 )
+
+O (𝑛𝑎 + 𝑛𝑐 )
+
+O (𝑛𝑎 + 𝑛𝑐 )
+
+Client computational complexity
+
+O (𝑛𝑐 (𝑁𝑔 + 𝑛𝑐 ))
+
+O (log 𝑛𝑐 (𝑁𝑔 + log 𝑛𝑐 ))
+
+O (𝑛𝑐 log 𝑛𝑐 + 𝑁𝑔 𝑁𝑠 )
+
+O (𝑁𝑔 𝑛𝑎 )
+
+O (𝑁𝑠 𝑛𝑎 + 𝑁𝑔 𝑁𝑠 )
+
+Server computational complexity
+
+O (𝑁𝑔 𝑛𝑐2 )
+
+O (𝑛𝑐 (log2 𝑛𝑐 + 𝑁𝑔 log 𝑛𝑐 ))
+
+O (𝑁𝑔 (𝑛𝑐 + 𝑁𝑠 ) + 𝑛𝑐 log 𝑛𝑐 )
+
+O (𝑁𝑔 (𝑛𝑎 + 𝑛𝑐 ))
+
+O (𝑁𝑔 (𝑛𝑐 + 𝑛𝑎 ) + 𝑁𝑠 (𝑛𝑐 𝑛𝑎 + 𝑁𝑔 ))
+
+Table 1: Comparison of our solution with state-of-the-art secure aggregation protocols. We denote by 𝑛𝑎 the number of
+aggregators, by 𝑛𝑐 the number of clients, and by 𝑁𝑔 the size of an update. Note that 𝑛𝑎 is on the order of log(𝑛𝑐 ).
+
+as VerifyNet [45] and VeriFL [20]. In those works, clients perform
+verification themselves; in contrast, our design delegates verification to the aggregators, leaving clients with the lightweight task of
+checking a quorum of aggregator signatures.
+Comparison. Table 1 compares the works most closely related
+to ours along four axes. (i) Both FLDP [40], and our work ensure
+that no intermediate aggregate is ever revealed without DP noise
+already embedded in it, a strictly stronger privacy property than SA
+alone [8, 10, 41]. (ii) Our protocol tolerates both integrity-Byzantine
+aggregators — as does FlexScaAgg [41] — and fully Byzantine ones,
+including omission faults, a liveness guarantee absent from all
+baselines. (iii) Clients neither communicate with each other (clientto-client independence) nor engage in multiple rounds (one-shot
+clients), as mask removal is delegated entirely to aggregators. Furthermore, our protocol operates in an asynchronous communication model, which naturally accommodates straggler management
+— preventing fast clients from disproportionate privacy exposure
+— a concern unaddressed by all compared works. (iv) Under the
+practical assumptions 𝑛𝑎 = O (log 𝑛𝑐 ) and 𝑁𝑠 log 𝑛𝑐 = 𝑜 (𝑁𝑔 ), our
+protocol achieves state-of-the-art complexities for communication
+metrics: O (𝑁𝑔 ) and O (𝑁𝑔 𝑛𝑐 ) in client and server communication
+bits, O (log 𝑛𝑐 ) and O (𝑛𝑐 ) in message complexity. For computation,
+our client pays O (𝑁𝑔 𝑁𝑠 ) and our server O (𝑁𝑔 𝑛𝑐 + 𝑁𝑔 𝑁𝑠 ), the inherent cost of the LWE approach, shared with FLDP. A detailed
+analysis is provided in Appendix B.
+
+4
+
+Model and problem statement
+
+Threat and network model. We consider a set of 𝑛𝑐 honest-butcurious clients, among which up to 𝑡𝑐 may crash. Crashed clients
+
+stop participating indefinitely but never behave maliciously. The
+remaining 𝑛𝑐 − 𝑡𝑐 clients are said to be correct. We also consider a
+set of 𝑛𝑎 aggregators that collectively assume the role traditionally
+played by the central server in classical federated learning schemes.
+Among these, up to 𝑡𝑎 may be fully Byzantine. The remaining 𝑛𝑎 −𝑡𝑎
+aggregators are considered correct, in the distributed-systems sense
+that they follow the protocol as specified. However, from a security
+standpoint, they are modeled as honest-but-curious (non-colluding
+semi-honest) entities: they do not deviate from the protocol but
+may attempt to infer information from the data they process.
+The proposed solution operates in a reliable asynchronous network, meaning that there is no known upper bound on message
+delays, yet messages sent by correct participants are eventually
+delivered and never lost. However, clients may permanently drop
+out of the computation if they crash, and faulty aggregators too. To
+cope with this adversarial setting, we require that 𝑛𝑎 > 3𝑡𝑎 . This
+threshold ensures protection from equivocation of Byzantine processes, thus enforcing the client’s privacy (c.f. section 6.3). We also
+require that 𝑛𝑐 > 4𝑡𝑐 . This threshold, higher than the theoretical
+crash based distributed computation theory, is required to ensure
+that clients can be included by aggregators in an unbiased manner
+(c.f. section 6.3).
+
+Data distribution. We consider that clients hold heterogeneous
+data. Such heterogeneity impacts the protocol design, as asynchronous communication with no known bound on message delays may
+introduce bias in the resulting model: if “fast” clients contribute
+more frequently than “slow” ones, and their data are biased, the
+global model may also become biased.
+
+Privacy-Preserving Federated Averaging with Byzantine Aggregators in Asynchronous Networks
+
+Problem statement. We consider the following optimization problem: the clients and the aggregators must collaborate to find 𝑤˜ ∗ , an
+estimation of the optimal value
+𝑛𝑐
+∑︁ 𝑚𝑖
+∑︁
+∑︁ 𝑚𝑖
+𝑤 ∗ = min
+𝑚𝑖 .
+𝐹𝑐𝑖 (𝑤) = min
+𝐹𝑐𝑖 (𝑤),
+𝑀=
+𝑤
+𝑤
+𝑀
+𝑀
+𝑖=1
+𝑐 ∈C
+𝑐 ∈ C∗
+𝑖
+
+𝑖
+
+(1)
+Where C ∗ is any subset of 𝑛𝑐 − 2𝑡𝑐 clients in C, and where 𝐹𝑐𝑖 is
+a smooth and strongly convex function ∀𝑖 ∈ {1, · · · , 𝑛𝑐 }.
+The goal for each correct aggregator 𝑎𝑖 is to find its own estimation
+𝑤˜ 𝑖∗ of 𝑤 ∗ , where ||𝑤˜ 𝑖∗ − 𝑤 ∗ || ≤ 𝛿, for a predefined 𝛿. However, 𝑤˜ 𝑖∗
+can be different from 𝑤˜ ∗𝑗 , for two different aggregators 𝑎𝑖 and 𝑎 𝑗 .
+Importantly, our objective is not only to solve the above optimization problem, but to solve it under the semantics of a synchronous
+federated learning scheme. More precisely, our problem is to emulate a synchronous round-based FL scheme over asynchronous
+communications within the fault model described above.
+
+5
+
+High-Level System and Protocol Description
+
+This section provides a high-level overview of the privacy-preserving
+and fair federated averaging protocol with asynchronous communication and Byzantine aggregators.
+Round 𝜏
+Current clusters
+
+1
+2
+
+𝐶1
+
+6
+
+Round 𝜏 −1
+
+𝐶3
+
+Cluster 1
+
+Round 𝜏
+
+𝐶8
+3
+
+4
+
+𝐶2
+
+Cluster 1’
+
+𝐶4
+
+𝐶1
+𝐴2
+
+𝐶5
+
+𝐶6
+
+𝐶7
+
+Cluster 2
+
+𝐶9
+
+Cluster 2’
+
+𝐶7
+
+𝐶3
+𝐴3
+
+𝐶8
+
+𝐶9
+
+Cluster 3
+
+Learning protocol in a nutshell. Our protocol proceeds in rounds.
+Each round follows a two-stage aggregation structure.
+Clients first compute a local model update using gradient descent
+on their private data, which is then sent to the aggregators in
+a privacy-preserving way. To distribute the load across multiple
+aggregators, clients are organized into clusters of equal size 𝑘, with
+each cluster managed by a dedicated aggregator, referred to as the
+cluster coordinator.
+In the first stage (intra-cluster aggregation), each cluster coordinator acts as a proxy for the clients, who remain the actual dealers
+of their secrets—that is, their model updates. Clients produce shares
+of their updates for all aggregators, encrypting each share with the
+recipient aggregator’s key. The coordinator collects the encrypted
+update shares from its cluster and, once enough valid shares have
+been received, redistributes them to all aggregators. It then initiates the reconstruction phase of the cluster-level aggregate. Other
+aggregators collaborate in this process by computing the partial
+sums on their shares and contributing to the reconstruction of the
+cluster-level aggregate.
+In the second stage (inter-cluster aggregation), cluster-level aggregates are further combined by coordinators to produce the global
+model, which is then distributed back to clients for the next round.
+Figure 1 illustrates this structure and the main steps executed
+by clients and aggregators within one round, while Figure 2 details
+communications among aggregators during the 4𝑡ℎ step in Figure 1.
+In the following, we further detail the main protocol mechanisms.
+
+𝐶5
+𝐴1
+
+𝐶2
+
+Round 𝜏 + 1
+New clusters
+
+5
+Generation of
+verified model
+Round 𝜏
+
+,,
+
+𝐶4
+
+𝐶6
+
+Cluster 3’
+
+Figure 1: Overview of one training round.(1) Client receives
+the global model from the previous round, with a proof of
+correct aggregation. (2) Client verifies the proof and compute
+a local model update. (3) It produces a privacy-preserving update by adding a mask and calibrated DP noise, and sends it
+to its coordinator. Aggregators collect masked updates from
+their cluster and, once enough contributions are received,
+include 𝜌 clients to mitigate delay bias and reduce the DP
+noise budget. (4) They aggregate the included masked updates, collaboratively remove the masks on the cluster-level
+sum, and perform a second inter-cluster aggregation to obtain the global model for the next round. (5) Aggregators
+produce a threshold signature as a proof of correct aggregation, determine their new cluster and (6) send the global
+model to the clients.
+
+Privacy-preserving method. Client privacy is achieved through a
+combination of masking and differential privacy (DP). Each client
+masks its model update using a random vector 𝑠𝑖 that is secretshared among all aggregators, and adds random noise 𝑒𝑖 calibrated
+to satisfy the DP guarantees. The noise provides DP protection at
+the cluster-level aggregated model, whereas the masking mechanism
+hides each individual model update before aggregation. To make
+masking efficient, we adapt a Learning-With-Errors (LWE)–based
+Verifiable Secret Sharing (VSS) scheme [40], which produces compact shares on the mask rather than on the full model update.
+Unlike [40], in our protocol, the mask is collaboratively removed
+by the aggregators—rather than by the clients—to avoid inter-client
+communication and improve scalability. This unmasking is performed only on the cluster-level aggregated sum of client updates,
+never on individual updates, ensuring that no single update is
+ever exposed in clear form. Importantly, privacy is guaranteed
+only when updates are aggregated in sets of at least 𝜌 clients,
+where 𝜌 denotes the minimum aggregation size required to satisfy the DP guarantees. This mechanism allows each client to only
+add a noise which follows the distribution law N (0, (𝜎 2 /𝜌)I), where
+𝜎 2 = (𝑇 · 𝐶 2 · 𝛼)/(2 · 𝜖max ) ⇔ 𝜖max (𝛼) = (𝑇 · 𝐶 2 · 𝛼)/(2 · 𝜎 2 ), with
+𝑇 the maximum number of times a client’s update is added to a
+global model, 𝛼 and 𝜖max the necessary RDP parameters required to
+reach the desired privacy guarantees, and 𝐶 the clipping parameter.2
+Client-to-cluster assignment. In our solution, the assignment of
+clients to clusters plays a crucial role. First, to preserve privacy,
+clusters must form a partition of the clients into disjoint subsets.
+2 The clipping step restricts the gradient’s norm to at most 𝐶 . It is used to enable the
+
+DP analysis of privacy preserving learning schemes [1].
+
+,,
+
+Antonella Del Pozzo, Achille Desreumaux, Mathieu Gestin, Alexandre Rapetti, and Sara Tucci
+
+intra-cluster-aggregation stage
+1
+
+𝑎1
+
+2
+
+SHARES COLLECTION
+AND PREPARATION
+
+inter-cluster-aggregation stage
+3
+
+4
+
+INTRA-CLUSTER-RECONSTRUCTION
+
+INTER-CLUSTER-SUM
+
+5
+
+6
+
+START NEW
+ROUND
+
+𝑎2
+
+SUM-SHARES
+
+INTRA-CLUSTER-RECONSTRUCTION
+
+INTER-CLUSTER-SUM
+
+CERTIFY
+
+𝑎3
+
+SUM-SHARES
+
+INTRA-CLUSTER-RECONSTRUCTION
+
+INTER-CLUSTER-SUM
+
+CERTIFY
+
+Figure 2: Communication flow for aggregator 𝑎 1 . 𝑎 1 waits for enough updates, then includes 𝜌 out of 𝑘 updates (1). It sends each
+share of the 𝜌 updates to the concerned aggregators which aggregate the shares and produce a proof of non-tampering (2). Each
+aggregator sends back the aggregated shares and proofs to 𝑎 1 , which verifies the proof, reconstructs the mask, unmasks the
+cluster-level aggregated update, and aggregates the proofs of non-tampering (3). 𝑎 1 broadcasts the proof and the aggregate to
+the aggregators, who do the same thing with their own aggregates (4). Once enough intra-cluster aggregates and proofs are
+received, 𝑎 1 shares them with the aggregators for them to verify and sign the sum of the intra-cluster aggregate (5). Once 𝑎 1
+receives enough such signatures, it begins a new round (6).
+Indeed, if two intra-cluster aggregates overlap on some clients, a
+Byzantine aggregator could compute a linear combination—e.g.,
+subtract one aggregate from another—to isolate a smaller subset of
+updates and compromise privacy. For this reason, our assignment
+mechanism enforces disjoint clusters of size 𝑘 > 𝜌, ensuring that
+any linear combination of aggregates involves at least 𝜌 distinct
+clients and cannot reveal information about smaller subsets.
+Second, our assignment mechanism reshuffles clients between
+clusters from one round to the next. A static cluster assignment
+could bias the learning process: clients assigned to a Byzantine or
+crashed coordinator might never contribute, and clusters with too
+many failed clients (which could prevent reaching the 𝜌 threshold)
+might be ignored by correct coordinators. Moreover, coordinators
+are not guaranteed to compute exactly the same global model at the
+end of a round. This divergence is unavoidable in an asynchronous
+system with faults, where each aggregator can wait for other intracluster aggregates from only 𝑛𝑎 − 𝑡𝑎 other aggregators during the
+inter-cluster aggregation. In this setting, a static assignment would
+therefore hinder convergence of the global model.
+To address these issues, we employ a verifiable deterministic
+shuffling algorithm that takes the round number as input and uses
+it as a random seed in a public hash function to create a new partition of the clients (disjoint sets) at each round. This ensures that
+the client-to-cluster assignment is independently verifiable by all
+participants and that, in expectation, each client is assigned to a
+uniformly random cluster in every round.
+Client inclusion and bias mitigation. Once a coordinator has received enough updates from its assigned clients, it must include a
+subset of 𝜌 < 𝑘 clients whose updates will be included in the intracluster aggregation. This inclusion process is critical to mitigate the
+bias induced by non-uniform communication delays among clients.
+Without such regulation, faster clients could be over-represented
+in the training process, leading to biased model updates.
+Our inclusion mechanism operates by letting each aggregator
+include from its current cluster the 𝜌 clients it has included least
+frequently in previous rounds. To maximize the likelihood of collecting the largest possible number of contributions, including those
+from slower clients, a signaling mechanism is employed to estimate
+the number of correct clients within each cluster. We demonstrate
+experimentally that this procedure yields an approximately uniform
+
+inclusion distribution for the 𝑛𝑐 − 2𝑡𝑐 fastest clients, even when
+communication delays are not uniformly distributed.
+Importantly, this inclusion mechanism also reduces the amount
+of noise that clients must inject to satisfy a given DP budget. In
+a setting with non-uniform delays, a fast client could be included
+in every round and would therefore need to add more noise to
+maintain its DP guarantees. With our inclusion mechanism, each
+client only needs to calibrate its noise proportionally to 𝜌/𝑘, since
+it is included, in expectation, only a fraction 𝜌/𝑘 of the rounds.
+This significantly improves the utility of the aggregated model for
+a given privacy level.
+Aggregate verification and global model certification. Because coordinators may be Byzantine, each coordinator must produce a
+proof that the global model has been computed in compliance with
+the protocol and is derived from the model updates of the clients in
+the clusters. These proofs enable clients to verify the global model
+they receive at the beginning of each round. Certification, on the
+other hand, cannot be obtained by comparing coordinators’ results,
+as is classical in systems using consensus, because, as already mentioned, due to asynchrony, each coordinator may end up with a
+different inter-cluster aggregate.
+To address this issue, we use a PVAHSS scheme. This mechanism
+enables the verification of the intra- and inter-cluster aggregates
+(or sums), ensuring that each aggregate is consistent with the committed values. The verifications are performed by the aggregators
+themselves at the end of each round. Each coordinator collects at
+least 𝑛𝑎 −𝑡𝑎 signed verifications for its global model, which together
+form the certificate associated with that model.
+
+6
+
+Detailed protocol description
+
+This section incrementally presents the detailed learning protocol
+for asynchronous networks with Byzantine aggregators. Due to
+space constraints the complete algorithm for the protocol and its
+detailed description are provided in Section C.2.
+
+6.1
+
+The basic privacy preserving protocol
+
+The basis of our protocol is an adaptation of the FedAvg scheme [28]
+to the replicated aggregators case. It is calibrated for the optimal
+Byzantine resilience 𝑛𝑎 ≥ 3𝑡𝑎 + 1. Our protocol is described in
+
+Privacy-Preserving Federated Averaging with Byzantine Aggregators in Asynchronous Networks
+𝑤𝑖𝜏 −1
+
+1
+
+𝑐𝑖
+
+,,
+
+𝑤𝑖𝜏 −1
+
+5
+3
+
+2
+
+Train
+
+DP and mask
+𝑔𝑖𝜏
+
+4
+
+𝑠 𝜏(𝑖,3)
+
+Encrypt
+
+SS.Share
+
+𝑠 𝜏(𝑖,2)
+
+Encrypt
+
+𝑠 𝜏(𝑖,1)
+
+Encrypt
+
+6
+
+A1
+
+𝐴3
+
+Decrypt
+
+𝑠 𝜏(𝑖,3)
+
+𝐴2
+
+Decrypt
+
+𝑠 𝜏(𝑖,2)
+
+A1
+
+Decrypt
+
+𝑠 𝜏(𝑖,1)
+
+ℎ𝜏𝑖 = 𝑔𝑖𝜏 + 𝐴 · 𝑠𝑖𝜏 + 𝑒𝑖𝜏
+
+Figure 3: Privacy preserving update sharing: Aggregator shares its model with a client (1). client trains the model on local
+data (2), adds noise 𝑒𝑖𝜏 to the update and masks it with 𝑠𝑖𝜏 (3). Shares are produced using a (𝑛𝑎 , 𝑛𝑎 − 𝑡𝑎 )-SS scheme (4). Shares are
+encrypted and sent to their recipient, using 𝑎 1 as a proxy (5). Aggregators receive and decrypt their shares (6).
+Algorithm 1 for the client and in Algorithm 2 for the aggregator.
+The protocol is initiated through the operation Train(), invoked by
+aggregators. Then, communication between clients and aggregators
+relies on two message types: TRAIN messages and UPDATE messages.
+TRAIN messages are used to activate clients and share the current
+model of an aggregator with the clients it coordinates. The UPDATE
+messages are used by each client to answer to a TRAIN message.
+As outlined in Figure 3, at the beginning of the round 𝜏, client 𝑐𝑖
+b𝜏
+receives a global model 𝑊
+Proposed from an aggregator. It performs
+local steps of gradient descent algorithm using its local data, thus
+obtaining a model update in the form of a gradient 𝑔𝑖𝜏 . However,
+it wants this gradient to be protected from reconstruction and
+membership inference attacks. To do so, 𝑐𝑖 clips its gradient 𝑔𝑖𝜏 such
+that 𝑔¯𝑖𝜏 ← 𝑔𝑖𝜏 /max(1, ||𝑔𝑖𝜏 || 2 /𝐶). Then, 𝑐𝑖 hides 𝑔¯𝑖 𝜏 by computing
+ℎ𝑖 = 𝑔¯𝑖𝜏 +𝐴·𝑠𝑖 +𝑒𝑖 , where 𝐴 is a public matrix, 𝑠𝑖 is the masking value,
+and 𝑒𝑖 is the Gaussian noise that enables differential privacy. The
+use of 𝐴 makes it possible to reduce the size of the mask 𝑠𝑖 without
+decreasing security. We denote by 𝑁𝑠 the size of 𝑠𝑖 , which depends
+on the security required, and we denote by 𝑁𝑔 the size of 𝑔𝑖𝜏 , where
+𝑁𝑠 is smaller than 𝑁𝑔 by orders of magnitude. We refer to [40]
+for the evaluation of the size of the parameters. The amplitude of
+the noise 𝑒𝑖 is computed such that (𝛼, 𝜖)-RDP [30] is guaranteed
+only if the noisy gradient 𝑔¯𝑖𝜏 + 𝑒𝑖 of 𝑐𝑖 is combined with enough
+other updates. We denote this number by 𝜌, where 𝜌 < 𝑘. Thus,
+we have 𝑒𝑖 ∼ N (0, (𝜎 2 /𝜌)I), and the sum of the 𝜌 noises follow
+the distribution N (0, 𝜎 2 I), where 𝜎 2 = (𝑇 · 𝐶 2 · 𝛼)/(2 · 𝜖max) ⇔
+𝜖max (𝛼) = (𝑇 · 𝐶 2 · 𝛼)/(2 · 𝜎 2 ), with 𝑇 the maximum number of
+times a client’s gradient is added to a global model, and 𝛼 and
+𝜖max the necessary RDP parameters required to reach the desired
+privacy guarantees. This noise ensures that our protocol is (𝛼, 𝜖max )RDP [40].
+Then, 𝑐𝑖 builds a set of 𝑛𝑎 shares 𝑠 (𝑖,𝑗 ) , ∀𝑎 𝑗 ∈ A of the mask 𝑠𝑖
+using a (𝑛𝑎 , 𝑛𝑎 − 𝑡𝑎 )−SS scheme and distributes the shares along
+with the masked and noisy gradient to its coordinator 𝑎 𝑗 . This
+aggregator acts as a proxy between the clients it coordinates and
+the final recipients of the shares. To protect privacy, each share
+is encrypted with the key of a symmetric encryption scheme of
+its final recipient. The use of a proxy removes the need for aggregators to confirm that other aggregators received their shares for
+specific clients’ gradients. Any other solution for such confirmation would involve expensive communication. When a coordinator
+receives enough masked gradients and encrypted shares, it chooses
+a set S of 𝜌 clients, and broadcasts their encrypted shares to the
+other aggregators using a SUM-SHARES message. The aggregators
+
+then decrypt and aggregate the shares. Once the aggregator 𝑎𝑘 has
+Í
+aggregated the share 𝑠˜𝑘 = 𝑐 𝑗 ∈ S 𝑠 ( 𝑗, 𝑘), it sends it back to the coordinator 𝑎𝑖 using an INTRA-CLUSTER-RECONSTRUCTION message.
+The coordinator computes the cluster-level aggregated gradient as:
+SS.Recover({𝑠˜𝑘 } ∀𝑎𝑘 ∈ A ),
+
+b=
+𝐻
+
+∑︁
+
+ℎ𝑗,
+
+b=𝐻
+b − 𝐴 · 𝑠b.
+and 𝐺
+
+𝑗 ∈S
+
+Once 𝑎𝑖 has computed the cluster-level gradient, it can begin
+the inter-cluster aggregation stage. During this stage, aggregators
+share their cluster-level aggregated gradients with other aggregators using INTER-CLUSTER-SUM messages. Once the aggregator 𝑎𝑖
+receives aggregated gradients from at least 𝑛𝑎 − 𝑡𝑎 aggregators, it
+averages those gradients and reconstructs the global model. The
+b 𝜏+1 value in the next
+aggregator uses this global model as its 𝑊
+𝑖
+round of training.
+Unlike prior secure aggregation protocols, our protocol makes
+an innovative use of SS to achieve secure aggregation. Our solution
+does not require clients to participate in the reconstruction of 𝑠𝑖 ;
+instead, this task is delegated to the aggregators themselves. This
+design significantly reduces communication overhead with a potentially large number of clients, while SS ensures that an individual
+gradient 𝑔𝑖𝜏 + 𝑒𝑖 is never reconstructed by Byzantine aggregators
+without the participation of 𝑛𝑎 − 2𝑡𝑎 > 𝑡𝑎 + 1 correct aggregators.
+Thus, those correct aggregators are entitled to verify that potential
+Byzantine aggregators do not reconstruct 𝑔𝑖𝜏 + 𝑒𝑖 if not aggregated
+with 𝜌 − 1 others.
+
+6.2
+
+Assignment
+
+Our system’s privacy requires that each aggregator compute a
+unique, noisy aggregate such that each individual gradient is hidden
+among a set of 𝜌 − 1 other gradients.
+However, if each aggregator were allowed to independently include its own set of clients, then we might end up with 𝑛𝑎 different
+sets of aggregated updates that may intersect. If two of those aggregates differ by only one client’s update, it is easy to subtract those
+two aggregates to find the individual value of this client, thus violating privacy. One natural idea to solve this problem is to require
+aggregators to agree on a unique set of clients to activate. This step
+is known as Agreement on a Common Subset (ACS), and has to be
+solved using a consensus algorithm. Yet, consensus is impossible to
+achieve deterministically in asynchronous systems with faults [19].
+To enforce non-intersection of client sets in a fair manner and
+without consensus, we deterministically partition the set of clients
+
+,,
+
+2
+3
+
+Antonella Del Pozzo, Achille Desreumaux, Mathieu Gestin, Alexandre Rapetti, and Sara Tucci
+
+Function CreateMaskedModel(𝑔𝑖𝜏 ) is
+𝑠 ← GenerateRandomSecret( ); 𝑒 ← DrawRandomNoise( );
+||𝑔𝑐𝜏 || 2
+
+10
+
+𝑔¯𝑖𝜏 ← 𝑔𝑖𝜏 /max(1, 𝐶𝑖 );
+ℎ ← 𝑔¯𝑖𝜏 + 𝐴 · 𝑠 + 𝑒;
+SecretShares ← (𝑛𝑎 , 𝑛𝑎 − 𝑡𝑎 )-SS.Share(𝑠 );
+encShares ← ∅𝑛𝑎 ;
+for 𝑎 ℓ ∈ A do
+encShares[ℓ ] ←
+PKCrypt.Encrypt( (𝑐𝑖 , SecretShares[𝑙 ], DigSig.Sign( (
+𝜏, 𝑐𝑖 , SecretShares[𝑙 ] ), SKSig𝑐𝑖 ) ), SKEnc (𝑎ℓ ,𝑐𝑖 ) );
+
+11
+
+Return (ℎ, encShares);
+
+4
+5
+6
+
+7
+8
+
+′
+
+c𝜏
+> is received do
+When TRAIN < 𝜏, 𝑊
+proposed
+c𝜏
+14
+𝑎 𝑗 ← Assigned(𝜏, 𝑐𝑖 ); 𝑔𝜏 ← ∇𝐹𝑖 (𝑊
+𝑖
+
+15
+
+2
+
+When SUM-SHARES⟨𝜏, S 𝑗 𝜏 , TmpShares⟩ is received from
+aggregator 𝑎 𝑗 do
+′
+11
+If not | S 𝑗 𝜏 | = 𝜌 then Return;
+12
+sumShares ← {0} 𝑁𝑠 ;
+13
+for encShare ∈ TmpShares do
+14
+(𝑐𝑘 , share, sig) ←
+PKCrypt.Decrypt(encShare, SKEnc (𝑎𝑖 ,𝑐𝑘 ) );
+15
+If not DigSig.Verify( (𝜏, 𝑐𝑘 , share), PKSig𝑐𝑘 ) then
+Return;
+16
+Stmp ← Stmp ∪ 𝑐𝑘 ; sumShares ← sumShares ⊕ share;
+
+10
+
+13
+
+16
+
+When UPDATE⟨𝜏, ℎ𝜏𝑗 , encShares𝜏𝑗 ⟩ is received from client 𝑐 𝑗 do
+maskedUpdates𝜏𝑖 [ 𝑗 ] ← ℎ𝜏𝑗 ; encShares𝜏𝑖 [ 𝑗 ] ← encShares𝜏𝑗 ;
+3
+S𝑖𝜏 ← S𝑖𝜏 ∪ {𝑐 𝑗 };
+4
+If |maskedUpdates𝜏𝑖 | ≥ 𝜌 and no SUM-SHARES sent then
+′
+5
+S𝑖 𝜏 ← Include( S𝑖𝜏 );
+b𝜏 ← 𝐻
+b𝜏 + maskedUpdates𝜏 [ 𝑗 ] ;
+6
+for 𝑐 𝑗 ∈ S𝑖𝜏 do 𝐻
+𝑖
+𝑖
+𝑖
+7
+for 𝑎𝑘 ∈ A do
+8
+TmpShares ← encShares𝜏𝑖 [ℓ ] [𝑘 ], ∀ℓ ∈ S𝑖𝜏 ;
+′
+9
+Send SUM-SHARES⟨𝜏 + 𝐸, S𝑖 𝜏 , TmpShares⟩ to 𝑎𝑘 ;
+
+1
+
+proposed
+
+, 𝜉𝑖𝜏 );
+
+(ℎ, 𝜎ℎ , encShares) ← CreateMaskedModel(𝑔𝑖𝜏 );
+Send UPDATE⟨𝜏, ℎ, 𝜎ℎ , encShares⟩ to aggregator 𝑎 𝑗 ;
+
+Algorithm 1: Privacy preserving training scheme (for 𝑐𝑖 ).
+
+at each aggregation step using a public, predefined shuffling function. This partition function Assign takes as input the round number
+and outputs a deterministic partition of the set of clients, assigning
+each client to a unique aggregator. An aggregator 𝑎𝑖 is thus assigned
+the cluster S𝑖𝜏 ⊂ C at round 𝜏, where |S𝑖𝜏 | = 𝑘 = 𝑛𝑐 /𝑛𝑎 . 3
+The assignment algorithm, albeit deterministic, assigns clients to
+aggregators uniformly at random in expectation. In other words, in
+expectation, each client will be assigned to each aggregator during
+the execution of the protocol. Furthermore, if a client is assigned to
+aggregators with the same set of clients over the rounds and if this
+set of clients contains too many (𝑘 − 𝜌 − 1) crashed clients, then
+the correct clients may never participate, thus biasing the resulting
+model. To avoid this problem, we force the assignment algorithm
+to shuffle the clients in the sets S𝑖 .
+Formally, the assignment algorithm can be defined as follows:
+Definition 1. Assignment algorithm. Let Assign : N → C𝑘 ×𝑛𝑎
+be a deterministic function that takes as input a round number 𝜏 and
+outputs {S1𝜏 , · · · , S𝑛𝜏 𝑎 } a partition of C of size 𝑛𝑎 , where |S𝑖𝜏 | = 𝑘,
+∀𝑖 ∈ {1, · · · , 𝑛𝑎 }, ∀𝜏 ∈ N and with 𝑘 = 𝑛𝑐 /𝑛𝑎 . Furthermore, we
+define a function Assigned : N × C → A that takes as input the
+round 𝜏 and the identity of a client, and outputs 𝑎𝑖 , the identity of
+the client’s coordinator at step 𝜏. The Assign function fulfills the two
+following properties:
+• Random aggregator assignment. ∀S ∗ ∈ Assign(𝜏)
+= {S1𝜏 , · · · , S𝑛𝜏 𝑎 }, ∀𝑐𝑖 ∈ C, 𝑃𝑟 [𝑐𝑖 ∈ S ∗ ] = 1/𝑛𝑎 .
+• Random set of clients. ∀𝑐𝑖 , 𝑐 𝑗 ∈ C, 𝑐 𝑗 ≠ 𝑐𝑖 and ∀𝜏 ∈ N,
+if Assigned(𝜏, 𝑐𝑖 ) = 𝑎𝑘 then 𝑃𝑟 [Assigned(𝜏, 𝑐 𝑗 ) = 𝑎𝑘 ] =
+(𝑘 − 1)/(𝑛𝑐 − 1).
+Such an assignment algorithm can be easily instantiated using
+a hash function whose input is the round and produces an output
+of size 𝑛𝑐 × 𝑛𝑎 bits. One such implementation is the Ethereum
+swap-or-not shuffling algorithm [23].
+3 To ease the rest of the discussions and without loss of generality, we assume that
+𝑛𝑎 | 𝑛𝑐 . This condition can be relaxed in a real-world implementation, such that all
+clusters have the same size ⌊𝑛𝑐 /𝑛𝑎 ⌋ except one cluster, which is larger.
+
+17
+
+Send INTRA-CLUSTER-RECONSTRUCTION⟨𝜏, sumShares⟩ to 𝑎 𝑗
+
+When INTRA-CLUSTER-RECONSTRUCTION⟨𝜏, sumShares⟩ is
+received from aggregator 𝑎 𝑗 do
+19
+SumShareSet𝜏𝑖 ← SumShareSet𝜏𝑖 ∪ {SumShares};
+20
+If |SumShareSet𝜏𝑖 | ≥ 𝑛𝑎 − 𝑡𝑎 and no INTER-CLUSTER-SUM
+sent then
+b𝜏 − 𝐴 · (𝑛𝑎 , 𝑛𝑎 − 𝑡𝑎 )-SS.Recover(SumShareSet);
+21
+𝑔b𝑖𝜏 ← 𝐻
+𝑖
+22
+Broadcast INTER-CLUSTER-SUM⟨𝜏, 𝑔b𝑖𝜏 ⟩ to processes in A;
+
+18
+
+When INTER-CLUSTER-SUM⟨𝜏, 𝑔b𝜏𝑗 ⟩ is received do
+Wait until INTER-CLUSTER-SUM⟨𝜏 − 1, ★⟩ is received from 𝑎 𝑗
+then
+25
+finalSelec𝜏𝑖 ← finalSelec𝜏𝑖 ∪ {b
+𝑔𝜏𝑗 };
+26
+If |finalSelec𝜏𝑖 | ≥ 𝑛𝑎 − 𝑡𝑎 and no TRAIN⟨𝜏, ★⟩ sent
+then
+Í |finalSelec|
+1
+b𝜏 ←
+finalSelec𝜏𝑖 [𝑘 ];
+27
+𝐺
+𝑖
+𝜌 ·|finalSelec| 𝑘=1
+𝜏
++1
+𝜏
+𝜏
+𝜏
+c
+c −𝛾 𝐺
+b𝑎 ;
+28
+𝑊
+=𝑊
+𝑖
+𝑖
+𝑖
+c𝜏 +1 ⟩ to all clients in C.
+29
+Broadcast TRAIN⟨𝜏 + 1, 𝑊
+
+23
+
+24
+
+Algorithm 2: Privacy preserving training scheme (for 𝑎𝑖 ).
+
+Byzantine equivocation. The assignment algorithm solves the
+intersection problem for correct aggregators. However, if an aggregator 𝑎𝑖 is Byzantine, it may deviate from its algorithm and
+′
+equivocate, i.e., it can choose two different sets S𝑖 𝜏 ⊆ Assign(𝜏) [𝑖]
+′′ 𝜏
+and S𝑖 ⊆ Assign(𝜏) [𝑖] of size 𝜌 that differ in exactly one client. If
+𝑎𝑖 manages to lure correct aggregators into aggregating and reconstructing the values associated with both subsets, it could learn the
+exact gradient of an individual client.
+To avoid this equivocation, we carefully craft the SS scheme used
+to reconstruct the sum of the masks 𝑠 𝑗 such that Byzantine aggregators cannot reconstruct two different sums of masks. In practice,
+we require that 𝑛𝑎 − 𝑡𝑎 shares must be gathered to reconstruct a
+mask. Therefore, reconstructing two different sums of masks for a
+unique cluster would require getting two non-intersecting quorums
+
+Privacy-Preserving Federated Averaging with Byzantine Aggregators in Asynchronous Networks
+
+of 𝑛𝑎 − 2𝑡𝑎 correct processes to reconstruct different intra-cluster
+aggregates for this cluster, which is not possible since 𝑛𝑎 > 3𝑡𝑎 .
+
+6.3
+
+Inclusion
+
+After the assignment, aggregators have to choose a subset of 𝜌 < 𝑘
+clients’ gradients in their cluster. However, if this inclusion, and
+thus the data included in the training, is biased, then the final model
+will be biased too. Such bias is introduced when aggregators include fast clients first due to asynchronous communications and
+heterogeneous data. To solve this problem, we introduce a “debiasing” client inclusion mechanism. This mechanism works by letting
+an aggregator 𝑎𝑖 wait for more client participations than required,
+and then aggregate gradients of the clients less considered in the
+previous rounds by 𝑎𝑖 .
+The inclusion algorithm works best if aggregators wait for the
+maximum possible number of client participations in their assigned
+cluster each round. However, our failure assumption depends on
+the global set of clients, not on each cluster. Thus, to know how
+many clients an aggregator can wait for, we require that clients
+send an additional message to all aggregators after finalizing the
+sending of the masked gradient and shares to their coordinator.
+This PING message contains a signature of the round number from
+the client. It allows aggregators to determine when they waited
+for the maximum number of clients they can expect, i.e., at least
+𝑛𝑐 − 𝑡𝑐 clients from all clusters participated overall. However, this
+mechanism could lead to interlocked aggregators, i.e., each aggregator sees the participation of clients from other clusters, and no
+aggregator received enough participations from their own clusters. To solve this problem, we add a broadcast communication
+phase meant to ensure that aggregators have a shared knowledge
+of clients that participated. This communication phase works by
+letting aggregators broadcast the identity of the 𝑛𝑐 − 𝑡𝑐 clients that
+sent them PING messages, along with the signature contained in
+those messages for tamper-resistance. Thanks to the properties of
+intersecting quorums, a 𝑛𝑐 −𝑡𝑐 common core of participating clients
+is guaranteed as 𝑛𝑎 > 3𝑡𝑎 [27]. Due to the reliable communication
+model, if a message is sent, it is not dropped. Furthermore, PING
+messages are sent after sending the masked gradients. Thus, if an
+aggregator knows that a client sent a PING message, but did not
+receive its gradient yet, it knows it will eventually receive it.
+We prove experimentally that, if this mechanism is well crafted,
+then the frequency at which clients are included is uniform.√More
+precisely, if 𝑡𝑐 > 𝑘/2, 𝑛𝑐 > 4𝑡𝑐 + 1, 𝑘 > 2𝜌 and 𝜌 > 1 + 1 + 𝑘,
+then we show that, in expectation, the 𝑛𝑐 − 2𝑡𝑐 fastest clients are
+uniformly included by each correct aggregator in expectation.
+Impact of inclusion on budget. Interestingly, this inclusion algorithm also decreases the required amplitude of the noise clients add
+to their gradient. Indeed, we recall that the noise 𝑒𝑖 follows a distribution 𝑒𝑖 ∼ N (0, (𝜎 2 /𝜌)I), with 𝜎 2 = (𝑇 · 𝐶 2 · 𝛼)/(2 · 𝜖max ), where
+𝑇 is the maximum number of times a client’s update is included.
+In our case, this value is min(𝑛𝑎 ((𝜏max · 𝜌)/(𝑛𝑐 − 𝑡𝑐 ) + Δmax ),𝜏max ),
+where 𝜏max is the maximum number of training rounds and Δmax
+is a parameter generally set to 1 described in Section C.1. In other
+Gaussian noise based FL protocols, asynchronous settings imply
+that 𝑇 = 𝜏max in the worst case.
+
+,,
+
+Edge cases. The inclusion mechanism can induce two specific
+edge cases. First, a Byzantine aggregator could decide to bias its
+clients selection by not using the inclusion algorithm. We propose
+to use an inclusion fraud detection mechanism to alleviate any
+such Byzantine misbehaviour. Second, some correct aggregators
+may not be able to include 𝜌 clients in a round if too many clients
+in their cluster crash. To solve this issue, this aggregator uses the
+intra-cluster model of the other aggregators this round. In following rounds, this aggregator will be able to resume to the classical
+aggregation mechanism, thanks to the shuffling of the assignation
+mechanism. Due to space limitations, both edge-cases are detailed
+in Section C.1.
+
+6.4
+
+Certification
+
+There exists a Byzantine behavior that may undermine convergence of the training. Byzantine aggregators may behave correctly
+during the aggregation, but at the beginning of a new round, they
+could provide the clients with global models that they arbitrarily
+choose, rather than the result of the intra-cluster and inter-cluster
+aggregations. Those values are used as the basis of clients’ gradient
+descent algorithm, thus this attack can undermine convergence
+for all correct aggregators. To overcome this attack, our protocol
+certifies global models that are sent to clients. This certification
+comes in the form of a proof of correct aggregation certifying that
+at least one correct aggregator verified that each global model sent
+to clients was produced according to the protocol.
+This certification mechanism requires two building blocks: threshold signatures and Publicly Verifiable Additionally Homomorphic
+Secret Sharing (PVAHSS). Threshold signatures [39] are signatures schemes with two additional operations ThreSig.Combine
+and ThreSig.VerifyCombined. A threshold signature scheme is defined for a set of signatories 𝑆𝜎 and a threshold 𝑥. ThreSig.Combine
+allows an actor to combine a set of 𝑥 signatures signed by 𝑥 different signatories in 𝑆𝜎 and combine them in a unique cryptographic
+element which proves that 𝑥 signatories out of |𝑆𝜎 | endorsed a
+common message. The ThreSig.VerifyCombined algorithm is used
+to verify this combined signature.
+Certification proceeds as follows. When a client is activated,
+it creates shares of its mask along with two proofs PVAHSSProof
+and PVAHSSPartialProof. The first proof is a commitment to the
+noisy gradient, while the PVAHSSPartialProof is a set of commitment to each share produced by the client. PVAHSSProof is embedded in the encryption of the shares such that each aggregator
+can receive them untampered. PVAHSSPartialProofs are sent to
+coordinators. Once an aggregator received 𝜌 encrypted shares for
+a given cluster through a SUM-SHARES message, it decrypts them,
+sums them, and then threshold-signs the homomorphic sum of
+the PVAHSSProofs before sending everything back to the coordinator. When the coordinator has received 𝑛𝑎 − 𝑡𝑎 sums of shares,
+it verifies each PVAHSSPartialProof to detect any outlier. Then,
+it reconstructs the shares to obtain the sum of the masks and it
+combines the signatures of the PVAHSSProofs. Thanks to the trust
+assumption, the combined signatures of the PVAHSSProofs proves
+that 𝑛𝑎 − 2𝑡𝑎 correct aggregators participated in the reconstruction.
+Therefore, the combined signature can be used as a proof that the
+
+,,
+
+Antonella Del Pozzo, Achille Desreumaux, Mathieu Gestin, Alexandre Rapetti, and Sara Tucci
+
+sum of the commitments was built according to the protocol, and
+that no equivocation occurred.
+Once this proof is constructed, aggregators have to go through
+the inter-cluster aggregation phase. This phase has to be modified
+to provide certification. As earlier, aggregators share their clusterlevel aggregated gradients. However, they broadcast the aggregated
+gradients along with the proof of legitimate reconstruction created
+during the intra-cluster aggregation phase (i.e., the threshold signature on the sum of the PVAHSSProof). When an aggregator receives
+enough intra-cluster aggregated gradients and proofs, it broadcasts
+them for certification. Each aggregator will verify the proofs of
+correct reconstruction. If this verification passes, the aggregators
+aggregate the intra-cluster gradients, threshold-signs the result,
+and send back this signature to the aggregator that requested this
+certification. This aggregator can combine the threshold signatures
+once it received 𝑛𝑎 − 𝑡𝑎 of them. This final threshold signature
+proves that, at each point in the intra-cluster aggregation phase
+and in the inter-cluster aggregation phase, at least one correct aggregator participated, and certified that the global model was built
+using clients’ gradients. Thus, it can be used by clients as a proof
+that no Byzantine aggregator tampered the model they received.
+
+7
+
+Evaluation
+
+This section evaluates our solution in federated learning scenarios.
+More precisely, we aim to answer the following questions:
+• How does the computational overhead induced by the cryptographic mechanisms impact actors of the protocol ?
+• How does our inclusion mechanism performs in highly adversarial networks and data distributions ?
+• How the parameters of the protocol affect convergence of
+the models when differential privacy is applied ?
+We use FLDP [40] as our baseline as it is the state of the art in
+terms of DP-based FL. Indeed, FLDP allows to add noise with an
+amplitude inversely proportional to the number of included client’s
+updates. Therefore, they are equivalent to a central DP learning
+algorithm in the homogeneous communications delays model. Any
+other homogeneous delays-based baseline would exhibit equivalent
+or worst utility. Additionally, FLDP is state-of-the-art in term of
+computationally efficient privacy preserving federated training.
+
+7.1
+
+Cryptographic mechanisms evaluation
+
+In this section we isolate the cryptographic mechanisms of our
+protocol to evaluate their computational overhead.
+7.1.1 Experimental setup. In this section, we use simulated gradients produced as random vectors of a parameterizable size with 4
+point decimal precision. We implemented FLDP and our cryptographic protocol in python, using 128 bit security cryptographic
+building blocks. For encryption, we used AES128 [7]. For commitments, we used discrete log-based commitments in elliptic curve
+cryptography groups on the curve P256 [6, 29]. For threshold signatures, we used the thresholdified version of the BLS signature
+scheme [3, 11]. We used a modulus of 100003 for the LWE scheme
+and 1002523 for the SS scheme. To achieve 128 bit security using
+the LWE scheme, we used a LWE parameter estimator [4] which,
+given 𝜎, the standard deviation of the noise and the modulus of the
+
+model
+avg. # data held by clients avg. training time (s)
+MNIST
+20
+0.086
+MNIST
+30
+0.119
+CIFAR-5m
+500
+0.462
+1000
+0.922
+CIFAR-5m
+CIFAR-5m
+2000
+1.690
+Table 2: Average client’s training time with our protocol
+(without cryptographic mechanisms) as a function of the
+average amount of data held by clients.
+
+scheme, evaluates 𝑁𝑠 , the size of the 𝑠 vector of the LWE scheme.
+This parameter being the most important in term of computation
+as it governs the number of element secretly shared, as well as
+the number of committed elements. In our experiments, 𝑁𝑠 varies
+between 410 and 710. Except when those parameters are tested with
+multiple values, the experiments have been run with 𝑛𝑐 = 1000,
+𝑡𝑐 = 249, 𝜌 = 32, 𝑁𝑔 = 25000, and 𝜖 = 5.
+7.1.2 Evaluation. Figure 4 shows the impact of the evolution of the
+parameters 𝜌, 𝑁𝑔 and 𝑛𝑐 on the computational overhead. We can
+see that, in our protocol, clients are only impacted by the 𝑁𝑔 parameter, whereas aggregators are mostly impacted by the 𝜌 parameter.
+Importantly, in those experiment, we see that the cryptographic
+overhead of our protocol is an order of magnitude lower than training computational overhead when the amount of data held by
+clients increases (Table 2). Furthermore, we see that state-of-the-art
+FLDP is highly impacted by the 𝑛𝑐 parameter, which undermines its
+scalability. On the other hand, our one-shot-client approach is not
+impacted by the number of clients, thus making it a good candidate
+for large scale deployments.
+
+7.2
+
+Accuracy of training in adversarial scenarios
+
+In this section, we evaluate two complementary aspects of our protocol: (i) the inclusion mechanism’s ability to counteract selection
+bias under asynchronous network, and (ii) the privacy-accuracy
+trade-off enabled by our DP scheme. Byzantine scenarios and additional experimental analyzes are deferred to Section D.
+7.2.1 Experimental setup. We implement our experiments in two
+phases. We use the Multi-Agent eXperimenter (MAX) [21] framework to generate per-agent communication traces, where message delays follow probabilistic distributions. Unless stated otherwise, we use three Gamma distributions modeling 𝑛𝑎 aggregators,
+𝑛𝑐 − 2𝑡𝑐 − 1 fast clients, and 2𝑡𝑐 + 1 slow clients. Gamma distributions can model network delays and fit closely to real data [44]. The
+traces are then consumed by Python scripts that perform model
+training and aggregation according to the protocol described in this
+paper.
+The protocol is evaluated on the MNIST datasets comprising
+70,000 28 × 28 grayscale image partitioned into 10 classes and on
+the CIFAR-5m dataset [32], a CIFAR-10 like task comprising of 6
+million 32 × 32 RGB images partitionned into 10 classes. Models
+used are presented in detail in Section D. To summarise, we used
+a 26,000 parameters model for the MNIST dataset and a 550,000
+parameters model for the CIFAR-5m dataset.
+
+Privacy-Preserving Federated Averaging with Byzantine Aggregators in Asynchronous Networks
+
+,,
+
+Figure 4: Computational overhead of the cryptographic scheme as a function of 𝑛𝑐 (left), 𝑁𝑔 (middle), and 𝜌 (right).
+In order to take into account the heterogeneous nature of FL, we
+use the popular Dirichlet method [24] to generate heterogeneity of
+data distribution between clients. Data heterogeneity is simulated
+by splitting the data samples of each class between the clients with
+Dirichlet distributions with parameter 𝛼𝑑𝑖𝑟 = 0.5 to attain a high
+heterogeneity setting while ensuring with high probability that all
+clients have at least one data sample.
+Finally, when applying DP, we target an (𝜖, 𝛿)-DP guarantee
+with 𝛿 = 10−5 . We convert to (𝛼, 𝜖RDP )-RDP by minimizing 𝛼, then
+calibrate 𝜎 to achieve the worst-case (𝜖, 𝛿)-DP guarantee over all
+possible client selection sequences.
+
+Scenario 2 — Data-induced delay. Half the clients are fast because
+they hold few data samples (10% of the total), while the other half
+are slow because they hold many (90%), incurring longer training
+and transmission times per round. This models settings where data
+volume is the bottleneck — e.g., cross-silo FL between organizations
+of vastly different database sizes but similar hardware.
+The inclusion mechanism reduces convergence time to 95% accuracy from 158 to 24 rounds on MNIST (6.6×), and improves final
+accuracy by 9.2 pp on CIFAR-5m (73.4% vs. 82.6%). The effect is
+more pronounced on CIFAR-5m because the harder task amplifies
+the impact of excluding heavy-data clients.
+
+7.2.2 Inclusion mechanism evaluation in highly adversarial networks
+and data distribution. In Figure 5, we evaluate the inclusion mechanism across three scenarios that differ in the correlation between
+client delays and data distribution. For each, we compare three
+configurations: (i) our protocol with inclusion under heterogeneous
+delays — 2 Gamma distributions for fast and slow clients, (ii) without inclusion under highly heterogeneous delays — fast clients
+are systematically over-represented, and (iii) without inclusion but
+with homogeneous delays — all clients draw from the same Gamma
+distribution, so no group is structurally favored; this serves as an
+upper-bound reference for what inclusion can recover. All experiments use 𝑛𝑐 = 1500 clients and a single aggregator (𝑡𝑎 = 0, 𝜌 = 128),
+without DP.
+
+Scenario 3 — Device-induced delay. Half the clients are fast, resource rich servers holding 90% of the data, while the other half
+are slow, low-end devices holding only 10%. Here the delay is a
+property of the device, not of the data volume: slow clients happen
+to have little data, not the other way around. This models settings
+such as FL between enterprise servers and consumer IoT devices.
+In this scenario, the no-inclusion asynchronous configuration
+converges slightly faster than our protocol, while our protocol
+matches the homogeneous reference. This is the expected outcome:
+slow clients hold only 10% of the data, so the aggregator already
+captures a representative sample by favoring fast clients.
+Figure 5 shows these results on both MNIST and CIFAR-5m. The
+two datasets exhibit consistent qualitative behavior, confirming the
+generality of the mechanism beyond the specific task.
+
+Scenario 1 — Correlated data and delay (geo-distributed). The
+first half of clients is fast and holds only classes {0, . . . , 4}; the
+second half is slow and holds only classes {5, . . . , 9}. This models
+settings where geographic position determines both the data type
+and network latency of a client (e.g., regional sensor networks or
+cross-silo FL across distant data centers).
+Without the inclusion mechanism, the aggregator converges to
+≈ 50% accuracy on MNIST and ≈ 45% on CIFAR-5m — learning
+only half the label space. With inclusion, the aggregator reaches
+98.0% on MNIST and ≈ 72% on CIFAR-5m, closely matching the
+unbiased reference. On CIFAR-5m, both the inclusion and unbiasedreference configurations exhibit significant accuracy oscillations
+(std ≈ 10%), which are much less pronounced on MNIST (std <
+1%). The oscillations are slightly more marked with inclusion (max
+drop 11.7 pp vs. 9.5 pp). This oscillation does not appear in the noinclusion asynchronous configuration, which avoids it by ignoring
+slow clients entirely — at the cost of learning half the label space.
+
+7.2.3 Differential privacy and accuracy trade-off evaluation. Figure 6 displays the mean accuracy over the last 25 rounds of training
+while varying the parameters 𝜖, 𝜌, or 𝑛𝑐 . Across all experiments,
+the baseline consistently underperforms our protocol under tight
+DP budgets. Larger 𝜌 consistently improves accuracy, and higher
+fault tolerance 𝑡𝑎 trades accuracy for Byzantine resilience due to
+the additional noise it requires. These experiments illustrate that
+thanks to our inclusion mechanism, we are able to introduce less
+noise for the same differential privacy guarantees, resulting in a
+faster convergence than our baseline in all cases.
+
+8
+
+Conclusion
+
+In this paper, we introduce the first privacy-preserving and fair
+federated learning protocol for asynchronous networks with fully
+Byzantine aggregators. Our protocol replicates the aggregator server
+and clusters clients around a coordinator server, with the clustering
+
+,,
+
+Antonella Del Pozzo, Achille Desreumaux, Mathieu Gestin, Alexandre Rapetti, and Sara Tucci
+
+Figure 5: Accuracy of MNIST and CIFAR-5m under three heterogeneity scenarios. Each subfigure compares our protocol with
+the inclusion mechanism, without inclusion in an asynchronous network, and without inclusion with homogeneous delays.
+
+Figure 6: Mean accuracy over the last 25 rounds for MNIST (top) and CIFAR-5m (bottom) as a function of 𝜖 (left), 𝜌 (center), and
+𝑛𝑐 (right), for our protocol with 𝑡𝑎 ∈ {0, 1, 2} vs. the baseline [40] (no inclusion). Error bars show std dev across repetitions; for
+𝑡𝑎 > 0, aggregator scores are averaged per run before computing the mean and std over repetitions. Results averaged over 4
+repetitions (MNIST) and 2 repetitions (CIFAR-5m).
+reshuffled at each round to cope with potential Byzantine aggregators. Reshuffling also aids convergence by mixing client updates
+across aggregators in the absence of per-round consensus. The
+protocol adapts lightweight secure masking techniques and differential privacy, while guaranteeing one-shot client communication
+and no client interdependency. It also employs verification mechanisms to certify the correctness of the aggregated model. Moreover,
+to operate in asynchronous networks, we devise a fair inclusion
+mechanism. This mechanism mitigates bias induced by network
+asynchrony and reduces the amount of noise added to the model.
+Experimental results on MNIST and CIFAR-5m datasets validate
+our protocol, showing its ability to converge even when the data is
+strongly partitioned across clients. We also show that our inclusion
+mechanism reduces the noise added by clients to their updates, thus
+increasing the utility of each individual contribution, whereas FLDP
+
+[40] under the same conditions fails to converge. Interestingly, our
+experiments also reveal that the additional cryptographic mechanisms used do not increase computationnal time compared to other
+approaches, as we leverage aggregator replication to reduce the
+overall amount of computation.
+
+Privacy-Preserving Federated Averaging with Byzantine Aggregators in Asynchronous Networks
+
+References
+[1]
+
+[2]
+
+[3]
+[4]
+
+[5]
+
+[6]
+[7]
+[8]
+
+[9]
+
+[10]
+
+[11]
+
+[12]
+
+[13]
+
+[14]
+
+[15]
+
+[16]
+
+[17]
+
+[18]
+
+[19]
+
+[20]
+
+Martin Abadi, Andy Chu, Ian Goodfellow, H. Brendan McMahan, Ilya Mironov,
+Kunal Talwar, and Li Zhang. 2016. Deep learning with differential privacy. In
+Proceedings of the 2016 ACM SIGSAC Conference on Computer and Communications Security (CCS ’16). Association for Computing Machinery, Vienna,
+Austria, 308–318. isbn: 9781450341394. doi:10.1145/2976749.2978318.
+Surya Addanki, Kevin Garbe, Eli Jaffe, Rafail Ostrovsky, and Antigoni Polychroniadou. 2022. Prio+: privacy preserving aggregate statistics via boolean
+shares. In Security and Cryptography for Networks. Clemente Galdi and Stanislaw Jarecki, (Eds.) Springer International Publishing, Cham, 516–539. isbn:
+978-3-031-14791-3.
+Sonnino Alberto. 2020. Bls signatures. https://github.com/asonnino/bls. (2020).
+Martin R. Albrecht, Rachel Player, and Sam Scott. 2015. On the concrete hardness of learning with errors. Journal of Mathematical Cryptology, 9, 3, 169–203.
+doi:10.1515/jmc-2015-0016.
+Anonymous. 2026. Privacy-preserving federated averaging with byzantine
+aggregators in asynchronous networks implementations. https://anonymous.4
+open.science/r/privacy-preserving-federated-averaging-with-byzantine-agg
+regators-in-asynchronous-networks-4E25/. (2026).
+AntonKueltz. 2025. Fastecdsa. https://github.com/AntonKueltz/fastecdsa/.
+(2025).
+Simon Arneaud et al. 2026. Pycryptodome. https://github.com/Legrandin/pycr
+yptodome. (2026).
+James Henry Bell, Kallista A. Bonawitz, Adrià Gascón, Tancrède Lepoint, and
+Mariana Raykova. 2020. Secure single-server aggregation with (poly)logarithmic
+overhead. In Proceedings of the 2020 ACM SIGSAC Conference on Computer and
+Communications Security (CCS ’20). Association for Computing Machinery, Virtual Event, USA, 1253–1269. isbn: 9781450370899. doi:10.1145/3372297.3417885.
+Michael Ben-Or, Ran Canetti, and Oded Goldreich. 1993. Asynchronous secure
+computation. In Proceedings of the Twenty-Fifth Annual ACM Symposium on
+Theory of Computing (STOC ’93). Association for Computing Machinery, San
+Diego, California, USA, 52–61. isbn: 0897915917. doi:10.1145/167088.167109.
+Keith Bonawitz, Vladimir Ivanov, Ben Kreuter, Antonio Marcedone, H. Brendan McMahan, Sarvar Patel, Daniel Ramage, Aaron Segal, and Karn Seth. 2017.
+Practical secure aggregation for privacy-preserving machine learning. In Proceedings of the 2017 ACM SIGSAC Conference on Computer and Communications
+Security (CCS ’17). Association for Computing Machinery, Dallas, Texas, USA,
+1175–1191. isbn: 9781450349468. doi:10.1145/3133956.3133982.
+Dan Boneh, Ben Lynn, and Hovav Shacham. 2001. Short signatures from the
+weil pairing. In Advances in Cryptology — ASIACRYPT 2001. Colin Boyd, (Ed.)
+Springer Berlin Heidelberg, Berlin, Heidelberg, 514–532. isbn: 978-3-540-456827.
+Miguel Castro and Barbara Liskov. 1999. Practical byzantine fault tolerance.
+In Proceedings of the Third Symposium on Operating Systems Design and Implementation (OSDI ’99). USENIX Association, New Orleans, Louisiana, USA,
+173–186. isbn: 1880446391.
+Arka Rai Choudhuri, Aarushi Goel, Aditya Hegde, and Abhishek Jain. 2025.
+Homomorphic secret sharing with verifiable evaluation. In Theory of Cryptography. Elette Boyle and Mohammad Mahmoody, (Eds.) Springer Nature
+Switzerland, Cham, 614–650. isbn: 978-3-031-78023-3.
+Henry Corrigan-Gibbs and Dan Boneh. 2017. Prio: private, robust, and scalable
+computation of aggregate statistics. In Proceedings of the 14th USENIX Conference on Networked Systems Design and Implementation (NSDI’17). USENIX
+Association, Boston, MA, USA, 259–282. isbn: 9781931971379.
+Leo de Castro and Anitgoni Polychroniadou. 2022. Lightweight, maliciously secure verifiable function secret sharing. In Advances in Cryptology – EUROCRYPT
+2022. Orr Dunkelman and Stefan Dziembowski, (Eds.) Springer International
+Publishing, Cham, 150–179. isbn: 978-3-031-06944-4.
+Nathan Dowlin, Ran Gilad-Bachrach, Kim Laine, Kristin Lauter, Michael Naehrig,
+and John Wernsing. 2016. Cryptonets: applying neural networks to encrypted
+data with high throughput and accuracy. In Proceedings of the 33rd International Conference on International Conference on Machine Learning - Volume 48
+(ICML’16). JMLR.org, New York, NY, USA, 201–210.
+Sisi Duan, Michael K. Reiter, and Haibin Zhang. 2018. Beat: asynchronous bft
+made practical. In Proceedings of the 2018 ACM SIGSAC Conference on Computer
+and Communications Security (CCS ’18). Association for Computing Machinery,
+Toronto, Canada, 2028–2041. isbn: 9781450356930. doi:10.1145/3243734.324381
+2.
+Cynthia Dwork. 2006. Differential privacy. In Automata, Languages and Programming. Michele Bugliesi, Bart Preneel, Vladimiro Sassone, and Ingo Wegener, (Eds.) Springer Berlin Heidelberg, Berlin, Heidelberg, 1–12. isbn: 978-3540-35908-1.
+Michael J. Fischer, Nancy A. Lynch, and Michael S. Paterson. 1985. Impossibility
+of distributed consensus with one faulty process. J. ACM, 32, 2, (Apr. 1985),
+374–382. doi:10.1145/3149.214121.
+Xiaojie Guo, Zheli Liu, Jin Li, Jiqiang Gao, Boyu Hou, Changyu Dong, and Thar
+Baker. 2021. Verifl: communication-efficient and fast verifiable aggregation for
+
+[21]
+[22]
+
+[23]
+
+[24]
+
+[25]
+
+[26]
+
+[27]
+
+[28]
+
+[29]
+
+[30]
+
+[31]
+
+[32]
+[33]
+
+[34]
+
+[35]
+
+[36]
+
+[37]
+
+[38]
+[39]
+
+[40]
+
+[41]
+
+,,
+
+federated learning. IEEE Transactions on Information Forensics and Security, 16,
+1736–1751. doi:10.1109/TIFS.2020.3043139.
+Önder Gürcan. 2024. Multi-agent experimenter (max). (2024). https://arxiv.org
+/abs/2404.08398 arXiv: 2404.08398 [cs.MA].
+Yan He and Liang Zhang. 2020. Cheater-identifiable homomorphic secret sharing for outsourcing computations. Journal of Ambient Intelligence and Humanized Computing, 11, (Nov. 2020). doi:10.1007/s12652-020-01814-5.
+Viet Tung Hoang, Ben Morris, and Phillip Rogaway. 2012. An enciphering
+scheme based on a card shuffle. In Advances in Cryptology – CRYPTO 2012.
+Reihaneh Safavi-Naini and Ran Canetti, (Eds.) Springer Berlin Heidelberg,
+Berlin, Heidelberg, 1–13. isbn: 978-3-642-32009-5.
+Daniel M. Jimenez G., David Solans, Mikko Heikkila, Andrea Vitaletti, Nicolas
+Kourtellis, Aris Anagnostopoulos, and Ioannis Chatzigiannakis. 2024. Noniid data in federated learning: a survey with taxonomy, metrics, methods,
+frameworks and future directions. (2024). https://arxiv.org/abs/2411.12377
+arXiv: 2411.12377 [cs.LG].
+Aniket Kate, Gregory M. Zaverucha, and Ian Goldberg. 2010. Constant-size
+commitments to polynomials and their applications. In Advances in Cryptology
+- ASIACRYPT 2010. Masayuki Abe, (Ed.) Springer Berlin Heidelberg, Berlin,
+Heidelberg, 177–194. isbn: 978-3-642-17373-8.
+Shenghui Li, Edith C.-H. Ngai, and Thiemo Voigt. 2024. An experimental study
+of byzantine-robust aggregation schemes in federated learning. IEEE Transactions on Big Data, 10, 6, 975–988. doi:10.1109/TBDATA.2023.3237397.
+Dahlia Malkhi and Michael Reiter. 1997. Byzantine quorum systems. In Proceedings of the Twenty-Ninth Annual ACM Symposium on Theory of Computing
+(STOC ’97). Association for Computing Machinery, El Paso, Texas, USA, 569–
+578. isbn: 0897918886. doi:10.1145/258533.258650.
+Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and Blaise
+Aguera y Arcas. 2017. Communication-efficient learning of deep networks
+from decentralized data. In Artificial intelligence and statistics. Pmlr, 1273–1282.
+Adalier Mehmet and Teknik Antara. 2015. Efficient and secure elliptic curve
+cryptography implementation of curve p-256. In Workshop on elliptic curve
+cryptography standards.
+Ilya Mironov. 2017. Rényi Differential Privacy. In 2017 IEEE 30th Computer
+Security Foundations Symposium (CSF). IEEE Computer Society, Los Alamitos,
+CA, USA, 263–275. doi:10.1109/CSF.2017.11.
+Samaneh Mohammadi, Iraklis Symeonidis, Ali Balador, and Francesco Flammini. 2025. Empirical analysis of asynchronous federated learning on heterogeneous devices: efficiency, fairness, and privacy trade-offs. CoRR, abs/2505.07041.
+Accepted at IJCNN 2025.
+Preetum Nakkiran. 2020. Cifar-5m. https : / / github . com / preetum / cifar5m.
+(2020).
+Torben Pryds Pedersen. 1992. Non-interactive and information-theoretic secure verifiable secret sharing. In Advances in Cryptology — CRYPTO ’91. Joan
+Feigenbaum, (Ed.) Springer Berlin Heidelberg, Berlin, Heidelberg, 129–140.
+isbn: 978-3-540-46766-3.
+Tao Qi, Huili Wang, and Yongfeng Huang. 2024. Towards the robustness of differentially private federated learning. In Proceedings of the Thirty-Eighth AAAI
+Conference on Artificial Intelligence and Thirty-Sixth Conference on Innovative
+Applications of Artificial Intelligence and Fourteenth Symposium on Educational
+Advances in Artificial Intelligence (AAAI’24/IAAI’24/EAAI’24). AAAI Press.
+doi:10.1609/aaai.v38i18.29967.
+Mayank Rathee, Conghao Shen, Sameer Wagh, and Raluca Ada Popa. 2023.
+Elsa: secure aggregation for federated learning with malicious actors. In 2023
+IEEE Symposium on Security and Privacy (SP). IEEE, 1961–1979.
+Oded Regev. 2009. On lattices, learning with errors, random linear codes, and
+cryptography. J. ACM, 56, 6, Article 34, (Sept. 2009), 40 pages. doi:10.1145/1568
+318.1568324.
+César Sabater, Aurélien Bellet, and Jan Ramon. 2022. An accurate, scalable
+and verifiable protocol for federated differentially private averaging. Machine
+Learning, 111, 11, (Nov. 2022), 4249–4293. doi:10.1007/s10994-022-06267-9.
+Claus-Peter Schnorr. 1991. Efficient signature generation by smart cards. J.
+Cryptol., 4, 3, 161–174. doi:10.1007/BF00196725.
+Victor Shoup. 2000. Practical threshold signatures. In Proceedings of the 19th
+International Conference on Theory and Application of Cryptographic Techniques (EUROCRYPT’00). Springer-Verlag, Bruges, Belgium, 207–220. isbn:
+3540675175.
+Timothy Stevens, Christian Skalka, Christelle Vincent, John Ring, Samuel
+Clark, and Joseph Near. 2022. Efficient differentially private secure aggregation
+for federated learning via hardness of learning with errors. In 31st USENIX
+Security Symposium (USENIX Security 22). USENIX Association, Boston, MA,
+(Aug. 2022), 1379–1395. isbn: 978-1-939133-31-1. https://www.usenix.org/conf
+erence/usenixsecurity22/presentation/stevens.
+Jinling Tang, Haixia Xu, Mingsheng Wang, Tao Tang, Chunying Peng, and
+Huimei Liao. 2024. A flexible and scalable malicious secure aggregation protocol
+for federated learning. Trans. Info. For. Sec., 19, (Jan. 2024), 4174–4187. doi:10.1
+109/TIFS.2024.3375527.
+
+,,
+
+[42]
+
+[43]
+[44]
+
+[45]
+
+[46]
+
+[47]
+
+[48]
+
+[49]
+[50]
+
+A
+
+Antonella Del Pozzo, Achille Desreumaux, Mathieu Gestin, Alexandre Rapetti, and Sara Tucci
+
+Georgia Tsaloli and Aikaterini Mitrokotsa. 2019. Sum it up: verifiable additive
+homomorphic secret sharing. In Springer-Verlag, Seoul, Korea (Republic of),
+115–132. isbn: 978-3-030-40920-3. doi:10.1007/978-3-030-40921-0_7.
+Tim van Elsloo, Giorgio Patrini, and Hamish Ivey-Law. 2019. Sealion: a framework for neural network inference on encrypted data. (2019). arXiv: 1904.12840.
+Ronan Wallace, Xabi Garcia Andrade, Pedro Kayser, Zhao Luo, Hrishav Mukherjee, Ruan Nunes, and Marc Warrior. 2024. Models of network delay. https://w
+ww.amazon.science/publications/models-of-network-delay.
+Guowen Xu, Hongwei Li, Sen Liu, Kan Yang, and Xiaodong Lin. 2020. Verifynet:
+secure and verifiable federated learning. Trans. Info. For. Sec., 15, (Jan. 2020),
+911–926. doi:10.1109/TIFS.2019.2929409.
+Samuel Yeom, Irene Giacomelli, Matt Fredrikson, and Somesh Jha. 2018. Privacy
+risk in machine learning: analyzing the connection to overfitting. In 2018 IEEE
+31st computer security foundations symposium (CSF). IEEE, 268–282.
+Hongxu Yin, Arun Mallya, Arash Vahdat, Jose M. Alvarez, Jan Kautz, and
+Pavlo Molchanov. 2021. See through Gradients: Image Batch Recovery via
+GradInversion. In 2021 IEEE/CVF Conference on Computer Vision and Pattern
+Recognition (CVPR). IEEE Computer Society, Los Alamitos, CA, USA, (June
+2021), 16332–16341. doi:10.1109/CVPR46437.2021.01607.
+Zihao Zhou, Yanan Li, Xuebin Ren, and Shusen Yang. 2022. Towards efficient
+and stable k-asynchronous federated learning with unbounded stale gradients
+on non-iid data. IEEE Transactions on Parallel and Distributed Systems, 33, 12,
+3291–3305. doi:10.1109/TPDS.2022.3150579.
+Ligeng Zhu, Zhijian Liu, and Song Han. 2019. Deep leakage from gradients.
+Article 1323, 11 pages.
+Yuncong Zuo, Bart Cox, Lydia Y. Chen, and Jérémie Decouchant. 2024. Spyker:
+asynchronous multi-server federated learning for geo-distributed clients. In
+Proceedings of the 25th International Middleware Conference (Middleware ’24).
+
+Open Science
+
+• Sending the masked update with commitments to one aggregator: O (𝑁𝑔 ).
+• Sending ping messages to the 𝑛𝑎 aggregators 𝑂 (1 ∗ 𝑛𝑎 )
+• Sending one share of 𝑠 plus commitments on the polynomial
+coefficients to each of the 𝑛𝑎 aggregators: O (𝑁𝑠 𝑛𝑎 ).
+Total client bits complexity is O (𝑁𝑔 + 𝑁𝑠 𝑛𝑎 ), and client message
+complexity is O (𝑛𝑎 ). Crucially, all client-side metrics depend on 𝑛𝑎
+rather than 𝑛𝑐 , ensuring excellent scalability when 𝑛𝑎 ≪ 𝑛𝑐 .
+Server-side. Each aggregator’s computation consists of:
+• Intra-cluster aggregation of model updates for its O (𝑛𝑐 /𝑛𝑎 )
+clients: O (𝑁𝑔 · 𝑛𝑐 /𝑛𝑎 ), summing across all 𝑛𝑎 aggregators
+gives O (𝑁𝑔 𝑛𝑐 ).
+• Inter-cluster aggregation among the 𝑛𝑎 aggregators: O (𝑁𝑔 𝑛𝑎 ).
+• Reconstruction and verification of the secret shares of 𝑠 for
+each client in its cluster: for each of the O (𝑛𝑐 /𝑛𝑎 ) clients,
+reconstruction of the length-𝑁𝑠 vector requires O (𝑛𝑎2 ) operations per coordinate, giving O (𝑛𝑐 /𝑛𝑎 · 𝑁𝑠 · 𝑛𝑎2 ) = O (𝑁𝑠 𝑛𝑐 𝑛𝑎 )
+in total.
+Í
+• Matrix-vector product 𝐴· 𝑠 for the aggregated mask: O (𝑁𝑔 𝑁𝑠 ).
+Total server computational complexity is O (𝑁𝑔 𝑛𝑐 +𝑁𝑔 𝑛𝑎 +𝑁𝑠 𝑛𝑐 𝑛𝑎 +
+𝑁𝑔 𝑁𝑠 ).
+Server communication consists of:
+
+The projects we built to test both the accuracy and the computational cost of our protocol are available at [5]. The repository is
+composed of two folders. The first folder contains the material for
+accuracy and parameter evaluation, while the second contains the
+material for evaluating the computational cost of the cryptographic
+primitives used throughout our protocol.
+The CIFAR-5m dataset, which was used to provide each client
+with more samples than the classical CIFAR-10 dataset, is available
+at [32].
+
+B
+
+Detailed Complexity Analysis
+
+This section provides a detailed analysis of the complexity figures
+reported in Table 1, first for the protocol presented in this paper,
+then for the other protocols presented in the table.
+
+B.1
+
+Our Protocol
+
+Client-side. A client’s computation consists of the following operations:
+• Generating the length-𝑁𝑠 secret vector 𝑠 and the length-𝑁𝑔
+noise vector 𝑒𝑖 : O (𝑁𝑔 + 𝑁𝑠 ).
+• Computing Shamir secret shares of 𝑠 for each of the 𝑛𝑎 aggregators, including commitments on the O (𝑛𝑎 ) polynomial
+coefficients: O (𝑁𝑠 𝑛𝑎 ). Note that packed secret sharing as
+used in FLDP [40] cannot be applied here, since the number
+of shares 𝑛𝑎 is intended to be small relative to 𝑁𝑠 .
+• Computing the matrix-vector product 𝐴 · 𝑠 for mask generation, where 𝐴 ∈ Z𝑁𝑔 ×𝑁𝑠 : O (𝑁𝑔 𝑁𝑠 ).
+• Computing commitments on the masked update 𝑤𝑖 + 𝑒𝑖 of
+length 𝑁𝑔 : O (𝑁𝑔 ).
+Total client computational complexity is O (𝑁𝑠 𝑛𝑎 + 𝑁𝑔 𝑁𝑠 ), dominated by the mask generation matrix multiplication.
+Client communication consists of:
+
+• Broadcasting commitments on 𝑤𝑖 +𝑒𝑖 for its O (𝑛𝑐 /𝑛𝑎 ) clients
+to the 𝑛𝑎 aggregators: O (𝑁𝑔 𝑛𝑐 ).
+• Sending intra- and inter-cluster model updates to the 𝑛𝑎
+aggregators: O (𝑁𝑔 𝑛𝑎 ).
+• Forwarding secret shares of 𝑠 for its cluster clients to the 𝑛𝑎
+aggregators: O (𝑁𝑠 𝑛𝑐 ).
+• Sending client participation lists to the 𝑛𝑎 aggregators: O (𝑛𝑐 𝑛𝑎 ).
+• Broadcasting the final aggregated model to all 𝑛𝑐 clients:
+O (𝑁𝑔 𝑛𝑐 ).
+Total server bits complexity is O (𝑁𝑔 (𝑛𝑐 + 𝑛𝑎 ) + 𝑛𝑐 (𝑁𝑠 + 𝑛𝑎 )), and
+server message complexity is O (𝑛𝑎 + 𝑛𝑐 ).
+In practice, rather than each aggregator pushing the final model
+to all 𝑛𝑐 clients — which would multiply the O (𝑁𝑔 𝑛𝑐 ) broadcast
+cost by 𝑛𝑎 — aggregators instead notify clients that the model is
+available, and clients fetch it from any 𝑡𝑎 + 1 aggregators of their
+choice. Since 𝑡𝑎 + 1 = O (𝑛𝑎 ), the client fetch cost is O (𝑁𝑔 𝑛𝑎 ). The
+server notification cost is O (𝑛𝑐 ). Asymptotically, this optimization
+does not change the complexity bounds, but significantly reduces
+the practical communication burden on aggregators.
+
+B.2
+
+Baseline Protocols
+
+Bonawitz et al. [10]. Each client communicates with all 𝑛𝑐 clients
+for pairwise mask negotiation, giving client bits complexity O (𝑁𝑔 +
+𝑛𝑐 ), message complexity O (𝑛𝑐 ), and computational complexity
+O (𝑛𝑐 (𝑁𝑔 + 𝑛𝑐 )). The server aggregates all masked updates and reconstructs dropout seeds, giving server bits complexity O (𝑛𝑐 (𝑁𝑔 +
+𝑛𝑐 )), message complexity O (𝑛𝑐 ), and computational complexity
+O (𝑁𝑔 𝑛𝑐2 ). The quadratic terms in 𝑛𝑐 make this impractical at scale.
+Bell et al. [8]. Replacing the complete graph with a 𝑘-regular
+graph of degree O (log 𝑛𝑐 ) reduces client bits complexity to O (𝑁𝑔 +
+log 𝑛𝑐 ), message complexity to O (log 𝑛𝑐 ), and computational complexity to O (log 𝑛𝑐 (𝑁𝑔 + log 𝑛𝑐 )). Server bits complexity becomes
+
+Privacy-Preserving Federated Averaging with Byzantine Aggregators in Asynchronous Networks
+
+O (𝑛𝑐 (𝑁𝑔 + log 𝑛𝑐 )), message complexity O (𝑛𝑐 ), and computational
+complexity O (𝑛𝑐 (log2 𝑛𝑐 + 𝑁𝑔 log 𝑛𝑐 )).
+FLDP [40]. Client bits complexity is O (𝑁𝑔 + 𝑁𝑠 + 𝑛𝑐 ), message
+complexity O (𝑛𝑐 ), and computational complexity O (𝑛𝑐 log 𝑛𝑐 +
+𝑁𝑔 𝑁𝑠 ), where the 𝑛𝑐 log 𝑛𝑐 term arises from the MPC protocol for
+aggregating masks. Server bits complexity is O (𝑁𝑔 𝑛𝑐 +𝑁𝑠 ), message
+complexity O (𝑛𝑐 ), and computational complexity O (𝑁𝑔 (𝑛𝑐 + 𝑁𝑠 ) +
+𝑛𝑐 log 𝑛𝑐 ).
+FlexScaAgg [41]. The original protocol uses exactly two entities
+(server and initiator). Each client computes an E2 commitment on
+its length-𝑁𝑔 gradient and sends its masked gradient to the server,
+giving client bits complexity O (𝑁𝑔 ), message complexity O (1), and
+computational complexity O (𝑁𝑔 ). The server receives masked gradients and commitments from all 𝑛𝑐 clients and interacts with the
+initiator to compute the aggregation result, giving server bits complexity O (𝑁𝑔 𝑛𝑐 ), message complexity O (𝑛𝑐 ), and computational
+complexity O (𝑁𝑔 𝑛𝑐 ).
+In Table 1, we generalize FlexScaAgg to 𝑛𝑎 non-colluding entities
+rather than fixing 𝑛𝑎 = 2, in order to enable a fair comparison
+with our protocol. Under this generalization, each client must send
+its masked gradient and commitments to each of the 𝑛𝑎 entities,
+giving client bits complexity O (𝑁𝑔 𝑛𝑎 ), message complexity O (𝑛𝑎 ),
+and computational complexity O (𝑁𝑔 𝑛𝑎 ). Server bits complexity
+becomes O (𝑁𝑔 (𝑛𝑐 + 𝑛𝑎 )), message complexity O (𝑛𝑎 + 𝑛𝑐 ), and
+computational complexity O (𝑁𝑔 (𝑛𝑐 + 𝑛𝑎 )).
+
+B.3
+
+Asymptotic Simplification
+
+Under the practical assumptions 𝑛𝑎 = O (log 𝑛𝑐 ) and 𝑁𝑠 log 𝑛𝑐 =
+𝑜 (𝑁𝑔 ) — which holds in practice since the LWE mask size 𝑁𝑠 is
+typically a few hundred to a few thousand dimensions while 𝑁𝑔
+reaches millions of parameters in modern FL deployments — the
+complexities simplify as follows. The term 𝑁𝑠 𝑛𝑐 𝑛𝑎 = 𝑁𝑠 𝑛𝑐 log 𝑛𝑐
+satisfies 𝑁𝑠 log 𝑛𝑐 = 𝑜 (𝑁𝑔 ), hence 𝑁𝑠 𝑛𝑐 𝑛𝑎 = 𝑜 (𝑁𝑔 𝑛𝑐 ) and is absorbed into O (𝑁𝑔 𝑛𝑐 ). Similarly, 𝑁𝑔 𝑛𝑎 = 𝑁𝑔 log 𝑛𝑐 = 𝑜 (𝑁𝑔 𝑛𝑐 ) and
+𝑛𝑐 𝑛𝑎 = 𝑛𝑐 log 𝑛𝑐 are both dominated by 𝑁𝑔 𝑛𝑐 . This yields simplified
+complexities matching those discussed in Section 3.
+
+C
+
+Complete algorithm and edge cases
+management
+C.1 Edge cases of the inclusion mechanism
+In this section, we detail two edge cases of the inclusion algorithm
+that were discussed in Section 6.3.
+Wasted clusters. The assignment algorithm assigns clients to
+aggregators in an expected uniformly random manner. Thus, each
+round, some aggregators have a probability to be assigned to clients
+that have crashed (or slow enough to appear as crashed). As our
+privacy preservation mechanism requires aggregators to include a
+fixed number (𝜌) of client updates to aggregate each round, when
+more than 𝑘 − 𝜌 − 1 crashed clients are assigned to an aggregator
+𝑎𝑖 , this aggregator will not be able to aggregate clients’ values this
+round.
+The solution for the aggregator is simply to inform other aggregators that it does not participate this round, and to wait for
+the next round to start. Thanks to the expected random shuffling
+
+,,
+
+of assigned clients, in the next rounds, 𝑎𝑖 will be associated with
+new clients, and, in expectation, it will receive at least 𝜌 model
+updates. If a correct aggregator detects that it may be assigned
+to a “wasted” cluster, i.e., if it did not receive 𝜌 gradients from
+its assigned clients while it already received 𝑛𝑎 − 𝑡𝑎 UNIFICATION
+messages from the other aggregators, then it informs the others
+that it will not participate during this round by sending a WASTED
+message. This aggregator will still help the other aggregators in
+the reconstruction of their cluster-level gradient, but it will not
+send any SUM-SHARES message for its own cluster-level’s gradient.
+A “wasted” aggregator at round 𝜏 still produces a model at round 𝜏
+using the averaged gradients of other aggregators during the intercluster aggregation phase. Furthermore, once a WASTED message
+is received by 𝑎𝑖 from an aggregator 𝑎 𝑗 , no aggregation request
+nor cluster-level gradient will be waited from it. Therefore, this
+mechanism does not impact non-wasted aggregators when they
+train, and as shown in Section D, it does not impact overall training
+accuracy.
+Inclusion fraud detection. Byzantine processes can voluntarily
+bias their client inclusion by including in priority some clients
+rather than others, thereby biasing their own models due to data
+heterogeneity, but also biasing others aggregators’ models in the
+inter-cluster aggregation phase. To solve this problem, we add
+a fraud detection mechanism. If an aggregator 𝑎𝑖 is detected by
+another aggregator 𝑎 𝑗 as voluntarily biasing its inclusion of clients
+during round 𝜏, then 𝑎 𝑗 will locally mark 𝑎 𝑗 as blamed. A correct
+aggregator does not help a blamed aggregator to reconstruct and
+aggregate its gradients during the intra-cluster aggregation stage. If
+a correct aggregator blames another aggregator 𝑎𝑘 , either enough
+correct aggregators blame 𝑎𝑘 , or 𝑎𝑘 proposed two different sets of
+included clients. In the first case, the correct aggregators that detect
+the bias will not participate in the reconstruction of the update.
+Thus, 𝑎𝑘 will not be able to reconstruct its cluster-level gradient,
+hence, it will not be able to introduce bias in the final result. In
+the second case, either one of the set does not introduce bias, and
+enough correct aggregators received it, thus 𝑎𝑘 will be seen as a
+correct aggregator and its unbiased cluster-level gradient will be
+reconstructed, or one of the sets is biased and as earlier, 𝑎𝑘 cannot
+participate anymore this round.
+To detect a fraudulent client inclusion, we compute the maximum difference between the least frequently included and the most
+frequently included clients (Δ(𝜆)), allowing a tolerance of Δmax . If
+an aggregator 𝑎𝑖 includes clients with an absolute difference that is
+higher than Δmax , then, when it asks for summation of those clients’
+gradients to the other correct aggregators, those aggregators, that
+share the same view on which clients 𝑎𝑖 included in previous rounds
+thanks to the 𝑛𝑎 > 3𝑡𝑎 threshold, will all locally blame 𝑎𝑖 . Thus, no
+correct aggregator will help reconstruction 𝑎𝑖 intra-cluster update.
+However, the inclusion algorithm we use is stochastic. Thus,
+the blaming mechanism can also impact correct aggregators as
+the probability they include biased clients in their sets is non zero.
+To solve this problem, correct aggregators detect on their own set
+of included clients if they can be perceived as fraudulent. If they
+do, they declare themselves “AUTO-BLAMED” and wait for the
+following round to be able to participate again, just as if their cluster
+was wasted.
+
+,,
+
+C.2
+
+Antonella Del Pozzo, Achille Desreumaux, Mathieu Gestin, Alexandre Rapetti, and Sara Tucci
+
+Complete algorithm and detailed
+description
+
+In this section, we provide the complete privacy preserving learning
+algorithm with replicated aggregators. This algorithm, is presented
+in eight parts in Algorithms 3, 4, 5, 6, 7, 8 and 9.
+C.2.1 Detailed client’s algorithm description. Algorithm 3 presents
+client’s main algorithm. In this algorithm, the main function is
+triggered when the client 𝑐𝑖 receives a TRAIN message at round
+𝜏. This message includes the initial model if 𝜏 = 0 or the model
+computed during the previous round 𝜏 − 1 and a proof of correct
+computation of this model otherwise (line 16). 𝑐𝑖 first registers its
+coordinator this round using the Assigned function (line 17). Then,
+it computes a gradient on the model it received and on its local data
+(line 18) and it invokes the CreateMaskedModel function.
+The CreateMaskedModel function has two parts. The first part
+of the function aims at hiding the client’s gradient, while the second
+part is used to provide material to unmask this hidden client’s
+gradient. In the first part of the CreateMaskedModel function, 𝑐𝑖
+first generates 𝑠, the mask of the gradient and 𝑒, the DP noise (line
+3). It then clips the gradient (line 4), i.e., it limits the maximum
+norm of the gradient to the clipping parameter 𝐶, such that DP can
+be ensured. Then, the noise and the mask are added to the clipped
+gradient (line 5).
+In the second part of the CreateMaskedModel function, 𝑐𝑖 creates 𝑛𝑎 shares of its mask 𝑠 (line 6). Those shares will later be
+summed by the aggregators, and the sum of the shares will be interpolated to retrieve the sum of the masks of 𝜌 clients. This is
+the main improvement that was proposed by FLDP [40] over other
+secret sharing-based FL algorithms [8], as it reduces the size of
+the vector we are working on. As shown in Section 7, 𝑠 has a size
+𝑁𝑠 between 102 and 103 for 128 bit security and is independent
+of the size 𝑁𝑔 of 𝑔. Therefore, we can work and exchange mostly
+values related to 𝑠 rather than 𝑔 and reduce the overall communication and computation complexity of the protocol. Once the shares
+have been computed, 𝑐𝑖 produces the two proofs PVAHSSProof and
+PVAHSSPartialProof (lines 7 and 8). The first one is an additionally
+homomorphic commitment to 𝑐𝑖 ’s unmasked (but noisy) gradient,
+that will be used by the aggregators to ensure that cluster-level gradients are computed accordingly to the protocol. The second one is
+an additionally homomorphic commitment to each share. It will be
+used by 𝑎 𝑗 , the coordinator of 𝑐𝑖 ’s cluster, to ensure that no aggregator misbehave by sending a wrong sum of client’s shares. Those
+proofs makes it possible to ensure that the Byzantine aggregators
+cannot undermine neither liveness nor safety of the protocol.
+Once the proofs have been computed, 𝑐𝑖 encrypts the data destined to each aggregator with their shared symmetric encryption
+key (line 13). For each aggregator 𝑎𝑙 , 𝑐𝑖 encrypts the round number
+𝜏, its identity, the secret share SecretShare[𝑙] of the mask 𝑠 destined to 𝑎𝑙 , and PVAHSSProof. 𝑐𝑖 adds a signature of those elements
+to avoid tampering. This encrypted message will be sent to 𝑎𝑙 using
+the coordinator 𝑎 𝑗 as a proxy. Therefore, 𝑎 𝑗 may perform attacks
+such as replay attacks. To avoid this behaviour, the round number
+and the client’s identity are encapsulated in the encrypted message.
+The secret share, on the other hand, is encrypted to ensure that 𝑎 𝑗
+is not able to reconstruct the unaggregated 𝑠 value, which would
+break user’s privacy.
+
+𝑐𝑖 signs ℎ to avoid a Byzantine coordinator from selecting an
+arbitrary ℎ during the inter-cluster phase (line 14). This additional
+signature is required as the PVAHSSProof only ensures that 𝑠 is well
+reconstructed, but no information is given on the unmasked model.
+Therefore, aggregators can verify integrity of the ℎ value shared
+by the aggregator using 𝜎ℎ and they can legitimately compute the
+unmasked sum of gradients.
+ℎ, 𝜎ℎ , PVAHSSProof and PVAHSSPartialProof are sent to 𝑎 𝑗 , the
+coordinator of 𝑐𝑖 ’s cluster for round 𝜏, using an UPDATE message.
+Additionally, 𝑐𝑖 sends a signature of 𝜏 to 𝑐𝑖 to act as a PING message
+that 𝑎 𝑗 will be able to share with other aggregators during the unification phase. Finally, 𝑐𝑖 sends a PING message to each aggregator
+to help them detect if they can begin the intra-cluster aggregation
+phase, or if they are wasted.
+
+C.2.2 Detailed aggregator’s algorithm description. Algorithm 8 and
+Algorithm 9 present2 aggregator’s main algorithm. The aggregator
+𝑎𝑖 begins by invoking the Train() operation, which sends the first
+TRAIN message to the clients, with an initial model that can either
+be randomly selected, or that can be a parameter of the algorithm
+(line 2).
+Afterward, 𝑎𝑖 waits for PING and UPDATE messages. Once it receives a PING message, it stores the associated signature of the
+round number to use it during the unification phase (line 4). PING
+messages makes it possible for 𝑎𝑖 to know when 𝑛𝑐 − 𝑡𝑐 clients participated, thus it allows 𝑎𝑖 to know if it can still wait more message
+from its cluster’s clients, or if it has to declare itself “WASTED”.
+When 𝑎𝑖 receives an UPDATE message from client 𝑐 𝑗 , it first stores
+all the element that it received (lines 6 to 11). Importantly, the
+UPDATE message is also recorded as a PING (line 11). It contains a
+𝜏
+𝜎PING
+element that is a signature of the round number by 𝑐 𝑗 . This
+signature is important as 𝑐 𝑗 do not send a PING message to its
+cluster’s coordinator. Hence, it allows 𝑎𝑖 to count the clients that
+already participated in and outside its cluster.
+Once this recording is done, 𝑎𝑖 checks if it can wait for more
+messages from clients (line 12) by checking if it received at least
+𝑛𝑐 − 𝑡𝑐 PING messages. If it is the case, 𝑎𝑖 begins the unification
+phase (line 13) by sending a UNIFICATION message. The goal of this
+message is to share with other aggregators the list of participating
+clients. Because PING messages are sent after UPDATE messages by
+clients and because clients cannot be Byzantine, once an aggregator
+𝑎𝑘 knows a client from its cluster sent a PING message to another
+aggregator, it knows that it will eventually receive the UPDATE
+message from this client and that it can wait for it. This unification
+phase makes it possible to avoid inter-locked situations where each
+aggregator sees the PING messages of other aggregator’s clusters,
+but none of them (or not enough to reach the 𝜌 threshold) are from
+its cluster. When 𝑎𝑖 receives a UNIFICATION message, it verifies
+the set of signature contained in the message, and it records each
+unknown signature in its own pingList (lines 17 to 20).
+Otherwise, if 𝑎𝑖 did not receive enough PING messages, it waits
+for the additional clients’ participations that are ensured to eventually arrive thanks to our fault model.
+Afterward, in both cases (lines 15 or 22), 𝑎𝑖 verifies if it received enough UNIFICATION messages, and if it did, it executes
+the PrepareAggregation function.
+
+Privacy-Preserving Federated Averaging with Byzantine Aggregators in Asynchronous Networks
+
+,,
+
+init: 𝐴 ← a public matrix of size 𝑛 × 𝑚 used to hide the update 𝑤𝑖 ;
+𝐶 ← Clipping parameter.;
+𝜏
+2 Function CreateMaskedModel(𝑔𝑖 ) is
+3
+𝑠 ← GenerateRandomSecret( ); 𝑒 ← DrawRandomNoise( );
+1
+
+||𝑔𝑐𝜏 || 2
+
+4
+5
+6
+7
+8
+9
+10
+11
+13
+14
+15
+16
+
+𝑔¯𝑖𝜏 ← 𝑔𝑖𝜏 /max(1, 𝐶𝑖 );
+ℎ ← 𝑔¯𝑖𝜏 + 𝐴 · 𝑠 + 𝑒;
+SecretShares ← (𝑛𝑎 , 𝑛𝑎 − 𝑡𝑎 )-SS.Share(𝑠 );
+PVAHSSPartialProof[ 𝑗 ] ← Commit(SecretShare[ 𝑗 ] ), ∀ 𝑗 ∈ {1, · · · , 𝑛𝑎 };
+PVAHSSProof ← Commit(𝑔𝑖𝜏 + 𝑒 );
+encShares ← ∅𝑛𝑎 ;
+for 𝑎 ℓ ∈ A do
+encShares[ℓ ] ← PKCrypt.Encrypt( (𝜏, 𝑐𝑖 , SecretShares[𝑙 ], PVAHSSProof, DigSig.Sign( (
+𝜏, 𝑐𝑖 , SecretShares, PVAHSSProof), SKSig𝑐𝑖 ) ), SKEnc (𝑎ℓ ,𝑐𝑖 ) );
+𝜎ℎ ← DigSig.Sign(𝜏, ℎ, SKSig𝑐𝑖 );
+Return (ℎ, 𝜎ℎ , encShares, PVAHSSProof, PVAHSSPartialProof);
+c𝜏
+, 𝜎𝜏
+When TRAIN < 𝜏, 𝑊
+proposed c𝜏
+
+> is received do
+
+𝑊
+
+proposed
+
+17
+18
+19
+20
+21
+
+𝑎 𝑗 ← Assigned(𝜏, 𝑐𝑖 );
+𝑔𝑖𝜏 ← ∇𝐹𝑖 (𝑤𝑖𝜏 −1 , 𝜉𝑖𝜏 );
+(ℎ, 𝜎ℎ , encShares, PVAHSSProof, PVAHSSPartialProof) ← CreateMaskedModel(𝑔𝑖𝜏 );
+Send UPDATE⟨𝜏, ℎ, 𝜎ℎ , DigSig.Sign(𝜏, SKSig𝑐𝑖 ), encShares, PVAHSSProof, PVAHSSPartialProof⟩ to aggregator 𝑎 𝑗 ;
+Broadcast PING⟨𝜏, DigSig.Sign(𝜏, SKSig𝑐𝑖 ) ⟩ to all aggregators in A except 𝑎 𝑗 .
+
+Algorithm 3: Asynchronous privacy preserving federated learning algorithm with aggregator fault resilience (for client 𝑐𝑖 ).
+The goal of the PrepareAggregation function, presented in Algorithm 7, is to perform the inclusion mechanism on the participations
+𝑎𝑖 received, and to prepare the material necessary for each aggregator to perform the intra-cluster aggregation. First 𝑎𝑖 verifies if it
+received enough (𝜌) participations to require an aggregation using
+the WastedDetection function (line 2). If it does not, it broadcasts
+a WASTED message so that other aggregators do not wait for its
+SUM-SHARES message. If 𝑎𝑖 received enough participations on the
+other hand, it gathers them (lines 5 to 7). Then, it performs the
+inclusion on this set of client (line 8) and verifies if the resulting
+set fulfills the expected uniform inclusion of client thanks to the
+InclusionFraudDetection function (line 11). This function checks if
+the most included client and the least included client of 𝑎𝑖 have a difference of participation of more than Δmax . This function ensure that
+no Byzantine process bias the inclusion mechanism. If the function
+returns True, then correct aggregators may see 𝑎𝑖 as a Byzantine
+aggregator. It therefore send an AUTO-BLAMING message, saying it
+cannot participate this round. AUTO-BLAMING messages are treated
+as WASTED messages. Otherwise, 𝑎𝑖 can proceed. It homomorphically sums the PVAHSSProof that are associated to participations
+of included clients for later verification (line 17). Finally it prepares
+each encrypted share for each aggregator, and sends it using a
+SUM-SHARES message (lines 18 to 22).
+When 𝑎𝑖 receives a SUM-SHARES message from 𝑎 𝑗 , it first waits
+for the previous SUM-SHARES or WASTED or AUTO-BLAMING message
+from 𝑎 𝑗 (line 24). This makes it possible to know which clients 𝑎 𝑗
+selected in previous rounds, such that the inclusion fraud detection
+mechanism can work. Afterward, 𝑎𝑖 verifies that 𝑎 𝑗 client inclusion is correct (lines 25 to 29), i.e., it first check that 𝑎 𝑗 included
+exactly 𝜌 client’s updates, then it checks if the inclusion mechanism was properly performed using the InclusionFraudDetection
+
+Function WastedDetection( ) is
+partClients ← ∅;
+3
+for (𝑐𝑘 , ★, ★) ∈ pingList𝜏𝑖 do
+4
+If 𝑐𝑘 ∈ Assign(𝜏 ) [𝑖 ] then
+partClients ← partClients ∪ 𝑐𝑘 ;
+
+1
+
+2
+
+6
+
+If |partClients| < 𝜌 and at least 𝑛𝑎 − 𝑡𝑎 UNIFICATION
+messages have been received then
+Return True
+
+7
+
+Return False
+
+5
+
+Algorithm 4: Function to detect “wasted” clusters (for 𝑎𝑖 )
+
+Function InclusionFraudDetection(𝜆) is
+𝜆 ′ ← the 𝑛𝑐 − 2𝑡𝑐 most frequent values in 𝜆;
+3
+If Δ(𝜆 ′ ) > Δmax then Return True;
+4
+Return False
+
+1
+
+2
+
+Algorithm 5: Blaming function where Δ(𝜆 ′ ) outputs the
+maximum frequency difference in 𝜆 ′ (for 𝑎𝑖 )
+
+Function Include(𝜆, 𝑆 ) is
+𝑆 sorted ← 𝑆 sorted in ascending order from fewer to most
+appearances in 𝜆;
+3
+If 𝑆 ≥ 𝜌 then Return the 𝜌 first elements of 𝑆 sorted ;
+4
+Return False
+
+1
+
+2
+
+Algorithm 6: Inclusion function (code for 𝑎𝑖 ).
+function. If those steps pass, 𝑎𝑖 updates the variable Λ𝑖 [ 𝑗] that
+stores the frequency of inclusions of clients by 𝑎 𝑗 (line 30). Then,
+
+,,
+
+Antonella Del Pozzo, Achille Desreumaux, Mathieu Gestin, Alexandre Rapetti, and Sara Tucci
+
+𝑎𝑖 decrypts the shares of clients selected by 𝑎 𝑗 using their shared
+symmetric key (line 34). It sums the decrypted shares and the associated PVAHSSProof (lines 37 and 38). Finally, it threshold-signs
+the sum of PVAHSSProof and sends everything back to 𝑎 𝑗 using a
+INTRA-CLUSTER-RECONSTRUCTION message (lines 41 and 42).
+The goal of the INTRA-CLUSTER-RECONSTRUCTION message is
+for the aggregators to collect sum of shares of their cluster, and
+combine those sum of shares to unveil the sum of unmasked gradients of their selected clients in their cluster. The first action 𝑎𝑖
+takes when it receives an INTRA-CLUSTER-RECONSTRUCTION message from 𝑎 𝑗 is to verify the 𝜎proof signature, which is the threshold
+signature by 𝑎 𝑗 of PVAHSSProof, and that will be used in the following phase by aggregators to verify that the intra-cluster phase was
+conducted following the protocol. Those PVAHSSProof signatures
+proves compliance to the protocol as 𝑎𝑖 is required to aggregate
+at least 𝑛𝑎 − 𝑡𝑎 of them, which implies that at least one correct aggregator did participate in the intra-cluster phase. Furthermore, 𝑎𝑖
+verifies that the commitment to the sum of shares sent by 𝑎 𝑗 is equal
+to the sum of commitments to shares (the PVAHSSPartialProof)
+that was received from clients. This ensures that 𝑎 𝑗 summed the
+shares and did not provide arbitrary elements which would modify the reconstructed gradient (line 48). Then, it stores the sum
+of shares and the signature of the proofs until it receives 𝑛𝑎 − 𝑡𝑎
+valid INTRA-CLUSTER-RECONSTRUCTION messages (line 50). At this
+point, 𝑎𝑖 reconstruct the sum of the masks 𝑠 (line 51) and combines the signatures to obtain a constant size proof of the good
+reconstruction of the sum of 𝑠 values (line 52). Those elements
+are finally broadcast to aggregators using a INTER-CLUSTER-SUM
+message, along with the masked gradients ℎ of included clients
+(maskedUpdates𝜏𝑖 ), and the signature by the clients of those masked
+gradients (sigMaskedUpdates𝜏𝑖 ).
+The aggregators now have to collect the sum of the unmask
+gradients of other aggregators clusters, sum those different gradients and request a certification from other aggregators. This is
+done when 𝑎𝑖 receives an INTER-CLUSTER-SUM message from 𝑎 𝑗 .
+It verifies the signature 𝜎𝑠b𝜏𝑗 that certifies that at least one correct
+aggregator participated in the intra-cluster phase, and thus that this
+phase was conducted accordingly with the protocol, and that no
+two different intra-cluster gradients exist for 𝑎 𝑗 ’s cluster (line 55).
+Indeed, if 𝑎 𝑗 is able to build two different signatures 𝜎𝑠b𝜏𝑗 and 𝜎𝑠b′ 𝜏
+𝑗
+
+INTER-CLUSTER-SUM messages, it can compute its inter-cluster update (line 59) and send all the material that was used to compute
+and verify the inter-cluster update to the other aggregators for
+certification using a CERTIFY message.
+The goal of the certification phase is to verify that the intercluster gradient was computed following the protocol. Namely,
+it aims at verifying the same elements as in the previous phase,
+and to threshold sign the model that has been produced in the
+previous phase. The certification conducted during the certification
+phase thus proves that the whole protocol was respected. When
+the certification has passed, the threshold signature of the final
+model is sent to the aggregator that requested it using a FINALIZE
+message.
+When 𝑎𝑖 receives a FINALIZE message, it saves the signature
+that it contains. Once it received 𝑛𝑎 − 𝑡𝑎 such signatures, it can
+aggregate them. This aggregated signature proves that at least one
+correct aggregator conducted the certification process, and that the
+model signed was computed following the whole protocol. This
+model can thus be used by clients in the following round 𝜏 + 1 to
+produce a new update.
+Function PrepareAggregation( ) is
+If WastedDetection( ) = True then
+3
+Broadcast WASTED⟨𝜏 ⟩ to processes in A;
+4
+Return;
+
+1
+
+2
+
+5
+6
+7
+
+8
+9
+10
+11
+12
+13
+14
+15
+
+16
+17
+
+𝜏
+
+for two different intra-cluster gradients 𝑠b𝜏𝑗 and 𝑠b′ 𝑗 , it means 𝑎 𝑗 was
+able to find two sets of 𝑛𝑎 − 𝑡𝑎 aggregators willing to sign those two
+different intra-cluster gradients. However, because correct aggregators will not sign two such different intra-cluster gradients, if we
+assume 𝑛𝑎 −2𝑡𝑎 correct aggregators signed the intra-cluster gradient
+𝑠b𝜏𝑗 , then only 𝑛𝑎 − (𝑛𝑎 − 2𝑡𝑎 ) = 2𝑡𝑎 < 𝑛𝑎 − 𝑡𝑎 (as 𝑛𝑎 > 3𝑡𝑎 ) will sign
+𝜏
+the second inter-cluster gradient 𝑠b′ 𝑗 , thus the second aggregated
+threshold signature cannot exist, and a Byzantine aggregator cannot equivocate. 𝑎𝑖 also verifies the signatures of the sum of masked
+gradients to ensure no tampering was performed by 𝑎 𝑗 . Once those
+verifications passed, 𝑎𝑖 stores the received elements until it receives
+the maximum number of such INTER-CLUSTER-SUM messages it
+can expect. 𝑎𝑖 can expect 𝑛𝑎 − 𝑡𝑎 messages, but it has to take into account wasted and auto-blamed aggregators, and remove them from
+the count. Therefore, once 𝑎𝑖 received 𝑛𝑎 − 𝑡𝑎 − wastedcnt𝜏𝑖 valid
+
+18
+19
+20
+21
+
+22
+
+partClients ← ∅;
+for (𝑐𝑘 , ★, ★) ∈ pingList do
+If 𝑐𝑘 ∈ Assign(𝜏 ) [𝑖 ] then
+partClients ← partClients ∪ 𝑐𝑘 ;;
+S𝑖𝜏 ← Include(Λ𝜏𝑖 −1 [𝑖 ], partClients);
+for 𝑐𝑘 ∈ partClients do
+Λtmp ← Λ𝜏𝑖 −1 [𝑖 ] [𝑘 ] + 1;
+If InclusionFraudDetection(Λtmp ) = True then
+Broadcast AUTO-BLAMING⟨𝜏 ⟩ to processes in A;
+Return;
+Else
+Wait until UPDATE messages are received from each client
+in S𝑖𝜏 then
+for 𝑐 𝑗 ∈ S𝑖𝜏 do
+PVAHSSProof𝜏𝑖 ←
+PVAHSSProof𝜏𝑖 ⊕ ProofStore𝜏𝑖 [ 𝑗 ];
+for 𝑎𝑘 ∈ A do
+TmpShares ← ∅;
+for 𝑐 ℓ ∈ S𝑖𝜏 do
+TmpShares ←
+TmpShares ∪ encShares𝜏𝑖 [ℓ ] [𝑘 ];
+Send SUM-SHARES⟨𝜏, S𝑖𝜏 , TmpShares⟩ to 𝑎𝑘 ;
+
+Algorithm 7: Prepare aggregation function (code for 𝑎𝑖 )
+
+C.3
+
+Model sharing optimisation
+
+In the previous section, the algorithm presented assumes all the
+aggregators send their models to all the clients each round. This
+behaviour is intended to avoid a situation where a Byzantine aggregator does not send any model at round 𝜏, and some crashed clients
+
+Privacy-Preserving Federated Averaging with Byzantine Aggregators in Asynchronous Networks
+
+init: 𝐴 ← a public matrix of size 𝑛 × 𝑚 used to hide the update 𝑤𝑖 ;
+𝐶 ← Clipping parameter.;
+Operation Train( ) is
+2
+Broadcast TRAIN⟨0,𝑊 0 , ∅ ⟩ to clients;
+
+1
+
+4
+
+When PING⟨𝜏, 𝜎𝜏 ⟩ is received from client 𝑐 𝑗 do
+pingList𝜏𝑖 ← pingList𝜏𝑖 ∪ (𝑐 𝑗 , 𝜏, 𝜎𝜏 );
+
+5
+
+𝜏 , PVAHSSProof𝜏 , PVAHSSPartialProof𝜏 ⟩ is received from client 𝑐 do
+When UPDATE⟨𝜏, ℎ𝜏𝑗 , 𝜎ℎ𝜏 , encShares𝜏𝑗 , 𝜎PING
+𝑗
+𝑗
+𝑗
+
+3
+
+𝑗
+
+6
+7
+
+maskedUpdates𝜏𝑖 [ 𝑗 ] ← ℎ𝜏𝑗 ;
+sigMaskedUpdates𝜏𝑖 [ 𝑗 ] ← 𝜎ℎ𝜏 ;
+𝑗
+
+8
+9
+10
+11
+12
+13
+14
+15
+
+encShares𝜏𝑖 [ 𝑗 ] ← encShares𝜏𝑗 ;
+PartialProofStore𝜏𝑖 [ 𝑗 ] ← PVAHSSPartialProof;
+ProofStore𝜏𝑖 [ 𝑗 ] ← PVAHSSProof;
+𝜏
+pingList𝜏𝑖 ← pingList𝜏𝑖 ∪ (𝑐 𝑗 , 𝜎PING
+);
+𝜏
+If |pingList𝑖 | ≥ 𝑛𝑐 − 𝑡𝑐 and UNIFICATION or SUM-SHARES have not been sent then
+Broadcast UNIFICATION⟨𝜏, pingList𝜏𝑖 ⟩
+If 𝑛𝑎 − 𝑡𝑎 valid UNIFICATION messages have been received and at least 𝜌 TRAIN have been received this round then
+PrepareAggregation( );
+
+When UNIFICATION⟨𝜏, pingList𝜏𝑗 ⟩ is received from aggregator 𝑎 𝑗 do
+17
+If |pingList𝜏𝑗 | ≥ 𝑛𝑐 − 𝑡𝑐 then
+𝜏
+) ∈ pingList𝜏𝑗 do
+18
+for (𝑐𝑘 , 𝜎PING
+𝜏 , 𝜏, PKSig ) = False then Return;
+19
+If DigSig.Verify(𝜎PING
+𝑐𝑘
+
+16
+
+20
+21
+22
+
+pingList𝜏𝑖 ← pingList𝜏𝑖 ∪ pingList𝜏𝑗 ;
+If 𝑛𝑎 − 𝑡𝑎 valid UNIFICATION messages have been received and at least 𝜌 TRAIN messages have been received this round then
+PrepareAggregation( );
+
+When SUM-SHARES⟨𝜏, S𝜏𝑗 , TmpShares⟩ is received from aggregator 𝑎 𝑗 do
+24
+Wait until SUM-SHARES⟨𝜏, ★, ★⟩ or WASTED⟨𝜏 ⟩ or AUTO-BLAMING⟨𝜏 ⟩ is received from 𝑎 𝑗 or 𝜏 = 0 then
+25
+If | S𝜏𝑗 | = 𝜌 and S𝜏𝑗 ⊆ Assign𝜏 [ 𝑗 ] then
+26
+𝜆tmp = Λ𝑖 [ 𝑗 ];
+27
+for 𝑐𝑘 ∈ S𝜏𝑗 do
+28
+Λtmp ← Λ𝜏𝑖 −1 [ 𝑗 ] [𝑘 ] + 1;
+
+23
+
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+
+If InclusionFraudDetection(Λtmp = True) then Return;
+Λ𝜏𝑖 −1 [ 𝑗 ] ← Λtmp ;
+sumShares ← {0} 𝑁𝑠 ;
+sumProofs ← {0} 𝑁𝑠 ;
+for encShare ∈ TmpShares do
+(𝜏, 𝑐𝑘 , share, PVAHSSProof, sig) ← PKCrypt.Decrypt(encShare, SKEnc (𝑎𝑖 ,𝑐𝑘 ) );
+If not DigSig.Verify( (𝑐𝑘 , 𝜏, share, PVAHSSProof), PKSig (𝑐𝑖 ) = True then Return;
+Stmp ← Stmp ∪ 𝑐𝑘 ;
+sumProofs ← SumProofs ⊕ PVAHSSProof;
+sumShares ← sumShares ⊕ share;
+
+42
+
+aggcnt𝜏𝑖 ← aggcnt𝜏𝑖 + 1;
+If Stmp = S𝜏𝑗 then
+𝜎proof ← ThreSig.Sign(SumProofs, SKThreSig𝑖 );
+Send INTRA-CLUSTER-RECONSTRUCTION⟨𝜏, sumShares, 𝜎proof ⟩ to 𝑎 𝑗 ;
+
+43
+
+Else Return;
+
+39
+40
+41
+
+When WASTED⟨𝜏 ⟩ or AUTO-BLAMING⟨𝜏 ⟩ is received from aggregator 𝑎 𝑗 do
+If no WASTED has been received from 𝑎 𝑗 then
+46
+wastedcnt𝜏𝑖 ← wastedcnt𝜏𝑖 + 1;
+
+44
+
+45
+
+Algorithm 8: Privacy preserving asynchronous federated learning algorithm with aggregator fault resilience (for aggregator 𝑎𝑖 ). (Part
+I)
+
+,,
+
+,,
+
+Antonella Del Pozzo, Achille Desreumaux, Mathieu Gestin, Alexandre Rapetti, and Sara Tucci
+
+When INTRA-CLUSTER-RECONSTRUCTION⟨𝜏, sumShares, 𝜎proof ⟩ is received from aggregator 𝑎 𝑗 do
+Í
+If Commit(sumShares) = Commit( 𝑘 ∈S𝜏 PartialProofStore𝜏𝑖 [𝑘 ] [ 𝑗 ]𝜏 ) ) and ThreSig.Verify(𝜎proof , PVAHSSProof𝜏𝑖 , PKThreSig 𝑗 ) then
+𝑖
+𝜏
+49
+StoredSumShares𝑖 ← StoredSumShares𝜏𝑖 ∪ {SumShares}; StoredSumProofs𝜏𝑖 ← StoredSumProofs𝜏𝑖 ∪ {𝜎proof }
+
+47
+
+48
+
+50
+51
+52
+
+If |StoredSumShares𝜏𝑖 | ≥ 𝑛𝑎 − 𝑡𝑎 and no INTER-CLUSTER-SUM has been sent then
+𝑠b𝑖𝜏 ← (𝑛𝑎 , 𝑛𝑎 − 𝑡𝑎 )-PVAHSS.Recover(SumShareSet);
+𝜎𝑠b𝜏 ← ThreSig.Combine(StoredSumProofs𝜏𝑖 );
+𝑖
+
+53
+
+Broadcast INTER-CLUSTER-SUM⟨𝜏, maskedUpdates𝜏𝑖 , sigMaskedUpdates𝜏𝑖 , 𝑠b𝑖𝜏 , 𝜎𝑠b𝜏 ⟩ to processes in A;
+
+54
+
+When INTER-CLUSTER-SUM⟨𝜏, maskedUpdates𝜏𝑗 , sigMaskedUpdates𝜏𝑗 , 𝑠b𝜏𝑗 , 𝜎𝑠b𝜏 ⟩ is received from aggregator 𝑎 𝑗 do
+
+𝑖
+
+𝑗
+
+55
+
+If ThreSig.VerifyCombined(𝜎𝑠b𝜏 , Commit(b
+𝑠 𝜏𝑗 ) ) = False or
+𝑗
+
+56
+
+DigSig.Verify(sigMaskedUpdates𝜏𝑗 [ℓ ], (𝜏, maskedUpdates𝜏𝑗 [ℓ ] ), PKSig𝑐 ℓ ) = False∀ℓ ∈ C then Return;
+finalSelec𝜏𝑖 ← finalSelec𝜏𝑖 ∪ { (𝑎 𝑗 , 𝑠b𝜏𝑗 , 𝜎𝑠b𝜏 , maskedUpdates𝜏𝑗 , sigMaskedUpdates𝜏𝑗 ) };
+𝑗
+
+57
+58
+
+If |finalSelec𝜏𝑖 | ≥ 𝑛𝑎 − 𝑡𝑎 − wastedcnt𝜏𝑖 and no CERTIFY has been sent then
+Í
+Í
+1
+𝜏
+b𝜏 ←
+𝐺
+(★,𝑠ˆ𝜏 ,★,maskedUpdates,★) ∈finalSelec𝜏 ( ℎ∈maskedUpdates ℎ) − 𝐴 · 𝑠ˆℓ ;
+𝑖
+𝜌 |finalSelec𝜏 |
+𝑖
+
+59
+60
+61
+
+ℓ
+
+𝑖
+
+c𝜏 +1 = 𝑊
+c𝜏 − 𝛾 𝜏 𝐺
+b𝑎𝜏 ;
+𝑊
+𝑖
+𝑖
+𝑖
+c𝜏 ⟩
+Broadcast CERTIFY⟨𝜏, finalSelec𝜏𝑖 , 𝑊
+𝑖
+c𝜏 , 𝜎 𝜏 ⟩ is received from aggregator 𝑎 𝑗 do
+When CERTIFY⟨𝜏, finalSelec𝜏𝑗 , 𝑊
+𝑗
+c𝜏
+𝑊𝑗
+
+62
+63
+
+Wait until CERTIFY⟨𝜏, ★, ★, ★⟩ is received from 𝑎 𝑗 or 𝜏 = 0 then
+for (𝑎 ℓ , 𝑔ˆ𝜏ℓ , 𝜎𝑔b𝜏 , maskedUpdates𝜏ℓ , sigMaskedUpdates𝜏ℓ ) ∈ finalSelec𝜏𝑗 do
+ℓ
+
+64
+
+c𝜏 ) = False or
+𝑔𝜏ℓ ) ) = False or ThreSig.VerifyCombined(𝜎 𝜏c𝜏 ⟩, 𝑊
+If ThreSig.VerifyCombined(𝜎𝑔b𝜏 , Commit(b
+𝑗
+ℓ
+
+65
+
+𝑗
+
+66
+67
+
+𝑊𝑗
+
+DigSig.Verify(sigMaskedUpdates𝜏ℓ [𝑘 ], (𝜏, maskedUpdates𝜏ℓ [𝑘 ] ), PKSig𝑐𝑘 ) = False∀𝑘 ∈ C then Return;
+Í
+Í
+1
+𝜏
+b𝜏 ←
+𝐺
+(★,𝑠ˆ𝜏 ,★,maskedUpdates,★) ∈finalSelec𝜏 ( ℎ∈maskedUpdates ℎ) − 𝐴 · 𝑠ˆℓ ;
+𝜌 |finalSelec𝜏 |
+ℓ
+
+𝑖
+
+c𝜏 +1 = 𝑊
+c𝜏 − 𝛾 𝜏 𝐺
+b𝜏 ; 𝜎𝑊 ← ThreSig.Sign(𝑊
+c𝜏 +1 , SKThreSig𝑖 );
+𝑊
+𝑗
+𝑗
+𝑗
+Send FINALIZE⟨𝜏, 𝜎𝑊 ⟩ to 𝑎 𝑗
+
+When FINALIZE⟨𝜏, 𝜎𝑊 ⟩ is received from aggregator 𝑎 𝑗 do
+c𝜏 ) = True then
+If a CERTIFY( ⟨𝜏, ★⟩ ) has been sent to 𝑎 𝑗 and DigSig.Verify(𝜎𝑊 , 𝑊
+𝑖
+70
+sigSet𝑖 ← sigSet𝑖 ∪ 𝜎𝑊 ;
+71
+If |sigSet𝑖 | ≥ 𝑛𝑎 − 𝑡𝑎 and no TRAIN has been sent for round 𝜏 then
+72
+𝜎𝑊
+c𝜏 +1 ← ThreSig.Combine(sigSet𝑖 );
+
+68
+
+69
+
+𝑖
+
+73
+
+c𝜏 +1 , 𝜎 𝜏 +1 ⟩ to all clients.
+Broadcast TRAIN⟨𝜏 + 1, 𝑊
+𝑖
+c𝜏 +1
+𝑊𝑖
+
+Algorithm 9: Asynchronous federated learning algorithm with aggregator fault resilience in the fully asynchronous communication
+model (for aggregator 𝑎𝑖 ). (Part II)
+
+are assigned to correct aggregators. In this case, correct aggregators
+may never receive 𝑛𝑐 −𝑡𝑐 PING messages, thus impacting liveness of
+the protocol. By sending models to all clients, correct aggregators
+ensure that they will receive PING from all correct clients. However,
+this behaviour is expensive in term of bit complexity, as models are
+heavy.
+To reduce the bit complexity, we can change the model sharing
+mechanism from a “push” mechanism, where aggregators broadcast
+their models, to a “pull” mechanism, where aggregators advertise
+clients that a new model is available through a ModelAvailable
+message, and clients then require this model to some specific aggregators.
+More precisely, when an aggregator begins a new round, it still
+sends the new model to the clients in its cluster, but it only sends a
+ModelAvailable⟨𝜏⟩ message to clients outside of its cluster. When
+a client receives such message, and if it did not already begin training for round 𝜏, it requests 𝑡𝑎 + 1 aggregators of its choice to send
+
+their models. Therefore, the client is ensured to eventually receive
+a model for round 𝜏, while reducing bit complexity.
+
+D Additional Experimental Details and Results
+D.1 Model Architectures
+We use two convolutional neural networks.
+CNN-MNIST (≈27,000 parameters): two convolutional blocks
+(3 × 3 kernels, 8 and 16 output channels respectively), each followed
+by 2×2 max-pooling, then two fully-connected layers (784→32→10).
+ReLU activations throughout.
+CNN-CIFAR (≈550,000 parameters): three pairs of convolutional
+layers (3 × 3, 3 → 32 → 32 → 64 → 64 → 128 → 128 channels),
+each followed by GroupNorm (8 groups) and 2×2 max-pooling after
+each pair, then two fully-connected layers (2048→128→10). GroupNorm replaces BatchNorm because clients may train with batch
+size 1, which makes BatchNorm statistics degenerate; GroupNorm
+is unaffected by batch size.
+
+Privacy-Preserving Federated Averaging with Byzantine Aggregators in Asynchronous Networks
+
+,,
+
+Figure 7: Accuracy over rounds for 𝜖 ∈ {1, 3, 5, 8} on MNIST and 𝜖 ∈ {3, 5, 8, 10} on CIFAR-5m (𝜌 = 128, 𝑁 = 1500). Each sub-panel
+corresponds to one value of 𝜖. Our protocol converges across the full range on MNIST; the baseline fails to make progress at
+𝜖 ≤ 3. The no-DP reference converges near-instantly in all panels.
+
+Figure 8: Actual worst-case 𝜖 accumulated over rounds for the same experiment on MNIST (top) and CIFAR-5m (bottom). The
+dashed horizontal line marks the target 𝜖 for each panel. Both our protocol and the baseline remain within their respective
+budgets; the homogeneous-delays configuration exceeds the target at small 𝜖 (visible as curves crossing the dashed line).
+
+D.2
+
+Full Convergence Trajectories and Privacy
+Budget Consumption
+
+The figures in this section complement the main body’s maximum
+accuracy summaries of Section 7.2.3 by showing, for each of the
+three experiments, the full accuracy-over-rounds curves and the
+actual privacy budget consumed per round. Each figure pairs results
+
+for MNIST (top) with result for CIFAR-5m (bottom). In all accuracy
+plots, solid lines are means over repetitions, inner bands (±std)
+capture run-to-run variability, and outer bands (for 𝑡𝑎 > 0) span
+the fastest to the slowest aggregator within a single run.
+
+,,
+
+Antonella Del Pozzo, Achille Desreumaux, Mathieu Gestin, Alexandre Rapetti, and Sara Tucci
+
+Figure 9: Accuracy over rounds for 𝜌 ∈ {16, 32, 64, 128} (𝜖 = 5, 𝑁 = 1500) on MNIST (top) and CIFAR-5m (bottom).
+
+Figure 10: Actual 𝜖 consumed over rounds for varying 𝜌 on MNIST (top) and CIFAR-5m (bottom).
+D.2.1 Varying the Privacy Budget 𝜖. Figure 7 shows how accuracy
+trajectories evolve across 𝜖 values. For large 𝜖 (low noise), all configurations converge quickly to similar final accuracy. As 𝜖 decreases,
+the performance gap widens sharply. We see that increasing the
+number of aggregators increases the fault tolerance, but decreases
+the performance and results in a lower accuracy, due to the additional noise required for Byzantine fault tolerance. On CIFAR-5m,
+the range shown is 𝜖 ∈ {3, 5, 8, 10}, where the model is already
+difficult enough that 𝜖 = 1 yields no useful training for any configuration. The bands for 𝑡𝑎 > 0 configurations widen at low 𝜖: the
+
+stochastic nature of which aggregator first accumulates enough
+well-aligned gradient updates causes significant spread between
+the fastest and slowest aggregator within a single run.
+Budget consumption. Figure 8 shows the realized 𝜖 budget consumption per round. A few key observations require careful interpretation.
+Both our protocol and the baseline (𝑡𝑎 = 0, no inclusion) remain
+within their respective target budgets throughout the 300-round
+window for mnist (respectively 200 rounds for cifar) — by design,
+since each is calibrated independently for its own worst case. Our
+
+Privacy-Preserving Federated Averaging with Byzantine Aggregators in Asynchronous Networks
+
+,,
+
+Figure 11: Accuracy over rounds for 𝑛𝑐 ∈ {300, 600, 1050, 1500} (𝜖 = 5, 𝜌 = 32) on MNIST (top) and CIFAR-5m (bottom).
+
+Figure 12: Actual 𝜖 consumed over rounds for varying 𝑛𝑐 on MNIST (top) and CIFAR-5m (bottom).
+protocol displays lower realized 𝜖 than the baseline (e.g., ≈ 3.05 vs.
+≈ 3.54 after 200 rounds at 𝜖 = 5), but this gap is partly an artifact of
+the experimental setup: client crashes are not simulated. Therefore,
+clients are included less aggressively than in the worst possible case.
+The baseline, by contrast, has its worst case realized naturally by
+the biased selection of fast clients. The correct reading is therefore
+not that our protocol “wastes” less budget, but that both protocols
+meet the stated (𝜖, 𝛿)-DP guarantee, and neither consumes its full
+budget in practice.
+
+The homogeneous-delays configuration uses the same noise calibration as our protocol, since it was designed to share the same DP
+accounting. However, without the inclusion mechanism, nothing prevents certain clients from being selected disproportionately, even
+when all delays are drawn from the same distribution. This causes
+the realized 𝜖 to grow faster than calibrated, and for small 𝜌 the
+budget is violated well before 300 rounds for MNIST (respectively
+200 rounds for cifar) (e.g., 𝜖 ≈ 6.25 after 200 rounds at 𝜌 = 16,
+hitting the 𝜖 = 5 target at round 77). This is not an indictment of
+homogeneous delays as a scenario — it shows that the inclusion
+
+,,
+
+Antonella Del Pozzo, Achille Desreumaux, Mathieu Gestin, Alexandre Rapetti, and Sara Tucci
+
+Figure 13: Top: accuracy over rounds for 𝑑𝑞 ∈ {5, 10, 15, 20, 30} samples per client on CIFAR-5m (𝜖 = 8, geo-distributed split,
+𝜌 = 128). Bottom: accuracy over rounds for 𝑑𝑞 ∈ {100, 500, 1000} samples per client on CIFAR-5m (𝜖 = 8, geo-distributed split,
+𝜌 = 128).
+
+Figure 14: Training of the MNIST dataset with simulation of crash from 1 aggregator (left), 2 aggregators (center) and 3
+aggregators (right).
+mechanism is what makes the DP guarantee hold: it is the mechanism that enforces the uniform selection probability ≈ 𝜌/𝑁 that
+the noise calibration assumes. In a normal settings, the calibration
+of noise for the homogenous delays should be the same as for the
+baseline without selection, which would occurs poor performance
+in accuracy.
+
+D.2.2 Varying the number 𝜌 of included clients. Figure 9 illustrates
+the effect of the parameter 𝜌 on convergence. Larger 𝜌 consistently
+accelerates convergence for all configurations, since more gradient
+updates are incorporated per round. For our protocol, we see that
+the number of rounds to convergence to 80% accuracy with the
+MNIST dataset increases at every tested value: 102 rounds for 𝜌 = 16
+and 57 rounds for 𝜌 = 128. The baseline only converges to 80%
+accuracy with 𝜌 = 128 and fails at all smaller values, confirming
+that it cannot recover from the noise for small 𝜌 parameters. The
+𝑡𝑎 = 2 configuration shows the strongest sensitivity to 𝜌: at 𝜌 = 16,
+convergence to 80% accuracy requires nearly 300 rounds, while at
+𝜌 = 128 it reaches 80% accuracy in 66 rounds.
+
+Budget consumption. Figure 10 shows that 𝜌 has a notable effect
+on budget consumption, particularly for the homogeneous-delays
+configuration. At 𝜌 = 16, homogeneous delays hits 𝜖 = 5 at round 77
+(𝜖 ≈ 6.25 after 200 rounds), a severe budget violation. The violation
+shrinks as 𝜌 grows: at 𝜌 = 64 it hits the target at round 198, and
+at 𝜌 = 128 the budget is just barely respected (𝜖 ≈ 4.52 after
+200 rounds). The interpretation is that with small 𝜌, the random
+fluctuations in client selection cause the effective sampling rate
+to be dominated by a few over-selected clients; as 𝜌 grows, the
+selection becomes empirically more uniform, mitigating the issue.
+Our protocol and the baseline both remain within budget for all
+tested 𝜌, confirming the earlier reading: both are calibrated for their
+own worst case and the guarantees hold.
+D.2.3 Varying the number of clients 𝑛𝑐 . Figure 11 confirms the robustness of our protocol to population size. For 𝑡𝑎 = 0, convergence
+speed to 80% accuracy remains stable on MNIST at 62–69 rounds
+across 𝑛𝑐 ∈ {300, 600, 1050, 1500}, showing that the protocol’s convergence is governed by the fraction of clients selected per round
+(𝜌/𝑛𝑐 = 32/𝑛𝑐 ), not the absolute number of clients. The baseline
+
+Privacy-Preserving Federated Averaging with Byzantine Aggregators in Asynchronous Networks
+
+,,
+
+Figure 15: Impact of aggregator’s Byzantine behaviour on the accuracy without the fraud detection mechanism (left) and with
+the fraud detection mechanism (right). Results on the MNIST dataset (top) and the CIFAR-5m dataset (bottom).
+fails to converge at any 𝑛𝑐 value, highlighting that the selection
+bias cannot be resolved by adding more clients alone. The 𝑡𝑎 = 2
+variant is the only configuration sensitive to 𝑛𝑐 : with 𝑛𝑐 = 300, the
+model does not converge to 80% accuracy within 200-round.
+
+Budget consumption . Figure 12 shows budget consumption as
+𝑛𝑐 varies. As in the previous figures, both our protocol and the
+baseline remain within their respective targeted budgets for all
+𝑛𝑐 values. The differences in term of budget consumption across
+different 𝑛𝑐 values are small. At round 100, our protocol ranges
+from ≈ 2.07 for 𝑛𝑐 = 300 and to ≈ 2.40 for 𝑛𝑐 = 1500; the baseline
+is stable at ≈ 2.41 in any configuration. We conclude that 𝑛𝑐 has
+little effect on per-round privacy budget once 𝜌 is fixed, since the
+noise calibration is dominated by the worst-case inclusion behavior
+rather than by the amplification from a specific amount of clients.
+The homogeneous-delays curve shows analogous budget pressure
+as in the experiments on the parameter 𝜌 for the same structural
+reason: without the inclusion mechanism, uniform selection is not
+guaranteed.
+
+D.3
+
+Influence of the amount of Data held by
+Clients
+
+This experiment varies the number of training samples per client 𝑑𝑞
+on MNIST and CIFAR-5m (𝜖 = 8, 𝑁 = 1500, 𝜌 = 128, geo-distributed
+split).
+Figure 13 shows that increasing per-client data volume (𝑑𝑞 ) consistently accelerates convergence for all configurations. Crucially,
+our protocol maintains a clear advantage over the baseline at every
+tested value of 𝑑𝑞 : even at the lowest data volumes, the inclusion
+mechanism continues to reduce the effective noise through DP amplification by subsampling, independently of how much data each
+client possesses. The gap between our protocol and the baseline
+is driven by the noise multiplier ratio, not by the gradient quality,
+so varying 𝑑𝑞 does not alter the relative ordering of the curves —
+it only shifts all curves together toward faster or slower convergence. This confirms that the advantage demonstrated in the main
+paper is not specific to high-data regimes and holds robustly across
+data-scarce settings.
+
+,,
+
+Antonella Del Pozzo, Achille Desreumaux, Mathieu Gestin, Alexandre Rapetti, and Sara Tucci
+
+detection mechanism on the maximum accuracy of the training.
+This is probably due to the fact that, in the scenario without fraud
+detection, correct aggregators average the behaviour of the Byzantine behaviour, whose impact is therefore reduced. Overall, we can
+see that the inclusion fraud detection mechanism is a necessary
+mechanism as it makes it possible to have a smoother training.
+
+Figure 16: Number of times each aggregator included each
+client, sorted from least to most included client, with aggregator 1 exhibiting a Byzantine behaviour.
+
+D.4
+
+Impact of aggregators crash
+
+One of the Byzantine behaviour that aggregators can exhibit is a
+simulation of crash, i.e., they cease to participate in the protocol.
+We tested this setup by letting 𝑡𝑎 aggregators simulate a crash
+after round 10 with the MNIST dataset in a similar setting as the
+geodistributed setting presented in Section 7, with 𝑛𝑐 = 1500, 𝑟ℎ𝑜 =
+128, 𝑡𝑐 = 374, and no differential privacy.
+The results of this experimentation are shown in Figure 14. When
+an aggregator crashes, it cease to send messages to clients and
+aggregators, and we set its accuracy to 0. As we can see, with 1,
+2, or 3 crash, the crash of an aggregator does not impact the final
+accuracy of the correct aggregators.
+
+D.5
+
+Inclusion fraud detection impact on
+training
+
+In this section, we want to experimentally analyze the inclusion
+fraud detection mechanism presented in Section C.1. To do so, we
+simulated a Byzantine behaviour, where an aggregator voluntarily bias its included clients to include in priority fastest clients.
+To increase the impact of this bias, we place this experimentation
+in the geodistributed setup presented in Section 7. Therefore, the
+Byzantine aggregator effectively tries to bias the model of all aggregators by only including clients with biased data (in this case,
+it only included clients with samples from the 5 first classes). The
+difference between the clients included by correct and Byzantine
+aggregators can be seen in Figure 16. This figure shows, for each
+aggregator, the number of time it included each client, sorted from
+the least included client to the most included client. It is clear that
+correct aggregators have an uniform inclusion policy whereas the
+Byzantine aggregator (aggregator 2) has a clearly biased inclusion
+policy.
+In Figure 15, we show the difference between an execution with
+this type of Byzantine behaviour with and without the inclusion
+fraud detection mechanism both on the MNIST and CIFAR-5m
+dataset. The main impact of such Byzantine behaviour on the accuracy is visible as, without the fraud detection mechanism, accuracy
+lines are way more jagged than its fraud detection counterpart. This
+is due to the fact that the Byzantine aggregator draws everyone
+down. However, we cannot see a clear impact of the inclusion fraud
+
+

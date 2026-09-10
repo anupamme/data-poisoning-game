@@ -1,0 +1,2083 @@
+arXiv:2509.08089v2 [cs.LG] 8 May 2026
+
+Hammer and Anvil: Toward a Theory of Backdoors in Federated
+Learning
+Lucas Fenaux
+
+Zheng Wang
+
+Jacob Yan
+
+lucas.fenaux@uwaterloo.ca
+University of Waterloo
+Waterloo, Ontario, Canada
+
+University of Waterloo
+Waterloo, Ontario, Canada
+
+University of Waterloo
+Waterloo, Ontario, Canada
+
+Nathan Chung
+
+Florian Kerschbaum
+
+University of Waterloo
+Waterloo, Ontario, Canada
+
+University of Waterloo
+Waterloo, Ontario, Canada
+
+Abstract
+Federated Learning (FL) enables distributed model training but
+is vulnerable to backdoor attacks, where malicious clients embed
+attacker-controlled behaviors into the global model. Existing defenses fail against adaptive adversaries. In this paper, we present
+Hammer and Anvil, a principled theoretical framework that categorizes backdoors by the deviation, 𝛿, of their updates to the mean
+of the updates. We identify two fundamental defense types: Type
+1 (The Anvil), comprising outlier detection and robust aggregation effective against large-deviation attacks, and Type 2 (The
+Hammer), consisting of removal-based defenses effective against
+small-deviation attacks. We demonstrate that defenses of a single
+type and non-principled combined defenses inherently leave an
+exploitable gap for adaptive attackers. To bridge this gap, we propose the principled combination of Type 1 and Type 2 defenses. We
+evaluate our framework against a new, worst-case, full-information
+adaptive adversary that knows the benign updates, the aggregation
+algorithm, and its parameters, and yet this adversary fails against
+our combined defenses. Our empirical evaluation across various
+datasets and settings shows that single-typed and non-principled
+combined defenses are easily broken, often by a single malicious
+client. In contrast, our best combined defense variants, 𝐻𝐴𝐶𝑆𝐹𝑇
+,
+𝐹𝑙𝑎𝑚𝑒
+𝐶𝑆𝐹𝑇
+𝐻𝐴𝐶𝑆𝐹𝑇
+𝐾𝑟𝑢𝑚 , and 𝐻𝐴𝑀𝑢𝑙𝑡𝑖 −𝑀𝑒𝑡𝑟𝑖𝑐𝑠 , remain undefeated even in the most
+adversarial settings. Our results provide a principled approach for
+research on backdoors in federated learning.
+
+Keywords
+Federated Learning, Machine Learning Security, Backdoors
+
+1
+
+Introduction
+
+Federated Learning [38] is a technique for efficient distributed learning in which data resides with the data sources, and only model
+updates are aggregated to a central model. Although this distribution of data sources enhances privacy, it does not guarantee it,
+and it creates opportunities for malicious clients to attack. One
+example of such an attack is backdooring [2, 3, 5, 9, 12, 17, 18, 29,
+34, 35, 44, 50, 56, 63, 64, 69, 71, 76, 77, 79–82], where clients embed
+attacker-controlled behaviors into the model, such as a trigger that
+forces any image to be classified as a chosen class. Backdoor attacks
+have been shown to pose a significant threat in centralized machine
+learning [18]. The emergence of federated learning has introduced
+new attack vectors for backdoor attacks. Through malicious clients,
+adversaries can embed malicious behaviors into the global model.
+
+Many diverse defenses have been developed over the years
+[1, 4, 6, 8, 11, 13, 15, 16, 19, 22, 26, 30, 31, 33, 37, 40–42, 45–49,
+51, 54, 55, 57, 60, 66–68, 72, 74, 75, 78] to prevent these attacks in
+the federated setting. These defenses can be separated into three
+categories depending on when they appear in the federated pipeline:
+pre-aggregation, in-aggregation, and post-aggregation [43]. They
+can also be grouped by their underlying approach: outlier-detectionbased, robust-aggregation-based, or removal-based. Outlier detection defenses leverage differences between adversarial and benign
+updates to distinguish between them. Robust-aggregation defenses
+limit the impact of any update, thereby limiting the adversary’s
+capabilities to insert a backdoor. Finally, removal defenses make
+minor modifications to the model in order to remove the embedded
+backdoor.
+Crucially, we observe that different defense categories are effective against distinct types of backdoor attacks. Intuitively, backdoored model updates sent by malicious clients that deviate further
+from benign updates will be detected more easily by outlier detection defenses. Likewise, since robust-aggregation defenses bound
+the impact of any single update, beyond a certain threshold, further
+deviations have no impact, meaning that a small deviation attack
+has the same impact as a large deviation attack. However, removal
+defenses have more difficulty removing these updates with large
+deviations without damaging the model’s benign performance, but
+they can easily remove attacks with small deviations.
+From our observations, we reason about backdoors in terms of
+their expected update deviation 𝛿 to build a principled theoretical framework for federated learning backdoors: Hammer and
+Anvil. We categorize defenses into two types: Type 1 defenses
+(the Anvil: outlier detection and robust aggregation), which are
+effective against large deviation attacks, and Type 2 defenses (the
+Hammer: removal), which are effective against small deviation attacks. From our categorization, it follows that defenses of a single
+type cannot be robust without drastically affecting model utility, as
+they fundamentally leave a gap for an adaptive attacker to exploit.
+Hence, we argue for combining defenses using our principled theoretical framework. By combining non-interfering Type 1 and Type
+2 defenses, we can reduce the exploitable gap for the attacker, or
+even eliminate it.
+We ground our principled theoretical framework in worst-case
+assumptions for security to ensure secure deployment of FL in
+any setting. Hence, we design a new adversary threat model for
+federated learning: the full-information adaptive adversary.
+
+Fenaux et al.
+
+Our full-information adaptive adversary knows: the aggregation
+algorithm, its parameters, and the benign updates submitted by
+all other clients before it has to submit its own, for every epoch.
+Our adversary can freely collude with the other malicious clients it
+controls and can adapt to the benign updates submitted by the other
+clients. Mirroring cryptographic scheme design, a defense robust
+against our full-information adaptive adversary would implicitly
+be robust against any attacker with more realistic assumptions.
+We empirically validate our principled theoretical framework
+in two steps: (1) We design principled adaptive attacks against 13
+single-typed and non-principled combined defenses [6, 16, 21, 33,
+39, 40, 45, 57, 61, 72, 73] following our theoretical framework. Our
+adaptive attacks break these defenses with at most four malicious
+clients out of 20, and as few as a single one; (2) We evaluate our
+principled combined defense HA against our full-information adaptive adversary and existing popular and state-of-the-art attacks
+across various data settings. We find that our three best principled combined defense variants, namely HACSFT
+, HACSFT
+Krum , and
+Flame
+CSFT
+HAMulti-Metrics , are undefeated in every setting we evaluate.
+Our empirical results support our theory and enable principled
+research on backdoor attacks in federated learning.
+We summarize our contributions as follows:
+• We present a new principled theory of backdoors in federated learning: Hammer and Anvil in Section 4. Our theory
+categorizes defenses into two types: Type 1 (Anvil) and
+Type 2 (Hammer), and reveals a fundamental exploitable
+gap in single-typed defenses and for non-principled combined defenses. We then derive rules for the principled
+combination of backdoor defenses.
+• We introduce a new worst-case threat model: the fullinformation adaptive adversary in Section 3 and use it to
+break single-typed and non-principled combined defenses
+in Section 5.
+• We empirically evaluate our principled combined defense
+HA in Section 6. We show that our three best combined
+defense variants are undefeated in the worst-case threat
+model, showcasing state-of-the-art performance. Our empirical results provide support for our theory.
+
+2
+
+Background
+
+Notation: Let 𝑤 ∈ R𝑘 represent the set of weights for a model. We
+use the terms "model" and "weight of a model" interchangeably, as
+all client models share the same model architecture. Let 𝑏 and 𝑑
+denote datasets, while 𝐵 and 𝐷 represent distributions. The function
+𝑇 is a training function that produces a set of weight updates 𝑢
+based on a given set of weights and a dataset. Let 𝑛 be the number
+of clients and 𝑚 the number of malicious clients.
+
+2.1
+
+Federated Learning
+
+Federated Learning (FL) [38] is a distributed machine learning approach where multiple clients collaboratively train a global model
+without centralizing their local datasets. Formally, 𝑛 clients collaborate to train a shared model by aggregating updates computed
+locally on distributed datasets ( 𝑑𝑖 ∼ 𝐷, 𝑖 ∈ {1, . . . , 𝑛}). These updates are aggregated by the aggregator to create the global model
+𝑤. We detail the training process for any epoch 𝑡 below; this series
+
+of steps is repeated until convergence or a predefined number of
+epochs (𝑡𝑚𝑎𝑥 ) is reached.
+(1) (Initialization Phase) The aggregator sends the global
+model 𝑤𝑡 to a subset of clients of size 𝑠.
+(2) (Training Phase) Each client in the subset trains its copy
+of the global model on its dataset 𝑑𝑖 to generate its update
+𝑢𝑖 . The clients then send their update 𝑢𝑖 to the aggregator.
+(3) (Aggregation Phase) The aggregator aggregates the clients’
+updates, yielding the new global model 𝑤𝑡 +1 .
+The standard aggregation rule is averaging (FedAvg [38]), given by:
+Í
+𝑤𝑡 +1 = 𝑤𝑡 + 𝑠1 𝑖 𝑢𝑖 .
+
+2.2
+
+Backdoor Attacks
+
+Backdoor attacks embed hidden attacker-controlled behaviors within
+machine learning models during training [18]. Specifically, the attacker aims to alter the model’s training such that the resulting
+model behaves normally on benign inputs but produces attackercontrolled outputs when triggered. To trigger the attacker-controlled
+behavior, the attacker can insert or exploit a pattern in the training
+data [18], which will be learned by the victim model. Depending on
+the type of trigger, backdoor attacks can be categorized as artificial
+or semantic [43].
+Artificial Backdoors: The triggers are artificially added, typically
+as a distinct pattern or patch (e.g., a white square in the corner of
+the image).
+Semantic Backdoors: The triggers exploit natural features of inputs, associating specific features with attacker-controlled behavior
+(e.g., green cars).
+Attack Objectives. The attacker’s objective is to maximize the
+Attack Success Rate (ASR), as in the proportion of backdoored inputs that trigger attacker-controlled behavior, while maintaining
+accuracy on the model’s main task, which we will refer to as benign accuracy or accuracy. Backdoor attacks can be modeled as a
+multi-objective optimization problem, where the attacker seeks to
+optimize the model’s behavior across both benign and backdoored
+inputs. For a dataset 𝑑 of input-label pairs drawn from a benign
+distribution 𝐷, a backdoor dataset 𝑏 drawn from a backdoored distribution 𝐵, and a loss function 𝐿 (for example, Cross-Entropy [7]
+for image classification), the attacker aims to minimize:
+∑︁
+∑︁
+min
+𝐿(𝑥𝑖 , 𝑦𝑖 ) +
+𝐿(𝑥𝑖′, 𝑦𝑖′ )
+(1)
+(𝑥𝑖 ,𝑦𝑖 ) ∈𝑑
+
+2.3
+
+(𝑥𝑖′ ,𝑦𝑖′ ) ∈𝑏
+
+Backdoor Defenses
+
+In scenarios where backdoor attacks pose a threat to the integrity of
+an FL model, the aggregator may deploy a defense [1, 4, 6, 8, 11, 13,
+15, 16, 19, 22, 26, 30, 31, 33, 37, 40–42, 45–49, 51, 54, 55, 57, 60, 66–
+68, 72, 74, 75, 78]. When deploying a defense, the aggregator must
+balance two objectives: backdoor removal and benign accuracy
+preservation. Different approaches have been devised over the
+years and can be categorized as follows:
+Robust-aggregation: limit the impact of any update, thereby limiting the impact of adversarial updates and the adversary’s capabilities to insert a backdoor. Targets large deviation magnitudes.
+Outlier Detection: leverage the differences between adversarial
+
+Hammer and Anvil: Toward a Theory of Backdoors in Federated Learning
+
+Train Acc
+Train ASR
+
+Figure 1: Learning rate scheduling of super-fine-tuning,
+taken from the original paper [52].
+
+Accuracy / ASR (%)
+
+100
+
+2.3.1 Clipped-Super-Fine-Tuning. We adapt Super-Fine-Tuning
+(SFT) [52], a removal defense designed for centralized training, to
+the federated setting. SFT removes backdoors by fine-tuning the
+global model on a small benign dataset using a specialized learning rate schedule, as illustrated in Figure 1. However, we find that
+vanilla SFT performs poorly in FL; the high learning rate required
+during the first phase often leads to gradient explosion, destroying the model weights. This behavior suggests either that the SFT
+algorithm is highly sensitive to hyperparameters, or that the loss
+landscape of models trained in a federated setting is fundamentally
+different from that of models trained centrally and does not respond
+to SFT in the same way.
+To mitigate this instability, we introduce Clipped-Super-FineTuning (CSFT), which incorporates gradient clipping into the SFT
+process. With an appropriately tuned clipping threshold, CSFT effectively removes "weakly inserted" backdoors (small devations),
+as demonstrated in Figure 2, where CSFT successfully removes a
+non-adaptive Badnet [18] backdoor implanted by a single malicious
+attacker out of 20 in a ResNet18 [20] on the CIFAR-10 dataset [25].
+Notably, we find that the optimal clipping threshold depends primarily on the number of fine-tuning samples, significantly reducing
+the need for exhaustive hyper-parameter searches.
+
+ASR
+
+100.0
+88.3
+78.778.9
+80.7
+
+80
+
+74.5
+
+73.0
+
+60
+40
+20
+0
+
+and benign updates to distinguish them. Also targets large deviation magnitudes.
+Removal: make minor modifications to the model in order to remove the embedded backdoor. Targets small deviation magnitudes.
+Some existing works combine multiple approaches to create
+more effective defenses; for example, FLAME [45] first detects malicious updates using cosine-similarity-based clustering, then limits
+the impact of selected updates by clipping their norms to the median norm and adding noise. We study FLAME and other existing
+defenses, and their weaknesses in more detail in Section 5.
+An important consideration is the location in the FL pipeline
+where a defense operates: pre-aggregation, in-aggregation, or postaggregation [43], with detection defenses often operating preaggregation, robust-aggregation defenses operating in-aggregation,
+and removal defenses operating post-aggregation.
+
+Metric
+Accuracy
+
+25.1
+10.0
+
+no_clip
+
+6.4
+
+1
+
+2
+
+Clip Threshold
+
+5
+
+10
+
+Figure 2: Federated models backdoored with 𝑚 = 1 malicious
+clients, fine-tuned with 2000 samples over different gradient
+clipping thresholds.
+
+2.4
+
+Limitations and Assumptions in Federated
+Learning
+
+The distributed nature of federated learning makes defending against
+backdoors particularly challenging, as the aggregator has limited
+visibility into individual clients’ behavior. Additionally, thanks to
+their full control over malicious clients, attackers can deploy more
+potent attack methods that extend beyond simply adding trigger
+patterns to the data and flipping labels.
+Attacker limitations and assumptions. A common assumption in
+federated learning security is that the majority of clients are benign
+(also called trustworthy) [65]; therefore, an attacker can only control
+a malicious minority of clients. Formally, a subset of 𝑚 ≤ ⌊ 𝑛−1
+2 ⌋
+malicious clients submit model updates to the aggregator. Krum [6],
+one of the defenses we study in this work, assumes that 2𝑚 + 2 < 𝑛,
+meaning 𝑚 < 𝑛2 − 1. Since we run our experiments with 𝑛 = 20, we
+use a tighter bound of 𝑚 ≤ 8 across our experiments rather than
+the 𝑚 ≤ 9 offered by the malicious minority assumption. Another
+limitation for the attacker is the requirement to preserve benign
+accuracy. Otherwise, the attack is easily detectable, and the model
+is not deployed, meaning the attacker cannot exploit it.
+Defender limitations and assumptions. We assume the aggregator
+has a small, benign dataset drawn from 𝐷 for fine-tuning, as in
+MASA [73]. In practice, the aggregator could be a trusted client
+using its own data for fine-tuning, or the data could be sourced from
+public proxy data or a small set of opt-in user data. To maintain
+the necessity of the federated framework, this dataset must be a
+fraction of the total training data (e.g., 1%-4%). If the aggregator held
+a larger portion, a centralized model could be trained locally, rendering federated learning obsolete. In our experiments, we strictly
+limit the fine-tuning set to be smaller than the average client’s local
+dataset. For instance, our 2000-sample (4%) set is below the average
+
+Fenaux et al.
+
+per-client sample count of 2,400, effectively treating the aggregator
+as a single trusted client. We study the effect of the number of finetuning samples in Section 6.5. Furthermore, we acknowledge that
+while backdoors can always be removed through extreme weight
+transformations (e.g., random re-initialization), such measures are
+trivial and provide no utility. A viable defense must therefore preserve benign accuracy while preventing backdoors.
+
+Scenario A: Type 1 Defense Only
+Defense 1:
+Robust Aggregation
+or Outlier Detection
+
+Exploitable Gap
+
+𝛿
+(Attack Magnitude)
+
+𝛿1
+
+Scenario B: Type 2 Defense Only
+
+3
+
+Motivation & Threat Model
+
+Achieving trustworthy and secure FL requires a principled approach
+grounded in worst-case assumptions. Mirroring the design of cryptographic schemes, we assume a nigh-omniscient attacker to establish a blueprint for security; a defense robust against this adversary
+will inherently withstand weaker, more realistic threats.
+We model an adaptive adversary that controls a subset of 𝑚
+colluding malicious clients, aiming to manipulate the FL training
+process via malicious updates. To evaluate defenses under worstcase conditions, we grant this adversary full information: exact
+knowledge of the aggregation algorithm, its specific parameters,
+and the benign updates submitted by all other clients in each epoch.
+In Section 6, we demonstrate that our principled defense approach
+can reliably defeat this full-information, adaptive adversary.
+
+4
+
+Hammer and Anvil: Toward a Principled
+Theory
+
+Each backdoor attack can be categorized according to a set of parameters, including its impact on the model weights, the fraction
+of malicious clients, its duration, etc. We consider the impact on
+model weights to be particularly important in the design of our
+theory. Let the expected deviation from benign updates 𝛿 be
+𝑛−𝑚
+1 ∑︁
+𝛿 = ∥E[
+𝑇 (𝑤 𝑗 , 𝑑𝑖 )] −
+𝑛 − 𝑚 𝑖=1
+(2)
+𝑛
+1 ∑︁
+E[
+𝑇 (𝑤 𝑗 , 𝑑𝑖 ∪ 𝑏𝑖 )] ∥ 2
+𝑚 𝑖=𝑛−𝑚+1
+for any given federated epoch 𝑗, where we have 𝑛 clients and each
+client has a training dataset 𝑑𝑖 ∼ 𝐷, and we assume there are 𝑚 < 𝑛2
+malicious clients with datasets 𝑏𝑖 ∼ 𝐵 drawn from the distribution
+of backdoored samples 𝐵. 𝛿 represents the expected distance from
+benign updates (or strength) of a given backdoor attack update, with
+smaller 𝑙 2 -norm deviations having a small 𝛿, and larger 𝑙 2 -norm
+deviations having a larger 𝛿.
+Our principled combined defense is premised on the observation
+that the success of existing defenses depends on the attack parameter 𝛿. We define two fundamental types of defenses based on their
+success relative to 𝛿:
+Type 1 - Robust Aggregation or Detection: The goal of the
+aggregator is to discard malicious updates and update the global
+model only with benign updates, or at least limit the impact of
+malicious updates on the aggregation process. To do so, the aggregator attempts to identify outliers (which are likely malicious
+updates, since 𝑚 < 𝑛2 ) from the client updates {𝑇 (𝑤 𝑗 , 𝑑𝑖 )}𝑛−𝑚
+𝑖=1 ∪
+{𝑇 (𝑤 𝑗 , 𝑑𝑖 ∪ 𝑏𝑖 )}𝑛𝑖=𝑛−𝑚+1 . It then removes those outliers, e.g., Krum
+and Multi-Metrics, or bounds their impact, e.g., Median-of-Means
+and norm bounding.
+
+Defense 2:
+Removal
+
+Exploitable Gap
+𝛿
+(Attack Magnitude)
+
+𝛿2
+
+Scenario C: Principled Combined Defense
+
+Type 2 Defense
+
+Type 1 Defense
+
+Exploitable Gap
+
+𝛿
+𝛿2
+
+𝛿1
+
+(Attack Magnitude)
+
+Scenario D: Principled Combined Defense & Conjecture 1 is True
+
+Strong Type 2 Defense
+
+Strong Type 1 Defense
+𝛿
+𝛿1
+
+𝛿2
+
+(Attack Magnitude)
+
+Figure 3: Progression of the defensive spectrum against varying attack magnitudes (𝛿). Scenario A and Scenario B highlight the exploitable gaps when relying on a single defense
+mechanism. Scenario C illustrates minimizing the security
+gap by combining mechanisms. Finally, Scenario D demonstrates Conjecture 1: an ideal state where the defenses overlap
+(𝛿 1 ≤ 𝛿 2 ), completely eliminating the exploitable gap.
+Type 2 - Removal: Assume the aggregator has a small, benign
+dataset 𝑓 ∼ 𝐷 and fine-tunes the global model 𝑤 after aggregation
+as follows:
+𝑤𝜏 = (1 − 𝛾) 𝑤 + 𝛾 𝑇 (𝑤, 𝑓 )
+(3)
+for some 0 ≤ 𝛾 ≤ 1.
+Using the distance 𝛿, we can make the following propositions
+about existing defenses:
+Proposition 1. The larger 𝛿, the more robust Type 1 defenses are.
+Proposition 1 follows from two observations: the larger 𝛿 is, the
+further in the 𝑙 2 -norm the malicious updates are from the benign
+updates. Since 𝑚 < 𝑛2 , the benign updates outnumber the malicious
+updates. As such, the further the malicious updates are from the
+benign updates, the more likely they are to be detected as outliers
+by outlier detection defenses. Therefore, a larger 𝛿 results in a
+lower ASR relative to the equivalent undefended global model.
+Robust aggregation defenses impose a limit on the influence any
+one update can have on the aggregation process. Since the defense’s
+limit naturally bounds 𝛿, the larger the 𝛿, the better the defense
+relative to the equivalent undefended global model. Thus, it follows
+
+Hammer and Anvil: Toward a Theory of Backdoors in Federated Learning
+
+that a large 𝛿 improves the effectiveness of Type 1 defenses, and
+Corollary 1 and Corollary 2 also follow.
+Corollary 1. For all Type 1 defenses, there exists 𝛿 1 such that it
+will remove the backdoor for any 𝛿 > 𝛿 1 .
+Corollary 2. For all Type 1 defenses that admit learning (i.e., at
+least one update), there exists 𝛿 1′ such that a backdoor update with
+𝛿 < 𝛿 1′ will pass the defense.
+Proposition 2. Let 𝜀 ∈ R𝑘 be a matrix of small random values, i.e
+∥𝜀 ∥ 2 ≪ ∥𝑤 ∥ 2 . The smaller 𝛿, the more the global model approaches
+𝑤𝜏 = 𝑇 (·, 𝑓 ) + 𝜀 under a Type 2 defense, i.e., a model trained on a
+dataset drawn only from 𝐷.
+Proposition 2 follows from the iterative learning process of neural networks that slowly converge after many epochs. Intuitively,
+a Type 2 defense can remove the backdoor because 𝑓 is drawn
+from the benign distribution 𝐷, thereby shifting the global model
+weights towards those of a model trained only on 𝐷. The larger
+the change introduced by the backdoor, the more backpropagation
+steps are needed to remove it; consequently, the defender faces a
+higher risk of benign accuracy degradation. Hence, Type 2 defenses
+are most effective against weakly inserted backdoors, where 𝛿 is
+small enough to be removed without overwriting the model with
+one trained solely on the fine-tuning data.
+Corollary 3. For all Type 2 defenses, there exists a 𝛿 2 such that
+it will remove the backdoor for any 𝛿 < 𝛿 2 .
+Corollary 4. For all Type 2 defenses, there exists a 𝛿 2′ such that
+a backdoor update with 𝛿 > 𝛿 2′ will not be removed.
+Given either only a Type 1 or Type 2 defense, it follows from
+Corollary 2 and Corollary 4 that an attacker should be able to
+succeed. We empirically demonstrate such attacks against existing
+defenses in Section 5 using optimization, scaling, or interpolation
+to adapt to the protection objectives.
+When combining a Type 1 defense and a Type 2 defense, it
+follows from Corollary 1 and Corollary 3 that an attacker can only
+succeed for 𝛿 ∈ [𝛿 2, 𝛿 1 ]. Figure 3 illustrates this defensive spectrum;
+while each category effectively secures one end of the magnitude
+range, a gap remains where neither succeeds.
+Research Question 1: Can we reliably identify a successful principled attack given any single-typed or non-principled combined defense?
+Research Question 2: When combining Type 1 and 2 defenses,
+can 𝛿 1 − 𝛿 2 be non-positive, meaning that even worst-case adaptive
+adversaries cannot succeed?
+We hypothesize that with the correct defenses, the gap in our
+second research question can be eliminated entirely.
+Conjecture 1. There exists a Type 1 defense and a Type 2 defense
+such that 𝛿 2 ≥ 𝛿 1 .
+If Conjecture 1 holds, it implies the existence of a principled defense that can defend against any backdoor for any attack deviation
+𝛿.
+
+5
+
+Exploiting the Gap in Existing Defenses
+
+Our goal in this section is to provide empirical evidence to support Corollary 2 and Corollary 4 by showing that for all existing
+defenses we evaluate, we can define an adaptive attack that easily
+breaks the defense. To evaluate the limits of current defenses, we
+develop a suite of adaptive attacks designed to exploit the fundamental weaknesses of each defense category. By leveraging the full
+information capabilities of our adaptive adversary, these attacks
+bypass singular and non-principled security mechanisms. In the
+following, we outline the general principles for circumventing each
+category, then detail the specific implementation for each defense.
+We display simplified representations of the attack principles for
+each defense category in Figure 4.
+
+5.1
+
+Adaptive Attack Principles
+
+Robust-Aggregation Defenses. Robust aggregation mechanisms
+aim to bound the impact of any individual update on the global
+model. Our strategy exploits this by ensuring the malicious updates
+reach the maximum allowable impact bound, as shown in Figure 4a.
+We achieve this by scaling the magnitude of the adversarial updates
+relative to the mean, either through direct weight manipulation or
+by increasing the local learning rate of malicious clients.
+Outlier Detection Defenses. Outlier detection defenses use metrics
+such as 𝑙 2 -distance, 𝑙 1 -distance, or cosine similarity to isolate and
+discard malicious updates. We formulate our attacks as a multiobjective optimization problem, maximizing the backdoor signal
+while minimizing the defense’s detection metric. Where possible,
+we solve this optimization directly using interpolation, as shown
+in Figure 4b; otherwise, we employ gradient-based techniques by
+incorporating the defense’s scoring function into the malicious
+clients’ loss objective, or a surrogate scoring function if the defense’s
+scoring function is not differentiable.
+Removal Defenses. Removal and post-processing defenses are
+constrained by the need to preserve the model’s benign accuracy.
+If the defense applies a transformation that is too significant to the
+model weights, it risks destroying the utility of the global model. We
+exploit this constraint by scaling the adversarial updates throughout
+training, ensuring that the modification required to remove the
+backdoor exceeds the threshold of safe removal for the defense, as
+shown in Figure 4c.
+Non-Principled Combined Defenses. Several works have attempted
+to construct robust defenses by assembling multiple defense mechanisms into a single pipeline, such as FLAME [45], Fine-tune &
+Prune [66], and FoolsGold & Krum [16]. While these multi-layered
+approaches often outperform individual defenses, the lack of a
+grounding principle behind their combination leaves them vulnerable to adaptive adversaries. For example, fine-tuning and pruning
+are both removal-based, which prevent small 𝑙 2 -norm attacks but
+leave them vulnerable to large 𝑙 2 -norm attacks; FLAME combines
+HDBSCAN angle-based clustering, a defense against large angular
+magnitude attacks, with clipping, a defense against large 𝑙 2 -norm
+attacks, and DP-noising, a defense against attacks involving a small
+number of malicious clients. Their combined defense leaves them
+vulnerable to small 𝑙 2 -norm attacks carried out by many attackers.
+
+Fenaux et al.
+
+Bound
+
+′
+𝑤𝑚
+Sc
+
+Removal Zone
+
+Accepted
+
+le
+Sca
+
+ale
+
+′
+𝑤𝑚
+Survives
+
+𝑤𝑚
+
+𝑤𝑚
+
+𝑤𝑏
+
+′
+𝑤𝑚
+
+Removed
+
+𝑤𝑡
+
+𝑤𝑏
+
+Ideal 𝑤𝑚
+(a) Robust Aggregation: The attacker scales
+the initial malicious weights (𝑤𝑚 ) to rest exactly on the defense’s acceptance bound, maximizing impact.
+
+(b) Outlier Detection: The attacker interpolates between the benign mean (𝑤𝑏 ) and the
+ideal malicious weight, submitting the update
+′ ) that just cross into the acfor weights (𝑤𝑚
+cepted cluster.
+
+(c) Removal Defenses: A weakly embedded
+backdoor (𝑤𝑚 ) falls within the effective removal zone and is removed. By scaling the
+′ ) past this zone, the backdoor surupdate (𝑤𝑚
+vives removal attempts.
+
+Figure 4: A simplified representation of single-typed defenses and their associated adaptive attack principles. Blue circles
+represent benign weights, while red shapes denote adaptive malicious weights.
+Table 1: Summary of defenses and corresponding attack
+strategies with the relevant equations. Eq. stands for Equation.
+Defense Type Defense Name
+
+Attack
+Strategy
+
+Eq.
+
+Type 1 (Robust Norm-bounding [57]
+Median-of-Means [40]
+Aggregation)
+
+Scaling
+Scaling
+
+4
+5
+
+Krum [6]
+Multi-Metrics [21]
+Type 1 (Outlier MARS [61]
+MASA [73]
+Detection)
+BART-FL [39]
+AlignIns [72]
+
+Interpolation
+Optimization
+Optimization
+Interpolation
+Optimization
+Optimization
+
+6
+7
+8
+6
+9
+10, 11
+
+Type 2
+
+CSFT (This work)
+
+Scaling
+
+5
+
+NonPrincipled
+Combined
+
+FoolsGold & Krum [16] Interpolation
+Fine-tune & Prune [66] Scaling
+FLAME [45]
+Optimization
+&
+Interpolation
+
+6
+4 or 5
+12
+
+Table 1 contains a summary of the defenses for which we devise adaptive attacks separated by type, with the associated attack
+strategy and a reference to the relevant equations.
+For each category, we iterate through existing defenses in order
+of recency and present either a scaling formula, an interpolation
+formula, or an optimization objective that breaks said defense. We
+present attacks against robust-aggregation defenses in Section 5.3,
+outlier detection defenses in Section 5.4, removal defenses in Section
+5.5, and non-principled combined defenses in Section 5.6. We also
+include empirical results demonstrating the success of our adaptive
+attacks in Section 5.2.
+
+5.2
+
+Motivating Results: Non-Principled
+Defenses are Exploitable
+
+We demonstrate that existing individual backdoor defenses are
+insufficient under our defined worst-case threat model. Table 2
+summarizes the vulnerability of seven state-of-the-art or popular
+defenses [6, 40, 45, 52, 57] against our adaptive, optimized attacks
+on a ResNet18 [20] model trained on the CIFAR-10 [25] dataset.
+We do not empirically evaluate six of the 13 adaptive attacks
+we design for the following reasons. FoolsGold & Krum [16] and
+Fine-tune & Prune [66]: we already break one of the components
+of each of these non-principled combined defenses in a way that
+the other component cannot cope with; therefore, we expect these
+two defenses to perform as well as their broken components, which
+we already empirically evaluate. MARS [61], MASA [73], BART-FL
+[39], and AlignIns [72]: we leave the experimental effort to future
+work as we already empirically evaluate two outlier detection defenses (Krum and Multi-Metrics). These four defenses reuse similar
+fundamental principles, so we expect the principled adaptive attacks we design against them to be as effective as those against
+Krum and Multi-Metrics.
+We break most defenses with as few as 1 or 2 malicious clients
+out of 20. While some defenses show higher initial resistance, specifically, Multi-Metrics requires 𝑚 = 4 to break, they all eventually fail
+as the number of malicious clients increases, reaching near 100%
+ASR in the worst-case scenario where 𝑚 = 8, while maintaining
+high benign accuracy. These failures stem from a fundamental vulnerability in current defense approaches. Most existing methods fall
+into a single category, such as robust aggregation, outlier detection,
+or removal, that targets only small or large attack magnitudes, leaving them vulnerable to the other. Furthermore, combined defenses
+often merge sub-defenses of the same type, leaving a vulnerable
+gap that a full-information adaptive adversary can exploit.
+
+5.3
+
+Attacking Robust-Aggregation
+
+Norm-bounding (2019). Norm bounding, also called norm clipping [57], is an 𝑙 2 -norm-based algorithm that defends against large
+magnitude attacks. In practice, norm-bounding can be efficiently implemented in cryptography using zero-knowledge proofs, making
+
+Hammer and Anvil: Toward a Theory of Backdoors in Federated Learning
+
+Table 2: Lowest number of malicious clients (𝑚) out of 20
+needed for our adaptive attacks to break existing defenses
+with the associated ASR and benign accuracies on CIFAR-10.
+We also include the 𝑚 = 8 case. Values are averaged over three
+runs.
+
+we introduce a second malicious client, as shown in Table 2. We
+also did not find any meaningful differences between MoM and
+Rob-MoM against our adaptive attack.
+
+′
+𝑢𝑚
+= 𝛾 · 𝑢𝑚 ,
+
+Defense
+
+𝑚
+
+ASR
+
+Acc.
+
+ASR (𝑚 = 8)
+
+Acc. (𝑚 = 8)
+
+Multi Metrics
+Flame
+Rob MoM
+MoM
+Krum
+Norm
+CSFT
+None
+
+4
+2
+2
+2
+1
+1
+1
+1
+
+98.86
+55.61
+99.81
+99.81
+97.34
+90.49
+87.47
+99.62
+
+76.16
+82.16
+83.80
+83.49
+78.85
+87.93
+79.01
+83.02
+
+99.30
+98.25
+99.98
+99.99
+99.98
+99.97
+98.70
+99.99
+
+78.61
+80.06
+84.56
+84.28
+79.90
+86.30
+82.15
+84.64
+
+it a desirable defense for secure aggregation protocols [36]. Update
+norms are clipped to a predefined threshold 𝜂 to limit the impact
+of any single update during aggregation. Our adaptive adversary
+exploits this clipping by directly scaling each malicious update 𝑢𝑚
+to this predefined threshold, as described in Equation 4. To defend
+against such an attack, a norm-bounding defender would need to
+use a very small norm threshold, at the cost of a greatly reduced
+model accuracy. We find that for any functional threshold, a single
+adaptive malicious client is sufficient to break norm-bounding, as
+seen in Table 2.
+𝑢𝑚
+′
+𝑢𝑚
+=𝜂
+(4)
+∥𝑢𝑚 ∥ 2
+Median-of-Means (2023). Median of Means (MoM) [40] is a provably robust aggregation algorithm that aims to minimize the impact
+of any one update on the aggregation regardless of its magnitude.
+For each parameter layer in the neural network model, MoM randomly partitions client updates into groups. Then it computes the
+element-wise mean for each group as its representative. Finally, it
+takes the element-wise median of the representatives as the update
+for that layer. In the MoM algorithm, outlier updates move their
+groups away from the median, reducing the likelihood that they
+are selected. To improve the robustness of the MoM estimation, we
+can repeat the MoM algorithm 𝑘 times and average the medians
+across the 𝑘 runs. We refer to this method as the Robust Median of
+Means (Robust MoM, shortened to Rob MoM). In our experiments,
+we set 𝑘 = 10 as we did not find further meaningful improvements
+in robustness with higher values.
+Despite MoM provably limiting the impact of malicious updates
+on the aggregation, our adaptive attacker can still skew the median
+in the adversarial direction. Scaling up the updates of malicious
+clients following Equation 5 causes their updates to overpower
+the others in their group, affecting the representative. The change
+incurred by malicious updates to their group’s representative shifts
+the median parameter selected in the adversarial direction for every
+model parameter. While the change in the median is minor for
+any individual parameter, the cumulative effect across the highdimensional weight space results in a significant 𝑙 2 -norm shift in the
+adversarial direction. We find that while the defense is successful
+when there is a single malicious client among 20, it breaks when
+
+5.4
+
+where 𝛾 ≫
+
+max
+𝑖 ∈ {1,2,...,𝑛−𝑚}
+
+∥𝑢𝑏𝑖 ∥ 2
+
+(5)
+
+Evading Outlier Detection
+
+Krum (2017). Krum [6] is a Byzantine-resilient detection method
+that selects the most representative update based on its Krum-score:
+the sum of the 𝑙 2 distances to its 𝑛 − 𝑚 − 2 closest neighbors. The
+update with the lowest score is selected as the update to the global
+model for that epoch. First, if the attacker controls more than one
+malicious client, they can overwrite the malicious updates with
+the mean malicious update. This process eliminates 𝑚 − 1 terms
+from the sum when computing the Krum-score of the malicious
+updates. Second, suppose the mean malicious update is still not
+selected after this process. We can interpolate between the mean
+of the malicious updates and the mean of the benign updates to
+find the point on the line between the two that is closest to the
+mean of the malicious updates, while selected by Krum. We solve
+this directly using bisection with a maximal depth of 10. Using its
+full information, the adaptive adversary iteratively simulates the
+Krum aggregation process to perform an informed search along the
+vector toward the benign mean. This optimization process ensures
+the malicious update is selected while being positioned as close as
+possible to the target weights. Let 𝑤𝑏 be the mean benign update
+and 𝑤𝑚 be the mean malicious update. Given the maximal distance
+𝛼 ∈ [0, 1] to the mean benign update on the line such that Krum
+still selects the update, found by bisection, we can compute the
+final malicious update as :
+′
+𝑤𝑚
+= 𝛼𝑤𝑚 + (1 − 𝛼)𝑤𝑏
+
+(6)
+
+As shown in Table 2, our adaptive attack is successful against Krum
+with a single malicious client.
+Multi-Metric (2023). Multi-Metric [21] computes a multi-metric
+feature vector composed of the pairwise 𝑙 1 -distance, 𝑙 2 -distance,
+and cosine similarity between each pair of updated models. It then
+applies a whitening transformation to weight the metrics into a unified score dynamically. Then it sorts the updated models by score
+and selects the 30% with the lowest scores. Finally, it computes
+a weighted average of the selected updates, where each client’s
+weight is proportional to its self-reported training sample count
+relative to the total training sample count across all selected participants.
+The Multi-Metric score computation is entirely differentiable,
+rendering it vulnerable to gradient-based adaptive attacks. Because
+the defense relies on relative pairwise distances across the entire
+pool of updates, the malicious updates directly influence the scores
+assigned to the benign clients. We exploit this dynamic by formulating an optimization objective that not only minimizes the
+malicious clients’ scores but simultaneously maximizes the benign
+clients’ scores. We incorporate this into the malicious loss function
+
+Fenaux et al.
+
+as follows:
+∑︁
+1
+𝑀 (𝑤𝑖 ,𝑊 )
+min 𝜆E (𝑥,𝑦) ∈ (𝑑∪𝑏 ) [𝐿(𝑥, 𝑦)] +
+𝑤
+|𝑊𝑚 | 𝑤 ∈𝑊
+𝑚
+𝑖
+∑︁
+1
+−
+𝑀 (𝑤𝑏 ,𝑊 )
+|𝑊𝑏 | 𝑤 ∈𝑊
+𝑏
+
+(7)
+
+𝑏
+
+where 𝜆 is a scaling hyperparameter, 𝑤 represents the malicious
+model weights being optimized, 𝑊𝑚 and 𝑊𝑏 are the sets of malicious and benign model weights respectively, 𝑊 = 𝑊𝑚 ∪ 𝑊𝑏 , and
+𝑀 (·,𝑊 ) is the differentiable Multi-Metric scoring function. Doing
+so is sufficient to break Multi-Metric with four malicious clients, as
+shown in Table 2. We also identify a critical integrity flaw in MultiMetric’s design: it relies on self-reported metadata for aggregation
+weighting. By claiming an artificially large sample size, a selected
+malicious client can perform a model replacement attack [2], effectively overwriting the global model weights at no additional cost
+to the attacker.
+MARS (2025). MARS [61] is an outlier detection defense that
+identifies backdoored updates by evaluating the Backdoor Energy
+(BE) of individual neurons. To amplify this malicious signal, the
+aggregator extracts the highest BE values from each layer of the
+local models to form a one-dimensional Concentrated Backdoor Energy (CBE) vector. The aggregator then separates these vectors into
+two clusters using K-Means and the 1-Wasserstein distance to capture the overall probability distribution of the energies, regardless
+of their specific neuron ordering. Finally, the defense aggregates
+the trusted models by selecting the cluster with the smaller center
+norm, or defaults to the majority cluster (MARS*) to resist adaptive
+regularization attacks.
+Our adaptive adversary can circumvent MARS by distributing
+the backdoor signal across a wider set of model parameters, thus
+flattening the Backdoor Energy (BE) and evading the top-𝜅% extraction filter. Furthermore, by explicitly minimizing the 1-Wasserstein
+distance between the malicious and benign CBE distributions (Eq.
+8), the attacker can ensure the backdoored update is indistinguishable from the majority cluster, compelling the aggregator to include
+it in the global model.
+𝑛−𝑚
+1 ∑︁
+min E (𝑥,𝑦) ∈ (𝑑∪𝑏 ) [𝐿(𝑥, 𝑦)] +
+𝑊 𝑎𝑠𝑠 (𝐶𝐵𝐸 (𝑤), 𝐶𝐵𝐸 (𝑤𝑏𝑖 ))
+𝑤
+𝑛 − 𝑚 𝑖=1
+(8)
+Here, 𝑊 𝑎𝑠𝑠 denotes the 1-Wasserstein distance, 𝐶𝐵𝐸 refers to the
+function that returns the Concentrated Backdoor Energy vector,
+and 𝑤𝑏𝑖 represents the 𝑖-th benign model.
+
+MASA (2025). MASA [73] is an outlier detection defense that
+identifies backdoored models by exploiting their distinct behavior
+during machine unlearning. Since malicious parameters are largely
+inactive on benign data, backdoored models exhibit significantly
+higher empirical losses when the aggregator attempts to unlearn
+the main task using gradient ascent on a benign proxy dataset. To
+enhance detection robustness, MASA addresses non-IID divergence
+by fusing local updates with the global average, accumulating the
+individual unlearning loss for each model, and discarding any update whose Median Deviation Score (MDS) exceeds a predefined
+threshold.
+
+Analogous to the adaptive attacks against Krum described in
+Section 5.4 (Equation 6), an informed adversary can bypass MASA
+using a simulation-guided bisection attack. By using their local benign data as a surrogate for the aggregator’s private proxy dataset,
+the attacker can replicate the unlearning trajectory. Through a binary search between the target malicious update and the benign
+center, as defined in Equation 6, the attacker can identify the maximum scaling factor that embeds the backdoor while ensuring the
+simulated Median Deviation Score (MDS) remains below the rejection threshold.
+BART-FL (2025). BART-FL [39] is an outlier detection defense
+that filters malicious updates using a combination of dimensionality
+reduction and statistical voting. The aggregator first applies Principal Component Analysis (PCA) to reduce the dimensionality of
+received updates and then computes pairwise cosine similarities to
+quantify their directional alignment. These similarity scores serve
+as features for K-means clustering, which partitions the clients
+into two groups. To reliably identify the benign cluster, the defense employs a multi-metric statistical voting mechanism based
+on point-level mean similarity, cluster-level mean similarity, and
+Median Absolute Deviation (MAD), ultimately aggregating only
+the updates from the winning cluster.
+The outlier detection pipeline of BART-FL, which relies on PCA
+projections and K-means clustering, can be modeled as a differentiable constraint. Since a full-information adaptive adversary
+observes the benign updates, they can locally simulate the aggregator’s dimensionality reduction. By optimizing malicious updates
+to minimize the distance to the benign cluster while maintaining
+sufficient intra-update variance, the attacker can ensure that their
+updates are included in the selected cluster and that the backdoor
+signal is preserved. We describe the adversary models’ loss function in Equation 9. Let 𝑃 (·) be the aggregator’s PCA projection
+function, 𝑢𝑏 be the center of the benign updates, and 𝑊− 𝑗 be the
+set of malicious clients excluding malicious client 𝑤 𝑗 .
+min E (𝑥,𝑦) ∈ (𝑑∪𝑏 ) [𝐿(𝑥, 𝑦)] + 𝜆1 ||𝑃 (𝑢𝑚 ) − 𝑃 (𝑢𝑏 )|| 2
+𝑤𝑗
+
+− 𝜆2
+
+∑︁
+1
+||𝑤 𝑗 − 𝑤𝑖 || 2
+|𝑊− 𝑗 | 𝑤 ∈𝑊
+𝑖
+
+(9)
+
+−𝑗
+
+AlignIns (2025). AlignIns [72] is an outlier detection defense
+that identifies backdoored updates by analyzing their directional
+patterns at two levels of granularity. It first evaluates the overall
+directional deviation of each local update from the global model
+(𝑤𝑔 ) using Temporal Direction Alignment (TDA). Subsequently, it
+performs a fine-grained Masked Principal Sign Alignment (MPSA)
+to assess how well the signs of an update’s most critical (top-𝑘largest) parameters align with the majority sign across all clients.
+Finally, AlignIns applies a median-based Z-score to filter out anomalous updates and clips the magnitudes of the remaining updates to
+ensure robust aggregation.
+AlignIns targets directional patterns through TDA and MPSA.
+Our adaptive attacker can defeat MPSA by isolating the top-𝑘 parameters and optimizing them on benign data to mimic benign sign
+alignments, as described in Equation 10. For the remaining parameters, the attacker can embed the backdoor signal while adhering to
+a directional penalty and norm-clipping as described in Equation
+
+Hammer and Anvil: Toward a Theory of Backdoors in Federated Learning
+
+11, thereby ensuring the update passes both the TDA filter and the
+MPSA check.
+Let 𝑀𝑘 ∈ {0, 1} |𝑤 | be a binary mask where 1 indicates a top-𝑘
+parameter and 0 otherwise, and 𝑈𝑏 is the set of benign updates. The
+attacker splits the training into two constrained objectives.
+For the top-𝑘 parameters (𝑤𝑡𝑜𝑝 = 𝑀𝑘 ⊙ 𝑤):
+min E (𝑥,𝑦) ∈𝑑 [𝐿(𝑥, 𝑦)]
+
+(10)
+
+𝑤𝑡𝑜𝑝
+
+For the remaining parameters (𝑤𝑟𝑒𝑠𝑡 = (1 − 𝑀𝑘 ) ⊙ 𝑤):
+min E (𝑥,𝑦) ∈ (𝑑∪𝑏 ) [𝐿(𝑥, 𝑦)] − 𝜆 · TDA(𝑢𝑚 , 𝑤𝑔 ),
+
+𝑤𝑟𝑒𝑠𝑡
+
+subject to max(|𝑤𝑟𝑒𝑠𝑡 |) < min(|𝑤𝑡𝑜𝑝 |),
+
+(11)
+
+and ||𝑢𝑚 || 2 ≤ Median𝑢𝑏 ∈𝑈𝑏 (||𝑢𝑏 || 2 )
+
+5.5
+
+Circumventing Removal Defenses
+
+CSFT (This work). Removal-based defenses attempt to purge
+backdoors post-aggregation or post-training by applying transformations such as fine-tuning or pruning to the global model
+weights. However, the efficacy of these methods is fundamentally
+constrained by the accuracy-robustness trade-off: a defender must
+remove the malicious signal without damaging the model’s benign
+performance.
+Our adaptive adversary exploits this constraint by optimizing
+for backdoor durability. By strategically increasing the magnitude
+of malicious updates during training, following Equation 5, the
+adversary ensures the backdoor signal is deeply embedded within
+the model’s weights. This optimization forces a scenario in which
+any weight modification significant enough to eliminate the backdoor would concurrently significantly degrade the model’s utility.
+We demonstrate this principle using CSFT, as described in Section
+2.3.1. As shown in Table 2, our adaptive attack embeds a sufficiently
+durable payload to break CSFT with only a single malicious client
+while maintaining high benign accuracy.
+
+5.6
+
+Breaking Non-Principled Combined
+Defenses
+
+FoolsGold & Krum (2018). FoolsGold & Krum is designed to use
+FoolsGold to mitigate sybil attacks (multiple malicious clients) and
+Krum to handle single-attacker scenarios, providing, in theory, coverage against attacks with any number of malicious clients. However, we show in Section 5.3 (Equation 6) how to defeat Krum, and
+in Table 2, we demonstrate that we can do it with only a single malicious client. Therefore, combining FoolsGold with Krum provides
+no additional benefit over using Krum alone, and the combined
+defense is broken by construction.
+Fine-tune & Prune (2020). Fine-pruning and fine-tuning are both
+post-aggregation defense strategies primarily effective against smallmagnitude updates. Consequently, our adaptive strategy for circumventing removal defenses (Section 5.5) following Equation 4 or
+Equation 5 remains effective against this combination. This highlights that observing the principles for combination is key to designing robust combined defenses.
+FLAME (2022). FLAME [45] integrates HDBSCAN angle-based
+clustering, median-based clipping, and Differentially-Private (DP)
+noising. While these components effectively mitigate large angular
+
+deviations and high-𝑙 2 -norm updates, they remain collectively blind
+to subtle attacks carried out by a larger number of malicious clients.
+We model this vulnerability as a differentiable optimization problem
+where the adversary must simultaneously: (1) minimize cosine
+similarity to the selected cluster to evade HDBSCAN, (2) maximize
+𝑙 2 -norm updates to counteract median-based clipping (similar to
+our attack in Section 5.3), and (3) reinforce the backdoor signal
+to withstand DP-noising. During training, we incorporate these
+objectives into the malicious clients’ loss function:
+𝛼 ∑︁
+min E (𝑥,𝑦) ∈ (𝑑∪𝑏 ) [𝐿(𝑥, 𝑦)] +
+(1 − cos(𝑤, 𝑤𝑐 ))
+𝑤
+|𝐶 | 𝑤 ∈𝐶
+(12)
+𝑐
++ 𝛽 ReLU(𝑙 − ∥𝑢 ∥ 2 ) 2
+where 𝑤 represents the malicious model weights, 𝑢 its update, 𝐶
+the set of benign weights identified by the clustering algorithm, and
+𝛼 and 𝛽 are hyperparameters. As shown in Table 2, our adaptive
+attack breaks FLAME with only two malicious clients out of twenty
+while preserving benign accuracy. For the MNIST dataset [27] in
+Section 6.4, we find it helpful to interpolate between the mean
+malicious update and the 𝑙 2 -projected mean of the closest benign
+neighbors when the malicious updates are not selected.
+
+6
+
+HA: A Principled Combined Defense
+
+We mitigate the gaps left by existing non-principled defenses with
+our principled defense approach: Hammer and Anvil (HA). HA combines defenses based on their categories, such that no defense’s vulnerability is exploitable. While Type 1 defenses are well-represented
+by robust aggregators (e.g., Median-of-Means [40]), outlier detection algorithms (e.g., Krum [6], Multi-Metrics [21]), or hybrid
+pipelines like FLAME [45], there are few Type 2 defenses, and even
+fewer tailored for the unique constraints of FL. By instantiating
+our Type 2 defense as CSFT, as described in Section 2.3.1, we can
+systematically pair it with the Type 1 defenses evaluated in Table
+2, namely FLAME [45], (Rob) MoM [40], Krum [6], Multi-Metrics
+[21], and Norm-bounding [57], yielding: HACSFT
+, HACSFT
+,
+Flame
+(Rob) MoM
+CSFT
+CSFT
+HACSFT
+Krum , HAMulti-Metrics , and HANorm . The resulting principled
+combined defenses support our theory. They offer empirical evidence for Corollary 1, Corollary 3, and Conjecture 1.
+
+Proposition 3. A full-information adaptive attack that is optimal
+against a Type 1 defense A is also optimal against HABA , for any Type
+2 defense B.
+Proposition 3 follows from Corollary 1: for an adaptive attack to
+be optimal against a Type 1 defense, it needs to maximize 𝛿 < 𝛿 1
+to maximize its impact on the global model; and it follows from
+Corollary 3: for an adaptive attack to be optimal against a Type
+2 defense, it needs to maximize 𝛿 to maximize its impact on the
+global model such that 𝛿 > 𝛿 2 . Consequently, if there exists a
+maximum reachable 𝛿 such that 𝛿 2 < 𝛿 < 𝛿 1 , an optimal adaptive
+attack against the Type 1 defense will find it. Hence, if our fullinformation adaptive attacks are optimal against Type 1 defenses,
+they must also be optimal against HA.
+We demonstrate in the following sections that Hammer and
+Anvil is effective at combining compatible defenses across a wide
+range of scenarios. In Section 6.1, we provide empirical evidence
+
+Fenaux et al.
+
+Table 3: Lowest number of malicious clients (𝑚) out of 20
+needed for our adaptive attacks to break our HA defenses
+after fine-tuning, with the associated ASR and benign accuracies on CIFAR-10. >8 means we could not break the defense.
+Original 𝑚 values required to break the original defenses
+without HA are shown in parentheses. Values are averaged
+over three runs.
+Defense
+
+𝑚
+
+ASR
+
+Accuracy
+
+HACSFT
+Flame
+
+>8 (2)
+
+13.66
+
+74.86
+
+HACSFT
+Krum
+
+>8 (1)
+
+26.87
+
+76.03
+
+HACSFT
+Multi-Metrics
+
+>8 (4)
+
+35.51
+
+79.56
+
+HACSFT
+Norm
+
+4 (1)
+
+67.86
+
+83.50
+
+HACSFT
+MoM
+
+2 (2)
+
+84.73
+
+79.11
+
+HACSFT
+Rob-MoM
+
+2 (2)
+
+94.26
+
+81.18
+
+supporting Conjecture 1. We show that even in the worst-case scenario: our full-information adaptive adversary with 𝑚 = 8 out of
+𝑛 = 20, our three best principled combined defenses: HACSFT
+,
+Flame
+CSFT
+HACSFT
+Krum , and HAMulti-Metrics are undefeated. Then, we evaluate
+HA against existing popular and state-of-the-art non-adaptive attacks in Section 6.2. We demonstrate that they are completely ineffective against HA, even in settings that heavily favor the adversary.
+To support Conjecture 1 with further empirical evidence, we experiment with a non-IID data distribution of CIFAR-10 in Section 6.3
+and the MNIST dataset [27] in Section 6.4. The non-IID data setting
+is common in the FL security literature, as it represents a more realistic deployment scenario [21, 45, 61, 72, 73]. The MNIST dataset is
+popular for extending experiments to other datasets [45, 61, 72]. We
+CSFT
+focus exclusively on the best combined defenses: HACSFT
+Flame , HAKrum ,
+CSFT
+and HAMulti-Metrics .
+We also present additional empirical studies on the effects of
+hyperparameters on HA, specifically regarding CSFT, to measure
+ease of use in real-world scenarios. We measure the effect of the size
+of the fine-tuning dataset and the number of fine-tuning epochs on
+CSFT
+CSFT
+the performance of HACSFT
+Flame , HAKrum , and HAMulti-Metrics on CIFAR10.
+
+6.1
+
+Evaluating HA: Empirical Evidence
+Supporting Conjecture 1
+
+We present the evaluation of our combined HA architectures against
+our full-information adaptive adversaries on CIFAR-10 in Table
+3. The results demonstrate that our principled approach successfully closes the exploitable gap in three configurations (HACSFT
+Flame ,
+CSFT
+HACSFT
+,
+and
+HA
+),
+rendering
+the
+full-information
+adapKrum
+Multi-Metrics
+tive attacker entirely unsuccessful even in the worst-case scenario
+(𝑚 = 8). In another configuration, the gap is significantly narrowed
+(HACSFT
+Norm now requires 𝑚 = 4, up from 𝑚 = 1). Conversely, pairing
+CSFT with MoM or Rob-MoM yields little improvement, indicating
+that the success of our defense approach ultimately relies on selecting a Type 1 defense restrictive enough to overlap with CSFT’s
+effective 𝛿-range. Ultimately, these findings provide supporting
+
+Table 4: Evaluation of HA against attacks from previous work.
+We report the ASR and benign accuracies (Acc.) for 𝑚 = 8.
+Defense
+
+HACSFT
+Krum
+
+HACSFT
+Flame
+
+HACSFT
+Multi-Metrics
+
+Attack
+
+ASR
+
+Acc.
+
+ASR
+
+Acc.
+
+ASR
+
+Acc.
+
+DBA
+
+3.61
+
+72.50
+
+3.77
+
+77.37
+
+3.84
+
+78.74
+
+BadNet
+
+4.04
+
+74.37
+
+3.33
+
+78.24
+
+3.10
+
+78.56
+
+Neurotoxin
+
+3.96
+
+74.52
+
+3.18
+
+78.21
+
+3.20
+
+77.79
+
+Replacement
+
+21.69
+
+74.80
+
+3.93
+
+77.62
+
+3.30
+
+78.05
+
+Table 5: Lowest number of malicious clients (𝑚) out of 20
+needed to break our HA defenses on non-IID CIFAR-10
+(Dirichlet 𝛼 = 0.5). Original 𝑚 values are in parentheses. Values are averaged over three runs.
+Defense
+
+𝑚 (Original)
+
+ASR
+
+Accuracy
+
+HACSFT
+Flame
+
+>8 (4)
+
+12.63
+
+70.14
+
+HACSFT
+Krum
+
+>8 (1)
+
+19.94
+
+73.32
+
+HACSFT
+Multi-Metrics
+
+>8 (2)
+
+37.89
+
+74.31
+
+empirical evidence that Conjecture 1 holds true: through our
+principled HA defense approach, it is possible to defend against
+a worst-case, full-information, adaptive adversary with minimal degradation to benign accuracy.
+
+6.2
+
+Evaluating HA against Non-Adaptive
+Attacks
+
+We evaluate the constraint-and-scale attack (C&S) [2] (large deviation attack), the model-replacement attack (Replacement) [2]
+(large deviation attack), the Distributed Backdoor Attack (DBA)
+[69] (large deviation attack), and the Neurotoxin attack [79] (small
+deviation attack). We present the results in Table 4, where we evaluate them against our three best HA variants in the worst-case
+scenario: 𝑚 = 8 malicious clients out of 𝑛 = 20. We find that none
+of them are successful, with HACSFT
+Multi-Metrics displaying the highest
+benign accuracies across all attacks. These empirical results further
+reinforce the defensive capabilities of HA.
+
+6.3
+
+HA in the Non-IID Data Setting
+
+In the real world, data is unlikely to be distributed independently
+and identically (IID) across clients. As such, we study whether HA’s
+performance is affected by a non-IID data distribution across clients.
+We follow previous work [69, 73] and use a Dirichlet distribution
+with a hyperparameter of 0.5 to assign data samples to the clients.
+We present our results in Table 5 and demonstrate that even under non-IID conditions: 1) our full-information adaptive adversary
+succeeds against individual defenses, with the needed number of
+malicious clients ranging from 1 to 4; 2) all three of our combined
+defenses are successful against our adaptive attacks regardless of
+the number of malicious clients, even in the worst-case scenario of
+𝑚 = 8.
+
+Hammer and Anvil: Toward a Theory of Backdoors in Federated Learning
+
+Table 6: Lowest number of malicious clients (𝑚) out of 20
+needed to break our HA defenses on the MNIST dataset. Original 𝑚 values are in parentheses. Values are averaged over
+three runs.
+
+6.4
+
+Defense
+
+𝑚 (Original)
+
+ASR
+
+Accuracy
+
+HACSFT
+Flame
+
+>8 (8)
+
+21.79
+
+97.73
+
+HACSFT
+Multi-Metrics
+HACSFT
+Krum
+
+>8 (4)
+
+37.12
+
+97.56
+
+Defense
+
+Safe
+
+Peak
+
+Safe
+
+Peak
+
+Safe
+
+Peak
+
+Safe
+
+Peak
+
+>8 (1)
+
+11.68
+
+97.80
+
+HACSFT
+Flame
+HACSFT
+Krum
+HACSFT
+Multi-Metrics
+
+98
+
+98
+
+94
+
+94
+
+93
+
+93
+
+96
+
+96
+
+97
+
+97
+
+99
+
+99
+
+100
+
+100
+
+100
+
+100
+
+100
+
+100
+
+94
+
+94
+
+91
+
+91
+
+97
+
+97
+
+m
+
+HA on MNIST: Further Evidence Supporting
+Conjecture 1
+
+We evaluate HA further on a different dataset: MNIST [27], using a
+LeNet [28] model. We show the lowest number of malicious clients
+needed to break our best HA variants in Table 6. We find that HA
+is successful against our adaptive attacks, mirroring our results on
+CIFAR-10 in Section 6.1, providing further empirical evidence for
+Conjecture 1, except that our adaptive attack against FLAME is
+less successful. We posit that this change is due to the simplicity of
+the MNIST classification task and the LeNet architecture’s lower
+parameter count compared to ResNet, which makes it more difficult
+for the adversary to hide the backdoor.
+
+6.5
+
+Table 7: Comparison of early-stopping epoch timings during
+fine-tuning. ’Safe’ epoch reports the epoch that maximizes benign accuracy while successfully keeping ASR strictly below
+50%. ’Peak’ epoch reports the epoch with the absolute highest benign accuracy regardless of the backdoor ASR. Both
+strategies mandate a minimum of 10 fine-tuning epochs.
+
+CSFT Hyperparameter Study
+
+We empirically validate our hyperparameters for CSFT and show
+that it requires no additional tuning when the Type 1 defense we
+combine with changes. We are mainly concerned with the finetuning dataset size and the number of fine-tuning epochs. We show
+that 4% of the total training set size, which is less than the data
+of one client (5%), works almost best for our best HA variants:
+CSFT
+CSFT
+HACSFT
+Flame , HAKrum , and HAMulti-Metrics . More fine-tuning data yields
+only marginal improvements. We also show that simply picking the
+epoch with the highest benign accuracy after fine-tuning for 100
+epochs is empirically optimal to maximize benign accuracy while
+keeping ASR below the 50% threshold.
+6.5.1 Effect of Fine-Tuning Dataset Size. A concern with defenses
+that require benign data, such as CSFT or MASA [73], is the amount
+of data necessary for the defense to function effectively. We show in
+Figure 5 that HA ’s benign accuracy and defense success rate rapidly
+converge as fine-tuning data amounts increase, with amounts higher
+than 4% of the total dataset size (less than the training set of a single
+client) providing almost no additional benefits.
+6.5.2 When To Stop Fine-Tuning ? By default, we fine-tune with
+CSFT for 100 epochs across our experiments. However, since the
+defender cannot measure the ASR in practice to know when to stop
+fine-tuning, we need to verify that our choice of the number of finetuning epochs is robust across defenses. To that end, we compute
+the safe optimal epoch to stop at, i.e., the epoch that maximizes
+benign accuracy while the ASR is below 50%. We compare the
+safe optimal epoch to the peak epoch, which is the epoch with the
+highest benign accuracy regardless of ASR. We display the results
+in Table 7. We find that for all HA variants and for all numbers of
+
+1
+
+2
+
+4
+
+8
+
+malicious clients, the safe and peak stopping epochs are exactly
+the same. Hence, CSFT requires no surrogate metric or process to
+determine when to stop fine-tuning; simply picking the epoch with
+the highest benign accuracy is empirically optimal.
+
+7
+
+Related Work
+
+The research community has recently shown a great interest in
+federated learning backdoors, from attacks [2, 3, 5, 9, 12, 17, 18, 23,
+24, 29, 34, 35, 44, 50, 56, 63, 64, 69, 71, 76, 77, 79–82] to defenses
+[1, 4, 6, 8, 11, 13, 15, 16, 19, 22, 26, 30, 31, 33, 37, 40–42, 45–49, 51,
+54, 55, 57, 60, 66–68, 72, 74, 75, 78], and surveys [10, 14, 32, 43, 58,
+59, 62, 70].
+Existing works [2, 18, 23, 24, 58, 69, 79] have focused on adversaries with limited capabilities, with at most complete control over
+the weights they submit to the aggregator, and on other malicious
+clients, if any exist [32]. Such adversaries help defenders estimate
+their robustness against an average real-world adversary. Such estimates might not apply to a worst-case adversary. Also, they do
+little for worst-case security and for studying the limits of backdoor
+attacks and defenses, as we do in this work. Several works have
+raised concerns about the inadequacy or mismatch to reality of
+existing threat models [23, 24, 58], underpinning the relevance of
+our full-information adaptive adversary threat model.
+Adaptive attacks [23, 24, 53, 58] have recently emerged and have
+been shown to be devastating. Attackers can leverage the disconnecting and reconnecting process to adapt to the defense used
+by the aggregator [58], utilize defense metrics to adjust attack parameters [24], or adapt through multi-objective optimization [23].
+Adaptive attacks have been shown to break existing state-of-the-art
+defenses [23]. For poisoning attacks, a similar threat model to our
+full-information adaptive adversary was studied, and it defeated all
+Byzantine-robust aggregation methods evaluated [53]. Our work’s
+empirical study extends their evaluation to backdoor attacks, considering also outlier detection, removal, and combined defenses. All
+current adaptive attacks attack only single-typed defenses. Therefore, according to our theory, if well-formed, they must succeed (as
+they do).
+Few works study defenses against adaptive adversaries. MESAS
+[23] considers strong adversaries that adapt via multi-objective
+optimization; however, it does not use the benign updates that
+our attacks leverage. As a defense, MESAS utilizes a plethora of
+
+Fenaux et al.
+
+Attack Success Rate vs. Fine-Tuning Size
+Flame
+Krum
+Multi Metrics
+ASR Threshold (50%)
+One Client Data (5%)
+
+ASR (%)
+
+80
+60
+40
+
+70
+60
+
+Accuracy (%)
+
+100
+
+Benign Accuracy vs. Fine-Tuning Size
+80
+
+50
+40
+30
+
+Baseline (FT Data Only)
+Flame
+Krum
+Multi Metrics
+One Client Data (5%)
+
+20
+
+20
+
+10
+
+0
+0
+
+2
+
+4
+
+6
+
+Fine-Tuning Dataset Size (%)
+
+8
+
+10
+
+0
+
+0
+
+2
+
+4
+
+6
+
+Fine-Tuning Dataset Size (%)
+
+8
+
+10
+
+Figure 5: Impact of varying the Fine-Tuning (CSFT) dataset size on Attack Success Rate (left, 𝑚 = 8) and Benign Accuracy (right)
+CSFT
+for HACSFT
+, HACSFT
+Krum , and HAMulti-Metrics on CIFAR-10, alongside a baseline trained centrally solely on the fine-tuning subset,
+Flame
+averaged over five seeds. Dataset sizes are expressed as a percentage of the total training data. The vertical dotted line represents
+the equivalent data held by a single local client (5%).
+metrics derived from client updates to identify and discard malicious
+updates, functioning similarly to Multi-Metrics [21]. Unfortunately,
+MESAS’ code is not publicly available; however, if our theory of
+backdoors is correct, one can defeat MESAS in a similar manner to
+Multi-Metrics using our full-information adaptive adversary with
+an optimization-based attack strategy, as we did in Section 5.4.
+
+8
+
+Conclusion
+
+In this work, we propose Hammer and Anvil, a new theory of
+backdoors in FL based on the expected update deviation 𝛿 of backdoor attacks. Our theory categorizes defenses into two types: the
+Hammer (Type 2) and the Anvil (Type 1), based on whether they
+defend against small or large deviation attacks. From our theory,
+we derive that single-typed defenses and non-principled combined
+defenses are exploitable. We empirically validate this hypothesis
+under a new worst-case threat model: the full-information adaptive adversary, and we show that existing defenses are easily
+broken, answering our first research question (RQ 1).
+Our theory dictates the principled combination of defenses: combining Type 1 and Type 2 defenses to yield a robust principled combined defense, HA. We introduce a new Type 2 defense: ClippedSuper-Fine-Tuning (CSFT), and show that when combined with
+existing Type 1 defenses, it can even defend against our worst-case
+full-information adversary across a variety of data settings. We conjecture that combining specific Type 1 and Type 2 defenses yields
+a robust defense against all backdoor attacks, and we provide empirical evidence to support this claim (tentatively answering RQ 2).
+CSFT
+Our best combined defenses, HACSFT
+Flame and HAMulti-Metrics , are robust
+against both our worst-case full-information adversary and existing
+state-of-the-art attacks across all the data settings we evaluated.
+Extending our theory to other fields of machine learning security,
+such as adversarial robustness or watermarking, could introduce
+new research avenues. We leave some aspects of adaptive attack
+implementation and evaluation for future work. Additionally, future
+
+research into better Type 1 and Type 2 defenses would directly
+benefit our work, yielding even more robust combined defenses.
+Finally, reproducing our results across other data modalities, such
+as text or audio, could help further the understanding of federated
+learning backdoor attacks and their defenses.
+
+Acknowledgments
+We gratefully acknowledge the support of NSERC for grants RGPIN2023-03244, IRC-537591, the Government of Ontario and the Royal
+Bank of Canada for funding this research. This paper was edited
+for grammar using Grammarly.
+
+References
+[1] Eugene Bagdasaryan, Omid Poursaeed, and Vitaly Shmatikov. 2019. Differential
+privacy has disparate impact on model accuracy. Advances in neural information
+processing systems 32 (2019).
+[2] Eugene Bagdasaryan, Andreas Veit, Yiqing Hua, Deborah Estrin, and Vitaly
+Shmatikov. 2020. How to backdoor federated learning. In International conference
+on artificial intelligence and statistics. PMLR, 2938–2948.
+[3] Gilad Baruch, Moran Baruch, and Yoav Goldberg. 2019. A little is enough:
+Circumventing defenses for distributed learning. Advances in Neural Information
+Processing Systems 32 (2019).
+[4] Jeremy Bernstein, Jiawei Zhao, Kamyar Azizzadenesheli, and Anima Anandkumar. 2018. signSGD with majority vote is communication efficient and fault
+tolerant. arXiv preprint arXiv:1810.05291 (2018).
+[5] Arjun Nitin Bhagoji, Supriyo Chakraborty, Prateek Mittal, and Seraphin Calo.
+2019. Analyzing federated learning through an adversarial lens. In International
+conference on machine learning. PMLR, 634–643.
+[6] Peva Blanchard, El Mahdi El Mhamdi, Rachid Guerraoui, and Julien Stainer.
+2017. Machine learning with adversaries: Byzantine tolerant gradient descent.
+Advances in neural information processing systems 30 (2017).
+[7] John S Bridle. 1990. Probabilistic interpretation of feedforward classification
+network outputs, with relationships to statistical pattern recognition. In Neurocomputing: Algorithms, architectures and applications. Springer, 227–236.
+[8] Di Cao, Shan Chang, Zhijian Lin, Guohua Liu, and Donghong Sun. 2019. Understanding distributed poisoning attack in federated learning. In 2019 IEEE
+25th international conference on parallel and distributed systems (ICPADS). IEEE,
+233–239.
+[9] Shan Chang, Ye Liu, Zhijian Lin, Hongzi Zhu, Bingzhu Zhu, and Cong Wang.
+2024. Fedtrojan: Corrupting federated learning via zero-knowledge federated
+
+Hammer and Anvil: Toward a Theory of Backdoors in Federated Learning
+
+trojan attacks. In 2024 IEEE/ACM 32nd International Symposium on Quality of
+Service (IWQoS). IEEE, 1–10.
+[10] Qiuxian Chen and Yizheng Tao. 2023. An Investigation of Recent Backdoor Attacks and Defenses in Federated Learning. In 2023 Eighth International Conference
+on Fog and Mobile Edge Computing (FMEC). IEEE, 262–269.
+[11] Yudong Chen, Lili Su, and Jiaming Xu. 2017. Distributed statistical machine
+learning in adversarial settings: Byzantine gradient descent. Proceedings of the
+ACM on Measurement and Analysis of Computing Systems 1, 2 (2017), 1–25.
+[12] Yanbo Dai and Songze Li. 2023. Chameleon: Adapting to peer images for planting
+durable backdoors in federated learning. In International Conference on Machine
+Learning. PMLR, 6712–6725.
+[13] Pei Fang and Jinghui Chen. 2023. On the vulnerability of backdoor defenses for
+federated learning. In Proceedings of the AAAI Conference on Artificial Intelligence,
+Vol. 37. 11800–11808.
+[14] Yunhao Feng, Yanming Guo, Yinjian Hou, Yulun Wu, Mingrui Lao, Tianyuan Yu,
+and Gang Liu. 2025. A survey of security threats in federated learning. Complex
+& Intelligent Systems 11, 2 (2025), 1–26.
+[15] Hossein Fereidooni, Alessandro Pegoraro, Phillip Rieger, Alexandra Dmitrienko,
+and Ahmad-Reza Sadeghi. 2023. Freqfed: A frequency analysis-based approach for mitigating poisoning attacks in federated learning. arXiv preprint
+arXiv:2312.04432 (2023).
+[16] Clement Fung, Chris JM Yoon, and Ivan Beschastnikh. 2018. Mitigating sybils in
+federated learning poisoning. arXiv preprint arXiv:1808.04866 (2018).
+[17] Xueluan Gong, Yanjiao Chen, Huayang Huang, Yuqing Liao, Shuai Wang, and
+Qian Wang. 2022. Coordinated backdoor attacks against federated learning with
+model-dependent triggers. IEEE network 36, 1 (2022), 84–90.
+[18] Tianyu Gu, Kang Liu, Brendan Dolan-Gavitt, and Siddharth Garg. 2019. Badnets:
+Evaluating backdooring attacks on deep neural networks. IEEE Access 7 (2019),
+47230–47244.
+[19] Rachid Guerraoui, Sébastien Rouault, et al. 2018. The hidden vulnerability of
+distributed learning in byzantium. In International conference on machine learning.
+PMLR, 3521–3530.
+[20] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. 2016. Deep Residual Learning for Image Recognition. In Proceedings of the IEEE Conference on
+Computer Vision and Pattern Recognition (CVPR).
+[21] Siquan Huang, Yijiang Li, Chong Chen, Leyu Shi, and Ying Gao. 2023. Multimetrics adaptively identifies backdoors in federated learning. In Proceedings of
+the IEEE/CVF International Conference on Computer Vision. 4652–4662.
+[22] Siquan Huang, Yijiang Li, Xingfu Yan, Ying Gao, Chong Chen, Leyu Shi, Biao
+Chen, and Wing WY Ng. 2025. Scope: On Detecting Constrained Backdoor
+Attacks in Federated Learning. IEEE Transactions on Information Forensics and
+Security (2025).
+[23] Torsten Krauß and Alexandra Dmitrienko. 2023. Mesas: Poisoning defense for
+federated learning resilient against adaptive attackers. In Proceedings of the 2023
+ACM SIGSAC Conference on Computer and Communications Security. 1526–1540.
+[24] Torsten Krauß, Jan König, Alexandra Dmitrienko, and Christian Kanzow. 2024.
+Automatic adversarial adaption for stealthy poisoning attacks in federated learning. In To appear soon at the Network and Distributed System Security Symposium
+(NDSS).
+[25] Alex Krizhevsky. 2009. Learning multiple layers of features from tiny images.
+In Technical report.
+[26] Kavita Kumari, Phillip Rieger, Hossein Fereidooni, Murtuza Jadliwala, and
+Ahmad-Reza Sadeghi. 2023. Baybfed: Bayesian backdoor defense for federated
+learning. In 2023 IEEE symposium on security and privacy (SP). IEEE, 737–754.
+[27] Yann LeCun. 1998. The mnist database of handwritten digits. In Technical report.
+[28] Yann LeCun, Léon Bottou, Yoshua Bengio, and Patrick Haffner. 2002. Gradientbased learning applied to document recognition. Proc. IEEE 86, 11 (2002), 2278–
+2324.
+[29] Haoyang Li, Qingqing Ye, Haibo Hu, Jin Li, Leixia Wang, Chengfang Fang, and
+Jie Shi. 2023. 3dfed: Adaptive and extensible framework for covert backdoor
+attack in federated learning. In 2023 IEEE symposium on security and privacy (SP).
+IEEE, 1893–1907.
+[30] Minghui Li, Wei Wan, Yuxuan Ning, Shengshan Hu, Lulu Xue, Leo Yu Zhang, and
+Yichen Wang. 2024. Darkfed: A data-free backdoor attack in federated learning.
+arXiv preprint arXiv:2405.03299 (2024).
+[31] Suyi Li, Yong Cheng, Wei Wang, Yang Liu, and Tianjian Chen. 2020. Learning to detect malicious clients for robust federated learning. arXiv preprint
+arXiv:2002.00211 (2020).
+[32] Zhaozheng Li, Jiahe Lan, Zheng Yan, and Erol Gelenbe. 2025. Backdoor attacks
+and defense mechanisms in federated learning: A survey. Information Fusion
+(2025), 103248.
+[33] Kang Liu, Brendan Dolan-Gavitt, and Siddharth Garg. 2018. Fine-pruning: Defending against backdooring attacks on deep neural networks. In International
+symposium on research in attacks, intrusions, and defenses. Springer, 273–294.
+[34] Tian Liu, Xueyang Hu, and Tao Shu. 2023. Facilitating early-stage backdoor
+attacks in federated learning with whole population distribution inference. IEEE
+Internet of Things Journal 10, 12 (2023), 10385–10399.
+
+[35] Tao Liu, Yuhang Zhang, Zhu Feng, Zhiqin Yang, Chen Xu, Dapeng Man, and Wu
+Yang. 2024. Beyond traditional threats: A persistent backdoor attack on federated
+learning. In Proceedings of the AAAI Conference on Artificial Intelligence, Vol. 38.
+21359–21367.
+[36] Hidde Lycklama, Lukas Burkhalter, Alexander Viand, Nicolas Küchler, and Anwar
+Hithnawi. 2023. Rofl: Robustness of secure federated learning. In 2023 IEEE
+Symposium on Security and Privacy (SP). IEEE, 453–476.
+[37] Xiaoting Lyu, Yufei Han, Wei Wang, Jingkai Liu, Bin Wang, Jiqiang Liu, and
+Xiangliang Zhang. 2023. Poisoning with cerberus: Stealthy and colluded backdoor
+attack against federated learning. In Proceedings of the AAAI Conference on
+Artificial Intelligence, Vol. 37. 9020–9028.
+[38] Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and
+Blaise Aguera y Arcas. 2017. Communication-efficient learning of deep networks from decentralized data. In Artificial intelligence and statistics. PMLR,
+1273–1282.
+[39] Md Jueal Mia and M Hadi Amini. 2025. BART-FL: A Backdoor Attack-Resilient
+Federated Aggregation Technique for Cross-Silo Applications. IEEE Transactions
+on Machine Learning in Communications and Networking (2025).
+[40] Stanislav Minsker. 2023. Efficient median of means estimator. In The Thirty Sixth
+Annual Conference on Learning Theory. PMLR, 5925–5933.
+[41] Luis Muñoz-González, Kenneth T Co, and Emil C Lupu. 2019. Byzantine-robust
+federated machine learning through adaptive model averaging. arXiv preprint
+arXiv:1909.05125 (2019).
+[42] Thien Duc Nguyen, Samuel Marchal, Markus Miettinen, Hossein Fereidooni,
+Nadarajah Asokan, and Ahmad-Reza Sadeghi. 2019. DÏoT: A federated selflearning anomaly detection system for IoT. In 2019 IEEE 39th International conference on distributed computing systems (ICDCS). IEEE, 756–767.
+[43] Thuy Dung Nguyen, Tuan Nguyen, Phi Le Nguyen, Hieu H Pham, Khoa D Doan,
+and Kok-Seng Wong. 2024. Backdoor attacks and defenses in federated learning:
+Survey, challenges and future research directions. Engineering Applications of
+Artificial Intelligence 127 (2024), 107166.
+[44] Thuy Dung Nguyen, Tuan A Nguyen, Anh Tran, Khoa D Doan, and Kok-Seng
+Wong. 2023. Iba: Towards irreversible backdoor attacks in federated learning.
+Advances in Neural Information Processing Systems 36 (2023), 66364–66376.
+[45] Thien Duc Nguyen, Phillip Rieger, Huili Chen, Hossein Yalame, Helen Möllering,
+Hossein Fereidooni, Samuel Marchal, Markus Miettinen, Azalia Mirhoseini, Shaza
+Zeitouni, et al. 2022. { FLAME } : Taming backdoors in federated learning. In 31st
+USENIX security symposium (USENIX Security 22). 1415–1432.
+[46] Mustafa Safa Ozdayi, Murat Kantarcioglu, and Yulia R Gel. 2021. Defending
+against backdoors in federated learning with robust learning rate. In Proceedings
+of the AAAI conference on artificial intelligence, Vol. 35. 9268–9276.
+[47] Krishna Pillutla, Sham M Kakade, and Zaid Harchaoui. 2022. Robust aggregation
+for federated learning. IEEE Transactions on Signal Processing 70 (2022), 1142–
+1154.
+[48] Davy Preuveneers, Vera Rimmer, Ilias Tsingenopoulos, Jan Spooren, Wouter
+Joosen, and Elisabeth Ilie-Zudor. 2018. Chained anomaly detection models for
+federated learning: An intrusion detection case study. Applied Sciences 8, 12
+(2018), 2663.
+[49] Phillip Rieger, Thien Duc Nguyen, Markus Miettinen, and Ahmad-Reza Sadeghi.
+2022. Deepsight: Mitigating backdoor attacks in federated learning through deep
+model inspection. arXiv preprint arXiv:2201.00763 (2022).
+[50] Ahmed Salem, Rui Wen, Michael Backes, Shiqing Ma, and Yang Zhang. 2022.
+Dynamic backdoor attacks against machine learning models. In 2022 IEEE 7th
+European Symposium on Security and Privacy (EuroS&P). IEEE, 703–718.
+[51] Felix Sattler, Klaus-Robert Müller, Thomas Wiegand, and Wojciech Samek. 2020.
+On the byzantine robustness of clustered federated learning. In ICASSP 2020-2020
+IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE, 8861–8865.
+[52] Zeyang Sha, Xinlei He, Pascal Berrang, Mathias Humbert, and Yang Zhang.
+2022. Fine-tuning is all you need to mitigate backdoor attacks. arXiv preprint
+arXiv:2212.09067 (2022).
+[53] Virat Shejwalkar and Amir Houmansadr. 2021. Manipulating the byzantine:
+Optimizing model poisoning attacks and defenses for federated learning. In
+NDSS.
+[54] Shiqi Shen, Shruti Tople, and Prateek Saxena. 2016. Auror: Defending against
+poisoning attacks in collaborative deep learning systems. In Proceedings of the
+32nd annual conference on computer security applications. 508–519.
+[55] Jingwei Sun, Ang Li, Louis DiValentin, Amin Hassanzadeh, Yiran Chen, and
+Hai Li. 2021. Fl-wbc: Enhancing robustness against model poisoning attacks
+in federated learning from a client perspective. Advances in neural information
+processing systems 34 (2021), 12613–12624.
+[56] Yuwei Sun, Hideya Ochiai, and Jun Sakuma. 2022. Semi-targeted model poisoning
+attack on federated learning via backward error analysis. In 2022 International
+Joint Conference on Neural Networks (IJCNN). IEEE, 1–8.
+[57] Ziteng Sun, Peter Kairouz, Ananda Theertha Suresh, and H Brendan McMahan.
+2019. Can you really backdoor federated learning? arXiv preprint arXiv:1911.07963
+(2019).
+
+Fenaux et al.
+
+[58] Jakub Kacper Szelag, Ji-Jian Chin, and Sook-Chin Yip. 2025. Adaptive Adversaries
+in Byzantine-Robust Federated Learning: A survey. Cryptology ePrint Archive
+(2025).
+[59] Asadullah Tariq, Mohamed Adel Serhani, Farag M Sallabi, Ezedin S Barka, Tariq
+Qayyum, Heba M Khater, and Khaled A Shuaib. 2024. Trustworthy federated
+learning: A comprehensive review, architecture, key challenges, and future research prospects. IEEE Open Journal of the Communications Society (2024).
+[60] Vale Tolpegin, Stacey Truex, Mehmet Emre Gursoy, and Ling Liu. 2020. Data
+poisoning attacks against federated learning systems. In European symposium
+on research in computer security. Springer, 480–501.
+[61] Wei Wan, Yuxuan Ning, Zhicong Huang, Cheng Hong, Shengshan Hu, Ziqi
+Zhou, Yechao Zhang, Tianqing Zhu, Wanlei Zhou, and Leo Yu Zhang. 2025.
+Mars: A malignity-aware backdoor defense in federated learning. arXiv preprint
+arXiv:2509.20383 (2025).
+[62] Yichen Wan, Youyang Qu, Wei Ni, Yong Xiang, Longxiang Gao, and Ekram
+Hossain. 2024. Data and model poisoning backdoor attacks on wireless federated learning, and the defense mechanisms: A comprehensive survey. IEEE
+Communications Surveys & Tutorials 26, 3 (2024), 1861–1897.
+[63] Hongyi Wang, Kartik Sreenivasan, Shashank Rajput, Harit Vishwakarma,
+Saurabh Agarwal, Jy-yong Sohn, Kangwook Lee, and Dimitris Papailiopoulos.
+2020. Attack of the tails: Yes, you really can backdoor federated learning. Advances in neural information processing systems 33 (2020), 16070–16084.
+[64] Junhan Wang, Zhangming Wu, Zhuoyue Wang, and Lu Dong. 2025. SBA: A Swift
+and Stealthy Backdoor Attack Framework for Federated Learning. In ICASSP
+2025-2025 IEEE International Conference on Acoustics, Speech and Signal Processing
+(ICASSP). IEEE, 1–5.
+[65] Ning Wang, Yang Xiao, Yimin Chen, Yang Hu, Wenjing Lou, and Y Thomas Hou.
+2022. Flare: defending federated learning against model poisoning attacks via
+latent space representations. In Proceedings of the 2022 ACM on Asia Conference
+on Computer and Communications Security. 946–958.
+[66] Chen Wu, Xian Yang, Sencun Zhu, and Prasenjit Mitra. 2020. Mitigating backdoor
+attacks in federated learning. arXiv preprint arXiv:2011.01767 (2020).
+[67] Chen Wu, Sencun Zhu, and Prasenjit Mitra. 2022. Federated unlearning with
+knowledge distillation. arXiv preprint arXiv:2201.09441 (2022).
+[68] Chulin Xie, Minghao Chen, Pin-Yu Chen, and Bo Li. 2021. Crfl: Certifiably
+robust federated learning against backdoor attacks. In International conference
+on machine learning. PMLR, 11372–11382.
+[69] Chulin Xie, Keli Huang, Pin-Yu Chen, and Bo Li. 2019. Dba: Distributed backdoor attacks against federated learning. In International conference on learning
+representations.
+[70] Xianghua Xie, Chen Hu, Hanchi Ren, and Jingjing Deng. 2024. A survey on
+vulnerability of federated learning: A learning algorithm perspective. Neurocomputing 573 (2024), 127225.
+[71] Jing Xu, Rui Wang, Stefanos Koffas, Kaitai Liang, and Stjepan Picek. 2022. More
+is better (mostly): On the backdoor attacks in federated graph neural networks.
+In Proceedings of the 38th Annual Computer Security Applications Conference.
+684–698.
+[72] Jiahao Xu, Zikai Zhang, and Rui Hu. 2025. Detecting backdoor attacks in federated
+learning via direction alignment inspection. In Proceedings of the Computer Vision
+and Pattern Recognition Conference. 20654–20664.
+[73] Jiahao Xu, Zikai Zhang, and Rui Hu. 2025. Identify backdoored model in federated learning via individual unlearning. In 2025 IEEE/CVF Winter Conference on
+Applications of Computer Vision (WACV). IEEE, 7960–7969.
+[74] Dong Yin, Yudong Chen, Ramchandran Kannan, and Peter Bartlett. 2018.
+Byzantine-robust distributed learning: Towards optimal statistical rates. In International conference on machine learning. Pmlr, 5650–5659.
+[75] Hao Yu, Chuan Ma, Meng Liu, Tianyu Du, Ming Ding, Tao Xiang, Shouling Ji,
+and Xinwang Liu. 2023. G2 uardFL: Safeguarding Federated Learning Against
+Backdoor Attacks through Attributed Client Graph Clustering. arXiv preprint
+arXiv:2306.04984 (2023).
+[76] Hangfan Zhang, Jinyuan Jia, Jinghui Chen, Lu Lin, and Dinghao Wu. 2023. A3fl:
+Adversarially adaptive backdoor attacks to federated learning. Advances in neural
+information processing systems 36 (2023), 61213–61233.
+[77] Jiale Zhang, Bing Chen, Xiang Cheng, Huynh Thi Thanh Binh, and Shui Yu. 2020.
+PoisonGAN: Generative poisoning attacks against federated learning in edge
+computing systems. IEEE Internet of Things Journal 8, 5 (2020), 3310–3322.
+[78] Zaixi Zhang, Xiaoyu Cao, Jinyuan Jia, and Neil Zhenqiang Gong. 2022. Fldetector:
+Defending federated learning against model poisoning attacks via detecting
+malicious clients. In Proceedings of the 28th ACM SIGKDD conference on knowledge
+discovery and data mining. 2545–2555.
+[79] Zhengming Zhang, Ashwinee Panda, Linyue Song, Yaoqing Yang, Michael Mahoney, Prateek Mittal, Ramchandran Kannan, and Joseph Gonzalez. 2022. Neurotoxin: Durable backdoors in federated learning. In International Conference on
+Machine Learning. PMLR, 26429–26446.
+[80] Zhendong Zhao, Xiaojun Chen, Yuexin Xuan, Ye Dong, Dakui Wang, and Kaitai
+Liang. 2022. Defeat: Deep hidden feature backdoor attacks by imperceptible
+perturbation and latent representation constraints. In Proceedings of the IEEE/CVF
+
+Conference on Computer Vision and Pattern Recognition. 15213–15222.
+[81] Xingchen Zhou, Ming Xu, Yiming Wu, and Ning Zheng. 2021. Deep model
+poisoning attack on federated learning. Future Internet 13, 3 (2021), 73.
+[82] Haomin Zhuang, Mingxian Yu, Hao Wang, Yang Hua, Jian Li, and Xu Yuan.
+2023. Backdoor federated learning by poisoning backdoor-critical layers. arXiv
+preprint arXiv:2308.04466 (2023).
+
+A
+
+Open Science
+
+To reproduce our results, the following are necessary:
+• The publicly available CIFAR-10 [25] and MNIST [27] datasets.
+• Our codebase, available at the following anonymous link:
+https://anonymous.4open.science/r/Hammer-and-Anvil-0C21/.
+It contains detailed instructions and code to reproduce our
+results, tables, and figures.
+
+B
+
+Ethics considerations
+
+Our paper considers backdoor attacks and defenses against federated systems. While we propose a new, stronger attack, we also
+propose a defense that prevents it, thereby mitigating its impact.
+Our insights can also help further research into defenses against
+backdoor attacks on federated systems. Our datasets, models, defenses, and attacks are public and do not contain sensitive or private
+information. Our work did not use human subjects in any way.
+
+

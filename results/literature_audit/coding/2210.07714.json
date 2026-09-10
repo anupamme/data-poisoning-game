@@ -1,0 +1,34 @@
+{
+  "title": "CrowdGuard: Federated Backdoor Detection in Federated Learning",
+  "venue": "NDSS",
+  "year": 2024,
+  "c_d_route": "component-contrast",
+  "criteria": {
+    "C-a": {
+      "code": "YES",
+      "quote": "The clients provide feedback to the server by voting for each model, indicating whether the local model is benign or suspicious (step 5 in Fig. 2). Afterward, the server applies a stacked clustering schema to combine the votes provided by the clients (step 6 in Fig. 2). This step mitigates manipulated votes from malicious clients who may provide manipulated data to the client-side enclave.",
+      "locator": "§IV, steps 4-6 of Fig. 2"
+    },
+    "C-b": {
+      "code": "YES",
+      "quote": "As discussed in Sect. III-B, we assume that the malicious clients can submit arbitrary votes by providing corresponding data to their enclave. The stacked clustering ensures the integrity of the filtering, even if A can manipulate the votes that are reported by the enclaves of the malicious clients (cf. Alg. 3).",
+      "locator": "§VI-C Voting Aggregation; the Abstract states the same pairing reason as \"CrowdGuard employs a server-located stacked clustering scheme to enhance its resilience to rogue client feedback\""
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "TABLE III: Experiment results of CrowdGuard and six state-of-the-art defenses (three IR-based and three DF-based approaches) for the CIFAR-10 datasets in terms of Backdoor Accuracy (BA), Main Task Accuracy (M A), True-PositiveRate (TPR), True-Negative-Rate (TNR), and Precision (PRC) for one FL round t, all values in percentage.",
+      "locator": "§VI, Table III"
+    },
+    "C-d": {
+      "code": "YES",
+      "quote": "To analyze the impact of using the relative distance in the HLBIM metric, we conducted an additional experiment for an adapted version of HLBIM, that utilizes absolute distances instead of relative versions. ... This improvement in separation capability resulted in better overall performance",
+      "locator": "§VI-B, Fig. 8"
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "Leveraging the stacked clustering approach, which relies on the majority assumption, the algorithm remains robust against PMRs of up to 49%.",
+      "locator": "§VI-B; §VI-C adds \"This strategy of first identifying benign votes by majority and then selecting the best voting via majority as the final decision outperforms naive majority voting, which would not ignore False-Positives of benign clients, making it less robust.\""
+    }
+  },
+  "coder_note": "THIS ROW WAS THE FIRST PRIMARY = YES CANDIDATE IN THE FRAME AND RULE 4 TOOK IT AWAY, WHICH IS WHY IT GOT A SECOND PASS. C-a, C-b, C-c and C-e are all clean and all four are satisfied by the paper's own sentences: two defense mechanisms in one round (client-side HLBIM detection, then a server-side stacked clustering OF THE VOTES whose stated purpose is resisting malicious clients' manipulated feedback), a reason for the pairing that is a genuine complementary-threat argument (the detector is defeated by rogue votes, so a second mechanism covers that), the composed system's own BA/MA/TPR in Table III, and an attribution of the composed robustness to the named constituent (\"Leveraging the stacked clustering approach ... remains robust against PMRs of up to 49%\").\n\nWHAT DECIDED C-d, AND IT WAS NOT TABLE V. Table V is CrowdGuard's own \"ablation study for the vote aggregation\", comparing stacked clustering against majority voting, K-Means, Agglomerative and DBSCAN. That varies the DOWNSTREAM stage with the upstream client votes held fixed, which is the direction the rubric explicitly declines -- the same shape as Hammer's parenthesised \"original m values without HA\" and DeepSight's Table IX, and it is not counted here either. What does decide C-d is §VI-B: an additional experiment substituting an ADAPTED HLBIM that uses absolute instead of relative distances, with the downstream stacked clustering unchanged, whose result is read through to the composed outcome (\"This improvement in separation capability resulted in better overall performance\"). Upstream varied, downstream fixed, composed outcome read off it. Rule 4's benefit of the doubt is not even strictly needed, though it would reach the same code, since the reported quantity is partly the upstream stage's own separability (+10% explained variance).\n\nThe near miss is worth one sentence in the appendix: a paper can satisfy four of five criteria on its own prose and be removed from the primary by a single paragraph in an evaluation subsection, which is the sense in which the primary quantity is fragile to how thoroughly a paper was evaluated rather than to how it reasoned."
+}

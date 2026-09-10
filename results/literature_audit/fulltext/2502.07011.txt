@@ -1,0 +1,2865 @@
+DROP: Poison Dilution via Knowledge Distillation
+for Federated Learning
+Georgios Syros∗†1 , Anshuman Suri∗1 , Farinaz Koushanfar2 , Cristina Nita-Rotaru1 , Alina Oprea1
+
+arXiv:2502.07011v2 [cs.LG] 28 Apr 2025
+
+Northeastern University1 , University of California, San Diego2
+
+Abstract—Federated Learning is vulnerable to adversarial
+manipulation, where malicious clients can inject poisoned updates
+to influence the global model’s behavior. While existing defense
+mechanisms have made notable progress, they fail to protect
+against adversaries that aim to induce targeted backdoors under
+different learning and attack configurations. To address this
+limitation, we introduce DROP (Distillation-based Reduction Of
+Poisoning), a novel defense mechanism that combines clustering
+and activity-tracking techniques with extraction of benign behavior from clients via knowledge-distillation to tackle stealthy
+adversaries that manipulate low data poisoning rates and diverse
+malicious client ratios within the federation. Through extensive
+experimentation, our approach demonstrates superior robustness
+compared to existing defenses across a wide range of learning
+configurations. Finally, we evaluate existing defenses and our
+method under the challenging setting of non-IID client data
+distribution and highlight the challenges of designing a resilient
+FL defense in this setting.
+
+I. I NTRODUCTION
+Machine learning (ML) systems greatly benefit from scaling
+the amount of data used for training ML models [1, 2, 3, 4].
+While centralized training is ideal, data contributors often hesitate to share their raw data with a centralized party. Federated
+learning (FL) [5] provides a middle-ground to help alleviate
+such privacy concerns, while potentially offloading compute
+onto clients. This design supposedly improves privacy, but
+it comes at the cost of less control over data and gradient
+ingestion, allowing malicious clients to introduce malicious
+goals into the global model through data poisoning [6, 7] or
+gradient manipulation [8, 9].
+This lack of control over client contributions enables a
+particularly insidious form of adversarial behavior known as
+backdoor poisoning attacks [6, 10, 11, 12, 13]. Unlike traditional data poisoning, which aims to degrade overall model
+performance and mount an availability attack [14, 15, 16, 17],
+backdoor attacks embed hidden triggers in the model that lead
+to selective misclassifications for certain inputs. This allows
+the global model to perform well on clean data while remaining vulnerable to targeted exploitation. The decentralized
+nature of FL amplifies this threat, as the server has limited
+visibility into local training data and model updates, making
+it difficult to distinguish between honest contributions and
+adversarial modifications. As a result, backdoor poisoning has
+
+emerged as one of the most concerning attack vectors in
+federated learning.
+Although numerous defenses have been proposed to counter
+poisoning attempts in FL [18, 19, 20, 21, 22, 23, 24, 25, 26],
+their evaluations lack consistency across different federation
+configurations and adversarial strategies. Many existing works
+focus on narrow or suboptimal configurations and attack scenarios, limiting their practical applicability [27]. We identify
+multiple critical learning configurations—comprising variations in the local number of training epochs, learning rate, and
+batch size—where existing FL defenses fail to consistently
+mitigate targeted backdoor attacks. Small changes to these
+configurations can significantly influence the success of both
+the attack and the defense, underscoring the need for more
+robust and generalizable defensive solutions against backdoor
+poisoning attacks.
+In this paper, we address the challenge of defending against
+targeted backdoor poisoning attacks, a more sophisticated
+variant of traditional backdoor attacks where the adversary
+targets a specific “victim” class within the data distribution.
+This focused strategy makes the attack more stealthy and difficult to detect, as the backdoor trigger affects only a subset of
+inputs rather than the entire input space. To counter this threat,
+we propose DROP (Distillation-based Reduction of Poisoning
+Signals), a comprehensive, multi-layered defense framework.
+DROP introduces a novel architecture that combines effectively three key components: (1) Agglomerative Clustering
+to identify and separate anomalous updates, (2) Activity
+Monitoring to track and penalize suspicious clients over
+multiple rounds, and (3) Knowledge Distillation to cleanse the
+global model using a synthetic dataset guided by the consensus
+logits from benign client updates. Through this novel set
+of countermeasures, DROP provides resilience against both
+aggressive and stealthy poisoning attacks, across a wide range
+of learning configurations. Moreover, we propose DROPlet, a
+lightweight variant of DROP designed for seamless integration
+into existing FL defense frameworks. We evaluate DROP
+against seven existing defenses and three poisoning attacks
+across diverse FL configurations, demonstrating its robustness
+and adaptability. Unlike existing defenses, which often rely on
+fixed client-selection strategies or specific attack assumptions,
+DROP generalizes to dynamic, real-world FL environments
+where adversarial strategies and learning configurations may
+
+∗ Equal Contribution
+† Correspondence to syros.g@northeastern.edu
+
+Code available at https://github.com/gsiros/drop
+
+vary significantly. Our results show that DROP effectively
+mitigates stealthy targeted backdoor attacks, reducing attack
+success rates across a broad spectrum of configurations.
+Contributions. Our contributions are summarized as follows:
+We evaluate seven existing defenses against targeted
+backdoor attacks and find that most defenses fail to provide adequate protection across a wide range of different
+learning configurations (learning rate, batch size, number
+of epochs), exhibiting high sensitivity to changes in the
+overall FL configuration (Section III).
+• Motivated by the lack of robust defenses against stealthy
+targeted backdoors, we propose DROP (Poison Dilution
+via Knowledge Distillation for Federated Learning), a
+novel defense mechanism that leverages clustering and
+activity monitoring techniques with knowledge distillation to tackle adversaries trying to exploit vulnerable
+learning configurations and different attack strategies
+(Section IV).
+• Through extensive experimental evaluation across multiple backdoor attacks, datasets and FL setups, we demonstrate that DROP offers enhanced protection against backdoor attacks from adversaries under varying degrees of
+stealthiness (Section V). DROP shows resilience across
+a wide range of learning configurations and provides
+consistent attack mitigation throughout training rounds,
+outperforming existing defenses. For example, we observe an average attack success rate of just 1.93% across
+10 diverse FL configurations. However, defending against
+stealthy attacks under non-IID data distributions remains
+challenging, with most defenses struggling to offer complete protection in complex dataset scenarios.
+
+and returns the updated parameters wct . The server aggregates
+the updates to form the updated global model wt+1 :
+wt+1 =
+
+1 X t
+wc .
+|Ct |
+
+(1)
+
+c∈Ct
+
+•
+
+Finally, we emphasize the need for researchers to assess
+robustness across diverse FL configurations (Section VI). We
+also release our source code as a comprehensive framework
+that includes implementations of existing defenses, enabling
+unified comparisons of attack and defense efficacy and facilitating the integration of new attacks and defenses.
+
+This process continues until the global model converges or a
+predefined number of rounds is completed.
+A typical FL system is parameterized by two categories
+of parameters: communication parameters (e.g., the number
+of clients Ct participating in each round t) and learning
+parameters. Learning parameters, collectively referred to as the
+learning configuration, define the local training process at each
+client and include the local learning rate, the number of local
+training epochs, and the batch size. These parameters have a
+significant impact on the performance of the global model,
+which is typically measured using the Main Task Accuracy
+(MTA)—the accuracy achieved by the global model on its
+intended learning task.
+2) Poisoning Attacks: Poisoning attacks involve either degrading overall performance or introducing additional training objectives to embed selective malicious behavior. In the
+context of FL, the lack of direct access to clients’ raw data
+makes it harder to defend against such poisoning attacks. This
+opacity enables adversaries to inject malicious updates while
+remaining undetected.
+Data poisoning, a common attack type, involves adversaries
+manipulating local training data to influence the global model.
+This includes injecting mislabeled or out-of-distribution examples to degrade performance (untargeted attacks [15, 16,
+29, 30, 31, 32]) or subverting predictions for specific tasks
+(targeted attacks [33, 34, 35]). A more covert form, the
+backdoor attack [6, 8, 36, 37], implants hidden behaviors,
+causing the model to misclassify inputs with a predefined
+trigger while maintaining accuracy on legitimate data.
+
+II. BACKGROUND AND T HREAT M ODEL
+We introduce the fundamentals of federated learning, describe the threat of poisoning attacks with a focus on backdoor
+attacks, and define the threat model considered in this work.
+A. Background
+1) Federated Learning: Federated Learning (FL) is a distributed machine learning paradigm where clients collaboratively train a global model while preserving the privacy of their
+local data, addressing regulatory and privacy concerns [28].
+The most widely used FL algorithm is Federated Averaging
+(FedAvg) [28], which operates iteratively through a series of
+communication rounds.
+At each round t, the central server shares the global model
+parameters wt with a randomly selected subset of clients Ct .
+Each client c ∈ Ct trains the model locally on its dataset Dc
+
+Fig. 1: Examples of CIFAR-10 images from the plane class
+with an added backdoor trigger (top-left corner). The presence
+of the trigger causes the model to misclassify these inputs as
+the horse class, illustrating the effect of a targeted backdoor
+attack.
+In this work, we focus on targeted backdoor attacks
+[38], where adversaries poison a specific subpopulation (victim
+class) with a hidden trigger. The backdoor activates only for
+victim class inputs containing the trigger, remaining covert
+while exploiting client update variability and the decentralized
+nature of FL systems, making detection challenging. An
+example is illustrated in Figure 1.
+
+B. Threat Model
+Adversary’s Goals. The adversary’s primary objective is
+to embed a backdoor into the global model in a way that
+satisfies two key properties:
+Property 1: Stealthiness. The backdoor should avoid
+arousing suspicion by not degrading performance on data
+without any triggers, whilst circumventing any defense
+measures the server may deploy.
+Property 2: Consistency. The backdoor attack must maintain
+a consistently high Attack Success Rate (ASR) when the
+model achieves acceptable MTA, ensuring the adversary’s
+success is not reliant on opportunistic fluctuations in ASR
+across rounds. Specifically, let MTAt and ASRt denote
+the main task accuracy and attack success rate at round t,
+respectively. We define the set of rounds K where the MTA
+is above some given threshold λ as:
+K = {t | MTAt ≥ λ},
+
+(2)
+
+and require that the ASR across these rounds remains above
+a specified threshold τ :
+min ASRt ≥ τ.
+t∈K
+
+Definition
+
+Acronym
+
+Definition
+
+DPR
+MCR
+
+Data Poisoning Rate
+Malicious Client Ratio
+
+MTA
+ASR
+
+Main Task Accuracy
+Attack Success Rate
+
+TABLE I: Glossary of acronyms used throughout the paper.
+
+III. L IMITATION OF P RIOR FL BACKDOOR D EFENSES
+Several works have proposed defenses against poisoning
+attacks in FL [18, 19, 20, 21, 23, 24, 25, 32, 39]. These works
+usually focus on a specific learning configuration, for instance
+setting a specific learning rate and batch size for clients. While
+demonstrating superior performance in a particular setup is
+useful, it provides no guarantees about how well the defense
+would work in other valid learning configurations, and thus
+its sensitivity to a change in configurations. We begin with
+an exploration of some of these learning configurations (Section III-A) and observe that there exist several equally-valid
+learning configurations where the model achieves acceptable
+MTA and the adversary’s objective is preserved, thus making
+them all equally valid FL configurations. However, we find
+that all existing defenses we evaluated are effective only for a
+subset of these valid configurations and no defense is resilient
+across all configurations (Section III-B).
+
+(3)
+A. Learning Configuration Matters for Attack Success
+
+This formulation ensures that the backdoor remains effective
+throughout training, preventing its success from being undermined by transient fluctuations in ASR.
+Adversary’s Capabilities. The adversary is successful in
+compromising and gaining control of a fraction ρ of all
+clients N in the system, which is referred to as the Malicious
+Client Ratio (MCR). This set of compromised clients Nadv
+is fixed throughout the federation. Once a client c ∈ Nadv
+is compromised, the adversary gains full control over the
+client’s local training process, including its dataset Dc , training
+procedure, and model updates wct submitted to the server at
+each round t.
+In a targeted backdoor attack, the adversary focuses on a
+specific class, known as the victim class, and poisons only
+samples from this class. Specifically, the adversary injects
+poisoned samples into the client’s local dataset by applying
+a trigger t to inputs belonging to the victim class and flipping
+their labels to a designated target class ytarget . Formally, for a
+subset Dpoisoned ⊂ Dvictim , each input is modified as:
+Dpoisoned = {(xi + t, ytarget ) | (xi , yi ) ∈ Dvictim },
+
+Acronym
+
+(4)
+
+where Dvictim denotes the set of samples from the victim
+class. The proportion of poisoned samples relative to the total
+number of clean samples is referred to as the Data Poisoning
+Rate (DPR). Additionally, the adversary may alter the client’s
+update wct before submission to the server, embedding adversarial changes that facilitate the backdoor’s propagation to
+the global model. For convenience, definitions of all acronyms
+used throughout the paper can be found in Table I.
+
+To understand the impact of the learning configuration on
+model robustness and adversarial susceptibility, we conduct
+a grid-search analysis over key hyperparameters, varying the
+client’s learning rate, batch size, and number of epochs on the
+CIFAR-10 dataset. Our findings in Figure 2 reveal that small
+changes in the learning configuration can significantly alter
+the model’s vulnerability to backdoor attacks.
+Learning Rate
+
+0.01
+
+Batch Size
+
+Epochs
+
+64
+
+2
+
+128
+
+5
+
+ASR (%)
+100
+80
+60
+
+0.025
+10
+0.05
+
+256
+
+20
+20
+
+0.1
+
+40
+
+0
+
+Loading [MathJax]/extensions/MathMenu.js
+
+Fig. 2: Visualizing the impact of the learning configuration
+(learning rate, batch size, and number of local epochs) on
+ASR, for 1.25% DPR and 20% MCR, for CIFAR-10 with IID
+data. We only visualize configurations with MTA ≥ 80%. The
+attack is successful on multiple configurations (in yellow).
+1) Impact of learning rate: Lower learning rates (e.g.,
+0.01, 0.025) allow for smaller, more gradual updates to the
+model parameters, making it easier for adversarial objectives
+to be embedded into the global model with minimal deviation
+from benign updates, resulting in a high ASR. In contrast,
+higher learning rates (e.g., 0.1) cause larger, less stable updates
+
+B. Failure Modes of Prior Defenses
+Based on our analysis, we identify 10 learning configurations where the attack is stealthy (minimal impact on
+MTA) and highly successful (has ASR higher than 85%),
+as given in Table II. For our evaluation we consider key,
+prominent defense methods which offer diverse strategies
+to combat backdoor attacks in FL. These defense strategies
+include coordinate-based approaches like Median [18] and
+Multi-Krum [19], trust-based methods such as FLTrust [20],
+reputation-based schemes like FoolsGold [21] and FLARE
+[23], anomaly detection frameworks like FLAME [24] and
+local adversarial training methods like FLIP [25]. For more
+details on these defenses and other related works, see Section V and Appendix B.
+Evaluation setups for these defenses are often inconsistent,
+with significant variation in client learning configurations such
+as learning rate, batch size, and the number of local training
+
+Config
+
+LR
+
+BS
+
+Epochs
+
+MTA (%)
+
+ASR (%)
+
+C1
+C2
+C3
+C4
+C5
+C6
+C7
+C8
+C9
+C10
+
+0.05
+0.05
+0.025
+0.01
+0.025
+0.025
+0.1
+0.01
+0.01
+0.01
+
+128
+256
+256
+64
+128
+256
+256
+128
+128
+256
+
+2
+2
+5
+2
+2
+2
+2
+2
+5
+10
+
+85.08
+86.29
+88.33
+87.03
+86.65
+82.97
+85.55
+84.47
+89.04
+87.97
+
+96.5
+95.8
+94.8
+93.9
+92.9
+91.3
+91.1
+89.7
+86.6
+85.6
+
+TABLE II: Client FL configurations for successful stealthy
+attacks on CIFAR-10 i.e., cases with MTA ≥ 80% and ASR
+≥ 85%.
+
+epochs. For instance, some works (e.g., FLTrust) specify fixed
+learning rates and batch sizes, while others (e.g., Multi-Krum,
+FLAME) provide little to no details about the client training
+setup, focusing instead on aggregation logic. This lack of
+standardization in evaluation protocols raises concerns about
+the reproducibility and generalizability of reported results. A
+detailed comparison of these evaluation setups is provided in
+Appendix C1.
+DROP
+FLAME
+
+80
+
+FLARE
+60
+
+ASR (%)
+
+FLIP
+FLTrust
+
+40
+
+Fool's Gold
+Median
+
+20
+
+Multi-Krum
+Undefended
+
+C1
+C2
+C3
+C4
+C5
+C6
+C7
+C8
+C9
+C1
+0
+
+that disrupt the optimization process, leading to degraded
+performance, with large drops in MTA and ASR alike.
+2) Impact of batch size: Larger batch sizes (e.g., 256)
+reduce variability in local updates, enabling high MTA and
+ASR across learning rates, making them more vulnerable to
+backdoor attacks. Smaller batch sizes (e.g., 64) increase update
+variability, requiring very low learning rates (e.g., 0.01) for
+effective backdoor injection.
+3) Impact of training epochs: Fewer local epochs (e.g., 2 or
+5) lead to shallow optimization, reducing distinctions between
+benign and adversarial updates, making backdoor attacks more
+effective. Training with more local epochs (e.g., 10 or 20)
+induces a polarization effect, where clients’ local models
+become more tightly aligned with their respective datasets.
+This stronger alignment reduces the influence of malicious
+updates during aggregation, as the backdoor signal becomes
+diluted and less effective at propagating into the global model.
+This polarization is even stronger when high LRs are used in
+conjunction with more training epochs, as model’s MTA also
+suffers.
+Table II highlights a range of configurations that we term
+the “danger zones”—settings where the FL system achieves
+both high MTA (above 80%) and adequately high ASR (above
+85%). These configurations are of great interest because they
+strike a balance between utility and vulnerability; accurate for
+legitimate tasks while remaining highly susceptible to targeted
+backdoor attacks. This highlights the critical need for a defense
+to be resilient across multiple learning configurations, ensuring
+robustness regardless of the setup and achieving true learning configuration independence. This is particularly desirable
+because relying on a single configuration, even if effective,
+is not always feasible in practice. Various constraints, such
+as the batch size supported by a specific device, the number
+of epochs a client is willing to commit to, or other resource
+limitations, can dictate configurations in practice. Therefore,
+a defense mechanism that can adapt to different setups without compromising its efficacy is essential for practical and
+widespread deployment.
+
+Config
+
+Fig. 3: ASR (%) for our defense (DROP) and various existing
+defenses for 10 FL configurations (1.25% DPR, 20% MCR)
+where stealthy attacks are possible. No existing defense provides consistent protection across all configurations.
+We find that these approaches often struggle against targeted
+backdoor attacks due to the attack’s stealthy nature (Figure 3).
+Median and Multi-Krum fail to exclude the adversary’s updates since the poisoned gradients remain close to the statistical norm, while FLTrust struggles to identify the malicious
+contributions due to the minimal deviation from expected
+update patterns. Similarly, FoolsGold proves largely ineffective
+because the adversary’s contributions exhibit insufficient variability across rounds, making them difficult to detect. FLAME
+performs reasonably well in certain configurations but fails
+against attacks that exploit low learning rates. Among the
+
+defensive baselines, FLIP is the only one that slightly reduces
+the ASR, though its mitigation is insufficient to provide robust
+protection. Existing defenses thus have a severe limitation
+when it comes to stealthy backdoors: their resilience is sensitive to the specific FL learning configuration. In contrast,
+our proposed defense (which we describe next) generalizes to
+all learning setups and provides consistent protection.
+IV. O UR D EFENSE : DROP
+From our analysis, it is clear that the learning configuration of a FL system plays a pivotal role in the success
+of targeted backdoor attacks. Certain configurations exhibit
+inherent vulnerabilities, allowing adversarial updates to bypass
+detection and achieve high ASR. Moreover, the performance
+of existing defenses shows significant variability across different configurations, revealing their lack of robustness across
+learning setups. These findings emphasize the urgent need
+for a universal defense mechanism that is resilient against a
+wide array of attack strategies and remains agnostic to the
+underlying learning configuration.
+To address this challenge, we introduce DROP (Distillationbased Reduction Of Poisoning), a federated framework designed to counter three critical adversarial scenarios:
+• aggressive adversaries that may resort to high-DPR attacks,
+• diverse MCRs within the federation, and
+• stealthy, low-DPR attacks that exploit specific learning
+configurations.
+These scenarios each present unique challenges that require a
+cascade of countermeasures, as summarized in the following
+sections. An overview of our approach is given in Figure 4.
+The first countermeasure, Agglomerative Clustering (Section IV-A), identifies and isolates malicious updates by clustering submitted models based on their pairwise Euclidean distances. This process is particularly effective against high-DPR
+attacks, where malicious updates deviate significantly from benign updates. The second countermeasure, Activity Monitoring
+(Section IV-B), tracks client behavior across training rounds.
+By maintaining a reputation score based on prior clustering
+results, this mechanism penalizes clients frequently flagged as
+suspicious and reduces their influence in future aggregations.
+This reputation-based approach ensures robustness against per
+round benign-to-malicious client ratio fluctuations, where the
+proportion of malicious clients can vary widely across rounds
+due to random client selection.
+The third and final countermeasure, Knowledge Distillation (Section IV-C), addresses the most challenging class of
+attacks: stealthy, low-DPR strategies. These attacks encode
+adversarial objectives subtly into model updates, making them
+indistinguishable from benign updates and enabling them
+to bypass clustering schemes. To neutralize these residual
+adversarial signals, we use synthetic data generated by a
+GAN trained via logit-driven distillation to produce a cleansed
+version of the global model. This process ensures robustness
+against low-DPR attacks and renders the defense agnostic to
+learning configurations.
+
+DROP is the first FL defense that leverages knowledge
+distillation to remove stealthy poisoning attacks. DROP’s main
+innovation is in its architecture that leverages these three components to counteract a wide range of adversarial strategies. In
+particular, through this novel set of countermeasures, DROP
+provides resilience against aggressive, high data poisoning
+rates, adaptability to diverse malicious client ratios, and robustness against stealthy, low data poisoning rates, across learning
+configurations.
+Next, we provide a detailed explanation of the design
+and motivation behind each component. The entire DROP
+algorithm is presented in Algorithm 1.
+
+Algorithm 1: DROP
+Globals input: initial model parameters w0 , total
+training rounds T , total client set N ,
+ban threshold τb , generator G, clean
+seed set Dclean , knowledge-distillation
+KD
+for each round t ∈ {1, . . . , T } do
+// Step 1: Training and Update
+Collection
+for each client c ∈ Ct ⊂ N do
+wct ← ClientLocalTraining(wt−1 ) ;
+// Client c trains locally and
+returns update
+end
+// Step 2: Agglomerative Clustering
+Cb , Cs ← AgglomerativeClustering({wct :
+c ∈ C}) ;
+// Cluster client updates
+into benign and suspect groups
+// Step 3: Activity Monitoring
+for each client c ∈ C do
+UpdateActivity (c) if
+c ∈ Cb ∧ score(c) ≥ τb then
+// Exclude c if it exceeds
+penalty threshold
+Cb ← Cb \ {c}
+end
+end
+// Aggregate model updates from
+benign clients
+wt ← Aggregate({wct : c ∈ Cb })
+// Step 4: Logit-Driven Model
+Distillation
+wt ← KD(wt , {wct : c ∈ Cb }, G, Dclean )
+// Step 5: Broadcast the Cleansed
+Global Model
+for each client c ∈ C do
+Send(c, wt );
+end
+end
+
+Fig. 4: Overview of the proposed DROP defense. Each round t begins with the server broadcasting the global model to all
+clients and selecting a subset for local training, which may include both benign (green) and malicious (red) clients. After
+updates are submitted, DROP employs: (1) Agglomerative Clustering to detect anomalous updates, (2) Activity Monitoring
+& Penalization to track and penalize suspicious clients, and (3) Knowledge Distillation, where a GAN-generated synthetic
+dataset and client logits guide the distillation of the global model. The final model wt+1 serves as the global model for round
+t + 1.
+
+A. Agglomerative Clustering
+The first line of defense in our system is Agglomerative
+Clustering (AC) [40], selected for its flexibility and hierarchical structure, which makes it well-suited for detecting subtle
+deviations caused by targeted backdoor attacks. Clustering is
+a widely adopted countermeasure in filtering-based FL frameworks [21, 22, 24, 26, 41] due to its ability to identify dissimilarities within model updates, often resulting from adversarial
+strategies that embed backdoors aggressively with a high DPR.
+We chose AC over methods like K-means and HDBSCAN
+due to its lower sensitivity to hyper-parameter selection and
+its dynamic merging process, which eliminates the need to
+pre-specify the number of clusters. Unlike K-means, which
+can be sensitive to initial centroid selection and outliers, AC
+provides more consistent results by iteratively merging clusters
+based on similarity. Similarly, while HDBSCAN [42] relies on
+density-based assumptions that require careful tuning of hyperparameters, AC operates without such assumptions, making it
+more robust in diverse FL scenarios.
+The use of Ward linkage [43] further enhances AC’s effectiveness by ensuring that intra-cluster variance is minimized
+during the merging process. Among the various linkage methods available for AC, Ward linkage is particularly effective for
+FL tasks, as it prioritizes clusters with low internal variance,
+which is crucial for distinguishing fine-grained and stealthy
+backdoors embedded within benign-looking updates. By capturing and separating subtle differences in high-dimensional
+weight spaces, Ward linkage ensures that adversarial updates
+are reliably isolated from legitimate ones.
+Let W = {w1 , w2 , . . . , wn } denote the set of model
+updates from n participating clients in a given training round
+t. Let d(wi , wj ) = ∥wi − wj ∥2 be the Euclidean distance
+
+between two model updates wi and wj . The clustering process
+starts with each client update wi being treated as a singleton
+cluster. At each step, the two clusters A and B with the
+smallest inter-cluster distance are merged. Using Ward linkage,
+the distance between two clusters A and B is defined as the
+increase in total intra-cluster variance caused by merging the
+two clusters:
+|A| |B|
+∥µ − µB ∥22 ,
+(5)
+dWard (A, B) =
+|A| + |B| A
+where |A| and |B| are the sizes (number of points) of clusters
+A and B, and µA and µB are their respective centroids.
+The hierarchical clustering process proceeds iteratively until
+a stopping criterion is met. In our case, the process halts
+upon forming exactly two predefined clusters, {Cb , Cs }, which
+effectively capture natural groupings of benign and malicious
+model updates. In the context of FL, it is assumed that benign
+client updates will cluster together due to the shared training
+objective, while adversarial updates will form separate, smaller
+clusters due to their deviation from normal update patterns.
+Minimizing intra-cluster variance ensures that the clustering process captures subtle distinctions in high-dimensional
+weight spaces, where even minor variations can signal meaningful differences, such as those between adversarially perturbed weights and legitimate ones. The hierarchical structure
+produced by Ward linkage allows flexibility in examining
+update patterns at various levels of similarity, enabling dynamic control over how clusters are merged. This approach is
+particularly valuable in FL, where client updates are naturally
+noisy due to heterogeneous data distributions but can also be
+adversarially manipulated. By clustering updates, this method
+enables the system to separate and potentially eliminate outliers or manipulated model updates.
+
+Goal 1: The clustering component aims to eliminate malicious updates that deviate significantly from their benign
+counterparts in each training round, offering resilience
+against high data poisoning rate attacks.
+B. Activity Monitoring
+The second line of defense, complementing the clustering
+component, is an activity monitoring mechanism, which tracks
+the behavior of participating clients over the course of training.
+This mechanism addresses a limitation of clustering-based
+defenses in federated learning, which assume that the number
+of malicious updates in a round is smaller than the number of
+benign ones. In real-world scenarios, however, client selection
+is random, and the defender has no prior knowledge of the
+number of malicious clients in any given round. This randomness can lead to rounds where adversarial clients outnumber
+benign ones, causing misidentification of the smaller cluster.
+Prior works often assume an upper bound on the proportion of
+malicious clients (typically less than 50%), but enforcing this
+requires low MCRs or artificially controlled client sampling to
+maintain a fixed benign-to-malicious client ratio across rounds
+[25], limiting practical applicability. It is important to note
+that although the total proportion of adversarial clients in the
+federation (MCR) remains fixed, the actual ratio of malicious
+clients in any given round can fluctuate due to the random
+selection of clients.
+The maximum tolerable MCR of a defense—the fraction
+of clients in the federation that can be adversarial while still
+allowing the defense to mitigate an attack—depends on the
+total number of clients in the federation, N , and the number
+of clients sampled in each round, C. Under a random sampling
+strategy, C clients are drawn uniformly from the total N
+clients. Let ρ be the MCR i.e., proportion of malicious clients
+in the entire federation, so the expected number of malicious
+clients (M) in a round is E[M] = ρ · C. By modeling
+the selection of clients as a Binomial distribution, we can
+compute a lower bound on the probability of malicious clients
+outnumbering benign ones in any given round as:
+
+
+C
+C
+≥ 1 − (4ρ(1 − ρ)) 2 .
+(6)
+P M≥
+2
+For a derivation of the above, please see Appendix A. This
+bound implies that as C increases, the likelihood of selecting a disproportionately large number of malicious clients
+diminishes exponentially. Conversely, when C is small, the
+probability that malicious clients outnumber benign clients
+within the selected subset increases. For example, consider
+an FL system with N = 100 total clients and a MCR of 40%
+(ρ = 0.4). If C = 20 clients are randomly selected in a given
+round, the expected number of malicious clients in the subset
+is E[M] = ρ · C = 0.4 · 20 = 8. However, with the inequality
+above we can see the probability of selecting more than
+10 malicious clients can be non-trivial (≈ 0.34), potentially
+resulting in a subset where malicious clients constitute more
+than 50% of the selected participants (M > C/2). In fact, the
+
+bound suggests that in about a third of the FL training rounds,
+the malicious clients will be the majority.
+To address scenarios where the number of malicious clients
+exceeds the benign ones in certain rounds, we propose a
+reputation-based mechanism. This approach tracks client behavior across rounds, penalizing suspicious clients identified
+by the clustering component (Section IV-A) and gradually
+reducing their influence over the global model. By doing so,
+our method dynamically adjusts to varying levels of malicious participation without relying on rigid assumptions about
+MCR or artificially controlling client sampling. For instance,
+FLIP [25] enforces a fixed per-round MCR by ’randomly’
+selecting 10 clients per round, ensuring exactly 4 adversaries
+and 6 benign clients, thus artificially tampering with the
+randomness of client selection. By incorporating a reputation
+system, our defense mitigates errors caused by transient imbalances where adversarial clients may temporarily outnumber
+benign ones. Over multiple rounds, as long as the overall
+MCR remains below 50%, the mechanism ensures that benign
+clients are correctly identified and retained more frequently
+than adversarial clients. This design helps prevent long-term
+accumulation of adversarial influence, even in rounds where
+clustering misclassifications may occur.
+Our reputation-based mechanism employs a penalty and
+reward system that essentially tracks the trustworthiness of
+each client, enabling the server to mitigate persistent malicious activity while accounting for potential false positives.
+Specifically, by maintaining a cumulative penalty score π(c)
+for each client c, the server can distinguish between clients
+with occasional false-positive detections and those consistently
+submitting suspicious updates. This ensures that benign clients
+incorrectly flagged as suspicious in a few rounds do not face
+permanent exclusion from the system.
+Calculating Penalty Scores. We begin by initializing the
+penalty score π(c) = 0 for every client. As training proceeds,
+this score is dynamically updated based on the clustering
+results from each round. During each training round t, the
+clustering component (Section IV-A) determines whether a
+client’s update is benign or suspicious by assigning the client
+with a penalty score:
+(
+π(c) + p,
+if c ∈ Cs
+π(c) =
+(7)
+max(0, π(c) − r), otherwise
+Essentially, if a client’s update is flagged as suspicious (c ∈
+Cs ), its penalty score is increased by a constant penalty value p.
+Otherwise, it is reduced by a constant reward value r, ensuring
+the score remains non-negative. Capping the penalty score at
+zero prevents potentially malicious clients from gaining undue
+advantage in cases where they are repeatedly flagged as benign
+due to false positives. p and r are hyper-parameters determined
+by the server.
+The server uses these scores to regulate client participation.
+Clients with a clean history i.e., consistently flagged as benign
+(π(c) = 0) are deemed trustworthy and allowed to contribute
+
+to the global model, whereas clients with a record of suspicious update submissions (π(c) > 0) are restricted from
+participating in the aggregation process. However, depending
+on the server administration policy, the penalty system could
+be even stricter. Clients that accumulate excessive penalty
+points due to repeated suspicious updates are permanently
+blacklisted from contributing in subsequent rounds:
+Optionally, the server could permanently ban any client
+whose penalty score exceeds a predefined threshold.
+Goal 2: The activity monitoring component helps prevent malicious actors (based on their accumulated penalty
+points) from poisoning the global model during rounds in
+which the malicious outnumber the benign participants.
+
+from the same data distribution as that of the federation
+clients and serve as a lightweight initialization prior for the
+generator. Our approach requires only a small set of clean
+samples—typically less than or equal to the size of a single
+client’s dataset—ensuring that the additional data requirement
+remains realistic and practical for deployment in real-world
+FL scenarios.
+In a training round t, instead of relying solely on the global
+model’s logits, we aggregate logits from client updates that
+pass the filtering process (i.e., Cb ). Let the logit output from
+the global model be zt = f (x; wt ), where wt represents the
+global model parameters at round t. Similarly, let the logit
+outputs from benign client models Cb ⊆ Ct be:
+zct = f (x; wtc ),
+
+C. Knowledge Distillation
+Having tackled high-DPR and dynamic-MCR attacks, the
+most challenging category to defend against is low-DPR
+attacks. These attacks are difficult to detect due to their stealthy
+nature, where adversarial objectives are subtly embedded into
+model weights, making the updates nearly indistinguishable
+from benign ones. This smooth encoding allows them to
+bypass traditional clustering-based defenses that rely on statistical or geometric properties of the updates. To counter this,
+DROP introduces a knowledge distillation-based cleansing
+mechanism that neutralizes residual adversarial signals in the
+global model using clean, synthetic data, effectively mitigating
+the impact of stealthy backdoor updates while preserving the
+model’s utility for legitimate tasks.
+This approach leverages model stealing attacks, such as
+the MAZE model stealing framework [44], which achieves
+state-of-the-art performance in extracting machine learning
+models under black-box conditions. The goal here is not to
+engage in model stealing as traditionally intended, but to clone
+the model without introducing any malicious behavior from
+compromised clients. MAZE combines two key components:
+query synthesis and knowledge distillation. Knowledge Distillation [45] is a technique where a ”student” model learns
+to approximate the output logits of a larger ”teacher” model,
+enabling the transfer of knowledge while preserving essential
+decision boundaries. A generative adversarial network (GAN)
+[46] synthesizes inputs to probe a target model’s decision
+boundaries, and knowledge distillation transfers the target
+model’s behavior to a surrogate model trained on these synthetic queries. By minimizing reliance on labeled data, MAZE
+efficiently approximates the target model’s functionality.
+In our approach, we adapt and extend the MAZE framework to take advantage of the white-box access available
+to the server in FL, as the server owns the global model.
+This adjustment eliminates the need for zeroth-order gradient
+estimation used in black-box settings and allows for direct
+backpropagation, improving both efficiency and accuracy. To
+ensure high-quality synthetic data, we initialize the GAN with
+a set of n clean samples, denoted as Dclean = {xi }ni=1 in step
+4 of Algorithm 1, which helps align the generated queries
+with the original data distribution. These samples are drawn
+
+∀c ∈ Cb .
+
+(8)
+
+We compute the ensemble logits z̄t as the average of the logits
+from benign clients:
+1 X c
+zt .
+(9)
+z̄t =
+|Cb |
+c∈Cb
+
+The generator G uses the ensemble logits z̄t as feedback
+to synthesize new queries Dsynthetic . These synthetic queries,
+denoted as xgen , are used to guide a clone network, which
+serves as a cleansed version of the global model. The clone
+network, parameterized by wtclone , is trained to align its predictions with the ensemble logits. Instead of the KL divergence
+used in the original MAZE framework, we employ the ℓ1 -loss,
+which provides more stable performance [47]. The training
+objective for the clone network is defined as:
+
+
+Ldistill = Ex∼Dsynthetic ∥z̄t − zclone
+∥1 ,
+(10)
+t
+= f (x; wtclone ) represents the logit predictions of
+where zclone
+t
+the clone network on synthetic data x.
+The key difference between this approach and the original
+MAZE framework is that, instead of distilling knowledge
+from a single victim model, we distill knowledge from the
+aggregated logits of benign clients. The intuition behind this
+approach is that the ensemble logits z̄t , derived from benign
+client models, act as a consensus signal to overwrite any
+adversarial influence introduced by poisoned updates. By
+aligning the clone network’s behavior with the aggregated
+benign logits, the distillation process effectively cleanses the
+model of any stealthy backdoor or poisoned behavior that
+might have evaded detection in previous defense layers.
+Goal 3: The collective logit-driven knowledge distillation
+framework ensures that any subtle adversarial updates
+which have made their way to the global model are
+neutralized, restoring the global model’s robustness and
+reliability.
+D. DROPlet: a Lightweight, Scalable Defense Mechanism
+To provide a faster, more resource-efficient alternative to
+DROP, we introduce DROPlet, a lightweight, server-side plugin designed for easy deployment and high scalability. Unlike
+DROP, DROPlet omits the knowledge distillation component
+
+and focuses solely on agglomerative clustering and activity
+monitoring to mitigate adversarial influences with minimal
+overhead.
+DROPlet is task-agnostic, with no assumptions on the
+underlying data modality, making it applicable to various FL
+tasks. This versatility allows DROPlet to function as a generalpurpose defense mechanism in diverse FL deployments. By
+eliminating the computationally intensive knowledge distillation step, it achieves faster round completion times, making it
+particularly suitable for large-scale FL systems where computational efficiency is crucial.
+Despite its lightweight design, DROPlet offers robust protection by leveraging clustering to detect anomalies and
+activity monitoring to penalize malicious clients. However,
+it may not be effective against stealthy, low-DPR attacks.
+Nevertheless, DROPlet remains a competitive baseline for FL
+defense evaluations, offering significant protection while being
+faster and easier to deploy compared to classical methods like
+Multi-KRUM and Median.
+V. E XPERIMENTS
+We conduct extensive experiments under a wide range of
+adversarial conditions and data distributions. Our evaluations
+focus on various learning configurations of interest, as discussed in Section III-B. We also vary attack strategies, DPRs,
+MCRs, and use both independent and identically distributed
+(IID) and non-IID data distributions, ensuring a comprehensive
+assessment of DROP in realistic FL settings.
+Datasets and Model Architecture. We evaluated our defense using three standard FL datasets: CIFAR-10, CINIC10, and EMNIST. CIFAR-10 [48] contains 60,000 32x32
+color images across 10 diverse classes. CINIC-10 [49] is
+an extension of CIFAR-10, incorporating additional images
+from ImageNet [50] to increase dataset size and variability.
+It consists of 270,000 images distributed across the same 10
+classes as CIFAR-10, providing a more challenging classification task with greater intra-class diversity. EMNIST [51]
+extends MNIST [52] with 62 handwritten character and digit
+classes, making it suitable for FL classification tasks. We use
+a ResNet-18 architecture [53] for all experiments.
+Data Distribution. We evaluate our defense on IID and across
+various levels of non-IID data to reflect the heterogeneity
+typically observed in real-world FL deployments. To control
+the degree of non-IID-ness, we partition the global dataset
+using a Dirichlet distribution Dir(α) [54] (see Section V-D)
+and use the distributional parameter α to vary the degree of
+non-IID-ness.
+Federation Settings. The federation consists of 50, 100, and
+150 clients for CIFAR-10, EMNIST, and CINIC-10 respectively. 50% clients are randomly selected to participate each
+training round for CIFAR-10 and EMNIST while for CINIC10, 20% clients are randomly selected per training round.
+Unlike prior works [19, 25] that assume a fixed number of
+adversarial clients in every round t, our model allows for the
+number of adversarial clients in Ct to vary.
+
+Attacks. We evaluate our defense against a targeted backdoor
+attack (described in Section II-B), where adversarial clients
+poison inputs from a specific victim class yvictim to embed
+malicious behavior in the global model. We evaluate over
+BadNets [6], as well as two state-of-the-art adaptive variants:
+Neurotoxin [55] and Chameleon [56]. Neurotoxin improves
+durability by constraining poisoned updates to model parameters that typically change little during training, embedding
+a backdoor that persists even after the adversary drops out.
+Chameleon uses contrastive learning to adapt poisoned inputs
+to the feature space of benign peer samples, aligning with
+facilitator images and evading detection. Both attacks are
+stealthy—causing minimal degradation in clean accuracy—
+and durable, maintaining high attack success rates across many
+training rounds. The adversary applies a trigger t to a fraction
+of victim-class inputs and flips their labels to a target class
+ytarget . Attack success is measured by the Attack Success Rate
+(ASR), while maintaining high Main Task Accuracy (MTA)
+ensures stealthiness. We evaluate robustness by varying the
+DPR at 1.25%, 2.5%, and 5%, and the MCR at 20% and
+40%, to simulate a range of adversarial compromise.
+Baselines. To benchmark the effectiveness of DROP, we
+compare its performance against representative FL poisoning
+defense mechanisms from the literature. Median Aggregation
+[18] is a classical robust aggregation technique that uses the
+coordinate-wise median of client updates to neutralize the
+effect of outliers. Multi-Krum [19] selects and aggregates
+the most “trustworthy” client updates by iteratively excluding
+updates that are furthest from the majority, making it resilient
+to Byzantine failures. FLTrust [20] introduces a server-side
+reference model to measure the “trustworthiness” of client
+updates, ensuring that only updates aligning with the reference
+model are included in the aggregation. FoolsGold [21] employs similarity-based clustering to mitigate the impact of poisoned updates by reducing their contribution in the aggregation
+process. FLAME [24] is a robust aggregation method designed
+to address both Byzantine and poisoning attacks in FL by
+selectively penalizing anomalous updates. FLIP [25] estimates
+client-side trigger reconstruction using adversarial training
+combined with low-confidence refusals. Finally, FLARE [23]
+leverages penultimate layer representations (PLR) to evaluate
+the trustworthiness of model updates, assigning trust scores
+based on PLR discrepancies and aggregating updates weighted
+by these scores to defend against model poisoning attacks.
+For further implementation details on the baselines, please see
+Appendix C1.
+Our evaluation reveals the strengths and weaknesses of
+existing defenses and demonstrates the superior robustness of
+our proposed defense, DROP, across various attack scenarios.
+A. Robustness Across FL Learning Configurations
+A key strength of DROP is its robustness across diverse
+FL learning configurations, ensuring reliable protection against
+targeted backdoor attacks independent of the specific learning
+parameter settings. While other defenses exhibit significant
+
+CIFAR-10
+
+Defense
+DPR (%)
+
+NA
+
+MTA (%)
+1.25
+2.5
+
+Undefended
+FLAME
+FLARE
+FLIP
+FLTrust
+Fool’s Gold
+Median
+Multi-KRUM
+DROPlet (ours)
+DROP (ours)
+
+87.56
+85.12
+85.29
+81.25
+87.68
+83.59
+87.07
+85.66
+87.33
+76.07
+
+87.55
+84.86
+85.06
+83.09
+87.93
+83.85
+87.48
+85.96
+87.49
+76.05
+
+87.32
+85.00
+81.08
+81.53
+87.52
+83.76
+87.33
+86.00
+87.05
+76.53
+
+5
+87.40
+85.03
+84.41
+82.88
+87.62
+83.92
+87.21
+85.87
+87.20
+75.18
+
+ASR (%)
+1.25
+2.5
+5
+
+NA
+
+85.5
+88.7
+92.5
+53.4
+90.4
+83.0
+95.3
+86.0
+91.3
+1.3
+
+74.71
+72.93
+71.07
+67.73
+74.46
+70.25
+73.29
+73.61
+74.62
+65.4
+
+96.6
+96.8
+75.8
+73.4
+96.7
+92.6
+96.3
+97.5
+0.1
+1.1
+
+98.4
+99.4
+3.5
+48.80
+98.1
+94.3
+98.8
+98.6
+0.9
+0.5
+
+CINIC-10
+MTA (%)
+ASR (%)
+1.25
+2.5
+1.25
+2.5
+74.61
+73.16
+72.18
+70.08
+74.74
+70.05
+73.49
+73.57
+74.05
+65.65
+
+74.49
+72.77
+71.09
+69.60
+74.54
+69.96
+73.38
+73.58
+74.27
+65.72
+
+94.6
+96.63
+96.71
+80.98
+90.83
+89.33
+97.6
+76.35
+15.96
+1.22
+
+NA
+
+98.65
+98.6
+93.02
+38.82
+98.72
+95.29
+98.87
+99.74
+0.48
+1.44
+
+EMNIST
+MTA (%)
+1.25
+2.5
+
+89.01
+88.02
+88.82
+88.31
+89.22
+87.92
+88.94
+88.62
+89.15
+89.32
+
+89.20
+87.83
+89.07
+88.53
+89.19
+87.85
+89.20
+88.70
+88.98
+88.62
+
+ASR (%)
+1.25
+2.5
+
+89.11
+88.0
+88.92
+88.32
+89.18
+87.80
+89.20
+88.58
+88.96
+89.13
+
+98.50
+5.0
+96.00
+46.50
+97.0
+77.0
+96.75
+78.75
+1.50
+0.75
+
+97.75
+12.75
+84.50
+48.75
+90.0
+46.50
+96.25
+5.0
+1.00
+1.00
+
+TABLE III: MTA (%) and ASR (%) metrics under no attack (NA) and at different Data Poisoning Rates (DPR) for the
+CIFAR-10, CINIC-10 and EMNIST datasets. The MCR is fixed at 20%. DROP achieves low ASR for all DPR, while existing
+defenses fail to mitigate the attack. The lightweight variant DROPlet achieves higher MTA than DROP and is robust in all
+cases, except for some extremely stealthy attacks (1.25% DPR, CIFAR-10). The learning configurations are C4 for CIFAR-10
+(same for CINIC-10) and C5 for EMNIST. Refer to Table II and Table VIII for learning configuration details.
+Attack
+
+Defense
+DPR (%)
+
+BadNets
+
+Neurotoxin
+
+Chameleon
+
+Undefended
+FLIP
+DROPlet (ours)
+DROP (ours)
+Undefended
+FLIP
+DROPlet (ours)
+DROP (ours)
+Undefended
+FLIP
+DROPlet (ours)
+DROP (ours)
+
+CIFAR-10
+MTA (%)
+1.25
+2.5
+5
+1.25
+
+ASR (%)
+2.5
+
+5
+
+87.55
+83.09
+87.49
+76.05
+87.64
+82.76
+87.10
+77.06
+87.06
+83.29
+87.72
+75.71
+
+96.6
+73.4
+0.1
+1.1
+93.20
+84.40
+0.50
+1.60
+100.0
+97.1
+99.9
+1.2
+
+98.4
+48.80
+0.9
+0.5
+98.2
+73.4
+0.7
+1.1
+100.0
+98.0
+0.4
+1.8
+
+87.32
+81.53
+87.05
+76.53
+87.27
+83.18
+87.36
+76.66
+87.34
+83.41
+87.1
+75.37
+
+87.40
+82.88
+87.20
+75.18
+87.09
+82.04
+87.08
+75.03
+87.43
+83.64
+87.33
+76.14
+
+85.5
+53.4
+91.3
+1.3
+92.20
+53.0
+88.80
+1.20
+100.0
+96.8
+99.8
+1.0
+
+CINIC-10
+MTA (%)
+1.25
+2.5
+
+ASR (%)
+1.25
+2.5
+
+EMNIST
+MTA (%)
+1.25
+2.5
+
+ASR (%)
+1.25
+2.5
+
+74.61
+70.08
+74.05
+65.65
+74.24
+69.83
+74.02
+65.78
+74.76
+70.31
+74.11
+65.98
+
+94.6
+38.82
+15.96
+1.22
+97.50
+24.52
+97.0
+1.20
+99.96
+88.91
+0.79
+1.48
+
+89.20
+88.53
+88.98
+88.62
+89.16
+88.52
+89.03
+89.36
+89.02
+88.48
+88.98
+89.32
+
+98.50
+46.50
+1.50
+0.75
+98.0
+41.25
+2.25
+0.75
+99.25
+77.25
+1.25
+1.0
+
+74.49
+69.60
+74.27
+65.72
+74.29
+69.87
+74.37
+65.48
+74.34
+70.01
+74.4
+66.06
+
+98.65
+88.53
+0.48
+1.44
+98.54
+77.27
+0.69
+1.02
+99.91
+97.97
+0.72
+1.87
+
+89.11
+88.32
+88.96
+89.13
+89.17
+88.49
+88.95
+89.45
+88.98
+88.65
+88.95
+89.43
+
+97.75
+48.75
+1.00
+1.00
+97.75
+10.75
+1.50
+1.0
+99.5
+25.25
+1.25
+1.0
+
+TABLE IV: MTA (%) and ASR (%) metrics for different attack strategies and at different Data Poisoning Rates (DPR) for the
+CIFAR-10, CINIC-10, and EMNIST datasets. The MCR is fixed at 20%. DROP achieves low ASR for all DPR values across
+all attacks. DROPlet maintains higher MTA than DROP and remains robust in most cases, though it is occasionally affected
+by Chameleon’s adaptive poisoning (e.g., 2.5% DPR, CIFAR-10). The learning configurations are C4 for CIFAR-10 (same for
+CINIC-10) and C5 for EMNIST. Refer to Table II and Table VIII for learning configuration details.
+
+performance variability depending on the enforced learning
+parameters (Figure 3), DROP consistently maintains nearzero ASR across all configurations of interest, as shown in
+Table V. This consistency demonstrates DROP’s adaptability
+and makes it a learning configuration agnostic defense, capable of handling varying client learning rates, batch sizes,
+and local training epochs without compromising on security.
+This robustness is particularly important for real-world FL
+deployments, where learning configurations can vary dynamically across tasks. By ensuring reliable performance across
+a wide range of setups, DROP offers practical, consistent
+protection against adversarial threats, making it well-suited for
+heterogeneous FL environments.
+Consistency Across Rounds. A robust defense must ensure
+low ASR during rounds where the MTA remains acceptable,
+preventing randomness in ASR fluctuations from determining
+the outcome of FL training. While some baselines (e.g.,
+FLIP, FLAME) initially achieve low ASR, their performance
+
+Config
+C1
+C2
+C3
+C4
+C5
+
+MTA (%)
+
+ASR (%)
+
+Config
+
+MTA (%)
+
+ASR (%)
+
+69.47
+71.77
+80.20
+76.05
+75.24
+
+1.8
+0.7
+2.8
+1.3
+1.5
+
+C6
+C7
+C8
+C9
+C10
+
+62.61
+66.17
+64.71
+80.44
+80.50
+
+1.6
+1.7
+1.6
+0.8
+5.5
+
+TABLE V: MTA (%) and ASR (%) for DROP on CIFAR-10
+for 1.25% DPR and 20% MCR, across all 10 configurations
+identified in Section III-B. DROP achieves low ASR across
+all configurations.
+
+deteriorates over subsequent rounds, resulting in inconsistent
+suppression of the attack. This variability is problematic
+because in a real-world setting, FL training might terminate at
+any round, and reliance on transient phases of low ASR does
+not guarantee reliable protection. In Figure 5, we compare
+the performance of various defensive baselines with DROP
+over 200 rounds. Although some baselines degrade more
+
+FLIP
+
+Multi-Krum
+
+DROPlet
+
+FLTrust
+
+DROP
+
+Undefended
+100
+
+80
+
+80
+
+60
+
+ASR (%)
+
+MTA (%)
+
+100
+
+40
+
+FLARE
+
+FLAME
+
+Fool's Gold
+
+Median
+
+60
+40
+20
+
+20
+0
+
+25
+
+50
+
+75
+
+100
+(a)
+
+Round
+
+125
+
+150
+
+175
+
+200
+
+0
+
+0
+
+25
+
+50
+
+75
+
+100
+(b)
+
+Round
+
+125
+
+150
+
+175
+
+200
+
+Fig. 5: MTA (a) and ASR (b) across rounds for various defenses, for CIFAR-10 with 1.25% DPR and 20% MCR for
+configuration C4. Certain defenses like FLIP and FLAME have wildly fluctuating ASR across rounds, making them unreliable.
+DROP instead achieves consistently low ASR in all rounds.
+
+quickly (e.g., Median, FLTrust), others (e.g., FLIP, FLAME)
+exhibit slower degradation, yet suffer from significant ASR
+fluctuations across rounds. This inconsistency makes it difficult
+to guarantee robust defense throughout the training process. In
+contrast, DROP consistently maintains near-zero ASR across
+all rounds, offering reliable protection regardless of when
+training might terminate. As described in the Property 2
+(Section II-B), this stability ensures that practitioners do
+not have to depend on chance for effective defense, making
+DROP a practical and dependable solution for real-world
+FL systems.
+B. Adaptability to Varying Attack Stealthiness
+Varying DPR simulates different levels of attack stealthiness, while varying MCR represents scenarios where the
+fraction of malicious clients in the federation changes.
+Varying DPR. By varying the attacker’s DPR, we simulate
+increasingly stealthy targeted backdoor attacks, with DPR as
+low as 1.25%. We observe that all baseline defenses fail to
+defend against targeted backdoors across CIFAR-10, CINIC10, and EMNIST, regardless of attack stealthiness (Table III).
+Some defenses perform adequately only when the attack is
+overt. For instance, for CIFAR-10, FLARE mitigates the attack
+effectively at 5% DPR, achieving 3.5% ASR, but fails entirely
+when the DPR is reduced (e.g., 2.5%). Similarly, for CINIC10, FLIP demonstrates moderate robustness at 2.5% DPR,
+achieving 38% ASR, but succumbs to the attack at 1.25%
+DPR. In contrast, DROP consistently defends against targeted
+backdoor attacks across all levels of DPR, maintaining nearzero ASR (1.5%, 1.2%, and 0.5%) in all configurations.
+Varying MCR. By varying the MCR, we simulate scenarios
+where the attacker controls a small (20%) or large (40%)
+fraction of clients. A high MCR like 40% significantly increases the likelihood that malicious clients will outnumber
+
+benign ones in certain FL rounds due to the random client
+selection process. This imbalance enables adversarial updates
+to dominate the aggregation process, amplifying the attack’s
+effectiveness and exposing vulnerabilities in clustering-based
+defenses. Once again, we observe that most defensive baselines fail to provide adequate protection against the attack
+under such conditions (Table VI). For instance, FLIP reduces
+the ASR to 11.2% and 38.82% for 20% MCR on CIFAR10 and CINIC-10, but fails to mitigate the attack at 40%
+MCR. FLAME, due to its overly aggressive adaptive clipping
+scheme, struggles to achieve convergence. Both FLAME and
+Multi-Krum achieve resilience for 20% MCR on EMNIST,
+but do not thwart the attack at 40% MCR. In contrast, DROP
+consistently demonstrates resilience across both 20% and 40%
+MCR setups, achieving near-zero ASR while, highlighting its
+robustness even in highly adversarial settings.
+Varying Attacks. DROP is resilient to stealthy state-of-theart backdoor attack strategies like Neurotoxin and Chameleon.
+As shown in Table IV, it consistently maintains near-zero ASR
+(1.87% or lower) across all datasets and poisoning rates, even
+when facing these durable and adaptive attacks. This highlights
+DROP’s ability to eliminate embedded backdoors that persist
+in the model long after the attacker has left, outperforming
+other defenses that fail to mitigate these advanced threats.
+C. Robustness - Accuracy Tradeoff
+While DROP demonstrates strong effectiveness against
+backdoor attacks, it comes with a notable trade-off in MTA
+compared to some baselines. For example, in Table III with a
+DPR of 1.25%, DROP achieves an MTA of 74.74%, which is
+lower than FLTrust (87.93%) and Median (87.14%). Similarly,
+in Table VI with an MCR of 20%, DROP records an MTA
+of 68.74%, compared to 86.88% for FLTrust. This reduction
+in accuracy primarily stems from the strict distillation-based
+mechanism, which aims to ensure suppression of adversar-
+
+Defense
+MCR (%)
+
+NA
+
+Undefended
+FLAME
+FLARE
+FLIP
+FLTrust
+Fool’s Gold
+Median
+Multi-KRUM
+DROPlet (ours)
+DROP (ours)
+
+86.48
+80.66
+83.63
+80.09
+86.85
+83.93
+86.41
+84.28
+85.69
+69.7
+
+CIFAR-10
+MTA (%)
+20
+40
+86.56
+80.78
+83.28
+82.25
+87.38
+83.80
+86.10
+84.41
+85.49
+69.11
+
+86.05
+81.11
+83.74
+83.43
+87.24
+83.73
+85.54
+84.04
+84.87
+70.71
+
+ASR (%)
+20
+40
+
+NA
+
+92.1
+91.3
+58.3
+11.2
+99.5
+86.2
+98.9
+99.2
+0.9
+1.3
+
+74.71
+72.93
+71.07
+67.73
+74.46
+70.25
+73.29
+73.61
+74.62
+65.4
+
+99.6
+99.8
+98.9
+72.3
+99.4
+99.7
+99.1
+99.8
+0.8
+1.4
+
+CINIC-10
+MTA (%)
+20
+40
+74.49
+72.77
+71.09
+69.6
+74.54
+69.96
+73.38
+73.58
+74.27
+65.72
+
+74.47
+72.62
+71.65
+71.65
+74.65
+69.93
+73.26
+73.58
+74.65
+64.97
+
+ASR (%)
+20
+40
+
+NA
+
+98.65
+98.6
+93.02
+38.82
+98.72
+95.29
+98.87
+99.74
+0.48
+1.22
+
+87.74
+86.28
+87.05
+87.24
+88.59
+85.96
+87.66
+87.37
+87.77
+88.77
+
+99.6
+99.32
+97.27
+92.94
+99.73
+98.77
+99.69
+99.55
+99.73
+2.36
+
+EMNIST
+MTA (%)
+20
+40
+87.78
+86.43
+86.72
+87.48
+88.47
+85.91
+87.66
+87.13
+87.66
+88.67
+
+87.65
+86.71
+86.52
+87.54
+88.68
+85.82
+87.71
+87.20
+87.37
+88.43
+
+ASR (%)
+20
+40
+94.75
+2.50
+27.50
+12.25
+78.75
+25.50
+94.25
+1.00
+1.50
+0.75
+
+100.0
+89.50
+96.50
+84.75
+99.50
+96.75
+99.75
+99.25
+0.75
+0.75
+
+TABLE VI: MTA (%) and ASR (%) metrics under no attack (NA) and at different Malicious Client Ratios (MCR) for CIFAR10, CINIC-10 and EMNIST datasets. The DPR is fixed at 2.5%. Existing defenses fail to prevent the attack, particularly
+at 40% MCR. DROP is resilient in all cases, despite some reduction in MTA. DROPlet performs adequately in most cases
+independently of the MCR. The learning configurations are C1 for CIFAR-10 (C4 for CINIC-10) and C9 for EMNIST. Refer
+to Table II and Table VIII for learning configuration details.
+
+ial influences. Notably, unlike clustering or aggregation-only
+defenses, DROP uses model stealing (i.e., MAZE) to apply knowledge distillation, which contributes significantly to
+the observed MTA drop while exhibiting strong robustness.
+The trade-off between robustness and accuracy is a welldocumented challenge in adversarial machine learning [57].
+It is worth noting that one could focus on configurations
+such as C3, C9, or C10, where we achieve ∼ 80% MTA
+and claim a smaller drop in MTA. While it would indeed be
+preferable for a practical FL system to utilize such learning
+configurations, the ability to select configurations without
+sacrificing protection is a unique strength of our defense. By
+prioritizing security, DROP is a more reliable choice for highstakes applications where even a minor vulnerability could
+lead to significant consequences.
+It is also worth highlighting that advancements in knowledge distillation techniques and model-stealing attacks could
+directly enhance DROP. Improved versions of these methods
+can serve as drop-in replacements for the current MAZE
+component, potentially reducing the accuracy trade-off while
+preserving DROP’s robust defensive capabilities.
+DROPlet - Lightweight Variant of DROP. DROPlet (Section IV-D) is designed for environments where computational
+efficiency is a priority. Unlike DROP, DROPlet omits the
+knowledge distillation component, thereby eliminating the
+associated computational overhead. This makes it particularly
+suitable for FL deployments with limited resources or scenarios where minimizing server-side processing time is critical.
+Notably, execution time for a single non-IID run of DROPlet is
+comparable to other baselines, completing in approximately 30
+minutes, whereas DROP takes 2 hours. This minimal increase
+in runtime comes with the added benefit of robust protection
+against attacks, whereas some defenses like FLIP take up to
+57 hours for similar setups.
+While DROPlet may not perform as well as DROP against
+certain highly stealthy, low-DPR attacks (e.g., CIFAR-10,
+
+1.25% DPR in Table III) or high-MCR attacks (e.g., CINIC10, 40% MCR in Table VI), it still provides strong protection
+in many practical configurations, achieving near-zero ASR in
+less covert attack scenarios and maintaining robustness across
+a broad range of learning setups (Tables III and VI).
+While DROPlet provides strong protection in many scenarios, we acknowledge that an effective defense should remain
+robust regardless of the adversarial strategy. This limitation
+becomes especially evident in extremely stealthy attacks such
+as Chameleon (e.g., CIFAR-10, 2.5% DPR in Table IV), where
+DROPlet’s effectiveness drops significantly. Nevertheless, its
+lightweight design offers significant practical value as a plugin
+to existing FL defenses, requiring minimal code modifications
+while enhancing robustness without incurring substantial overhead. By striking a balance between computational efficiency
+and robustness, DROPlet provides a viable defense solution
+for resource-constrained FL settings.
+D. Hardness Under Non-IID Settings
+The non-IID nature of client datasets introduces significant
+challenges for defending against targeted backdoor attacks, as
+data distributions among clients can be highly imbalanced.
+In such settings, the imbalance and diversity of client data
+make it difficult to distinguish whether differences in model
+updates arise from the non-IID nature of the data or from
+benign versus malicious clients. This makes it difficult for
+clustering-based defenses to differentiate between malicious
+and benign updates, thereby increasing the stealthiness of the
+attack. Consequently, defenses that perform well under IID
+conditions often exhibit reduced effectiveness when faced with
+non-IID data, underscoring the need for adaptive approaches
+capable of handling diverse and heterogeneous client data.
+Table VII presents the results of evaluating various defenses under increasingly non-IID conditions for CIFAR-10
+and EMNIST. While both datasets are commonly used in
+FL research, CIFAR-10 poses a greater challenge due to its
+higher intra-class diversity, which allows malicious updates
+
+CIFAR-10
+
+Defense
+Dir(α)
+Undefended
+FLAME
+FLARE
+FLIP
+FLTrust
+Fool’s Gold
+Median
+Multi-KRUM
+DROPlet (ours)
+DROP (ours)
+
+1
+86.30
+59.43
+83.81
+78.50
+86.40
+80.00
+86.32
+82.74
+86.62
+69.28
+
+MTA (%)
+10
+102
+
+∞
+
+87.32
+10.00
+81.37
+81.90
+86.84
+82.93
+86.31
+84.56
+86.08
+73.05
+
+87.55
+84.86
+85.06
+83.09
+87.93
+83.85
+87.48
+85.96
+87.49
+76.05
+
+87.07
+82.34
+82.55
+83.1
+85.34
+83.95
+87.10
+85.15
+86.99
+72.42
+
+EMNIST
+1
+
+ASR (%)
+10
+102
+
+∞
+
+1
+
+94.7
+0.4
+48.3
+54.0
+99.2
+79.7
+97.3
+97.8
+94.5
+88.7
+
+86.3
+0.0
+59.9
+25.4
+97.4
+73.1
+93.5
+98.2
+94.4
+93.0
+
+85.5
+88.7
+94.0
+53.4
+90.4
+83.0
+95.3
+86.0
+91.3
+1.3
+
+87.29
+85.91
+86.48
+87.36
+88.21
+85.51
+87.24
+86.49
+87.14
+87.66
+
+95.3
+31.5
+15.4
+47.8
+76.6
+87.0
+98.3
+73.9
+96.1
+80.6
+
+MTA (%)
+10
+102
+
+∞
+
+1
+
+87.72
+86.48
+86.24
+N/A
+88.43
+85.76
+87.61
+86.75
+87.51
+84.48
+
+87.78
+85.86
+86.86
+88.52
+89.34
+86.71
+87.72
+87.11
+87.66
+88.57
+
+93.00
+13.5
+84.0
+14.75
+92.5
+28.25
+92.0
+80.75
+93.0
+16.50
+
+87.53
+85.54
+86.57
+N/A
+88.36
+85.70
+87.51
+86.84
+87.74
+84.16
+
+ASR (%)
+10
+102
+
+∞
+
+94.50
+56.75
+28.25
+N/A
+94.5
+20.75
+91.5
+16.75
+91.75
+4.75
+
+94.75
+3.25
+63.5
+46.50
+97.75
+41.75
+97.0
+1.0
+1.5
+0.75
+
+93.50
+3.0
+3.75
+N/A
+95.75
+17.50
+91.5
+2.5
+86.0
+1.75
+
+TABLE VII: MTA and ASR across rounds for various defenses for non-IID data with varying Dir(α), for 1.25% DPR and
+20% MCR, using configuration C4 for CIFAR-10 and C9 for EMNIST. FLAME fluctuates wildly and often ends up with
+models that have not learned anything effectively, leading to random-guess MTA (red) and consequently, zero ASR. Results
+for FLIP are shown only for Dir(α) = 1 due to its extreme computational overhead, as the method requires adversarial training
+for each client at every round. As observed, DROP is the most resilient defense on EMNIST and all defenses struggle on the
+more complex CIFAR-10 learning task.
+
+to blend more seamlessly with legitimate ones, making it
+harder to detect and defend against backdoor attacks. This
+complexity is reflected in the relatively poor performance of
+most defenses on CIFAR-10 under non-IID conditions. FLIP
+for instance, while reducing ASR compared to most other
+defenses, still suffers from significant fluctuations in ASR,
+sometimes exceeding 60% under non-IID conditions. This
+variability highlights the challenge of achieving reliable defense in high-stakes applications where consistency is crucial.
+The results for DROP, however, reveal a nuanced performance. For EMNIST, DROP maintains near-zero ASR across
+a range of α values, with a slight increase to 16.5% at the most
+skewed setting (α = 1). This demonstrates DROP’s strong
+resilience in handling less complex, smaller-scale datasets. On
+the other hand, for CIFAR-10, DROP struggles, with ASR
+fluctuations persisting even under relatively moderate nonIID conditions. We believe this performance gap may stem
+from the inherent difficulty of the CIFAR-10 task, which,
+due to its high class diversity and the complex nature of the
+data, challenges any defense’s ability to effectively distinguish
+between benign and adversarial updates.
+While our defense performs well in many non-IID scenarios,
+the fluctuating ASR observed in more complex tasks like
+CIFAR-10 underscores the general difficulty of defending
+against backdoor attacks under such conditions. These results
+suggest that more research is needed to develop defenses
+capable of better identifying malicious updates in the
+presence of significant data heterogeneity.
+VI. C ONCLUSION
+Our study highlights the critical role that learning configurations and attacker strategies play in the success of targeted
+backdoor attacks in FL. Existing defenses often focus on
+narrow and fixed configurations, making it difficult to assess
+their robustness under realistic and diverse setups while the
+performance across different learning configurations (i.e., local
+
+learning rate, batch size, training epochs) varies dramatically.
+We believe future evaluations should consider a broader range
+of configurations to better capture real-world deployment
+scenarios. Our results provide a starting point by identifying
+”danger zones”—configurations that enable stealthy attacks
+to succeed—and we encourage researchers to test their defenses across these configurations to better understand where
+defenses are effective and where they fail. This approach
+ensures that robustness claims are not limited to specific
+configurations but hold across diverse settings. We recommend
+future evaluations to include, among other configurations, low
+learning rates and small batch sizes, as these have been shown
+to increase the stealthiness of backdoor attacks.
+To address this gap, we propose DROP, a novel defense
+mechanism that is agnostic to learning configurations and the
+adversary’s stealthiness. By using this novel architecture based
+on clustering, activity tracking, and knowledge distillation,
+DROP offers a comprehensive solution for mitigating targeted
+backdoor attacks, ensuring reliable protection across diverse
+FL setups. Our extensive evaluation across multiple datasets,
+varying data distributions, attacks, and a wide range of attacker
+configurations highlights DROP’s robustness. Unlike existing
+baselines, which often fail under certain learning configurations or in the presence of stealthy attacks, DROP consistently
+achieves near-zero attack success rate.
+By adopting an exhaustive evaluation methodology and
+releasing a comprehensive codebase, we hope to provide
+a testbed for future researchers to rigorously assess new
+defenses and foster advancements in the field. Our work
+lays the groundwork for designing robust, universal defense
+mechanisms that can generalize across diverse FL environments, contributing to the long-term security and reliability of
+federated learning systems.
+ACKNOWLEDGMENTS
+This research was supported by the Department of Defense
+Multidisciplinary Research Program of the University Re-
+
+search Initiative (MURI) under contract W911NF-21-1-0322,
+and by NSF under grants CNS-2312875 and CNS-2331081.
+R EFERENCES
+[1] I. Covert, W. Ji, T. Hashimoto, and J. Zou,
+“Scaling laws for the value of individual data points
+in machine learning,” ArXiv, vol. abs/2405.20456,
+2024. [Online]. Available: https://api.semanticscholar.
+org/CorpusID:270199496
+[2] S. H. K. Parthasarathi, N. Sivakrishnan, P. Ladkat,
+and N. Strom, “Realizing petabyte scale acoustic
+modeling,” IEEE Journal on Emerging and Selected
+Topics in Circuits and Systems, vol. 9, pp. 422–432,
+2019. [Online]. Available: https://api.semanticscholar.
+org/CorpusID:129945028
+[3] Q. Li, Z. Wen, Z. Wu, S. Hu, N. Wang, Y. Li,
+X. Liu, and B. He, “A survey on federated learning
+systems: Vision, hype and reality for data privacy
+and protection,” IEEE Transactions on Knowledge
+and Data Engineering, vol. 35, no. 4, p. 3347–3366,
+Apr. 2023. [Online]. Available: http://dx.doi.org/10.1109/
+TKDE.2021.3124599
+[4] C.-J. Wu, R. Raghavendra, U. Gupta, B. Acun,
+N. Ardalani, K. Maeng, G. Chang, F. A. Behram,
+J. Huang, C. Bai, M. K. Gschwind, A. Gupta,
+M. Ott, A. Melnikov, S. Candido, D. Brooks,
+G. Chauhan, B. Lee, H.-H. S. Lee, B. Akyildiz,
+M. Balandat, J. Spisak, R. K. Jain, M. G. Rabbat,
+and K. M. Hazelwood, “Sustainable ai: Environmental
+implications, challenges and opportunities,” ArXiv,
+vol. abs/2111.00364, 2021. [Online]. Available:
+https://api.semanticscholar.org/CorpusID:240354766
+[5] P. Kairouz, H. B. McMahan, B. Avent, A. Bellet, M. Bennis, A. N. Bhagoji, K. Bonawitz, Z. Charles, G. Cormode,
+R. Cummings et al., “Advances and open problems in
+federated learning,” Foundations and trends® in machine
+learning, vol. 14, no. 1–2, pp. 1–210, 2021.
+[6] T. Gu, K. Liu, B. Dolan-Gavitt, and S. Garg, “Badnets: Evaluating backdooring attacks on deep neural
+networks,” IEEE Access, vol. 7, pp. 47 230–47 244, 2019.
+[7] L. Wang, T. Zhu, W. Zhou, and P. S. Yu, “Linkage
+on security, privacy and fairness in federated learning:
+New balances and new perspectives,” ArXiv, vol.
+abs/2406.10884, 2024. [Online]. Available: https://api.
+semanticscholar.org/CorpusID:270560767
+[8] E. Bagdasaryan, A. Veit, Y. Hua, D. Estrin, and
+V. Shmatikov, “How to backdoor federated learning,”
+CoRR, vol. abs/1807.00459, 2018.
+[9] M. Goldblum, D. Tsipras, C. Xie, X. Chen,
+A. Schwarzschild, D. X. Song, A. Madry, B. Li, and
+T. Goldstein, “Dataset security for machine learning:
+Data poisoning, backdoor attacks, and defenses,” IEEE
+Transactions on Pattern Analysis and Machine Intelligence, vol. 45, pp. 1563–1580, 2020. [Online]. Available:
+https://api.semanticscholar.org/CorpusID:229934464
+
+[10] Y. Liu, S. Ma, Y. Aafer, W.-C. Lee, J. Zhai, W. Wang,
+and X. Zhang, “Trojaning attack on neural networks,” in
+25th Annual Network And Distributed System Security
+Symposium (NDSS 2018). Internet Soc, 2018.
+[11] M. Alam, H. Lamri, and M. Maniatakos, “Get rid
+of your trail: Remotely erasing backdoors in federated
+learning,” IEEE Transactions on Artificial Intelligence,
+vol. 5, pp. 6683–6698, 2023. [Online]. Available:
+https://api.semanticscholar.org/CorpusID:258291574
+[12] Y. Zhang, N. Z. Gong, and M. K. Reiter, “Concealing
+backdoor model updates in federated learning by triggeroptimized data poisoning,” ArXiv, vol. abs/2405.06206,
+2024. [Online]. Available: https://api.semanticscholar.
+org/CorpusID:269740838
+[13] D. Chai, L. Wang, L. Yang, J. Zhang, K. Chen, and
+Q. Yang, “A survey for federated learning evaluations:
+Goals and measures,” IEEE Transactions on Knowledge
+and Data Engineering, vol. 36, pp. 5007–5024,
+2023. [Online]. Available: https://api.semanticscholar.
+org/CorpusID:261076520
+[14] E. Rosenfeld, E. Winston, P. Ravikumar, and Z. Kolter,
+“Certified robustness to label-flipping attacks via randomized smoothing,” in International Conference on
+Machine Learning. PMLR, 2020, pp. 8230–8241.
+[15] B. Biggio, B. Nelson, and P. Laskov, “Poisoning attacks
+against support vector machines,” 2013. [Online].
+Available: https://arxiv.org/abs/1206.6389
+[16] M. Fang, X. Cao, J. Jia, and N. Gong, “Local
+model poisoning attacks to Byzantine-Robust federated
+learning,” in 29th USENIX Security Symposium (USENIX
+Security 20). USENIX Association, Aug. 2020, pp.
+1605–1622. [Online]. Available: https://www.usenix.org/
+conference/usenixsecurity20/presentation/fang
+[17] V. Tolpegin, S. Truex, M. E. Gursoy, and L. Liu,
+“Data poisoning attacks against federated learning
+systems,” in European Symposium on Research in
+Computer Security, 2020. [Online]. Available: https:
+//api.semanticscholar.org/CorpusID:220546077
+[18] D. Yin, Y. Chen, R. Kannan, and P. Bartlett, “Byzantinerobust distributed learning: Towards optimal statistical
+rates,” in International Conference on Machine Learning,
+2018.
+[19] P. Blanchard, E. M. El Mhamdi, R. Guerraoui, and
+J. Stainer, “Machine learning with adversaries: Byzantine tolerant gradient descent,” in Advances in Neural
+Information Processing Systems, 2017.
+[20] X. Cao, M. Fang, J. Liu, and N. Z. Gong, “FLTrust:
+Byzantine-robust federated learning via trust bootstrapping,” in Network and Distributed System Security
+(NDSS) Symposium, 2021.
+[21] C. Fung, C. J. Yoon, and I. Beschastnikh, “Mitigating
+sybils in federated learning poisoning,” arXiv preprint
+arXiv:1808.04866, 2018.
+[22] S. Shen, S. Tople, and P. Saxena, “Auror: defending
+against poisoning attacks in collaborative deep learning
+systems,” in Proceedings of the 32nd Annual Conference
+
+on Computer Security Applications, ser. ACSAC ’16.
+New York, NY, USA: Association for Computing
+Machinery, 2016, p. 508–519. [Online]. Available:
+https://doi.org/10.1145/2991079.2991125
+[23] N. Wang, Y. Xiao, Y. Chen, Y. Hu, W. Lou, and Y. T.
+Hou, “Flare: defending federated learning against model
+poisoning attacks via latent space representations,” in
+Proceedings of the 2022 ACM on Asia Conference on
+Computer and Communications Security, 2022, pp. 946–
+958.
+[24] T. D. Nguyen, P. Rieger, R. De Viti, H. Chen, B. B.
+Brandenburg, H. Yalame, H. Möllering, H. Fereidooni,
+S. Marchal, M. Miettinen et al., “{FLAME}: Taming
+backdoors in federated learning,” in USENIX Security
+Symposium, 2022.
+[25] K. Zhang, G. Tao, Q. Xu, S. Cheng, S. An, Y. Liu,
+S. Feng, G. Shen, P.-Y. Chen, S. Ma et al., “Flip:
+A provable defense framework for backdoor mitigation
+in federated learning,” in International Conference on
+Learning Representations, 2023.
+[26] T. Krauß and A. Dmitrienko, “Mesas: Poisoning
+defense for federated learning resilient against adaptive
+attackers,” in Proceedings of the 2023 ACM SIGSAC
+Conference on Computer and Communications Security,
+ser. CCS ’23. New York, NY, USA: Association for
+Computing Machinery, 2023, p. 1526–1540. [Online].
+Available: https://doi.org/10.1145/3576915.3623212
+[27] M. A. Khan, V. Shejwalkar, A. Houmansadr, and F. M.
+Anwar, “On the pitfalls of security evaluation of robust
+federated learning,” in 2023 IEEE Security and Privacy
+Workshops (SPW). IEEE, 2023, pp. 57–68.
+[28] B. McMahan, E. Moore, D. Ramage, S. Hampson, and
+B. A. y Arcas, “Communication-efficient learning of
+deep networks from decentralized data,” in Artificial
+intelligence and statistics. PMLR, 2017.
+[29] M. Jagielski, A. Oprea, B. Biggio, C. Liu, C. Nita-Rotaru,
+and B. Li, “Manipulating machine learning: Poisoning
+attacks and countermeasures for regression learning,” in
+2018 IEEE Symposium on Security and Privacy (SP),
+2018, pp. 19–35.
+[30] S. Mei and X. Zhu, “Using machine teaching to identify
+optimal training-set attacks on machine learners,”
+Proceedings of the AAAI Conference on Artificial Intelligence, vol. 29, no. 1, Feb. 2015. [Online]. Available:
+https://ojs.aaai.org/index.php/AAAI/article/view/9569
+[31] H. Xiao, B. Biggio, G. Brown, G. Fumera, C. Eckert,
+and F. Roli, “Is feature selection secure against
+training data poisoning?” in Proceedings of the 32nd
+International Conference on Machine Learning, ser.
+Proceedings of Machine Learning Research, F. Bach
+and D. Blei, Eds., vol. 37. Lille, France: PMLR,
+07–09 Jul 2015, pp. 1689–1698. [Online]. Available:
+https://proceedings.mlr.press/v37/xiao15.html
+[32] V. Shejwalkar and A. Houmansadr, “Manipulating the
+byzantine: Optimizing model poisoning attacks and defenses for federated learning,” in Network and Dis-
+
+tributed System Security (NDSS) Symposium, 2021.
+[33] P. W. Koh and P. Liang, “Understanding black-box
+predictions via influence functions,” in Proceedings of the
+34th International Conference on Machine Learning, ser.
+Proceedings of Machine Learning Research, D. Precup
+and Y. W. Teh, Eds., vol. 70. PMLR, 06–11
+Aug 2017, pp. 1885–1894. [Online]. Available: https:
+//proceedings.mlr.press/v70/koh17a.html
+[34] A. Shafahi, W. R. Huang, M. Najibi, O. Suciu, C. Studer,
+T. Dumitras, and T. Goldstein, “Poison frogs! targeted
+clean-label poisoning attacks on neural networks,” in
+Advances in Neural Information Processing Systems,
+S. Bengio, H. Wallach, H. Larochelle, K. Grauman,
+N. Cesa-Bianchi, and R. Garnett, Eds., vol. 31.
+Curran Associates, Inc., 2018. [Online]. Available:
+https://proceedings.neurips.cc/paper files/paper/2018/
+file/22722a343513ed45f14905eb07621686-Paper.pdf
+[35] O. Suciu, R. Marginean, Y. Kaya, H. D. III,
+and T. Dumitras, “When does machine learning
+FAIL? generalized transferability for evasion and
+poisoning attacks,” in 27th USENIX Security
+Symposium (USENIX Security 18). Baltimore, MD:
+USENIX Association, Aug. 2018, pp. 1299–1316.
+[Online]. Available: https://www.usenix.org/conference/
+usenixsecurity18/presentation/suciu
+[36] H. Wang, K. Sreenivasan, S. Rajput, H. Vishwakarma, S. Agarwal, J.-y. Sohn, K. Lee, and
+D. Papailiopoulos, “Attack of the tails: Yes,
+you really can backdoor federated learning,” in
+Advances in Neural Information Processing Systems,
+H. Larochelle, M. Ranzato, R. Hadsell, M. Balcan,
+and H. Lin, Eds., vol. 33. Curran Associates,
+Inc., 2020, pp. 16 070–16 084. [Online]. Available:
+https://proceedings.neurips.cc/paper files/paper/
+2020/file/b8ffa41d4e492f0fad2f13e29e1762eb-Paper.pdf
+[37] Z. Sun, P. Kairouz, A. T. Suresh, and H. B. McMahan,
+“Can you really backdoor federated learning?” 2019.
+[Online]. Available: https://arxiv.org/abs/1911.07963
+[38] X. Chen, C. Liu, B. Li, K. Lu, and D. Song, “Targeted
+backdoor attacks on deep learning systems using data
+poisoning,” CoRR, vol. abs/1712.05526, 2017. [Online].
+Available: http://arxiv.org/abs/1712.05526
+[39] K. Pillutla, S. M. Kakade, and Z. Harchaoui, “Robust
+aggregation for federated learning,” IEEE Transactions
+on Signal Processing, vol. 70, pp. 1142–1154, 2022.
+[40] D. Müllner, “Modern hierarchical, agglomerative
+clustering algorithms,” 2011. [Online]. Available:
+https://arxiv.org/abs/1109.2378
+[41] K. Kumari, P. Rieger, H. Fereidooni, M. Jadliwala, and
+A.-R. Sadeghi, “Baybfed: Bayesian backdoor defense for
+federated learning,” in 2023 IEEE Symposium on Security
+and Privacy (SP), 2023, pp. 737–754.
+[42] R. J. Campello, D. Moulavi, and J. Sander, “Densitybased clustering based on hierarchical density estimates,”
+in Pacific-Asia conference on knowledge discovery and
+data mining. Springer, 2013, pp. 160–172.
+
+[43] J. H. W. Jr., “Hierarchical grouping to optimize an
+objective function,” Journal of the American Statistical
+Association, vol. 58, no. 301, pp. 236–244, 1963.
+[Online]. Available: https://www.tandfonline.com/doi/
+abs/10.1080/01621459.1963.10500845
+[44] S. Kariyappa, A. Prakash, and M. K. Qureshi, “Maze:
+Data-free model stealing attack using zeroth-order gradient estimation,” in IEEE/CVF Conference on Computer
+Vision and Pattern Recognition, 2021.
+[45] G. Hinton, O. Vinyals, and J. Dean, “Distilling the
+knowledge in a neural network,” 2015.
+[46] A. Radford, L. Metz, and S. Chintala, “Unsupervised representation learning with deep convolutional generative
+adversarial networks,” 2016.
+[47] J.-B. Truong, P. Maini, R. J. Walls, and N. Papernot,
+“Data-free model extraction,” in Proceedings of the
+IEEE/CVF conference on computer vision and pattern
+recognition, 2021, pp. 4771–4780.
+[48] A. Krizhevsky, G. Hinton et al., “Learning multiple
+layers of features from tiny images,” 2009.
+[49] L. N. Darlow, E. J. Crowley, A. Antoniou, and A. J.
+Storkey, “Cinic-10 is not imagenet or cifar-10,” arXiv
+preprint arXiv:1810.03505, 2018.
+[50] J. Deng, W. Dong, R. Socher, L.-J. Li, K. Li, and
+L. Fei-Fei, “Imagenet: A large-scale hierarchical image
+database,” in 2009 IEEE Conference on Computer Vision
+and Pattern Recognition, 2009, pp. 248–255.
+[51] G. Cohen, S. Afshar, J. Tapson, and A. van Schaik,
+“Emnist: an extension of mnist to handwritten letters,”
+2017.
+[52] L. Deng, “The mnist database of handwritten digit images for machine learning research [best of the web],”
+IEEE Signal Processing Magazine, vol. 29, no. 6, pp.
+141–142, 2012.
+[53] K. He, X. Zhang, S. Ren, and J. Sun, “Deep residual
+learning for image recognition,” 2015.
+[54] Q. Li, Y. Diao, Q. Chen, and B. He, “Federated learning
+on non-iid data silos: An experimental study,” 2021.
+[Online]. Available: https://arxiv.org/abs/2102.02079
+[55] Z. Zhang, A. Panda, L. Song, Y. Yang, M. W.
+Mahoney, J. E. Gonzalez, K. Ramchandran, and
+P. Mittal, “Neurotoxin: Durable backdoors in federated
+learning,” 2022. [Online]. Available: https://arxiv.org/
+abs/2206.10341
+[56] Y. Dai and S. Li, “Chameleon: Adapting to peer
+images for planting durable backdoors in federated
+learning,” 2023. [Online]. Available: https://arxiv.org/
+abs/2304.12961
+[57] D. Tsipras, S. Santurkar, L. Engstrom, A. Turner,
+and A. Madry, “Robustness may be at odds with
+accuracy,” 2019. [Online]. Available: https://arxiv.org/
+abs/1805.12152
+[58] R. Arratia and L. Gordon, “Tutorial on large deviations
+for the binomial distribution,” Bulletin of mathematical
+biology, vol. 51, no. 1, pp. 125–131, 1989.
+
+A PPENDIX
+A. Bound Analysis on Number of Malicious Clients per Round
+Let N denote the total number of clients and M the number
+of malicious clients. The ratio of malicious clients is given by
+the Malicious Client Ratio (MCR), ρ = M
+N . In each round of
+Federated Learning (FL), we sample C clients randomly from
+the N total clients. Let M be the number of malicious clients
+(out of C) sampled in some round. We are interested in finding
+a lower bound on the probability that there are more malicious
+
+clients than benign ones in a round of FL, i.e., P M ≥ C2 .
+The selection of malicious clients can be modeled as a
+Binomial distribution where probability of success is the MCR
+(ρ). Thus, our desired probability can be written in terms of
+the CDF F of this distribution:
+
+
+
+
+C
+C
+P M≥
+=1−F
+, C, ρ .
+(11)
+2
+2
+Using a Chernoff bound [58], we can thus obtain a lower
+bound on the probability that malicious clients outnumber
+benign ones in a given round as:
+
+
+C
+P M≥
+2
+
+
+ 
+1
+1
+1
+ln
++ ln
+≥ 1 − exp −C ·
+2
+2ρ
+2(1 − ρ)
+
+
+1
+= 1 − exp C · ln (4ρ(1 − ρ))
+2
+C
+
+= 1 − (4ρ(1 − ρ)) 2 .
+
+(12)
+
+B. Related Work
+The increasing adoption of FL has spurred extensive research on defending against poisoning attacks, particularly
+backdoor attacks, which pose a serious threat due to their
+ability to embed hidden malicious behaviors without degrading
+the model’s overall performance. Several defense mechanisms
+have been proposed to mitigate these threats, including robust aggregation methods, trust-based filtering, and anomaly
+detection techniques. Despite these efforts, existing defenses
+often exhibit limitations when evaluated across diverse attack
+configurations, especially under varying data poisoning rates,
+malicious client ratios within the federation and non-IID client
+data distributions.
+Robust aggregation-based defenses. Coordinate-wise median aggregation [18] and Multi-Krum [19] are two classical
+approaches designed to mitigate Byzantine failures by robustly
+aggregating model updates. The coordinate-wise median computes the median value for each model parameter across client
+updates, neutralizing the impact of outliers. Multi-Krum, on
+the other hand, iteratively selects and aggregates updates that
+are closest to the majority based on pairwise distances, making
+it resilient to adversarial updates. While these methods are
+effective against simple poisoning attacks, they struggle to
+defend against stealthy backdoor attacks, particularly when
+the data poisoning rate is low or the client data distribution is
+highly skewed. Additionally, both methods assume IID client
+data, limiting their robustness in realistic non-IID FL settings.
+
+Trust-based defenses. FLTrust [20] introduces a server-side
+reference model trained on a small trusted dataset to measure
+the trustworthiness of client updates. Only updates that align
+closely with the reference model are aggregated, providing a
+strong baseline against various adversarial strategies. However,
+FLTrust’s performance can degrade when the trusted dataset
+is not fully representative of the overall data distribution and
+if the attack is very stealthy.
+Similarity and anomaly detection-based defenses. Fool’s
+Gold [21] uses similarity-based clustering to detect and penalize clients that contribute updates with similar gradients across
+multiple rounds, under the assumption that adversaries tend to
+behave similarly. While this approach reduces the contribution
+of malicious clients, its reliance on similarity metrics makes it
+susceptible to adaptive adversaries that can evade detection by
+introducing slight randomness in their updates. FLAME [24],
+which employs adaptive clipping to detect and filter anomalous
+gradients, also shows promise in defending against targeted
+attacks. However, as we observe in our experiments, FLAME’s
+adaptive clipping can become overly aggressive, preventing
+convergence in some scenarios.
+Penultimate layer representation-based defenses. FLARE
+[23] leverages discrepancies in penultimate layer representations (PLR) of model updates to assign trust scores and filter
+out potentially malicious updates. This approach works well
+for overt poisoning attempts but, as we demonstrate, struggles
+to mitigate stealthy attacks with low DPR, where poisoned
+updates closely resemble benign ones.
+Adversarial training-based and sample rejection defenses.
+FLIP [25] represents a different class of defenses by introducing the ability to reject individual samples during aggregation. By leveraging adversarial training and low-confidence
+refusals, FLIP aims to reconstruct client-side triggers and
+reject poisoned updates. While effective to some extent, FLIP’s
+rejection mechanism often discards a non-negligible fraction
+of clean samples, which can negatively impact the main task
+accuracy (MTA). As observed in our experiments, this tradeoff in rejection-based defenses can lead to deceptively high
+MTA metrics, as benign samples that are incorrectly rejected
+are excluded from evaluation. In contrast, our proposed defense does not require such sample-level rejection, thereby
+preserving the overall integrity of the clean data and achieving
+a better balance between MTA and ASR across varying
+configurations. A crucial consideration when designing FL
+frameworks is that participating nodes often have limited
+computational resources, which can constrain the feasibility of
+complex operations. e.g., FLIP relies on client-side adversarial
+training—a computationally expensive process. While this
+approach is viable in their setup, where only 10 clients are
+sampled per round, increasing the number of selected clients
+significantly extends the duration of each round, making it
+impractical for large-scale deployments.
+Despite the progress made by these defenses, a significant
+gap remains: no existing method consistently performs well
+across different DPR levels, IID and non-IID data distributions,
+and varying MCR. Our proposed defense, DROP, addresses
+
+these issues by providing a robust, configuration-agnostic
+solution that is effective across a broad range of attack and
+learning configurations.
+C. Experimental Details
+1) Baselines: Each of the defense methods which were
+presented aims to limit the influence of malicious updates
+during aggregation. However, most works provide limited or
+inconsistent details about their evaluation setups, particularly
+concerning client learning configurations such as learning
+rate, batch size, and the number of local training epochs.
+For instance, Median [18] is evaluated on a simpler learning task (MNIST [52]) and specifies only the total number
+of participating clients, without providing key details about
+the client learning setup, such as the learning rate, batch
+size, or the number of local epochs. Similarly, Multi-Krum
+[19] reduces the impact of outliers using robust statistics
+but primarily focuses on how the data is partitioned among
+clients. While it does evaluate the method across different
+batch sizes, it lacks a detailed discussion of the broader
+local training setup. FLTrust [20] adopts a trusted serverside reference model to filter anomalous updates. The authors
+report using a ”combined” learning rate of 0.002, a batch
+size of 64, and a single local training epoch. In contrast,
+FoolsGold [21], which identifies and penalizes suspiciously
+similar client contributions, does not explicitly report the
+learning rate or the number of local epochs in its evaluation,
+only mentioning batch sizes of 10 or 50 depending on the
+dataset. FLAME [24], which employs anomaly detection to
+flag potentially malicious gradients, describes the structure
+of the federation but omits critical information about the
+local learning setup, such as learning rate, batch size, or the
+number of epochs. FLIP [25], on the other hand, presents a
+more detailed setup. We adapted the original implementation
+and hyperparameters for our evaluation. The original defense
+assumes that both the defense and malicious client poisoning
+are triggered after model convergence, citing interference in
+convergence if malicious activity begins earlier. However,
+our observations show that targeted backdoors do not disrupt
+model convergence even when initiated at the beginning of FL
+training. Thus, starting the defense only after convergence is
+ineffective since poisoning has already occurred by that point.
+On the other hand, initiating the defense too early leads to
+suboptimal performance. Therefore, we activate the defense
+after the first 10 rounds for CIFAR-10 and after the first 3
+rounds for EMNIST to balance effectiveness and performance.
+2) DROP Parameters: Knowledge distillation, particularly
+in the context of model stealing attacks, is inherently imperfect
+and cannot replicate the target model exactly, resulting in a
+minor decrease in MTA. To address this and ensure convergence in the FL setting, the knowledge distillation component
+is applied every K rounds instead of every round, allowing
+the system to recover lost MTA during intermediate rounds.
+The budget parameter in model stealing attacks and knowledge
+distillation determines the number of queries used to generate
+synthetic samples, which are then employed to guide the
+
+distillation process. A sufficient query budget ensures the
+generation of high-quality synthetic data that aligns closely
+with the target model’s decision boundaries, thereby enhancing
+the effectiveness of knowledge distillation. For CIFAR-10, we
+set K = 5 with a query budget of 5M queries. For EMNIST,
+K = 40 with a query budget of 4M queries. These values
+strike a balance between computational efficiency and the
+quality of the distilled global model.
+
+Fig. 6: Visualizing the impact of the FL setup (particularly
+the learning-rate, batch-size, and number of epochs used
+by clients) on main-task accuracy attack success rate when
+poisoned clients aim to inject a targeted backdoor for the
+EMNIST dataset.
+3) EMNIST Grid-Search: In the same fashion as Section III-A for CIFAR-10, we conduct a grid-search analysis
+over key hyperparameters, varying the client’s learning rate,
+batch size, and number of epochs on the EMNIST [51] dataset.
+Our findings in Figure 6 indicate that targeted backdoor attacks
+are more likely to succeed across a wider range of learning
+parameter combinations, with numerous setups yielding an
+ASR greater than 80%. In Table VIII, we highlight ten specific
+learning configurations where the attack achieves high ASR
+while maintaining a high MTA, underscoring the vulnerability
+of these setups to adversarial manipulation.
+Config
+
+LR
+
+BS
+
+Epochs
+
+MTA (%)
+
+ASR (%)
+
+C1
+C2
+C3
+C4
+C5
+C6
+C7
+C8
+C9
+C10
+
+0.1
+0.1
+0.05
+0.1
+0.1
+0.1
+0.1
+0.05
+0.01
+0.025
+
+32
+64
+32
+32
+64
+32
+64
+32
+32
+128
+
+2
+5
+5
+1
+1
+5
+2
+1
+2
+5
+
+89.23
+88.22
+88.48
+89.59
+89.20
+88.73
+88.87
+89.21
+87.73
+86.61
+
+99.00
+99.00
+98.75
+98.75
+98.50
+98.50
+98.25
+98.25
+97.25
+96.00
+
+TABLE VIII: Client FL configurations for successful stealthy
+attacks on EMNIST i.e., cases where the MTA ≥ 80% and
+ASR ≥ 95%.
+
+

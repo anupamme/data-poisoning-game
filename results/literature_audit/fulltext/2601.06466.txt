@@ -1,0 +1,3072 @@
+1
+
+SecureDyn-FL: A Robust Privacy-Preserving
+Federated Learning Framework for Intrusion
+Detection in IoT Networks
+
+arXiv:2601.06466v1 [cs.CR] 10 Jan 2026
+
+Imtiaz Ali Soomro ID , Hamood Ur Rehman ID , Syed Jawad Hussain ID , Adeel Iqbal ID , Waqas Khalid ID , and
+Heejung Yu ID
+
+Abstract—The rapid proliferation of Internet of Things
+(IoT) devices across domains such as smart homes, industrial
+control systems, and healthcare networks has significantly
+expanded the attack surface for cyber threats, including
+botnet-driven distributed denial-of-service (DDoS), malware
+injection, and data exfiltration. Conventional intrusion detection systems (IDS) face critical challenges like privacy, scalability, and robustness when applied in such heterogeneous IoT
+environments. To address these issues, we propose SecureDynFL, a comprehensive and robust privacy-preserving federated
+learning (FL) framework tailored for intrusion detection in
+IoT networks. SecureDyn-FL is designed to simultaneously
+address multiple security dimensions in FL-based IDS: (1)
+poisoning detection through dynamic temporal gradient auditing, (2) privacy protection against inference and eavesdropping attacks through secure aggregation, and (3) adaptation
+to heterogeneous non-independent-and-identically-distributed
+(non-IID) data via personalized learning. The framework
+introduces three core contributions: (i) a dynamic temporal
+gradient auditing mechanism that leverages Gaussian mixture
+models (GMMs) and Mahalanobis distance (MD) to detect
+stealthy and adaptive poisoning attacks, (ii) an optimized
+privacy-preserving aggregation scheme based on transformed
+additive ElGamal encryption with adaptive pruning and
+quantization for secure and efficient communication, and (iii)
+a dual-objective personalized learning strategy that improves
+model adaptation under non-IID data using logit-adjusted
+loss. Extensive experiments on the N-BaIoT dataset under
+both IID and non-IID settings, including scenarios with up
+to 50% adversarial clients, demonstrate that SecureDynFL consistently outperforms state-of-the-art FL-based IDS
+defenses. It achieves up to 99.01% detection accuracy, a
+98.9% F1-score, and significantly reduced attack success rates
+across diverse poisoning attacks, while maintaining strong
+privacy guarantees and computational efficiency for resourceconstrained IoT devices.
+This work was supported by the National Research Foundation of
+Korea (NRF) grant funded by the Korea government (MSIT) (RS-202500514779, RS-2025-02303435), by the Information Technology Research
+Center (ITRC) support program (IITP-2023-RS-2022-00164800) supervised by the Institute for Information & Communications Technology
+Planning & Evaluation (IITP). (Imtiaz Ali Soomro and Adeel Iqbal
+contributed equally to this work.). (Corresponding authors: Heejung Yu
+and Waqas Khalid).
+I. A. Somroo, and S. J. Hussain are with Sir Syed CASE Institute
+of Technology, Islamabad, Pakistan (email: imtiaz.soomro@case.edu.pk,
+jawad.hussain@case.edu.pk).
+H. Khan is with the ECE Department, Habib University, Karachi,
+Pakistan (email: hamood.rehman@sse.habib.edu.pk).
+A. Iqbal is with the School of Computer Science and Engineering,
+Yeunganam University, South Korea (email:adeeliqbal@yu.ac.kr).
+Waqas Khalid is with the Department of Electrical and Electronic
+Engineering, and the Next Generation Internet of Everything Laboratory
+(NGIoE Lab), University of Nottingham Ningbo China, Ningbo 315100,
+China (e-mail: Waqas.Khalid@nottingham.edu.cn).
+Heejung Yu is with the Department of Electronics and Information
+Engineering, Korea University, Sejong, 30019, South Korea (email: heejungyu@korea.ac.kr).
+
+Index Terms—Security threats, Intrusion Detection System
+(IDS), Federated learning (FL).
+
+I. I NTRODUCTION
+The rapid expansion of the Internet has driven largescale connectivity, accelerating the deployment of Internet
+of Things (IoT) devices [1]–[6]. By 2025, IoT devices
+are expected to exceed 55.7 billion globally [7]. Smart
+appliances and sensors produce massive data streams but
+have limited computing power and minimal security [8].
+These vulnerabilities make them attractive targets for cyber
+adversaries, as illustrated by the 2016 Mirai botnet attack
+[9], which remains one of the most severe IoT security
+incidents. Such events highlight the need for effective
+IoT-specific cybersecurity measures. Intrusion Detection
+Systems (IDS), which analyze network traffic to identify
+threats, are essential components for IoT defense [10].
+Federated Learning (FL) offers a promising paradigm for
+addressing the privacy and scalability limitations of centralized IDS [11]. In FL, clients collaboratively train a shared
+model without exchanging raw data. Clients compute local
+updates that are aggregated by a central server to form
+a global model. This iterative process preserves privacy,
+reduces communication overhead, and supports distributed
+intrusion detection [12]. Recent FL-based IDS frameworks
+[13], [14] leverage this approach to enhance scalability and
+privacy.
+Despite these advantages, several deployment challenges
+remain. IoT environments typically exhibit nonindependent-and-identically-distributed (non-IID) data,
+with clients receiving heterogeneous mixes of benign
+and malicious traffic. Such heterogeneity degrades global
+convergence and detection performance [12], [15], [16].
+FL is also vulnerable to poisoning attacks: compromised
+clients can inject malicious updates to bias or degrade the
+global model [17], [18]. The lack of client supervision
+amplifies these threats [19], [20]. Adversaries can further
+exploit eavesdropping or man-in-the-middle (MITM)
+attacks [21], [22] to reconstruct local models and conduct
+inference attacks [23]–[25]. Gradient manipulation
+techniques can bypass traditional defenses [26].
+Privacy-preserving techniques such as differential privacy (DP), secure multiparty computation (SMC), and
+homomorphic encryption (HE) have been proposed to
+mitigate these threats [27], [28]. DP-based methods [29],
+[30] inject noise to protect data but often degrade accuracy
+in dynamic or imbalanced settings. SMC approaches [31]
+prevent data leakage but incur heavy computational and
+
+2
+
+communication costs, unsuitable for constrained devices.
+HE frameworks [32] ensure confidentiality but increase
+latency. Hybrid solutions [33]–[35] aim to balance privacy
+and performance but face trade-offs. Frameworks such as
+TrustFL [36] and SafeFL [37] advance the field but have
+practical limitations: TrustFL depends on trusted execution
+environments (TEEs), and SafeFL incurs high computational overhead. Many poisoning defenses require gradient
+access, which risks data leakage, and existing methods
+struggle against encrypted poisoning attacks.
+These limitations can be summarized as: (i) vulnerability
+to poisoning and inference attacks, (ii) poor adaptation
+to non-IID data and limited generalization to unseen intrusions, and (iii) communication inefficiencies unsuitable
+for resource-constrained devices. While recent zero-shot
+learning (ZSL) advances [38] offer promising techniques
+for generalization, further progress is needed to address
+these issues holistically.
+This paper proposes SecureDyn-FL, a privacy-preserving
+FL-based IDS tailored for heterogeneous IoT environments. SecureDyn-FL addresses three core challenges: data
+heterogeneity, poisoning resilience, and communication
+security. A model decoupling strategy separates shared
+feature extraction from personalized classification, allowing
+local adaptation while maintaining global robustness. A
+joint mini-batch logit-adjusted and cross-entropy loss improves learning under diverse distributions. Unlike standard
+aggregation methods, which are vulnerable to label-flipping
+and model poisoning [39], [40], SecureDyn-FL maintains
+stable convergence under heterogeneous and adversarial
+conditions.
+SecureDyn-FL ensures secure communication by integrating homomorphic encryption with efficient privacypreserving mechanisms. This design enables encrypted
+computation without compromising computational efficiency, thereby safeguarding both model parameters and
+sensitive data throughout the training process. The framework is engineered for real-world deployment, delivering
+strong security guarantees, robustness against adversarial
+behavior, and scalability across large-scale distributed environments.
+The main contributions are:
+• Proposing SecureDyn-FL, integrating dynamic auditing, encryption, and personalization to address heterogeneity, poisoning, and communication security in
+FL-based IDS.
+• Developing a Gaussian mixture model (GMM)based auditing mechanism using Mahalanobis distance (MD) to detect stealthy and adaptive poisoning
+attacks.
+• Designing a hybrid loss function that improves local
+adaptation and global performance.
+• Applying dynamic pruning and quantization to reduce
+communication overhead without degrading accuracy
+or privacy.
+• Demonstrating strong cross-dataset generalization,
+maintaining high performance across N-BaIoT, and
+T ONIoT benchmarks.
+• Achieving up to 99.01% overall accuracy and a 0.9893
+F1-score on N-BaIoT under same-model poisoning,
+while maintaining strong robustness across all at-
+
+tack settings, consistently outperforming state-of-theart defenses such as FL Trust, Shield FL, and FLDefender.
+The remainder of this paper is structured as follows. Section II presents the problem formulation and threat model.
+Section III discusses the necessary background and related
+concepts. Section IV introduces the overall SecureDyn-FL
+framework and system workflow, while Section V details
+the proposed model and defense mechanisms. Section VI
+provides theoretical and security analysis. Section VII
+presents the experimental setup and results. Section VIII
+offers a comparative evaluation with existing state-of-theart methods. Section IX analyzes computational efficiency
+and scalability. Finally, Section X concludes the paper and
+outlines future research directions.
+II. PROBLEM FORMULATION
+In SecureDyn-FL models, a key focus is to secure the
+entire FL pipeline, with a particular emphasis on the secure
+aggregation of model updates. Clients contribute encrypted
+gradients to the FL server, bolstering data privacy by
+safeguarding individual contributions from both external
+adversaries and the server itself. Secure aggregation in
+SecureDyn-FL is distinct from simply sending encrypted
+gradients; it involves combining these gradients in a manner that prevents revealing individual updates while still
+facilitating effective global model training.
+Given K clients with a dataset Di that may follow
+either IID or non-IID data distributions, the goal is to
+collaboratively train a global model M by minimizing the
+loss function L. This must be achieved while ensuring data
+privacy, robustness against adversarial attacks, and minimal
+computational overhead. The SecureDyn-FL framework F
+is designed to meet the following objectives:
+• Handle both IID and non-IID data distributions across
+clients.
+• Ensure data privacy by allowing clients to contribute
+to M without exposing their individual data.
+• Verify encrypted gradients gi = ∇(Di , M ) to detect
+malicious attacks.
+• Implement secure aggregation of verified gradients to
+enhance model robustness against poisoning attacks.
+• Maintain high performance of M for all clients,
+irrespective of data distribution variations.
+• Minimize the overhead of encryption and gradient
+verification while optimizing cryptographic efficiency.
+The adversarial attack problem in SecureDyn-FL is
+formulated as minimizing L(M ) under privacy, robustness,
+and efficiency constraints, as expressed in Eq. 1.
+ X
+N
+1
+L(Di , M )
+(1)
+min L(M ) =
+M
+K i=1
+When optimizing Eq. 1, the following constraints are
+considered:
+• The global model M is updated using verified gradients gi after their computation.
+• Gradients gi = ∇(Di , M ) for i = 1, . . . , K are
+encrypted to preserve confidentiality.
+• Performance constraints, such as data security, model
+robustness, adaptability to IID and non-IID data, and
+cryptographic efficiency, are satisfied.
+
+3
+
+Fig. 1. Thread Model: Federated Learning-based Intrusion Detection
+System (FL-IDS) in IoT networks with model inference and poisoning
+attacks.
+
+The gradients are verified using a predefined verification
+function V a(gi ), as defined in Eq. 2.
+(
+benign
+if gi ∈ non-malicious
+V a(gi ) =
+(2)
+malicious otherwise
+In Eq. 2 Va (gi ) denotes a binary auditing decision
+variable produced by the temporal gradient auditing mechanism. A value of Va (gi ) = 1 indicates that the client
+update gi is classified as benign and is therefore accepted
+for aggregation, whereas Va (gi ) = 0 denotes that the
+update is identified as malicious and consequently rejected.
+This explicit interpretation improves the precision and
+interpretability of the proposed formulation. This function
+evaluates gi against expected non-malicious patterns, categorizing it accordingly. Such a mechanism ensures only
+valid gradients contribute to updating the global model M ,
+thus enhancing its accuracy and resilience in adversarial
+SecureDyn-FL scenarios. Based on Eq. 2, the benign
+gradients are passed to the global model:
+  X
+K
+1
+M =M −η×
+×
+V a(gi ) × gi
+(3)
+K
+i=1
+where η is the learning rate. The framework F also
+evaluates accuracy, computation time, communication cost,
+and resource utilization to ensure practical and efficient
+real-world deployment.
+A. Threat Model
+This paper focuses on security and privacy threats in
+FL that are exploitable by malicious users. Similar to [41],
+[42], [43], and [44], we classify users into two categories:
+benign or malicious, where malicious users (poisoners)
+may have access to diverse local datasets. Although advanced adaptive poisoning attacks exist, this study focuses
+on conventional model poisoning threats to maintain a
+consistent basis for comparison. We explicitly assume
+that users do not collude, excluding user-user collusion
+
+from this scope. Additionally, complex scenarios, such as
+server-client collusion or sophisticated adaptive attacks, are
+beyond the current focus. This limitation ensures a fair
+comparison with [42], [43], [17], [45], and [46], but also
+sets the stage for future research to extend our model to
+these more intricate threats, including various collusion
+scenarios and auditor threats. The threat model for our
+FL-based IDS in IoT networks, accounting for both model
+inference and poisoning attacks, is illustrated in Fig. 1. In
+this setting, an honest-but-curious server may attempt to
+launch model inversion or related inference attacks by exploiting shared gradients to reconstruct sensitive local data,
+while malicious clients may perform targeted or untargeted
+poisoning to degrade detection performance. SecureDynFL mitigates these threats through additive homomorphic
+encryption, which prevents the server from accessing raw
+gradients, and temporal gradient auditing, which detects
+and filters abnormal client updates before aggregation.
+The specific threats and corresponding goals are:
+1) Threat 1: The honest-but-curious (HBC) adversary: In FL, the server has access to all local gradients and ciphertexts and may act adversarially. The
+system operates on the assumption of this HBC behavior, but the server could potentially launch privacy
+attacks, including inferring the data privacy of users.
+The core threat lies in adversaries seeking sensitive
+global model information through data reconstruction
+or inference attacks.
+Goal 1: Safeguard the confidentiality of local gradients. Adversaries, including malicious servers, can
+exploit shared gradients and global parameters to
+expose sensitive user data. Encrypting individual
+gradients before server transmission provides some
+degree of confidentiality.
+2) Threat 2: Inject poisonous gradients: Byzantine
+actors can disrupt FL systems by submitting fraudulent gradients that mimic legitimate updates from
+heterogeneous data, compromising model integrity.
+Goal 2: Enhance the examination of encrypted gradients to distinguish benign from malicious updates,
+strengthening resilience against poisoning attacks.
+B. Design Goals
+SecureDyn-FL aims to achieve the following design
+goals to ensure high accuracy, robustness, privacy, and
+efficiency, even under adversarial conditions:
+1) Accuracy: Maintain high classification accuracy
+across all clients, despite data imbalance, distribution
+skew, or adversarial attacks. A dual-objective loss
+function ensures dependable performance in both IID
+and non-IID settings.
+2) Robustness: Ensure resilience against targeted and
+untargeted poisoning attacks, including adversaries
+who change their strategies over time. This is
+achieved through a dynamic temporal gradient auditing mechanism that tracks update behavior using
+GMM clustering and MD.
+3) Privacy: Sensitive data is protected during training
+and communication using additive homomorphic encryption based on a modified ElGamal scheme, en-
+
+4
+
+abling secure gradient aggregation without exposing
+raw updates.
+4) Adaptability: Support client-level personalization
+via logit-adjusted loss, allowing local models to adapt
+to diverse class distributions while contributing to
+global learning, vital for heterogeneous IoT environments.
+5) Efficiency in Communication and Computation:
+Incorporate adaptive quantization and dynamic unstructured pruning to reduce overhead in lowpower, bandwidth-constrained devices while preserving model quality.
+III. L ITERATURE R EVIEW
+The proliferation of IoT devices has generated massive
+amounts of distributed data, necessitating learning frameworks that preserve privacy while enabling effective model
+training. FL has emerged as a promising decentralized
+paradigm, allowing multiple edge devices to collaboratively
+train a global model by exchanging only model parameters
+rather than raw data. This approach significantly mitigates
+privacy risks and communication overhead compared to
+centralized machine learning models. Despite these advantages, FL remains highly vulnerable to model poisoning
+and backdoor attacks, wherein malicious clients manipulate
+local gradients to degrade or subvert the global model.
+Fang et al. [17] conducted the first systematic study of
+local model poisoning against Byzantine-robust FL methods. Their findings revealed that existing defenses, which
+were assumed to be robust against Byzantine failures,
+can be substantially compromised across multiple realworld datasets, thereby exposing critical vulnerabilities in
+federated optimization.
+In response, researchers have proposed several defense
+strategies to enhance the robustness of FL. Jebreel and
+Domingo-Ferrer [47] introduced FL-Defender, which identifies attack-related neurons by analyzing last-layer gradient
+behaviors and re-weights client updates based on workerwise angle similarity with PCA compression. Similarly,
+Gill et al. [48] proposed FedDefender, leveraging differential testing on synthetic inputs and neuron activation fingerprinting to identify backdoor-infected clients, achieving
+attack success rates as low as 10%. Erbil and Gursoy [49]
+explored a clustering-based defense using X-Means to isolate malicious updates by selectively extracting indicative
+DNN parameters, yielding up to 95% true positive rates.
+To address large-scale attacks, Zhang et al. [50] developed
+FLDetector, which detects malicious clients by analyzing
+model-update inconsistencies across iterations. Malicious
+participants are identified by their persistent deviation
+from expected update patterns, allowing Byzantine-robust
+methods to effectively train accurate models after removing
+compromised clients. Collectively, these methods reflect a
+growing body of work aimed at enhancing the security of
+federated learning in distributed IoT environments.
+IDSs play a crucial role in safeguarding IoT and industrial IoT (IIoT) infrastructures against cyber threats.
+Traditional centralized IDS approaches face significant
+challenges related to data privacy, communication overhead, and real-time processing in distributed networks. FLIDS has therefore emerged as an effective solution, com-
+
+bining collaborative model training with privacy preservation. Bhavsar et al. [51] developed an FL-IDS using
+logistic regression and CNN classifiers, achieving 94–99%
+accuracy on NSL-KDD and Car-Hacking datasets when
+deployed on low-power embedded devices such as Raspberry Pi. Akinie et al. [52] proposed a hybrid server–edge
+framework that reduced memory consumption by 42% and
+training time by 75%, while maintaining 99.2% detection
+accuracy. Javeed et al. [53] combined CNN and BiLSTM
+architectures within a zero-trust FL model to capture spatial–temporal features, demonstrating strong performance
+on CICIDS2017 and Edge-IIoTset datasets. Rashid et al.
+[54] further achieved 92.49% accuracy on Edge-IIoTset,
+closely approaching the performance of centralized machine learning (93.92%), thus validating the effectiveness
+of FL for intrusion detection without compromising privacy.
+In IIoT environments, Ruzafa-Alcazar et al. [55] conducted a comprehensive evaluation of differential privacy
+techniques applied to FL-IDS, comparing FedAvg and
+Fed+ aggregation methods on the T ONIoT dataset under
+non-IID data distributions. Sun et al. [56] advanced this line
+of work by combining CNNs and Gated Recurrent Units
+with Isolation Trees for anomaly detection, improving both
+real-time performance and accuracy in non-IID settings.
+Similarly, Azeez et al. [57] applied federated averaging on
+CICIDS2017, achieving 95.2% accuracy, while Mahmud et
+al. [58] demonstrated over 90% accuracy across multiple
+attack types, including DoS, DDoS, and ransomware, in
+IoT networks. Zakaria Abou El Houda et al. [59] proposed
+an innovative approach that integrates secure aggregation
+protocols with blockchain technology to ensure both data
+integrity and privacy. Their system employs multi-party
+computation to prevent data exposure between participants
+and uses blockchain to provide tamper-resistance, achieving high detection accuracy on real-world IoT datasets.
+Collectively, these studies demonstrate that FL-IDS offers a
+scalable, privacy-preserving, and accurate intrusion detection mechanism for resource-constrained IoT environments.
+Although FL inherently improves data privacy by avoiding raw data transmission, model updates themselves can
+leak sensitive information. Moreover, defense mechanisms
+against poisoning attacks must be designed carefully to
+avoid privacy compromises. As a result, recent research
+has focused on integrating advanced cryptographic techniques into federated learning to achieve both security
+and privacy. Yazdinejad et al. [60] proposed an internal
+auditing mechanism utilizing GMM and MD with additive homomorphic encryption (AHE) to detect malicious
+encrypted gradients while minimizing computational overhead. Miao et al. [61] introduced RFed, a dual-server
+framework that employs scaled dot-product attention to
+achieve over 96% poisoning attack failure rates without relying on strong assumptions, thereby improving scalability
+and robustness. Wu et al. [62] developed PBFL, integrating
+two-trapdoor fully homomorphic encryption with secure
+normalization and cosine similarity methods to defend
+against poisoning while preventing privacy leakage during
+detection. Similarly, Ma et al. [43] proposed ShieldFL,
+which uses two-trapdoor homomorphic encryption and
+secure cosine similarity measurements. ShieldFL achieved
+
+5
+
+30%–80% accuracy improvements against state-of-the-art
+poisoning attacks under both IID and non-IID data conditions. These advances illustrate a growing emphasis on
+privacy-preserving federated defense mechanisms, combining cryptographic primitives with statistical detection
+techniques to enable secure and practical FL deployment
+in large-scale IoT and IIoT networks.
+Privacy preservation in federated learning has been
+extensively explored through cryptographic and statistical techniques, including secure multiparty computation
+(SMC), fully homomorphic encryption (FHE), differential
+privacy (DP), and more recently, blockchain-based mechanisms. SMC and FHE provide strong security guarantees by
+enabling computations on encrypted data without exposing
+individual client updates. However, these approaches typically incur significant computational and communication
+overhead, limiting their scalability in resource-constrained
+IoT environments [27], [28]. DP techniques introduce
+calibrated noise to model updates, effectively protecting
+individual data privacy but often at the cost of reduced
+model utility and convergence performance, particularly
+in non-IID settings [33], [35]. To balance privacy and
+efficiency, hybrid approaches have emerged that combine
+DP with SMC or homomorphic encryption, aiming to
+reduce overhead while maintaining strong privacy guarantees. In parallel, blockchain-based frameworks have been
+proposed to improve the integrity and auditability of the
+aggregation process. By leveraging immutable ledgers and
+decentralized consensus, blockchain can prevent tampering
+and ensure trustworthy model updates without relying on
+a fully trusted central server [37], [63], [64]. While these
+methods offer promising privacy protection, most existing
+solutions struggle to simultaneously ensure lightweight
+operation, robust poisoning defense, and high detection
+accuracy in heterogeneous IoT deployments.
+Existing federated learning-based IDS frameworks face
+notable limitations in jointly addressing data heterogeneity,
+adaptive poisoning resilience, and communication privacy
+in realistic IoT environments. Current defenses often rely
+on static detection mechanisms, trusted hardware, or heavy
+cryptographic schemes, which either fail against stealthy
+attacks or introduce prohibitive overhead in resourceconstrained settings. Moreover, non-IID data distributions
+significantly hinder global model convergence and detection accuracy, a challenge insufficiently addressed by prior
+works. To fill these gaps, this paper proposes SecureDynFL, a federated intrusion detection framework that integrates dynamic temporal gradient auditing, lightweight
+privacy-preserving encryption, and personalized learning
+strategies. This holistic approach simultaneously strengthens resilience against adaptive poisoning, enhances privacy
+protection, and improves detection performance under nonIID conditions, thereby advancing the state of the art in
+secure and efficient FL-based intrusion detection for IoT
+networks.
+IV. W ORK F LOW
+The SecureDyn-FL framework follows a structured sequence of coordinated phases that together form an endto-end pipeline for secure, personalized, and robust intrusion detection in federated IoT environments. Rather
+
+than treating each component in isolation, the workflow
+integrates personalized learning, communication efficiency,
+and security mechanisms into a cohesive process. Client
+registration establishes trust and tracking, personalized
+training ensures adaptability to non-IID data, pruning and
+quantization reduce communication cost, encryption protects updates during transmission, and temporal gradient
+auditing detects poisoning attacks before aggregation. This
+high-level structure illustrates how each stage contributes
+directly to the overarching IDS goal: detecting malicious
+behavior while preserving data privacy and efficiency in
+federated settings.
+The proposed SecureDyn-FL framework operates
+through a sequence of coordinated phases to ensure secure,
+efficient, and personalized FL for intrusion detection in IoT
+environments as shown in Fig. 2. The system initializes
+the federated infrastructure by assigning unique identifiers
+and cryptographic key pairs to each participating client.
+Simultaneously, a Central Audit (CA) module prepares
+a tagging and update tracking mechanism for later-stage
+gradient verification and poisoning detection.
+Each client performs personalized local training using
+its non-IID data. The local model is decoupled into a
+shared feature extractor and a private classifier. A dualloss strategy, comprising cross-entropy and mini-batch
+logit adjustment, is used to enhance robustness against
+class imbalance and heterogeneous distributions. Following
+local training, clients apply soft, unstructured L1-normbased pruning with a dynamically increasing pruning rate
+over rounds to reduce computational and communication
+overhead while improving privacy. Subsequently, clients
+quantize the pruned updates using an adaptive quantization
+method. This involves computing a scale and zero-point to
+map real-valued updates into a lower bit-width representation, reducing bandwidth usage without sacrificing accuracy. These quantized updates are then encrypted using the
+CKKS homomorphic encryption scheme, enabling secure
+aggregation at the server without decryption.
+Before aggregation, a CA is conducted. The first phase
+validates client identities and updates tags. The second
+phase involves clustering using incremental GMMs, evaluating MD, and verifying temporal trajectory consistency of
+updates. A dynamic multi-threshold decision mechanism
+classifies client updates as accepted, down-weighted, or
+rejected. Only verified and reliable gradients proceed to the
+aggregation step. The server aggregates the validated updates and constructs a global model, which is redistributed
+to clients for the next training round. Clients integrate the
+updated model while continuing to refine local classifiers.
+This workflow collectively ensures secure communication,
+personalized learning, defense against poisoning attacks,
+and robustness in heterogeneous IoT environments.
+V. P ROPOSED M ODEL
+This section presents proposed SecureDyn-FL, a novel
+personalized FL framework tailored for intrusion detection
+in non-IID IoT environments. To address the vulnerabilities
+of FL against poisoning attacks, we introduce a serverside poisoned client detection mechanism before the global
+model aggregation step of FL.
+
+6
+
+Fig. 2. Flowchart of the SecureDyn-FL framework, including device initialization, local model training on clients, security measures (e.g., poisoned
+device detection and central auditing), optimization (via weight pruning and quantization), privacy-preserving aggregation at the server, and performance
+evaluation before deploying the global model.
+
+A. System Architecture Overview
+The architecture consists of four key entities:
+• Clients (IoT Devices): Distributed nodes that locally
+train on non-IID data while preserving data privacy.
+• Central Auditor: A trusted party responsible for
+client registration, key distribution, secure aggregation, model auditing, and dissemination.
+• Communication Network: Secure channels through
+which encrypted updates and models are exchanged.
+• Audit Table Repository: A secure, encrypted ledger
+storing client-specific encrypted updates and behavioral metadata for auditing.
+The architecture supports secure model updates, client
+personalization, encryption-enabled communication, and
+integrity verification, without revealing sensitive client information or raw data.
+
+the communication channel against MITM attacks. For a
+detailed algorithm, mathematical derivations, and message
+exchanges, the reader is referred to [67].
+C. Proposed Method: Multi-Objective Personalized Federated Learning
+To tackle the challenges introduced by statistical heterogeneity (i.e., non-IID data distributions) in FL, we propose
+a multi-objective personalized FL (MO-PFL) framework.
+This approach adopts a decoupled dual-classifier strategy
+coupled with a tailored multi-objective loss function. Our
+architecture enables client-level personalization while preserving alignment with the global learning objective. As
+shown in Fig. 3, the model consists of a shared feature
+extractor and two decoupled classifiers: a personalized
+classifier tuned to the local distribution and a global
+classifier synchronized across clients.
+
+B. Registration Phase
+The device registration and authentication process comprises four main phases: registration, login, key exchange,
+and authentication. During registration, each device is enrolled with the certification authority (CA), which assigns
+a unique tag identity (TID) and generates a secret value
+(HSV) based on the device’s MAC address. A hashed
+identity (HID) is derived and stored securely to prevent
+duplicate registrations [65], [66]. In the login phase, the device submits its HID for server validation, followed by the
+exchange of masked random values to reconstruct shared
+secrets. In the key exchange phase, both parties derive a
+128-bit session key through random number operations and
+bitwise transformations, ensuring confidentiality. Finally,
+mutual authentication is achieved using HMAC-SHA256
+over session keys, IP addresses, and nonces, securing
+
+D. Model Architecture
+Consider a client k ∈ {1, 2, . . . , K} with local dataset
+k
+Dk = {(xi , yi )}ni=1
+sampled from a possibly non-IID
+distribution Dk . The local model comprises:
+d
+p
+• A shared feature extractor: f : R → R
+pers
+p
+• A personalized classifier: hk
+: R → R|C|
+glob
+p
+• A global classifier: hk
+: R → R|C|
+For input x on client k, the model produces:
+ŷ pers = hpers
+k (f (x)),
+
+ŷ glob = hglob
+k (f (x))
+
+(4)
+
+The extractor f is globally shared and updated via the
+FedAvg algorithm [11], while hpers
+k remains private to each
+client for local adaptation. The global classifier hglob
+is
+k
+periodically synchronized across clients.
+
+7
+
+Fig. 3. System model of proposed SecureDyn-FL framework. The architecture integrates multiple defense mechanisms, including quantization, meanbased parameter clipping, and dynamic unstructured model pruning, followed by encrypted local training. The FL model is decoupled into a shared
+feature extractor and dual classifiers (global and personalized) enabling multi-objective optimization. A trusted auditor monitors the training pipeline
+to detect adversarial threats such as data/model poisoning and eavesdropping. Secure aggregation ensures the integrity and privacy of the global model.
+
+E. Multi-Objective Loss Formulation
+To balance personalization and global generalization, we
+define a composite loss function:
+a) Global Cross-Entropy Loss: This loss ensures consistency across clients by training the global classifier:
+!
+exp(ŷyglob )
+glob
+LCE (y, ŷ ) = − log P
+(5)
+glob
+y ′ ∈C exp(ŷy ′ )
+where C is the label space and ŷyglob
+is the output logits
+′
+′
+glob
+for class y . y
+as the predicted label generated by the
+global classifier on each client. This value is utilized in
+the computation of the global cross-entropy loss to ensure
+alignment between local and global objectives during federated training.
+
+b) Logit-Adjusted Personalization Loss: To handle
+the local objective of the client and learn the personalized
+model for each client, we apply a logit-adjusted crossentropy loss to the personalized classifier:
+LLA (y, ŷ
+
+pers
+
+) = − log
+
+exp(ŷypers + τ log αyk )
+P
+pers
+k
+y ′ ∈C exp(ŷy ′ + τ log αy ′ )
+
+!
+
+(6)
+where αyk is the normalized frequency of class y in client
+k. It is dynamically recalculated at the mini-batch level,
+enabling real-time adaptation to batch-wise label skew. The
+temperature parameter τ regulates the intensity of the logit
+adjustment.
+c) Mitigating Non-IID Challenges.: Beyond addressing class imbalance, the proposed dual-objective formula-
+
+8
+
+tion plays a crucial role in mitigating the adverse effects
+of non-IID data distributions commonly observed in IoT
+environments. The global cross-entropy loss LCE enforces
+alignment with the global decision boundary by optimizing
+shared representations collaboratively across clients, ensuring that local models do not drift too far from the global
+objective. Meanwhile, the logit-adjusted personalization
+loss LLA dynamically reweights logits based on local class
+priors, which counteracts the bias introduced by label
+distribution skew and stabilizes local training. By jointly
+optimizing these objectives, the model achieves a balance
+between local specialization and global consistency, reducing client-drift and improving the robustness of aggregation
+under heterogeneous non-IID settings.
+F. Optimization and Gradient Flow
+The total loss for each client is:
+Ltotal = LCE (y, ŷ glob ) +λ
+{z
+}
+|
+Global objective
+
+LLA (y, ŷ pers )
+|
+{z
+}
+
+(7)
+
+Personalization objective
+
+a) Backward Pass:
+pers
+• hk
+is updated using ∇LLA
+glob
+• hk
+is updated using ∇LCE
+• f is updated using ∇f (LCE + LLA )
+G. Federated Training Protocol
+Each local training round on client k proceeds through
+the following steps:
+1) Forward Pass:
+The client computes intermediate features using the
+shared feature extractor:
+z = f (x)
+
+(8)
+
+These features are passed to both classifiers:
+ŷ pers = hpers
+k (z),
+
+ŷ glob = hglob
+k (z)
+
+(9)
+
+pers
+
+Here, ŷ
+reflects the personalized inference tailored
+to local data, while ŷ glob contributes to the globally
+shared model.
+2) Loss Computation:
+The total loss is formulated as a weighted sum of
+the global cross-entropy loss and the logit-adjusted
+personalization loss:
+Ltotal = LCE (y, ŷ glob ) + λLLA (y, ŷ pers )
+
+(10)
+
+The parameter λ balances the trade-off between
+global consistency and local adaptation.
+3) Backpropagation:
+Gradients are computed and applied separately:
+pers
+hpers
+← hpers
+k
+k − η∇hk LLA
+
+hglob
+← hglob
+− η∇hglob LCE
+k
+k
+k
+
+f ← f − η∇f (LCE + LLA )
+
+(11)
+
+The feature extractor f receives a combined gradient
+from both loss terms, enabling it to capture features
+that support both global generalization and local
+personalization.
+
+H. Quantization and Pruning
+During local model training, we employed a pruning
+technique to iteratively remove less important weights or
+gradients from model updates. Specifically, clients perform soft unstructured pruning based on the L1 norm,
+which creates a sparse model and makes the FL training
+process more efficient. The pruning process is guided by
+a dynamically updated pruning rate pt , which increases
+over the communication rounds, allowing more aggressive
+pruning as the training progresses. After pruning, clients
+send their pruned updates to the server, which aggregates
+them using FedAvg to generate the global model. This
+pruning technique not only reduces the model size and
+computational costs, but also makes the training process
+more resistant to inference attacks.
+By progressively increasing the pruning rate, communication efficiency improves throughout the rounds. As
+clients share a sparsified model with the server, the transmitted model is no longer the full model, limiting the
+information available to potential attackers. The sparsity
+introduced by pruning constrains the parameter space,
+significantly reducing the chances of reverse engineering
+or inferring sensitive data. This reduction in exposed parameters inherently enhances privacy protection, making it
+more difficult for adversaries to extract meaningful insights
+about the underlying data.
+The pruning rate pt is updated iteratively using Eq. 12:
+
+
+t − teff
+· (ptarget − p0 ) + p0
+(12)
+pt = max 0,
+ttarget − teff
+where pt is the pruning rate at round t, teff is the effective
+round when pruning starts, ttarget is the target round when
+the target pruning rate is reached, p0 is the initial pruning
+rate, and ptarget is the target pruning rate. This pruning
+rate increases gradually from the initial value to the target
+value, ensuring that the pruning is progressively applied
+more aggressively as training progresses.
+After applying pruning to the model updates at each
+t+1
+client, the pruned local update ∆wp,i
+is computed as:
+t+1
+∆wp,i
+= ∆wit+1 ⊙ mti
+
+(13)
+
+where ⊙ represents the element-wise product, and mti
+is the local pruning mask identifying pruned weights at
+t+1
+communication round t. This pruned update ∆wp,i
+is then
+quantized and sent to the server for aggregation.
+We also used a layer-wise clipping technique based on
+dynamic mean to help reduce inconsistencies during the
+training process. The clipping factor controls the clipping
+parameter, dynamically adjusting the clipping based on
+layer-wise updates, rather than using a static clipping
+method. This approach ensures that each layer’s updates
+are clipped according to their specific dynamics, leading
+to more stable and efficient training. After the local model
+updates are computed, each client clips its own model
+update ∆wit+1 to avoid instability before sending it to the
+server. The clipping for client i’s model update is applied
+using Eq. 14:
+t+1
+∆wC,i
+= clip(∆wit+1 , −α · µi , α · µi )
+
+(14)
+
+where µi is the mean of the absolute values of the elements
+
+9
+
+of client i’s model update, calculated as:
+µi =
+
+n
+X
+
+1
+t+1
+∆wi,j
+n j=1
+
+default, the ElGamal cryptosystem supports multiplicative
+homomorphism, that is,
+(15)
+
+The clipping function clip(∆wit+1 , a, b) ensures that the
+values of ∆wit+1 are constrained within the range [−α ·
+µi , α · µi ], thereby limiting the impact of extreme values.
+Next, each client performs adaptive quantization (AQ),
+a novel technique designed to address the communication
+overhead challenges in FL for resource-constrained IoT
+environments. AQ scheme allows devices to dynamically
+adjust their quantization levels based on their available
+communication resources. Unlike traditional quantization
+methods that enforce a uniform strategy across all devices,
+AQ accounts for device heterogeneity, enabling efficient
+on-device training while maintaining model accuracy.
+The AQ scheme employs a K-level quantizer, where K
+represents the number of distinct values to which each
+weight can be mapped. For each device i ∈ N , the
+model updates xi are quantized to reduce their size before
+transmission. We assume that the elements of xi fall within
+the range [r1 , r2 ].
+The quantization process is defined as follows: - The
+range [r1 , r2 ] is partitioned into N contiguous intervals
+with equal probability. - The threshold value separating
+the l-th and (l + 1)-th intervals is given by Eq. 16.
+T (l) = r1 + l · ∆N
+
+(16)
+
+where ∆N is the quantization interval, calculated using Eq.
+17.
+r2 − r1
+(17)
+∆N =
+N −1
+Each weight xi (k) is mapped to a discrete value x̄i (k)
+using the following stochastic quantization rule:
+(
+i (N )−T (l)
+T (l + 1) with probability Tx(l+1)−T
+(l) ,
+QN (xi (N )) =
+T (l)
+otherwise.
+This rule assigns xi (N ) to the quantization level T (l+1)
+with a probability proportional to its distance from T (l),
+ensuring minimal distortion. The quantized output x̄i (N )
+takes a discrete value from the set as shown in Eq. 18.
+{r1 , r1 + ∆N , r1 + 2∆N , . . . , r2 − ∆N , r2 }
+
+(18)
+
+The key novelty of AQ lies in its ability to dynamically
+adjust quantization levels based on the communication resources of each device. Devices with limited bandwidth can
+use fewer quantization levels (smaller N ), while devices
+with higher bandwidth can use more levels (larger N ). This
+adaptive approach ensures that the communication overhead is minimized without compromising model accuracy.
+AQ is scalable to large IoT networks with diverse device
+capabilities, making it suitable for real-world deployments.
+I. Additive ElGamal encryption based on discrete logarithm
+After completing the quantization process, each client
+encrypts the quantized model updates using the PRKG
+algorithm. However, to facilitate secure aggregation in the
+FL environment, it is essential to endow the ElGamal
+cryptosystem with additive homomorphic properties. By
+
+Enc(m1 ) · Enc(m2 ) = Enc(m1 · m1 ),
+
+(19)
+
+but it does not naturally support additive operations. To
+achieve additive homomorphism necessary for FL model
+aggregation, Zhu et al. [68] introduced a secure transformation technique based on the Cramer transformation,
+enabling additive homomorphism over ElGamal-encrypted
+data.
+The transformation works by converting the original
+plaintext m to an exponentiated form m′ = g m mod p,
+thereby mapping the message space into Zp . The transformed ElGamal scheme then facilitates additive homomorphism as demonstrated in Eq. (20):
+Enc(m1 ) · Enc(m2 ) = g m1 y r1 · g m2 y r2
+= g m1 +m2 y r1 +r2
+
+mod p
+
+(20)
+
+Although this transformation enables additive homomorphism, it significantly increases the computational burden
+of encryption and decryption, primarily due to the necessity
+of discrete logarithm recovery. Zhu et al. employed bruteforce search and logarithmic recovery techniques to retrieve
+plaintexts, which are computationally intensive.
+To ensure privacy during the federated learning process,
+SecureDyn-FL employs a post-Cramer transformed additive ElGamal encryption scheme, enabling additive homomorphism while maintaining computational efficiency. This
+allows encrypted local model updates to be aggregated on
+the server without decryption, thereby preventing information leakage to both external adversaries and honestbut-curious servers. Unlike differential privacy, which introduces noise and can negatively impact utility, this encryption mechanism preserves the exact model updates,
+thus avoiding accuracy degradation during aggregation.
+The approach balances privacy and performance, offering
+a practical alternative to DP or fully homomorphic encryption, which often impose significant computational costs.
+The process involves the following steps:
+First, select two large, distinct prime numbers pp and
+qp of equal bit-length, and compute n = pp · qp and λ =
+lcm(pp − 1, qp − 1), ensuring that n2 < p. Then, choose a
+generator gp ∈ Z∗n2 such that
+gcd(L(gpλ
+
+mod n2 ), n) = 1,
+
+(21)
+
+denotes the L-function
+where the function L(x) = x−1
+n
+used in the Paillier cryptosystem. With this setup, the
+message m is transformed into m′ = gpm mod n2 , and
+the encryption scheme is expressed as:
+c := ⟨c1 = g r
+
+mod p,
+
+c2 = gpm
+
+mod n2 ·y r
+
+mod p⟩
+(22)
+This modified ciphertext structure retains additive homomorphism, enabling secure aggregation in FL. Upon
+decryption using ElGamal, the transformed message m′ =
+gpm mod n2 is obtained. The original plaintext m is recovered through the expression:
+m=
+
+L(gpm mod n2 )
+L(gpλ mod n2 )
+
+mod n
+
+(23)
+
+10
+
+Therefore, if two clients u1 and u2 share the public
+parameters (gp , n, λ), they can independently decrypt the
+ciphertext and retrieve the plaintext m. The complete
+encryption, homomorphic addition, and decryption process
+is summarized in Algorithm 1.
+Algorithm 1 Post-Cramer Transformation Based Encryption and Decryption
+Encryption: Encpk (m) → JmK
+1: Convert plaintext m to m′ = gpm mod n2 using postCramer transformation.
+2: Compute ciphertext:
+c1 = g r mod p
+c2 = gpm mod n2 · y r mod p
+JmK = ⟨c1 , c2 ⟩
+
+Homomorphic Addition: Jm1 K · Jm2 K = Jm1 + m2 K
+1: Let Jm1 K = ⟨c11 = g r1 mod p, c12 = gpm1 mod n2 ·
+y r1 mod p⟩
+2: Let Jm2 K = ⟨c21 = g r2 mod p, c22 = gpm2 mod n2 ·
+y r2 mod p⟩
+3: Compute:
+c1 = g r1 +r2 mod p
+c2 = gpm1 +m2 mod n2 · y r1 +r2 mod p
+Jm1 + m2 K = ⟨c1 , c2 ⟩
+
+Decryption: Decsk (JmK) → m
+1: Compute:
+gpm mod n2 ·y r
+2 mod p
+mod p
+gpm mod n2 = gcxr
+mod p =
+g xr
+2: Apply L-function: L(x) = x−1
+n
+3: Recover plaintext:
+L(g m mod n2 )
+m = L(gpλ mod n2 ) mod n
+p
+
+consistency analysis, and dynamic multi-threshold gradient
+filtering.
+At each communication round t, the auditor receives encrypted gradients from users. Instead of reinitializing clustering, the GMM parameters, denoted by θt , are updated
+incrementally by blending the previous round’s parameters
+θt−1 with the newly estimated parameters θnew as follows:
+θt = αθt−1 + (1 − α)θnew ,
+
+where α ∈ (0, 1) is the forgetting factor controlling the influence of historical information. This incremental updating
+allows the clustering model to adapt gradually to evolving
+data distributions without overreacting to local fluctuations,
+thereby improving robustness in non-IID environments.
+Following clustering, the MDMDi (t) for each user’s
+gradient is computed relative to the mean and covariance
+of its assigned cluster. To capture user behavior over time,
+we introduce a trajectory consistency analysis by tracking
+the variation in MD values across consecutive rounds.
+Specifically, for each user i, the trajectory consistency score
+is defined as
+∆MDi = |MDi (t) − MDi (t − 1)|.
+
+The CA module includes three phases: Phase 1 generates
+keys and IDs as described in section, Phase 2 detects
+and filters poisoning gradients, and Phase 3 aggregates
+gradients, as discussed below.
+Phase 1: System Initialization
+The audit module initializes the federated system by
+performing the following tasks:
+• Generates pair-keys (public-private) K = (pk, qk) for
+each user n, where n ∈ N and |N | = N .
+• Assigns a unique tag ID {TID1 , TID2 , . . . , TIDn } to
+each user.
+• Constructs the Update Table that includes tuples
+(TID , T able T ag) to facilitate CA on the user side.
+Phase 2: Dynamic Temporal Gradient Auditing
+The original Phase 2 auditing mechanism, which relied
+on static clustering via GMM and MD filtering, exhibited
+vulnerabilities under realistic FL conditions, particularly in
+the presence of non-IID user data and adaptive adversaries.
+Static clustering at each round caused instability in detection, while single-round MD evaluation failed to account
+for temporal variations. To overcome these limitations,
+we propose an improved Phase 2 auditing strategy that
+integrates incremental GMM updating, temporal trajectory
+
+(25)
+
+A small ∆MDi suggests stable gradient behavior consistent with benign updates, while large variations may
+indicate adversarial manipulation or instability.
+To further enhance detection, a dynamic multi-threshold
+filtering mechanism is employed, maintaining three adaptively updated thresholds:
+• a gradient magnitude threshold derived from the historical distribution of benign gradient norms
+• a MD threshold TMD defined as
+TMD = k × σnormal ,
+
+J. Central Auditor Protocol
+
+(24)
+
+(26)
+
+where k is a sensitivity constant and σnormal is the
+standard deviation of MD values from benign users,
+• a trajectory consistency threshold based on the empirical distribution of ∆MDi values.
+Gradients are filtered according to their compliance with
+these thresholds: those satisfying all thresholds are accepted, those moderately deviating are down-weighted, and
+those significantly deviating are rejected.
+Through this integrated dynamic auditing process, the
+model not only filters out obvious malicious gradients but
+also mitigates the impact of stealthy or slowly-drifting
+adversarial updates.
+Phase 3: Byzantine-Resilient Gradient Aggregation
+Once the Update Table is populated, the auditor transfers it to the server:
+• The server and auditor interact to ensure Byzantinetolerant aggregation.
+• For each communication round, the server applies a
+robust aggregation function to the filtered gradients.
+• The global model is updated with the aggregated
+results, reinforcing reliability and resistance to Byzantine attacks in the FL environment.
+K. Adversarial Resilience Analysis
+SecureDyn-FL is designed to withstand multiple types
+of adversarial behaviors that typically arise in federated
+
+11
+
+learning, including both data/model poisoning attacks and
+inference-based privacy attacks such as model inversion.
+• Resilience to Poisoning Attacks: In federated intrusion
+detection, malicious clients may attempt to manipulate global model behavior by injecting carefully
+crafted updates, either to reduce overall detection
+performance (untargeted poisoning) or to deliberately
+misclassify specific attack types (targeted poisoning).
+SecureDyn-FL mitigates these threats through its temporal gradient auditing mechanism, which leverages
+an incremental GMM and MD trajectory scoring.
+By continuously modeling the distribution of benign
+gradient patterns over time, the auditor can detect deviations that are subtle or adaptive in nature—such as
+attacks that gradually poison the model over multiple
+rounds—without requiring labeled attack examples.
+Abnormal updates are flagged and removed prior
+to aggregation, ensuring that malicious contributions
+have minimal impact on the global model.
+• Resilience to Model Inversion Attacks: In addition to
+malicious clients, federated learning is vulnerable to
+honest-but-curious servers that attempt to reconstruct
+clients’ local data from shared gradients using model
+inversion techniques. In SecureDyn-FL, this class of
+attacks is neutralized through the use of additive
+homomorphic encryption, which ensures that local
+model updates are encrypted before transmission and
+remain encrypted throughout the aggregation process.
+As a result, the server never observes raw gradient information, making inversion or membership inference
+attempts infeasible. Under the adopted cryptosystem,
+the probability of successful gradient reconstruction is
+negligible without the private keys of the participating
+clients.
+• Complementary Protection: By jointly integrating temporal gradient auditing and encryption,
+SecureDyn-FL provides defense in depth against heterogeneous adversarial strategies. While encryption
+protects against server-side inference and eavesdropping, auditing detects and filters malicious client
+behavior. This complementary design enhances the
+overall robustness of federated intrusion detection
+systems in realistic IoT environments, where both
+privacy breaches and active poisoning threats may cooccur.
+VI. THEORETICAL ANALYSIS
+Secure training in SecureDyn-FL consists of three key
+phases: users’ local training, auditor training, and robust
+aggregation. Below, we present the theoretical foundations
+of each phase, supported by lemmas and theorems to ensure
+both correctness and security.
+
+Gradient Descent (SGD) with momentum, incorporating
+past gradients through an exponential decay factor ∂ (0 <
+∂ < 1):
+X
+∂ t−l glx .
+gx ∼
+(27)
+l∈[0,t]
+
+As shown in prior work (e.g., [41]), momentum accelerates convergence, reduces variance, and enhances robustness, helping mitigate poisoning attacks in federated
+training.
+b) Auditor Training
+The auditor identifies malicious gradients using GMM
+and MD. The process involves the following steps:
+• Collecting labeled data containing benign gradients gi
+and malicious gradients gi∗ .
+• Extracting and normalizing features Xi for consistent
+scaling.
+• Dividing the data into training (Dtrain ) and validation
+(Dval ) sets.
+• Training a GMM using Expectation-Maximization
+[42] to estimate parameters for benign and malicious
+clusters, initially setting k = 2 clusters [6].
+• Iteratively adjusting the number of clusters using the
+Bayesian information criterion (BIC) to adapt to the
+gradient distribution and minimize misclassifications.
+This dynamic clustering approach ensures effective
+adaptation to encrypted gradient distributions, reducing
+false positives, particularly in environments with predominantly benign users.
+C ORRECTNESS
+Correctness ensures the accurate sharing of encrypted
+gradients and effective auditing to filter out malicious
+contributions.
+Lemma 1. Upon receiving user updates via the audit table
+ϕ, the server employs these updates to refine the global
+model. The incremented version of the global model is
+derived from the equation:
+N
+
+
+1 X
+1 − Mkti ϕt + Mkti ϕτki .
+ϕτ +1 =
+N i=1
+
+(28)
+
+Here, ϕτ +1 represents the updated audit table at the
+subsequent time step, N stands for the total number of
+users, Mkti is the model from the i-th user, and ϕτki denotes
+the i-th user’s entry in the audit table at time step τ .
+Lemma 2. The CA holds the security property, such as
+pair keys (pk, qk), and learns nothing about private data
+like gradients and the aggregation results.
+
+a) Users’ Local Training
+
+Lemma 3. AHE ensures the confidentiality of both the user
+and server sides since user i encrypts its gradients denoted
+m
+by xm
+i . Then, each user sends Enc(σi ).
+
+In this phase, we assume that the proportion of malicious
+users does not exceed 50%. During training round t, every
+user nxt , where x ranges from 1 to m, obtains the encrypted
+ftpk , ecrypts it using their public key pk,
+global model M
+and trains a local model to compute the gradient vector
+gtx . To improve the update process, we apply Stochastic
+
+Lemma 4. The cryptosystem is clear by defining a random
+value as r, r = ab to have two prime factors of equal size
+a and b and letting c ∈ Z and k1 , k2 ∈ Z×
+r . It is possible
+to compute Enc(k1 + k2 ) using only the public key and the
+Encryption Enc(k1 ), Enc(m2 ). Additionally, Enc(m × k1 )
+can be calculated given a constant m.
+
+12
+
+Under Lemmas 1 and 2, the audit protocol enables the
+Updated Table to carry user gradients for the aggregation process. The Updated Table is populated by users
+(Ui ⊆ U ) at round t, with gradients reflecting diverse
+data quality and distributions. Trustworthy auditors and
+user compliance with the workflow, absence of malicious
+activity, ensure correct gradient vector W aggregation.
+Theorem 1 (Robustness against malicious gradients via
+auditability - IID). Based on Lemma 1 and the participation of registered users as (Ui ⊆ U, i ∈ N ), we have
+{U1 , U2 , . . . , Un }, that j ⊆ Ui ⊆ U denotes users that
+send malicious gradients. The assumption is |j| ≤ ⌊n/2⌋,
+and the auditor traces users based on the audit protocol
+to find the adversarial users. Our proposed model checks
+the gradient distribution and behavior for all users to remove the effect of adversary user participation and obtain
+robustness. Therefore, the auditor can confirm user k and
+calculate that the gradient gk is valid. Adversarial users
+who send malicious updates will have their ID revoked. We
+can guarantee to reduce their effect on them.
+In this regard, based on proof of Lemma 1, the symbol
+Ui Ui+1 represents users who uploaded data in round t, but
+some users may still inject false data in round t + 1 in the
+IID setting. Thus, each user holds a local gradient denoted
+as xn (where n ∈ U ). According to Lemma 2, the auditor
+can obtain the following expression:
+JW Kpk =
+
+n
+Y
+
+JW i Kpk =
+
+i=1
+
+n
+X
+i=1
+
+JW i Kpk .
+
+(29)
+
+Here, W represents the aggregated encrypted gradients,
+and W i represents the
+Qn encrypted gradient from the ith user. The symbol i=1 denotes the product operator,
+indicating that the encrypted P
+gradients from all users are
+n
+multiplied together. Likewise, i=1 represents the summation operator, indicating that the encrypted gradients from
+all users are summed together. It is important to note that
+the encrypted gradients have been
+Pn received confidentially
+and can be expressed as W = i=1 Wi (see Lemma 3).
+In the following round, the auditor computes the GMM
+for gradients, then tracks wt+1 with the MD, using the
+parameters provided by every user in round t + 1,
+P
+t
+u⊂Ut wu
+wt+1 ← P
+M
+(30)
+t
+u mk
+to track benign and adversaries. The assumption is that
+there are fewer than half the users who are adversaries
+⌊ U2t ⌋; hence, the mean of each cluster is expected to
+correspond to the similarity value of at least one benign
+user.
+The auditor first calculates the covariance matrix for
+cluster the variance and correlation structure and then
+applies MD to detect injected false data (see Audit section
+V-B). Therefore, wi , wj , wz , i, j, z ∈ F M (i, z ∈ [1, N ],
+j ∈ [1, N/2]) are gradients corresponding to the similarity position of benign users and adversaries. According
+Lemma 4, benign users gradients, wi , wz ∈ F M satisfies:
+wi + wz ≡ xti + yzt
+
+(mod mt )
+
+(31)
+
+While gradients of adversarial users wj ∈ F M cannot
+satisfy Eq. (3). Note that t = {1, 2, . . . , k}, xti , t is an
+
+element in the Pi ’s original gradient Wi .
+Theorem 2. The proposed scheme is secure in terms of
+user gradient confidentiality.
+Proof. In SecureDyn-FL, privacy leakage mainly occurs in
+the following three scenarios:
+1) Gradient transmission process
+2) Poisoning detection process
+3) Key leakage
+1. Gradient Transmission Security: SecureDyn-FL employs Elgamal encryption technology to protect the gradient information submitted by users during transmission.
+This security framework ensures that sensitive information exchanged between participants is not accessible to
+unauthorized adversaries. Furthermore, since the keys are
+generated in a distributed manner, no single entity within
+the system has complete knowledge of the key information.
+Mathematically, for an adversary to access user data
+without the private key, they would need to solve the
+discrete logarithm problem:
+Given (g, g x mod p), find x
+
+(32)
+
+where g is a generator of the multiplicative group, p is
+a large prime, and x is the private key. This problem is
+computationally infeasible for sufficiently large parameters.
+2. Poisoning Detection Privacy: To safeguard privacy during poisoning detection, SecureDyn-FL uses one-time pad
+encryption for gradients, which provides perfect secrecy
+when:
+c=m⊕k
+(33)
+where c is the ciphertext, m is the plaintext gradient, and
+k is the random mask. The masks are generated by CPC
+members through (T, n)-threshold secret sharing, ensuring
+that:
+|S| < T ⇒ Pr[reconstruct k] = negligible
+
+(34)
+
+for any subset of colluding parties S.
+3. Key Security: The PRKG key generation in SecureDynFL uses Shamir’s secret sharing where:
+f (x) = s + a1 x + · · · + aT −1 xT −1 mod p
+
+(35)
+
+and shares are (xi , f (xi )). The secret s (private key) can
+only be recovered when:
+s=
+
+T
+X
+i=1
+
+f (xi )
+
+T
+Y
+
+xj
+x
+− xi
+j=1 j
+
+(36)
+
+j̸=i
+
+which requires at least T participants for successful reconstruction.
+By analyzing these three aspects, including secure
+gradient transmission via Elgamal encryption, privacypreserving poisoning detection using one-time pads with
+threshold masks, and robust key management through
+PRKG, we conclude that SecureDyn-FL effectively protects the confidentiality of gradient information.
+Theorem 3 (Robustness against malicious gradients via
+auditability - non-IID). According to Theorem 1, there is a
+subset of user gradients donated by (Hi ⊆ U, i ∈ [N/2])
+that lie on the boundary of gradient similarities, as indicated by Eq. (2). This implies that users i ∈ Di possess
+
+13
+
+non-IID data. However, the auditor must distinguish between legitimate users and adversaries, introducing gradient drift. Thus, in the t-th round, the auditor leverages the
+∗
+gradient of the global model wt−1
+from the previous round
+to analyze the current behavior of the gradient wt , where
+∗
+wt−1
+= (wt − wt−1 )/ε, and ε represents the direction of
+the global model gradient (Lemma 4).
+Consequently, the auditor approximates the benign gra∗
+dient update in the t-th round as w
+et∗ ≈ wt−1
+= (wt −
+wt−1 )/ε. In a gradient drift attack, the direction of the
+gradient ε does not converge, as the attacker can use an
+inappropriate scaling factor ε to amplify fake local model
+updates, ensuring their magnitudes are no smaller than
+those from genuine users. The attacker i sends a fake
+gradient as wt∗i = −ε(wt − wt−1 ).
+VII. E XPERIMENTAL A NALYSIS
+This section presents the experimental evaluation of the
+proposed SecureDyn-FL framework using the N-BaIoT
+T ONIoT dataset. We compare its performance against
+several state-of-the-art methods to assess its effectiveness
+under varying data distribution and poisoning attack scenarios. Details of the experimental environment, dataset
+preparation, and data distribution strategies are provided
+below.
+
+To provide a clear and structured overview of the data
+employed in this study, Tables I and II summarize the
+distribution of samples across the attack categories for the
+T ONIoT and mini-N-BaIoT datasets, respectively. The tables have been designed with consistent formatting to facilitate straightforward comparison between the two datasets.
+While the T ONIoT dataset reflects realistic network conditions with significant class imbalance across multiple attack
+categories, the mini-N-BaIoT dataset is more balanced,
+containing evenly distributed samples across various Mirai
+and BASHLITE attack subtypes.
+TABLE I
+D ISTRIBUTION OF TRAINING AND TEST SAMPLES ACROSS ATTACK
+CATEGORIES IN THE T ONIoT DATASET.
+
+Attack Category
+Normal
+Scanning
+DoS
+DDoS
+Ransomware
+Backdoor
+Injection Attack
+XSS
+Password Violations
+MITM
+
+Training Samples
+245,000
+20,000
+20,000
+20,000
+16,030
+20,000
+20,000
+13,844
+20,000
+593
+
+Test Samples
+55,000
+3,973
+4,000
+4,000
+3,970
+4,000
+4,000
+6,116
+4,000
+459
+
+Experimental Environment
+All experiments were conducted using the PyTorch
+framework. The client-side evaluations were performed on
+a machine equipped with an Intel Core i7-10750H CPU @
+2.60 GHz and 64 GB of RAM.
+Dataset Description
+To rigorously evaluate the performance and generalizability of the proposed framework, two widely recognized
+benchmark datasets were employed: the N-BaIoT dataset
+[69] and the T ONIoT dataset [70]. The N-BaIoT dataset
+comprises network traffic traces generated by nine commercially available IoT devices that were intentionally compromised using the Mirai and BASHLITE malware families.
+In total, the dataset contains more than 70 million traffic
+records, each represented by a 115-dimensional feature
+vector derived from statistical characteristics of network
+flows. This dataset is designed to support binary classification tasks—differentiating benign from malicious traffic—while also offering ten distinct attack sub-categories
+corresponding to various manifestations of the underlying
+malware.
+The T ONIoT dataset, on the other hand, encompasses
+a diverse spectrum of IoT-related cyberattacks alongside
+legitimate traffic instances. It integrates telemetry and
+network data, annotated with 46 labeled features that
+capture relevant behavioral attributes. Unlike N-BaIoT, the
+T ONIoT dataset frames the detection problem as a multiclass classification task, aiming to distinguish between
+normal activity and multiple heterogeneous attack types.
+This combination of datasets enables a comprehensive and
+robust evaluation across both binary and multi-class intrusion detection scenarios, reflecting realistic IoT network
+environments.
+
+TABLE II
+D ISTRIBUTION OF SAMPLES ACROSS ATTACK CATEGORIES IN THE
+MINI -N-BA I OT DATASET.
+
+Attack Category
+Mirai - Scan
+Mirai - UDP
+Mirai - UDPplain
+Mirai - Syn
+Mirai - Ack
+BASHLITE - Scan
+BASHLITE - Junk
+BASHLITE - UDP
+BASHLITE - TCP
+BASHLITE - Combo
+Benign
+
+Number of Samples
+7,000
+7,000
+7,000
+7,000
+7,000
+9,000
+9,000
+9,000
+9,000
+9,000
+90,000
+
+The mini-N-BaIoT dataset was partitioned into training
+and testing subsets using a 70:30 split. The training data
+was distributed among participating clients in the FL setup,
+while the testing data was centrally used to evaluate the
+performance of the aggregated model. To simulate a realistic FL environment with a large number of participants,
+the training dataset was further divided among 20 clients.
+This client-simulation strategy is widely adopted in FL
+literature to mimic decentralized data scenarios. The key
+hyperparameters used in our experiments are summarized
+in Table III.
+Data Distribution Scenarios
+To investigate the robustness of the proposed framework
+under heterogeneous conditions, we implemented three
+distinct data distribution settings across the 20 clients. The
+
+14
+
+A. Accuracy, Robustness, & Malicious Alarm Analysis
+
+TABLE III
+H YPERPARAMETERS .
+
+In model poisoning, adversaries aim to optimize
+Neural network parameters
+Local model
+Number of conv layers
+Kernel filters in each conv layer
+Number of fully connected layers
+Number of units in each FC layer
+Activation function
+Dropout
+Optimizer
+Learning rate
+Momentum
+Batch size
+
+1DCNN
+3
+256, 128, and 64
+2
+32, 2
+ReLU
+0.2
+SGD
+0.001
+0.9
+64
+
+Federated learning parameters
+Number of clients
+Local training epoch
+Communication round
+
+20
+4
+50
+
+scenarios are designed to simulate both IID and non-IID
+data distributions, as described below:
+• Non-IID Scenario 1: The client data is sampled using
+a Dirichlet distribution with concentration parameter
+η = 0.1, inducing high heterogeneity across clients.
+• Non-IID Scenario 2: Half of the clients are assigned
+only benign traffic samples, while the remaining half
+receive only attack samples. This setup reflects practical conditions where some IoT devices may never be
+compromised.
+• IID Scenario: Each client receives a balanced dataset
+composed of 50% benign and 50% attack samples,
+ensuring uniform data distribution across all clients.
+In both the IID and Non-IID Scenario 1, each client is
+allocated exactly 1000 samples to ensure consistency in
+local training workloads. In Non-IID Scenario 2, clients
+with only benign samples are assigned 500 samples, while
+those with only attack data are assigned 1000 samples.
+This variation mirrors real-world traffic imbalances where
+benign traffic is more prevalent and not all devices experience attacks.
+Poisoning attack setting
+To evaluate the performance of our approach, we simulate a range of model poisoning attacks using encrypted
+local gradients. These simulations examine varying degrees
+of adversarial presence, represented by different attack
+ratios, α, which we set at 10%, 20%, 30%, and 50%. In
+evaluating FL, similar to the assessment of related work
+based on [43], the number of users is related to the number
+of classes in each dataset to provide IID and non-IID
+settings. For the N-BaIoT dataset, 20 users participated, and
+the attack aims to transform instances from Class 9 to Class
+11. In addition to the above configurations, we establish
+a baseline model representing a poisoned SecureDyn-FL
+system without any defense mechanisms or central audit.
+This baseline model serves as a comparison point, illustrating the enhanced effectiveness of our proposed approach
+in defending against various model poisoning attacks.
+
+arg max Ht (w − w∗ ),
+i∈[1,n]
+
+(37)
+
+where H is a vector representing the model’s direction
+changes, w is the pre-attack model, and w∗ is the poisoned
+model in targeted and untargeted attacks. Our evaluation
+metrics for targeted attacks include Attack Class Accuracy,
+which measures testing performance on the targeted labels, and Benign Class Accuracy, which evaluates learning
+performance on non-source and non-target labels. These
+metrics are crucial for detecting potential auditing failures
+and unintended adverse effects on the FL system. Additionally, Overall Accuracy represents the average classification
+performance across all labels, providing a comprehensive
+view of the defense mechanisms’ effectiveness against
+poisoning attacks. The Malicious Alarm, assessed using
+the Receiver Operating Characteristic (ROC) curve, reflects
+the capability of defense algorithms to accurately identify malicious activities within the FL environment. It is
+important to note that Overall Accuracy may differ from
+the combined Attack Class and Benign Class accuracies
+due to the impact of various attack and defense strategies.
+For untargeted attacks, we focus on evaluating Overall
+Accuracy and the Malicious Alarm metrics.
+
+Accuracy Evaluation Under Targeted and Untargeted Attacks with Baseline Model
+Table VIII presents a comparative analysis of the baseline and the proposed model under targeted and untargeted
+poisoning attacks, considering both non-IID and IID data
+distributions with a fixed attack rate of 50%.
+Under the non-IID setting, the baseline model shows
+poor performance across all metrics. For targeted attacks,
+it records a Tacc of 0.015, an Oacc of 0.94, and an F1score of 0.04. In untargeted attacks, the baseline improves
+slightly, with Tacc = 0.782, Oacc = 0.761, and F1-score of
+0.62. In contrast, the proposed model shows substantial
+performance gains. For targeted attacks, it achieves a
+Tacc of 0.995, Oacc of 0.992, and an F1-score of 0.89.
+During untargeted attacks, it maintains strong results with
+Tacc = 0.989, Oacc = 0.967, and F1-score of 0.84,
+highlighting its robustness against adversarial threats under
+data heterogeneity.
+Under the IID setting, where training data is evenly
+distributed among clients, the baseline model still underperforms. For targeted attacks, it yields a Tacc of 0.049, an
+Oacc of 0.60, and an F1-score of 0.47. In untargeted attacks,
+the results slightly improve, with Tacc = 0.58, Oacc = 0.52,
+and an F1-score of 0.55. The proposed model, however,
+consistently outperforms the baseline. For targeted attacks,
+it achieves a near-perfect Tacc of 0.997, Oacc of 0.995,
+and F1-score of 0.98. In untargeted attacks, it delivers
+Tacc = 0.992, Oacc = 0.991, and F1-score of 0.96. These
+results confirm the proposed model’s robustness and generalizability across both homogeneous and heterogeneous
+data distributions, establishing its efficacy in defending FL
+systems against diverse poisoning threats.
+
+15
+
+B. Robustness and Auditing Evaluation
+a) RTAnonIID : Robustness to Targeted Attacks (NonIID): The robustness of the proposed model under targeted
+attacks with non-IID data is evaluated in Fig. 9, where
+performance is analyzed across varying attack rates from
+10% to 50%. The results reveal that the model consistently
+maintains high accuracy levels, with minimal degradation
+despite increased attack intensity. This consistency underscores the model’s ability to sustain reliable performance
+even in adversarial environments, thereby confirming its
+robustness to targeted poisoning in non-IID scenarios.
+b) RUTAnonIID : Robustness to Untargeted Attacks (NonIID): As shown in Fig. 10, the proposed model also
+exhibits high resilience against untargeted attacks under
+non-IID data settings. Across varying attack rates and user
+distributions, the accuracy remains stable and robust. This
+reinforces the model’s capacity to mitigate the effects of
+non-specific adversarial disruptions, preserving its integrity
+and predictive performance.
+c) RTAIID : Robustness to Targeted Attacks (IID): To
+evaluate robustness under IID data conditions, the model
+is exposed to targeted attacks across varying attack rates,
+as shown in Fig. 8. The proposed method consistently
+maintains stable accuracy, demonstrating resilience against
+adversarial intensities. These results underscore its effectiveness in protecting FL systems under homogeneous
+data distributions, ensuring robust defense even when the
+training process is explicitly targeted.
+d) RUTAIID : Robustness to Untargeted Attacks (IID):
+The model’s performance under untargeted attacks with IID
+data is illustrated in Fig. 11. Despite the uniform distribution of training data, which typically increases vulnerability, the proposed approach sustains high accuracy levels
+across a wide range of adversarial configurations. These
+results confirm the model’s reliability and adaptability in
+diverse deployment environments, supporting its utility in
+real-world FL applications.
+e) Model Auditing (MA) Evaluation: The CA of
+the proposed model is assessed through ROC analysis,
+focusing on its ability to detect both falsely labeled malicious and clean users. As shown in Figs. 4 and 5, the
+ROC curves for both IID and non-IID scenarios on the
+KDDCup dataset exhibit superior characteristics compared
+to baselines. The proposed model achieves the highest
+average ROC, demonstrating not only strong classification
+performance but also effective auditing functionality. These
+findings highlight that the robustness and precision of the
+CA module significantly contribute to the overall reliability
+of the model, ensuring comprehensive protection against
+FL poisoning threats.
+VIII. C OMPARISON WITH S TATE - OF - THE -A RT
+R ESEARCH
+In this section, we comprehensively evaluate the robustness of our proposed SecureDyn-FL framework against
+poisoning attacks on non-IID data distributions and compare it with several state-of-the-art methods, including FedAvg, coordinate-wise median, trimmed mean,
+multi-Krum, and FL-Defender. Furthermore, additional
+comparisons with advanced schemes such as Trimmed
+Means [17], FL-Defender [47], FedAvg [11], FLTrust,
+
+Fig. 4. Analyzing malicious alarms on IID data
+
+Fig. 5. Analyzing malicious alarms on non-IID data
+
+and ShieldFL [43] are also provided to demonstrate the
+superiority of our model under various data settings and
+attack types.
+Beyond these baseline defenses, we also compare
+SecureDyn-FL with representative state-of-the-art FLbased IDS frameworks from the literature, including
+Ruzafa-Alcázar et al. (DP-based Industrial IoT), Bhavsar
+et al. (Transportation FL-IDS), Friha et al. (FELIDS), and
+PEIoT-DS (N-BaIoT).
+A. Comparative Accuracy Analysis with SOTA FL-IDS.
+To comprehensively evaluate the effectiveness of
+SecureDyn-FL, we conducted comparative analyses against
+several representative state-of-the-art (SOTA) FL-based in-
+
+16
+
+trusion detection frameworks on both the mini-N-BaIoT
+and T ONIoT datasets. Figures 6 and 7 illustrate the accuracy convergence behavior of all methods across training
+rounds.
+On the mini-N-BaIoT dataset Figure 6, SecureDyn-FL
+demonstrates consistently faster convergence and achieves
+the highest final accuracy among all compared methods.
+Specifically, SecureDyn-FL attains a final accuracy of
+approximately 99.5%, surpassing Bhavsar et al. (97%),
+Friha et al. (96%), PEIoT-DS (95%), and Ruzafa-Alcázar
+et al. (93%). These results highlight the model’s ability to
+learn efficiently in a relatively balanced and less diverse
+IoT network environment.
+On the more challenging T ONIoT dataset Figure 7,
+which exhibits greater heterogeneity, class imbalance, and
+a broader range of attack scenarios, all methods show
+slightly lower final accuracies and slower convergence.
+Nonetheless, SecureDyn-FL maintains a distinct advantage, converging faster and reaching a final accuracy of
+approximately 98.6%. In contrast, Bhavsar et al., Friha et
+al., PEIoT-DS, and Ruzafa-Alcázar et al. achieve 95.0%,
+94.2%, 93.5%, and 92.0% respectively. This performance
+gap underscores SecureDyn-FL’s robustness in more realistic and complex IoT intrusion detection scenarios.
+Taken together, these results demonstrate not only the
+superior detection performance of SecureDyn-FL under
+federated learning settings but also its strong generalizability across datasets of varying complexity. While many
+existing frameworks exhibit significant performance drops
+when transitioning from simpler to more heterogeneous
+data distributions, SecureDyn-FL consistently maintains
+high accuracy and rapid convergence. This indicates that
+the proposed framework can adapt effectively to diverse
+IoT environments without extensive reconfiguration or accuracy degradation.
+Moreover, by integrating additive homomorphic encryption and temporal gradient auditing, SecureDyn-FL provides enhanced privacy protection without compromising
+model performance. Unlike approaches based on differential privacy—which often trade off utility for privacy—or
+those that expose raw gradients to the server, SecureDynFL achieves strong privacy guarantees and robustness concurrently.
+
+Fig. 6. Accuracy convergence comparison on the mini-N-BaIoT dataset
+between SecureDyn-FL and representative SOTA FL-based IDS methods.
+Synthetic convergence curves are based on reported final accuracies.
+SecureDyn-FL achieves both faster convergence and higher final accuracy.
+
+B. Scenario 1: Dirichlet Non-IID Data Distribution
+In the first scenario, non-IID data was generated using a
+Dirichlet distribution with a concentration parameter η =
+0.1, simulating a highly imbalanced client data distribution.
+In the absence of poisoning, all methods demonstrated
+strong performance, with the proposed model achieving the
+highest accuracy 0.9842 and F1-score 0.9801, albeit with
+a slight performance dip (1̃%) compared to IID settings.
+As shown in Table VI, the proposed method consistently
+outperforms existing defense strategies under all poisoning
+attack scenarios, maintaining high classification accuracy
+and very low attack success rates (ASR). For instance,
+under benign label-flipping attacks, while other methods
+like FedAvg and FL-Defender suffer ASRs of 0.0185 and
+1.0000 respectively, the proposed model limits the ASR to
+just 0.0072. Even in the combined label-flipping attack,
+where methods such as Shield FL and FL trust show
+
+Fig. 7. Accuracy convergence comparison on the T ONIoT dataset
+between SecureDyn-FL and representative SOTA FL-based IDS methods.
+Despite increased dataset heterogeneity, SecureDyn-FL maintains superior
+convergence speed, accuracy, and generalizability.
+
+degraded performance e.g., ASR of 0.0345 and 0.5034
+respectively. The proposed model retains a strong F1-score
+of 0.9645 and limits ASR to 0.0512.
+Under model-scaling attacks, traditional defenses like
+FedAvg and trimmed mean drop to 45.12% accuracy
+and F1-score of 0.6414, exposing them to high false
+alarm rates. In contrast, the proposed method remains
+robust, with accuracy at 97.07% and F1-score of 0.9695,
+while maintaining ASR at a minimal 0.0568. A similar
+trend is observed under the same-model poisoning at-
+
+17
+
+tack, where the proposed method delivers the best results
+across all metrics—97.01% accuracy, 0.9708 F1-score,
+and only 0.0402 ASR—demonstrating its resilience to
+backdoor-style threats. Overall, these results highlight the
+effectiveness of SecureDyn-FL in maintaining detection
+performance even under severe non-IID conditions and
+adversarial settings.
+C. Scenario 2: Clients with Missing Attack Labels
+The second scenario simulates a more realistic IoT environment, where attack samples are absent from half of the
+clients. This setup reflects practical federated deployments,
+where not all edge devices observe malicious behavior,
+resulting in sparse and partially distributed attack data.
+As shown in Table VII, the proposed method consistently achieves the highest performance across all metrics,
+even outperforming FedAvg, which traditionally handles
+IID settings well. In the absence of attacks, the proposed
+model attains 98.40% accuracy and 0.9838 F1-score, shows
+its ability to preserve model quality without any degradation.
+Under benign label-flipping attacks, the proposed
+method limits the attack success rate (ASR) to a mere
+0.0061, whereas all other baselines—including Shield FL,
+FL Trust, and FL-Defender—fail completely, recording an
+ASR of 1.0000. Similarly, under attacks where malicious
+labels are flipped to benign, the proposed model maintains
+high accuracy 0.9814, F1-score 0.9775, and the lowest ASR
+0.0738, while FL Trust and Shield FL show significant
+degradation in both accuracy and F1 performance.
+In combined label-flipping scenarios, most methods see
+a marked drop, with trimmed mean and FL-Defender
+yielding F1-scores of 0.6381 and 0.6378 respectively, also
+ASRs exceeding 0.5. The proposed model, in contrast,
+delivers a high F1-score of 0.9762, accuracy of 0.9698,
+and an ASR of only 0.0421.
+For model-scaling attacks, which often lead to oversuppression of legitimate updates, methods like FedAvg
+and Shield FL fall to 47.06% accuracy and F1-scores near
+0.64, misclassifying most benign data. However, the proposed method effectively mitigates these attacks, achieving
+98.23% accuracy, 0.9725 F1-score, and a low ASR of
+0.0341. Even in same-model poisoning, where poisoned
+updates are identical across clients, the proposed method
+again stands out, achieving the highest accuracy 99.01%,
+F1-score 0.9893, and the lowest ASR 0.0405 among all
+tested methods.
+Interestingly, as shown in Tables VI and VII, the FedAvg baseline demonstrates relatively strong performance
+in certain experimental settings, in some cases approaching
+the accuracy of more robust aggregation methods. This
+behavior can be explained by the moderate adversarial
+participation ratios and data distributions used in these
+scenarios, where the majority of clients provide benign
+updates. Under such conditions, FedAvg’s simple averaging
+can still yield a stable and accurate global model because
+the impact of malicious gradients is statistically diluted
+by the dominant benign contributions. Moreover, FedAvg
+often exhibits fast initial convergence in clean settings,
+which can temporarily narrow the performance gap with
+
+more advanced defense mechanisms. However, as adversarial intensity or data heterogeneity increases, FedAvg
+lacks the necessary resilience and its performance degrades
+significantly compared to SecureDyn-FL, as shown in the
+higher attack ratios and non-IID settings.
+SecureDyn-FL successfully defended against all poisoning strategies in this challenging non-IID setting, preserving high accuracy and maintaining a low ASR, confirming
+its strong resilience under data heterogeneity and sparsity.
+
+D. Privacy Evaluation Against Inference Attacks
+To complement the theoretical privacy guarantees of
+SecureDyn-FL, we conduct experimental validation against
+two common privacy attacks in federated learning: gradient inversion and membership inference.
+For gradient inversion, we apply the attack method to
+both FedAvg and SecureDyn-FL. In FedAvg, where the
+server has access to raw model updates, the attacker can
+successfully reconstruct client-side input features with high
+visual and numerical similarity. In contrast, SecureDynFL employs additive homomorphic encryption before
+gradient transmission, which prevents the server from observing raw gradients. As a result, reconstruction attempts
+produce only random noise, indicating that no meaningful
+information can be recovered.
+For membership inference, we evaluate the attack accuracy against both FedAvg and SecureDyn-FL. While
+FedAvg exhibits elevated inference accuracy, indicating
+information leakage through gradient updates, SecureDynFL achieves attack performance close to random guessing,
+confirming that encrypted gradients significantly reduce
+leakage.
+Table IV summarizes the results of the gradient inversion
+and membership inference attacks conducted on the FedAvg baseline and the proposed SecureDyn-FL framework.
+For the gradient inversion attack, we use the Structural
+Similarity Index Measure (SSIM) between the original
+client data and the reconstructed data to quantify the extent
+of information leakage. Higher SSIM values indicate more
+successful reconstruction and thus greater privacy risk.
+As shown in the table, FedAvg exhibits a high SSIM
+score (0.78), demonstrating that the server can effectively reconstruct sensitive client data when raw gradients
+are exposed. In contrast, SecureDyn-FL achieves a very
+low SSIM score (0.07), indicating that gradient inversion
+produces only random noise due to the use of additive
+homomorphic encryption, which prevents the server from
+observing raw updates.
+For membership inference, we report the attacker’s classification accuracy in determining whether a given data
+sample was part of the training set. FedAvg shows high
+inference accuracy (0.82), implying considerable leakage
+through gradients, whereas SecureDyn-FL achieves nearrandom inference accuracy (0.51), effectively mitigating
+membership inference attacks.
+These results provide quantitative evidence that
+SecureDyn-FL offers stronger privacy protection than
+standard FL methods, complementing the theoretical
+security analysis presented earlier.
+
+18
+
+TABLE IV
+P RIVACY ATTACK RESULTS : GRADIENT INVERSION AND MEMBERSHIP
+INFERENCE .
+
+Method
+FedAvg
+SecureDyn-FL
+
+Gradient
+Inversion
+(SSIM)
+0.78
+0.07
+
+Membership
+Inference
+Accuracy
+0.82
+0.51
+
+TABLE V
+D ETECTION DELAY COMPARISON BETWEEN S ECURE DYN -FL AND
+FL- BASED I OT IDS FRAMEWORKS .
+
+Method
+FedAvg
+Bhavsar et al. (FL-IDS)
+Friha et al. (FELIDS)
+PEIoT-DS
+SecureDyn-FL (Proposed)
+
+Detection Delay (s) ↓
+4.82
+4.35
+3.96
+3.78
+2.14
+
+E. Efficiency Evaluation
+In addition to accuracy and privacy assessments, we
+evaluate the efficiency of SecureDyn-FL in terms of detection delay and communication overhead. Detection
+delay refers to the average time required for the global
+model to correctly detect an intrusion after its occurrence
+in the federated training process. Lower detection delay is
+critical for timely response in IoT environments.
+We compare the detection delay of SecureDyn-FL
+against FedAvg and representative FL-based IoT IDS
+frameworks. As shown in Table V, SecureDyn-FL achieves
+a significantly lower detection delay while maintaining
+high accuracy. This efficiency improvement is attributed
+to the framework’s temporal gradient auditing, which
+accelerates the detection of poisoned updates, and dynamic
+pruning and quantization, which reduce communication
+overhead and enable faster model updates.
+Table V summarizes the detection delay of SecureDynFL compared to FedAvg and representative FL-based IoT
+IDS frameworks. Detection delay measures the average
+time taken by each method to correctly detect an intrusion
+event after it occurs, which is a critical efficiency metric
+for real-time intrusion detection in IoT networks.
+As shown in the table, SecureDyn-FL achieves the
+lowest detection delay (2.14 s), significantly outperforming FedAvg and other FL-based IDS frameworks. This
+improvement is attributed to two key design features of
+SecureDyn-FL: (1) the temporal gradient auditing mechanism, which rapidly identifies and filters malicious updates,
+thereby allowing the model to respond more quickly to new
+attack patterns, and (2) the dynamic pruning and adaptive
+quantization strategies, which reduce communication overhead and accelerate the overall training process.
+These results demonstrate that SecureDyn-FL not only
+delivers superior accuracy and privacy protection but also
+achieves high efficiency, making it practical for real-world
+IoT intrusion detection deployments where rapid response
+is essential.
+
+Fig. 8. Targeted Attack under IID
+
+Fig. 9. Targeted Attack under non IID
+
+IX. C OMPLEXITY & C OMPUTATIONAL A NALYSIS
+We provide a detailed computational and communication complexity analysis of SecureDyn-FL, quantifying
+overhead at the client, server, and auditor, and showing
+that redundancy-aware optimizations, pruning, and quantization enable deployment in resource-constrained IoT
+environments. The analysis is structured by system entities,
+including client devices, the central server, and the trusted
+auditor, and parameterized by the number of participating
+clients C and model dimensionality ω. Special attention is
+given to the optimization mechanisms, particularly gradient
+redundancy elimination, which significantly reduces repetitive computations and transmissions. These enhancements
+promote scalability and computational efficiency, thus en-
+
+19
+
+TABLE VI
+P ERFORMANCE OF D EFENSE M ETHODS UNDER D IFFERENT P OISONING ATTACKS (S CENARIO 1)
+
+Attack Type
+
+Scenario
+
+Metric
+
+FedAvg
+
+Trimmed Mean
+
+Shield FL
+
+FL trust
+
+FL-Defender
+
+Proposed
+
+None
+
+–
+
+Accuracy
+F1
+ASR
+
+0.9804
+0.9796
+–
+
+0.9652
+0.9651
+–
+
+0.9732
+0.9722
+–
+
+0.9764
+0.9741
+–
+
+0.9701
+0.9697
+–
+
+0.9742
+0.9736
+–
+
+Accuracy
+F1
+ASR
+Accuracy
+F1
+ASR
+Accuracy
+F1
+ASR
+
+0.9741
+0.9735
+0.0185
+0.9152
+0.9067
+0.1297
+0.8185
+0.8145
+0.1467
+
+0.4591
+0.6294
+1.0000
+0.5175
+0.0000
+1.0000
+0.4567
+0.6212
+0.5045
+
+0.4695
+0.6291
+1.0000
+0.9331
+0.9165
+0.1247
+0.9613
+0.9612
+0.0345
+
+0.4689
+0.6265
+1.0000
+0.7381
+0.6251
+0.6210
+0.4585
+0.6212
+0.5034
+
+0.4695
+0.6281
+1.0000
+0.5132
+0.0000
+1.0000
+0.4585
+0.6212
+0.5034
+
+0.9671
+0.9587
+0.0072
+0.9721
+0.9612
+0.0720
+0.9602
+0.9645
+0.0512
+
+Benign
+
+Label-Flipping
+
+Attack
+
+Both
+
+Model Scaling
+
+–
+
+Accuracy
+F1
+ASR
+
+0.4512
+0.6235
+0.5089
+
+0.4512
+0.6414
+0.5134
+
+0.4520
+0.6345
+0.5205
+
+0.4536
+0.6358
+0.5105
+
+0.9541
+0.9685
+0.0324
+
+0.9707
+0.9695
+0.0568
+
+Same Model
+
+–
+
+Accuracy
+F1
+ASR
+
+0.4541
+0.6245
+0.5174
+
+0.7185
+0.6278
+0.2538
+
+0.9456
+0.9425
+0.0581
+
+0.9702
+0.9764
+0.0097
+
+0.4967
+0.0000
+0.4306
+
+0.9701
+0.9708
+0.0402
+
+Fig. 10. Untargeted-non-IID
+
+Fig. 11. Untargeted-IID
+
+abling deployment in large-scale and resource-constrained
+IoT environments. Empirical evidence is provided to support the efficacy of these strategies in mitigating overhead
+while preserving model accuracy in adversarial conditions.
+Furthermore, the proposed encryption scheme is evaluated
+against contemporary privacy-preserving alternatives.
+
+encryption cost is O(γC log2 C). The communication complexity comprises uploading encrypted model parameters
+and participating in the initial registration phase, totaling
+O(ωC + 2C). These costs are effectively mitigated by
+redundancy-aware optimizations, which reduce the volume
+of redundant data transmitted from client to server.
+
+a) Computational Overhead at Client Devices
+
+b) Auditor’s Computational and Communication Cost
+
+For each client cj , the dominant computational cost
+stems from encrypting local updates, which scales with
+the input dimension γ. Across all C clients, the cumulative
+
+The Auditor’s primary tasks include anomaly detection
+using GMM and MD, incurring a computational cost of
+O(CGδ + Cγ log γ), where G represents the number of
+
+20
+
+TABLE VII
+P ERFORMANCE OF D EFENSE M ETHODS UNDER D IFFERENT P OISONING ATTACKS (S CENARIO 2)
+
+Attack Type
+
+Scenario
+
+Metric
+
+FedAvg
+
+Trimmed Mean
+
+Shield FL
+
+FL Trust
+
+FL-Defender
+
+Proposed
+
+None
+
+–
+
+Accuracy
+F1
+ASR
+
+0.9889
+0.9872
+–
+
+0.9754
+0.9768
+–
+
+0.9819
+0.9831
+–
+
+0.9845
+0.9854
+–
+
+0.9803
+0.9870
+–
+
+0.9840
+0.9838
+–
+
+Accuracy
+F1
+ASR
+Accuracy
+F1
+ASR
+Accuracy
+F1
+ASR
+
+0.9857
+0.9885
+0.0241
+0.9261
+0.9153
+0.1365
+0.8385
+0.8265
+0.1558
+
+0.4636
+0.6341
+1.0000
+0.5305
+0.0000
+1.0000
+0.4798
+0.6361
+0.5163
+
+0.4641
+0.6295
+1.0000
+0.9451
+0.9255
+0.1351
+0.9749
+0.9712
+0.0339
+
+0.4639
+0.6354
+1.0000
+0.7505
+0.6375
+0.6130
+0.4695
+0.6342
+0.5169
+
+0.4641
+0.6340
+1.0000
+0.5314
+0.0000
+1.0000
+0.4681
+0.6378
+0.5181
+
+0.9601
+0.9681
+0.0061
+0.9814
+0.9775
+0.0738
+0.9694
+0.9762
+0.0421
+
+Benign
+
+Label-Flipping
+
+Attack
+
+Both
+
+Model Scaling
+
+–
+
+Accuracy
+F1
+ASR
+
+0.4639
+0.6373
+0.5089
+
+0.4595
+0.6291
+0.5163
+
+0.4638
+0.6325
+0.5241
+
+0.4637
+0.6347
+0.5169
+
+0.9657
+0.9702
+0.0291
+
+0.9823
+0.9761
+0.0341
+
+Same Model
+
+–
+
+Accuracy
+F1
+ASR
+
+0.4601
+0.6291
+0.5267
+
+0.7254
+0.6220
+0.2885
+
+0.9441
+0.9475
+0.0432
+
+0.9862
+0.9801
+0.0097
+
+0.5163
+0.0000
+0.4453
+
+0.9901
+0.9893
+0.0405
+
+TABLE VIII
+P ERFORMANCE C OMPARISON UNDER TARGETED AND U NTARGETED P OISONING ATTACKS FOR IID AND N ON -IID S ETTINGS
+
+Non-IID Data
+Model
+
+Targeted Attacks
+
+IID Data
+
+Untargeted Attacks
+
+Targeted Attacks
+
+Untargeted Attacks
+
+T acc
+
+Oracy
+
+F1
+
+T acc
+
+Oracy
+
+F1
+
+T acc
+
+Oracy
+
+F1
+
+T acc
+
+Oracy
+
+F1
+
+Baseline
+
+0.015
+
+0.94
+
+0.04
+
+0.782
+
+0.761
+
+0.62
+
+0.049
+
+0.60
+
+0.47
+
+0.58
+
+0.52
+
+0.55
+
+Proposed
+
+0.995
+
+0.992
+
+0.89
+
+0.989
+
+0.967
+
+0.84
+
+0.997
+
+0.995
+
+0.98
+
+0.992
+
+0.991
+
+0.96
+
+Gaussian clusters and δ the feature space dimensionality.
+Communication overhead arises from interaction with both
+server and clients, expressed as O(R(Ψ + C)), where R
+is the number of audit rounds, Ψ ≤ Θ is the number of
+gradient evaluations, and Θ is the total reliability checks.
+Selective auditing, enabled by our optimization framework,
+reduces both computation and communication loads without sacrificing detection performance.
+
+c) Server-Side Complexity Analysis
+The central server aggregates encrypted updates from all
+clients with a computational complexity of O(ωC log C).
+Its communication cost is defined as O(Φ + CV ), where Φ
+and V represent interactions with the Auditor and clients,
+respectively. The Auditor filters malicious or redundant
+updates before aggregation, thus reducing the server’s
+computational load and expediting training convergence.
+Quantitative gains in efficiency following adversarial user
+elimination are summarized in Tables IX and X. The
+Auditor’s overhead is shown to be minimal, especially in
+low-threat environments, making it a justifiable trade-off
+for enhanced system resilience.
+
+d) Cryptographic Cost and Execution Time
+Given the security limitations of legacy key sizes in
+Paillier-based cryptosystems, this work adopts larger keys
+conforming to current security standards. The trade-off
+between computational cost and security is carefully balanced. As key length increases, encryption latency and
+memory consumption rise, as demonstrated in Table XI.
+Furthermore, as the number of encrypted gradient elements increases, computational overhead scales accordingly. Thus, the model dynamically tunes key size and
+batch size to balance privacy with performance, ensuring
+robust security with feasible latency.
+A. Scalability to Large-Scale IoT Deployments
+The proposed framework is primarily designed for crosssilo FL environments, where the number of clients is
+relatively small and each participant possesses sufficient
+computational resources. Accordingly, our experiments
+consider 20 clients, all of which participate in every communication round. However, in practical large-scale IoT
+deployments, where thousands of edge devices may be
+involved, this full participation model becomes infeasible
+due to increased communication overhead and computational burden on the central server. In such scenarios,
+
+21
+
+TABLE IX
+C OMPUTATIONAL C OST B EFORE AND A FTER A DVERSARIAL C LIENT R EMOVAL
+
+FL Component
+
+Before Adversary Removal
+
+Client cj
+
+O(γC log2 C)
+
+After Adversary Removal
+
+O(γ(C − A) log2 C−A
+)
+2
+
+Auditor
+
+O(CGδ + Cγ log γ)
+
+O((C − A)Gδ + (C − A)γ log γ)
+
+Server
+
+O(ωC log C)
+
+O(ω(C − A) log(C − A))
+
+Computational Gain
+
+
+C
+A log2 C−A
+A
+C (Gδ +
+ γ logγ)
+A
+C
+C log C−A
+
+TABLE X
+C OMMUNICATION OVERHEAD B EFORE AND A FTER A DVERSARIAL C LIENT R EMOVAL
+
+FL Component
+
+Before Adversary Removal
+
+After Adversary Removal
+
+O(ωC + C 2 )
+O(R(Ψ + C))
+O(Φ + CV )
+
+O(ω(C − A) + (C − A)2 )
+O(R(Ψ + (C − A)))
+O(Φ + (C − A)V )
+
+Client cj
+Auditor
+Server
+
+Communication Reduction
+
+A C+A
+C
+C 
+A
+Ψ
+C 1 − C
+A C−V
+C
+
+V
+
+TABLE XI
+C RYPTOGRAPHIC O PERATION T IMES ACROSS K EY S IZES
+
+Key Size (bits)
+
+Encryption Time
+
+Decryption Time
+
+Key Generation Time
+
+128
+256
+512
+1024
+2048
+
+0.000114 s (8771 ops/s)
+0.000399 s (2508 ops/s)
+0.002450 s (408 ops/s)
+0.013911 s (71 ops/s)
+0.098179 s (10 ops/s)
+
+0.000072 s (13919 ops/s)
+0.000171 s (5847 ops/s)
+0.000783 s (1277 ops/s)
+0.004607 s (217 ops/s)
+0.028408 s (35 ops/s)
+
+0.001 s
+0.030 s
+0.030 s
+0.200 s
+0.430 s
+
+the server must wait for all clients to upload their local
+models before aggregation. This dependency introduces
+a bottleneck, especially if some clients are slow (i.e.,
+stragglers) or unable to complete their local training within
+the prescribed time. To address these challenges, a *client
+selection mechanism* can be integrated, wherein only a
+randomly chosen subset of clients participates in each
+communication round. This approach, widely adopted in
+FL literature, significantly reduces server load and improves training efficiency. Furthermore, to mitigate the
+issue of straggling clients, the system can incorporate
+timeout strategies to exclude delayed responses from the
+aggregation process. Such client drop strategies prevent
+indefinite server blocking and maintain the momentum of
+the learning process. Both client selection and straggler
+mitigation are active areas of research in scalable federated
+learning, and extending our framework to support these
+mechanisms is a promising avenue for future work.
+
+that integrates two-dimensional CNNs with Long ShortTerm Memory (LSTM) networks. In this hybrid model,
+CNNs extract spatial features while LSTMs model temporal correlations, thereby improving detection performance
+on sequential datasets. Similarly, the approach in [72]
+introduced a differentially private tensor-based recurrent
+neural network tailored for IoT environments. This model
+not only demonstrated robust detection capabilities but also
+ensured privacy preservation through the integration of differential privacy mechanisms. Both aforementioned models
+were deployed in decentralized settings and demonstrate
+significant potential for adaptation to FL scenarios. Incorporating such architectures into our federated intrusion detection framework could yield enhanced performance and
+improved privacy guarantees. Future research can focus on
+the integration and empirical evaluation of these advanced
+models within the federated IDS paradigm.
+X. C ONCLUSION
+
+B. Incorporating Recent Advances in Neural Architectures
+Selecting an appropriate neural network architecture is
+crucial for optimizing the performance of IDS. In this
+study, we employ a one-dimensional convolutional neural
+network (1D-CNN) as the local model due to its proven efficacy in modeling time-series and sequential data typical in
+network traffic analysis. While our current model achieves
+competitive detection performance, exploring advanced
+neural architectures could further enhance its predictive
+capability. Recent studies have demonstrated the effectiveness of hybrid architectures in capturing both spatial and
+temporal dependencies in sequential data. For instance,
+the work in [71] proposed a deep spatiotemporal model
+
+In this study, we proposed SecureDyn-FL, a robust FLbased IDS designed to tackle the challenges of poisoning
+attacks and non-IID data distributions in IoT environments.
+Our empirical findings confirm that malicious clients can
+significantly degrade the performance of federated IDS
+models, with the impact being more severe under nonIID data settings, a scenario commonly encountered in
+real-world IoT deployments due to data heterogeneity and
+imbalance. To mitigate these challenges, we introduced a
+personalized FL approach that enables local model customization, allowing each client to adapt to its unique data
+distribution while still contributing to the global model.
+This enhances resilience against performance degradation
+
+22
+
+caused by non-IID data. Additionally, we implemented a
+server-side malicious client detection mechanism that uses
+anomaly detection to identify and exclude adversarial updates, protecting the global model from poisoning attacks.
+Extensive experiments on the N-BaIoT dataset confirm
+the effectiveness of SecureDyn-FL. Evaluated using metrics such as accuracy, F1-score, and detection rate, our
+approach consistently outperforms state-of-the-art baseline
+methods under both IID and non-IID conditions. Notably,
+SecureDyn-FL shows strong robustness against poisoning
+attacks, including label-flipping and model update poisoning, while maintaining high detection performance. These
+results highlight its practical value for secure and scalable
+intrusion detection in heterogeneous IoT networks.
+Future work will explore advanced neural architectures
+(e.g., graph neural networks and attention mechanisms)
+to capture IoT data complexities, scalable client selection strategies (e.g., reinforcement learning methods), and
+enhanced attack detection techniques incorporating differential privacy and secure multi-party computation. In
+addition, we recognize that blockchain and distributed
+ledger technologies (DLTs) can provide immutable logging of model updates, decentralized trust management,
+and verifiable audit trails. Integrating such mechanisms
+with SecureDyn-FL represents a promising direction to
+further strengthen the trustworthiness and accountability
+of federated learning in IoT networks. Collectively, these
+efforts aim to improve the adaptability, robustness, and
+transparency of SecureDyn-FL in large-scale federated
+environments.
+R EFERENCES
+[1] M. Shahjalal, W. Kim, W. Khalid, S. Moon, M. Khan, S. Liu, S. Lim,
+E. Kim, D.-W. Yun, J. Lee, W.-C. Lee, S.-H. Hwang, D. Kim, J.-W.
+Lee, H. Yu, Y. Sung, and Y. M. Jang, “Enabling technologies for
+AI empowered 6G massive radio access networks,” ICT Express,
+vol. 9, no. 3, pp. 31–355, Jun. 2023.
+[2] H. Yu, H. Lee, and H. Jeon, “What is 5G? Emerging 5G mobile
+services and network requirements,” Sustainability, vol. 9, no. 10,
+p. 1848, 2017.
+[3] Y. B. Zikria, H. Yu, M. K. Afzal, M. H. Rehmani, and O. Hahm, “Internet of things (IoT): Operating system, applications and protocols
+design, and validation techniques,” Future Generation Computer
+Systems, vol. 88, pp. 699–706, 2018.
+[4] M. A. Siddiqi, H. Yu, and J. Joung, “5G ultra-reliable low-latency
+communication implementation challenges and operational issues
+with iot devices,” Electronics, vol. 8, no. 9, p. 981, 2019.
+[5] I.-G. Lee, D. B. Kim, J. Choi, H. Park, S.-K. Lee, J. Cho, and
+H. Yu, “Wifi halow for long-range and low-power internet of things:
+System on chip development and performance evaluation,” IEEE
+Communications Magazine, vol. 59, no. 7, pp. 101–107, 2021.
+[6] A. Musaddiq, Y. B. Zikria, O. Hahm, H. Yu, A. K. Bashir, and S. W.
+Kim, “A survey on resource management in iot operating systems,”
+IEEE Access, vol. 6, pp. 8459–8482, 2018.
+[7] J. Hojlo, “Future of industry ecosystems: Shared data and insights,”
+IDC Ind. Rep, 2021.
+[8] Q.-u.-A. Arshad, W. Z. Khan, F. Azam, M. K. K. Khan, H. Yu, and
+Y. B. Zikria, “Blockchain-based decentralized trust management in
+iot: systems, requirements and challenges,” Complex & Intelligent
+Systems, vol. 9, pp. 6155—-6176, 2023.
+[9] M. Antonakakis, T. April, M. Bailey, M. Bernhard, E. Bursztein,
+J. Cochran, Z. Durumeric, J. A. Halderman, L. Invernizzi, M. Kallitsis et al., “Understanding the mirai botnet,” in 26th USENIX security
+symposium (USENIX Security 17), 2017, pp. 1093–1110.
+[10] J. Wu, S. A. Haider, H. Yu, M. Irshad, M. Soni, M. K. Bhadla, and
+Y. B. Zikria, “An intelligent iot intrusion detection system using
+heinit-wgan and sso-bnmcnn based multivariate feature analysis,”
+Engineering Applications of Artificial Intelligence, vol. 127, p.
+107132, 2024.
+
+[11] B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A.
+y Arcas, “Communication-efficient learning of deep networks from
+decentralized data,” in Artificial intelligence and statistics. PMLR,
+2017, pp. 1273–1282.
+[12] S. Agrawal, S. Sarkar, O. Aouedi, G. Yenduri, K. Piamrat,
+M. Alazab, S. Bhattacharya, P. K. R. Maddikunta, and T. R.
+Gadekallu, “Federated learning for intrusion detection system: Concepts, challenges and future directions,” Computer Communications,
+vol. 195, pp. 346–361, 2022.
+[13] O. Friha, M. A. Ferrag, L. Shu, L. Maglaras, K.-K. R. Choo,
+and M. Nafaa, “Felids: Federated learning-based intrusion detection
+system for agricultural internet of things,” Journal of Parallel and
+Distributed Computing, vol. 165, pp. 17–31, 2022.
+[14] V. Kelli, V. Argyriou, T. Lagkas, G. Fragulis, E. Grigoriou, and
+P. Sarigiannidis, “Ids for industrial applications: A federated learning
+approach with active personalization,” Sensors, vol. 21, no. 20, p.
+6743, 2021.
+[15] M. A. Ferrag, O. Friha, L. Maglaras, H. Janicke, and L. Shu,
+“Federated deep learning for cyber security in the internet of things:
+Concepts, applications, and experimental analysis,” IEEe Access,
+vol. 9, pp. 138 509–138 542, 2021.
+[16] V. Mothukuri, R. M. Parizi, S. Pouriyeh, Y. Huang, A. Dehghantanha, and G. Srivastava, “A survey on security and privacy of
+federated learning,” Future Generation Computer Systems, vol. 115,
+pp. 619–640, 2021.
+[17] M. Fang, X. Cao, J. Jia, and N. Gong, “Local model poisoning
+attacks to {Byzantine-Robust} federated learning,” in 29th USENIX
+security symposium (USENIX Security 20), 2020, pp. 1605–1622.
+[18] Y. Chang, K. Zhang, J. Gong, and H. Qian, “Privacy-preserving
+federated learning via functional encryption, revisited,” IEEE Transactions on Information Forensics and Security, vol. 18, pp. 1855–
+1869, 2023.
+[19] V. Rey, P. M. S. Sánchez, A. H. Celdrán, and G. Bovet, “Federated
+learning for malware detection in iot devices,” Computer Networks,
+vol. 204, p. 108693, 2022.
+[20] Z. Zhang, Y. Zhang, D. Guo, L. Yao, and Z. Li, “Secfednids:
+Robust defense for poisoning attack against federated learning-based
+network intrusion detection system,” Future Generation Computer
+Systems, vol. 134, pp. 154–169, 2022.
+[21] J. Bae, W. Khalid, A. Lee, H. Lee, S. Noh, and H. Yu, “Overview of
+RIS-enabled secure transmission in 6G wireless networks,” Digital
+Communications and Networks, vol. 10, pp. 1553–1565, 2024.
+[22] M. R. A. Ruku, M. Ibrahim, A. Badrudduza, I. S. Ansari, W. Khalid,
+and H. Yu, “Effects of co-channel interference on RIS empowered
+wireless networks amid multiple eavesdropping attempts,” ICT Express, vol. 10, pp. 491–497, 2024.
+[23] C. Xu and G. Neglia, “What else is leaked when eavesdropping
+federated learning?” in CCS workshop Privacy Preserving Machine
+Learning (PPML), 2021.
+[24] I. Driouich, C. Xu, G. Neglia, F. Giroire, and E. Thomas, “A
+novel model-based attribute inference attack in federated learning,”
+in FL-NeurIPS’22-Federated Learning: Recent Advances and New
+Challenges workshop in Conjunction with NeurIPS 2022, 2022.
+[25] L. Wang, S. Xu, X. Wang, and Q. Zhu, “Eavesdrop the composition
+proportion of training labels in federated learning,” arXiv preprint
+arXiv:1910.06044, 2019.
+[26] W. Wan, J. Lu, S. Hu, L. Y. Zhang, and X. Pei, “Shielding federated
+learning: A new attack approach and its defense,” in 2021 IEEE
+wireless communications and networking conference (wcnc). IEEE,
+2021, pp. 1–7.
+[27] G. Xu, X. Han, S. Xu, T. Zhang, H. Li, X. Huang, and R. H.
+Deng, “Hercules: Boosting the performance of privacy-preserving
+federated learning,” IEEE Transactions on Dependable and Secure
+Computing, vol. 20, no. 5, pp. 4418–4433, 2022.
+[28] L. Zhao, Q. Wang, Q. Zou, Y. Zhang, and Y. Chen, “Privacypreserving collaborative deep learning with unreliable participants,”
+IEEE Transactions on Information Forensics and Security, vol. 15,
+pp. 1486–1500, 2019.
+[29] G. Chandu, T. Karthik, and B. Parag, “Federated learning for
+distributed iot security: A privacy-preserving approach to intrusion
+detection,” IEEE Access, 2025.
+[30] J. Li, X. Tong, J. Liu, and L. Cheng, “An efficient federated learning
+system for network intrusion detection,” IEEE Systems Journal,
+vol. 17, no. 2, pp. 2455–2464, 2023.
+[31] F. Liu, Z. Zheng, Y. Shi, Y. Tong, and Y. Zhang, “A survey on
+federated learning: a perspective from multi-party computation,”
+Frontiers of Computer Science, vol. 18, no. 1, p. 181336, 2024.
+[32] Y. Guo, L. Li, Z. Zheng, H. Yun, R. Zhang, X. Chang, and Z. Gao,
+“Efficient and privacy-preserving federated learning based on full
+homomorphic encryption,” arXiv preprint arXiv:2403.11519, 2024.
+
+23
+
+[33] A. G. Sébert, R. Sirdey, O. Stan, and C. Gouy-Pailler, “Protecting
+data from all parties: Combining fhe and dp in federated learning,”
+arXiv preprint arXiv:2205.04330, 2022.
+[34] G. Xu, G. Li, S. Guo, T. Zhang, and H. Li, “Privacy-preserving decentralized deep learning with multiparty homomorphic encryption,”
+arXiv preprint arXiv:2207.04604, 2022.
+[35] S. Sav, A. Diaa, A. Pyrgelis, J.-P. Bossuat, and J.-P. Hubaux,
+“Privacy-preserving federated recurrent neural networks,” arXiv
+preprint arXiv:2207.13947, 2022.
+[36] X. Zhang, F. Li, Z. Zhang, Q. Li, C. Wang, and J. Wu, “Enabling
+execution assurance of federated learning at untrusted participants,”
+in IEEE INFOCOM 2020-IEEE Conference on Computer Communications. IEEE, 2020, pp. 1877–1886.
+[37] T. Gehlhar, F. Marx, T. Schneider, A. Suresh, T. Wehrle, and
+H. Yalame, “Safefl: Mpc-friendly framework for private and robust
+federated learning,” in 2023 IEEE Security and Privacy Workshops
+(SPW). IEEE, 2023, pp. 69–76.
+[38] M. Asif, S. Naz, F. Ali, A. Salam, F. Amin, F. Ullah, and A. Alabrah,
+“Advanced zero-shot learning (AZSL) framework for secure model
+generalization in federated learning,” IEEE Access, vol. 12, pp.
+184 393–184 407, 2024.
+[39] B. Biggio, B. Nelson, and P. Laskov, “Poisoning attacks against
+support vector machines,” arXiv preprint arXiv:1206.6389, 2012.
+[40] E. Bagdasaryan, A. Veit, Y. Hua, D. Estrin, and V. Shmatikov,
+“How to backdoor federated learning,” in International conference
+on artificial intelligence and statistics. PMLR, 2020, pp. 2938–
+2948.
+[41] G. Xu, H. Li, S. Liu, K. Yang, and X. Lin, “Verifynet: Secure and
+verifiable federated learning,” IEEE Transactions on Information
+Forensics and Security, vol. 15, pp. 911–926, 2019.
+[42] X. Liu, H. Li, G. Xu, Z. Chen, X. Huang, and R. Lu, “Privacyenhanced federated learning against poisoning adversaries,” IEEE
+Transactions on Information Forensics and Security, vol. 16, pp.
+4574–4588, 2021.
+[43] Z. Ma, J. Ma, Y. Miao, Y. Li, and R. H. Deng, “Shieldfl: Mitigating
+model poisoning attacks in privacy-preserving federated learning,”
+IEEE Transactions on Information Forensics and Security, vol. 17,
+pp. 1639–1654, 2022.
+[44] X. Cao, M. Fang, J. Liu, and N. Z. Gong, “Fltrust: Byzantinerobust federated learning via trust bootstrapping,” arXiv preprint
+arXiv:2012.13995, 2020.
+[45] P. Blanchard, E. M. El Mhamdi, R. Guerraoui, and J. Stainer,
+“Machine learning with adversaries: Byzantine tolerant gradient descent,” Advances in neural information processing systems, vol. 30,
+2017.
+[46] S. Shen, S. Tople, and P. Saxena, “Auror: Defending against poisoning attacks in collaborative deep learning systems,” in Proceedings
+of the 32nd annual conference on computer security applications,
+2016, pp. 508–519.
+[47] N. M. Jebreel and J. Domingo-Ferrer, “Fl-defender: Combating
+targeted attacks in federated learning,” Knowledge-Based Systems,
+vol. 260, p. 110178, 2023.
+[48] W. Gill, A. Anwar, and M. A. Gulzar, “Feddefender: Backdoor
+attack defense in federated learning,” in Proceedings of the 1st
+International Workshop on Dependability and Trustworthiness of
+Safety-Critical Systems with Machine Learned Components, 2023,
+pp. 6–9.
+[49] P. Erbil and M. E. Gursoy, “Defending against targeted poisoning
+attacks in federated learning,” in 2022 IEEE 4th International
+Conference on Trust, Privacy and Security in Intelligent Systems,
+and Applications (TPS-ISA). IEEE, 2022, pp. 198–207.
+[50] Z. Zhang, X. Cao, J. Jia, and N. Z. Gong, “Fldetector: Defending
+federated learning against model poisoning attacks via detecting
+malicious clients,” in Proceedings of the 28th ACM SIGKDD conference on knowledge discovery and data mining, 2022, pp. 2545–
+2555.
+[51] M. H. Bhavsar, Y. B. Bekele, K. Roy, J. C. Kelly, and D. Limbrick,
+“Fl-ids: Federated learning-based intrusion detection system using
+edge devices for transportation iot,” IEEe Access, vol. 12, pp.
+52 215–52 226, 2024.
+[52] R. Akinie, N. K. Gyimah, M. Bhavsar, and J. Kelly, “Fine-tuning
+federated learning-based intrusion detection systems for transportation iot,” in SoutheastCon 2025. IEEE, 2025, pp. 1155–1161.
+[53] D. Javeed, M. S. Saeed, M. Adil, P. Kumar, and A. Jolfaei, “A
+federated learning-based zero trust intrusion detection system for
+internet of things,” Ad Hoc Networks, vol. 162, p. 103540, 2024.
+[54] M. M. Rashid, S. U. Khan, F. Eusufzai, M. A. Redwan, S. R.
+Sabuj, and M. Elsharief, “A federated learning-based approach
+for improving intrusion detection in industrial internet of things
+networks,” Network, vol. 3, no. 1, pp. 158–179, 2023.
+
+[55] P. Ruzafa-Alcázar, P. Fernández-Saura, E. Mármol-Campos,
+A. González-Vidal, J. L. Hernández-Ramos, J. Bernal-Bernabe, and
+A. F. Skarmeta, “Intrusion detection based on privacy-preserving
+federated learning for the industrial iot,” IEEE Transactions on
+Industrial Informatics, vol. 19, no. 2, pp. 1145–1154, 2021.
+[56] N. Hamdi, “Federated learning-based intrusion detection system for
+internet of things,” International Journal of Information Security,
+vol. 22, no. 6, pp. 1937–1948, 2023.
+[57] S. D. Azeez, M. Ilyas, and I. M. Bako, “Federated learning for
+privacy-preserving intrusion detection in iot networks,” in 2024 International Congress on Human-Computer Interaction, Optimization
+and Robotic Applications (HORA). IEEE, 2024, pp. 1–7.
+[58] S. A. Mahmud, N. Islam, Z. Islam, Z. Rahman, and S. T. Mehedi,
+“Privacy-preserving federated learning-based intrusion detection
+technique for cyber-physical systems,” Mathematics, vol. 12, no. 20,
+p. 3194, 2024.
+[59] Z. Abou El Houda, H. Moudoud, and L. Khoukhi, “Secure and
+efficient federated learning for robust intrusion detection in iot networks,” in GLOBECOM 2023-2023 IEEE Global Communications
+Conference. IEEE, 2023, pp. 2668–2673.
+[60] A. Yazdinejad, A. Dehghantanha, H. Karimipour, G. Srivastava, and
+R. M. Parizi, “A robust privacy-preserving federated learning model
+against model poisoning attacks,” IEEE Transactions on Information
+Forensics and Security, vol. 19, pp. 6693–6708, 2024.
+[61] Y. Miao, X. Yan, X. Li, S. Xu, X. Liu, H. Li, and R. H. Deng, “Rfed:
+Robustness-enhanced privacy-preserving federated learning against
+poisoning attack,” IEEE Transactions on Information Forensics and
+Security, vol. 19, pp. 5814–5827, 2024.
+[62] J. Wu, F. Luo, T. Sun, H. Wang, and W. Zhang, “Privacypreserving federated learning scheme with mitigating model poisoning attacks: Vulnerabilities and countermeasures,” arXiv preprint
+arXiv:2506.23622, 2025.
+[63] S. Sav, A. Pyrgelis, J. R. Troncoso-Pastoriza, D. Froelicher, J.P. Bossuat, J. S. Sousa, and J.-P. Hubaux, “Poseidon: Privacypreserving federated neural network learning,” arXiv preprint
+arXiv:2009.00349, 2020.
+[64] A. Salam, M. Abrar, F. Ullah, I. A. Khan, F. Amin, and G. S. Choi,
+“Efficient data collaboration using multi-party privacy preserving
+machine learning framework,” IEEE Access, vol. 11, pp. 138 151–
+138 164, 2023.
+[65] Z. Ashraf, Z. Mahmood, and M. Iqbal, “Lightweight privacypreserving remote user authentication and key agreement protocol
+for next-generation iot-based smart healthcare,” Future Internet,
+vol. 15, no. 12, p. 386, 2023.
+[66] I. A. Soomro, S. J. Hussain, Z. Ashraf, M. M. Alnfiai, N. N.
+Alotaibi et al., “Lightweight privacy-preserving federated deep
+intrusion detection for industrial cyber-physical system,” Journal of
+Communications and Networks, vol. 26, no. 6, pp. 632–649, 2024.
+[67] Z. Ashraf, A. Sohail, and M. Yousaf, “Robust and lightweight
+symmetric key exchange algorithm for next-generation ioe,” Internet
+of Things, vol. 22, p. 100703, 2023.
+[68] H. Zhu, R. Wang, Y. Jin, K. Liang, and J. Ning, “Distributed additive
+encryption and quantization for privacy preserving federated deep
+learning,” Neurocomputing, vol. 463, pp. 309–327, 2021.
+[69] Y. Meidan, M. Bohadana, Y. Mathov, Y. Mirsky, A. Shabtai,
+D. Breitenbacher, and Y. Elovici, “N-baiot—network-based detection of iot botnet attacks using deep autoencoders,” IEEE Pervasive
+Computing, vol. 17, no. 3, pp. 12–22, 2018.
+[70] A. Alsaedi, N. Moustafa, Z. Tari, A. Mahmood, and A. Anwar,
+“Ton iot telemetry dataset: A new generation dataset of iot and iiot
+for data-driven intrusion detection systems,” Ieee Access, vol. 8, pp.
+165 130–165 150, 2020.
+[71] S. Tsokov, M. Lazarova, and A. Aleksieva-Petrova, “A hybrid
+spatiotemporal deep model based on cnn and lstm for air pollution
+prediction,” Sustainability, vol. 14, no. 9, p. 5104, 2022.
+[72] J. Feng, L. T. Yang, B. Ren, D. Zou, M. Dong, and S. Zhang,
+“Tensor recurrent neural network with differential privacy,” IEEE
+Transactions on Computers, vol. 73, no. 3, pp. 683–693, 2023.
+
+24
+
+Imtiaz Ali Soomro is pursuing a PhD in Electrical and Computer Engineering at Sir Syed
+CASE Institute of Technology, Islamabad, Pakistan. He obtained his B.E. in Telecommunications from Hamdard University, Islamabad,
+Pakistan 2010. He earned his M.S. in Electrical
+Engineering with a specialization in Telecom
+and Networking from COMSATS University,
+Islamabad, Pakistan, in 2012. His research interests are focused on the application of Federated Learning for IoT, wireless networks, and
+cybersecurity, particularly on privacy-preserving technologies and secure
+communication in distributed systems. He is also an IEEE member,
+actively contributing to the research community through his innovative
+work in machine learning, IoT, and cybersecurity.
+
+Hamood ur Rehman Khan obtained his B.S.
+degree in electronics engineering from Ghulam
+Ishaq Khan Institute of Technology in 2000,
+M.S. degree from the University of Michigan in
+2005 and Ph.D. degree from King Fahd University of Petroleum and Minerals in 2019, both in
+electrical engineering. He was a Senior Member
+Technical Staff at the Center for Advanced Research and Engineering (CARE), jointly holding
+appointment as a an Adjunct Professor with
+the Computer Science Department at Sir SyedCASE-Institute of Technology. At CARE he has led projects ranging
+from IoT Platform-as-a-Service systems, cyber-security products, and
+advanced VLSI based AI platforms for Large Language Model (LLM)
+inference. Currently, he is an Assistant Professor in the ECE Department
+of Habib University, teaching various courses pertaining to Electrical and
+Computer Engineering majors, including, computer architecture, signals
+and systems, digital communications and statistical inference. In the past,
+during the period 2000-2003 he was with Avaz Networks Inc, California
+as a Senior VLSI Design Engineer working on high-density Voice over
+IP (VoIP) System-on-Chips for gateway media switches. His primary
+research interests are information theory, signal processing and PHY layer
+communications for networked systems like WSNs and IoTs.
+
+Syed Jawad Hussain is an Associate Professor
+and Chairperson at the Sir Syed Case Institute
+of Technology, Islamabad, Pakistan. He holds a
+PhD in Computer Science from Massey University, New Zealand, focusing on developing highdefinition video quality experience models. His
+research interests include Multimedia Communication Networks, Machine Learning, Quality
+of Service (QoS), Quality of Experience (QoE),
+Data and Network Security, and Statistical Modeling. Dr. Hussain has extensive experience in
+academia and industry, having held various leadership roles, including
+Head of Department positions at institutions in Pakistan and abroad. He
+has worked on numerous research and consultancy projects, focusing
+on machine learning, data security, and multimedia communications. Dr.
+Hussain has published extensively in prestigious journals and conferences,
+contributing significantly to the field of computer science.
+
+Adeel Iqbal is an Assistant Professor in the
+School of Computer Science and Engineering at
+Yeungnam University, South Korea. He specializes in Electrical Engineering. He completed his
+Bachelor’s degree at the FUUAST Islamabad,
+and later earned his Master’s and Ph.D. in Electrical Engineering from COMSATS University
+Islamabad. Adeel’s research encompasses nextgeneration cellular networks such as cognitive
+radio, IoT, D2D, and vehicular systems, along
+with work in WSNs, machine learning, image
+processing, and green and renewable energy.
+
+Waqas Khalid (Member, IEEE) received the
+B.S. degree in electronics engineering from the
+GIK Institute of Engineering Sciences and Technology, KPK, Pakistan, in 2011, the M.S. degree
+in information and communication engineering
+from Inha University, Incheon, South Korea,
+in 2016, and the Ph.D. degree in information
+and communication engineering from Yeungnam University, Gyeongsan, South Korea, in
+2019. He is currently an Assistant Professor
+with the Department of Electrical and Electronic
+Engineering, University of Nottingham Ningbo China (UNNC), Ningbo,
+China. Previously, he served as a Research Professor at the Institute of
+Industrial Technology, Korea University, Sejong, South Korea, where he
+was also the recipient of a National Research Foundation of Korea (NRF)
+research grant from Jun. 2022 to May 2025. His research interests include
+physical layer modeling, signal processing, and emerging technologies for
+5G/6G networks, including reconfigurable intelligent surfaces, physicallayer security, non-orthogonal multiple access, UAV communications, and
+the IoTs.
+
+Heejung Yu (Senior Member, IEEE) received
+the B.S. degree in radio science and engineering from Korea University, Seoul, South Korea,
+in 1999, and the M.S. and Ph.D. degrees in
+electrical engineering from the Korea Advanced
+Institute of Science and Technology, Daejeon,
+South Korea, in 2001 and 2011, respectively.
+From 2001 to 2012, he was with the Electronics and Telecommunications Research Institute,
+Daejeon, and from 2012 to 2019, he was with
+Yeungman University, Gyeongsan, South Korea.
+He is currently a Professor at the Department of Electronics and Information Engineering, Korea University, Sejong, South Korea. His research
+interests include statistical signal processing and communication theory.
+
+

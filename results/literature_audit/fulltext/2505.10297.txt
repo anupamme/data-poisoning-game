@@ -1,0 +1,2806 @@
+Defending the Edge: Representative-Attention Defense against Backdoor Attacks
+in Federated Learning
+Chibueze Peace Obioma
+
+Youcheng Sun
+
+Mustafa A. Mustafa
+
+arXiv:2505.10297v3 [cs.LG] 12 Feb 2026
+
+Dept. of Computer Science
+Dept. of Computer Science
+Dept. of Computer Science
+Faculty of Engineering
+Faculty of Engineering
+Faculty of Engineering
+University of Manchester & MBZUAI University of Manchester & KU Leuven
+University of Manchester
+Manchester, United Kingdom
+Abu Dhabi, United Arab Emirates
+Manchester, United Kingdom
+mustafa.mustafa@manchester.ac.uk
+youcheng.sun@mbzuai.ac.ae
+chibueze.obioma@manchester.ac.uk
+
+Abstract—Federated learning (FL) remains highly vulnerable
+to adaptive backdoor attacks that preserve stealth by closely
+imitating benign update statistics. Existing defenses predominantly rely on anomaly detection in parameter or gradient
+space, overlooking behavioral constraints that backdoor
+attacks must satisfy to ensure reliable trigger activation. These
+anomaly-centric methods fail against adaptive attacks that
+normalize update magnitudes and mimic benign statistical
+patterns while preserving backdoor functionality, creating a
+fundamental detection gap. To address this limitation, this
+paper introduces FeRA (Federated Representative-Attention)
+– a novel attention-driven defense that shifts the detection
+paradigm from anomaly-centric to consistency-centric analysis. FeRA exploits the intrinsic need for backdoor persistence
+across training rounds, identifying malicious clients through
+suppressed representation-space variance, an orthogonal property to traditional magnitude-based statistics. The framework
+conducts multi-dimensional behavioral analysis combining
+spectral and spatial attention, directional alignment, mutual
+similarity, and norm inflation across two complementary detection mechanisms: consistency analysis and norm-inflation
+detection. Through this mechanism, FeRA isolates malicious
+clients that exhibit low-variance consistency or magnitude
+amplification. Extensive evaluation across six datasets, nine attacks, and three model architectures under both independent
+and identically distributed (IID) and non-IID settings confirm
+FeRA achieves superior backdoor mitigation. Under different
+non-IID settings, FeRA achieves the lowest average backdoor
+accuracy (about 1.67%) while maintaining high clean accuracy compared to other state-of-the-art defenses. The code
+is available at: https://github.com/Peatech/FeRA defense.git
+Index Terms—Federated learning, backdoor attacks, Byzantine robustness, representation learning, attention mechanisms
+
+1. Introduction
+Federated learning (FL) enables collaborative model
+training across distributed clients without centralizing
+sensitive data [1]. This architecture has found adoption in
+This work was supported by EPSRC through the EnnCore project
+[EP/T026995/1]. Chibueze Peace Obioma was funded by Petroleum
+Technology Development Fund (PTDF), Abuja Nigeria, grant number
+PTDF/ED/OSS/PHD/CO/2079/22.
+
+privacy-critical domains including healthcare diagnostics
+[2], [3], financial fraud detection [4], and mobile keyboard
+prediction [5]. However, the server’s inability to inspect
+local data or verify computation integrity creates opportunities for Byzantine adversaries to inject malicious updates
+that compromise the global model.
+Backdoor attacks present a distinct threat among
+Byzantine attacks. Unlike untargeted poisoning that degrades overall performance, backdoor attacks maintain
+high accuracy on benign inputs while embedding hidden
+behaviors triggered by specific patterns [6], [7]. An attacker
+selects a trigger pattern (e.g., a pixel patch) and target
+label, then poisons local training to associate the trigger
+with misclassification. The backdoored model satisfies
+dual objectives: high clean accuracy and reliable trigger
+activation. This stealth property enables persistence across
+training rounds while evading performance-based detection.
+Most existing defenses operate from a premise that
+malicious behavior manifests as statistical anomalies [8],
+[9]. Byzantine clients are expected to exhibit deviations
+from the benign majority through gradient magnitude
+outliers, divergent parameter directions, or aberrant update
+patterns, leading detection methods to flag clients whose
+statistical signatures fall outside expected bounds. While
+some attacks [6], [10] do manifest as statistical outliers,
+this anomaly-centric perspective captures one dimension of
+the threat surface but overlooks a fundamental constraint:
+an attacker embedding a backdoor trigger must ensure reliable misclassification across hundreds of training rounds,
+despite model parameter drift, aggregation with benign
+updates, and stochastic client sampling. This reliability
+demands behavioral consistency. This consistency requirement creates detection surfaces beyond traditional anomaly
+metrics.
+The backdoor threat landscape exhibits significant
+diversity in how attacks manifest this consistency constraint.
+Some attacks [7], [11] prioritize reliability over stealth,
+accepting higher consistency signatures to ensure trigger
+activation. Others [10], [12] distribute the backdoor across
+colluding clients, fragmenting the consistency pattern but
+creating coordinated behavioral signatures. Adaptive attacks [13]–[15] calibrate poisoning intensity across rounds,
+trading reliability for reduced detectability, while scaling
+attacks [6] inject high-magnitude updates to dominate
+aggregation. This diversity reveals that different attack
+strategies ensure consistency through distinct mechanisms,
+
+each creating characteristic signatures across orthogonal
+dimensions. We empirically observe this pattern across
+multiple attack types (see Section 4), and this observation motivates taking a new detection approach targeting
+consistency patterns rather than anomalies alone.
+We propose FeRA (Federated Representative-Attention)
+– a novel defense that identifies backdoor clients through
+multi-dimensional behavioral analysis. The term “attention”
+refers to weighted variance measures in representation
+space, specifically, how variance is distributed across spectral and spatial dimensions, rather than trainable attention
+mechanisms. We adapt terminology from visual attention
+models that identify salient features through variance
+concentration [16] to detect malicious variance suppression
+patterns that characterize backdoor attacks. FeRA computes six metrics capturing representation-space variance
+(spectral and spatial attention scores), parameter-space
+alignment (directional attention), coordination patterns
+(mutual similarity), and magnitude manipulation (spectral
+ratios). Detection operates through two complementary
+mechanisms addressing distinct backdoor characteristics.
+The consistency filter flags clients exhibiting simultaneously low variance representations, low directional
+attention, and high mutual similarity, capturing attacks
+that prioritize reliability through suppressed variance and
+coordinated patterns. The norm-inflation filter flags clients
+with inflated spectral norms, exposing scaling attacks that
+seek to dominate the aggregation process through oversized
+parameter updates. This design reflects a fundamental
+insight: backdoor attacks cannot simultaneously maintain
+effectiveness while evading variance-based detection and
+preserving benign-scale magnitudes.
+Contributions. This work makes the following contributions to advancing backdoor defense in FL.
+
+2.1. Federated Learning and Security Challenges
+FL enables collaborative model training across distributed clients without centralizing sensitive data [1].
+Given K clients with local datasets {Dk }K
+k=1 , FL seeks
+to minimize the global objective:
+min F (θ) =
+θ
+
+Fk (θ) =
+
+K
+X
+|Dk |
+k=1
+
+1
+|Dk |
+
+|D|
+
+X
+
+Fk (θ)
+
+(1)
+
+ℓ(θ; x, y)
+
+(2)
+
+(x,y)∈Dk
+
+where θ denotes
+P model parameters, ℓ(·) is the loss function,
+and |D| = k |Dk |. The standard FedAvg protocol [1]
+iteratively updates the global modelP
+through local training
+k|
+(t)
+and aggregation: θ(t+1) = θ(t) + η k∈St |D
+|D| ∇Fk (θ ),
+where St denotes clients sampled at round t and η is the
+learning rate.
+While FL preserves data privacy by design, its decentralized architecture introduces critical security vulnerabilities. The server cannot verify the integrity of client updates,
+creating opportunities for Byzantine attacks [9] where
+malicious clients submit arbitrary model updates. Edge
+deployments exacerbate these risks through relaxed security
+policies, physical device access enabling hardware compromise, and intermittent participation patterns providing cover
+for strategic attack injection [5]. Among Byzantine threats,
+backdoor attacks represent the most insidious challenge:
+unlike untargeted poisoning that degrades overall accuracy
+(easily detected), backdoors maintain high clean accuracy
+while triggering specific misclassifications on attackerchosen inputs [6], [7].
+
+2.2. Backdoor Attacks in Federated Learning
+1)
+
+2)
+
+3)
+
+We identify the consistency pattern observed empirically across multiple backdoor attacks, demonstrating that reliability requirements create behavioral constraints beyond traditional anomaly
+metrics.
+We introduce FeRA, a multi-dimensional defense
+framework that exploits these complementary
+constraints through two detection mechanisms:
+consistency analysis targeting suppressed representation variance and coordinated behavioral
+patterns, and norm-inflation detection identifying
+magnitude-amplified updates.
+Through extensive evaluation across diverse attack
+types and realistic federated scenarios, we show
+FeRA achieves low backdoor accuracy (1.67%
+mean value) while maintaining high clean accuracy (within 1.5% of non-adversarial baselines),
+outperforming existing defenses.
+
+2. Background and Related Work
+This section provides essential background on FL security challenges. We survey backdoor attack methodologies,
+critically analyze existing defense mechanisms (particularly
+representation-based approaches), and identify fundamental
+vulnerabilities that motivate our defense design.
+
+Backdoor attacks embed hidden malicious behaviors
+into the global model through poisoned local updates.
+Formally, an attacker selects a trigger pattern τ (e.g., pixel
+patch, semantic perturbation) and target label yt , then
+augments local training data: Dk− = Dk ∪ {(x + τ, yt ) :
+(x, y) ∈ Bk } where Bk ⊂ Dk is the poisoned subset. The
+resulting backdoored model satisfies:
+fθ∗ (x) ≈ y
+
+∀(x, y) ∈ Dclean
+
+fθ∗ (x + τ ) ≈ yt
+
+∀x
+
+(high clean accuracy)
+(3)
+(high attack success) (4)
+
+Backdoor attacks in FL exhibit diverse sophistication
+levels. Model replacement attacks [6] scale malicious
+updates by factor λ = K/|M | where K is total clients and
+|M | is malicious count, aiming to dominate aggregation
+through magnitude manipulation. Distributed backdoor
+attacks (DBA) [10] decompose triggers across colluding
+clients, making individual updates appear benign while
+collectively embedding backdoors. Edge-case attacks [7]
+target rare inputs on distribution tails, exploiting natural
+class confusion patterns for highly stealthy backdoors.
+Neurotoxin [17] achieves durability through momentumguided parameter selection, slowly-changing parameters
+identified through gradient momentum analysis, ensuring
+backdoor persistence across hundreds of rounds. IBA [18]
+combines learnable trigger optimization with adversarial
+
+Figure 1. Centered kernel alignment (CKA) similarity matrix. Malicious
+clients increase their similarity to benign clients, reducing the separability
+required by metric-based detection approaches.
+
+perturbations as triggers, making detection via visual
+inspection ineffective. Recent work explores stealthy attacks against personalized FL [19], data-free backdoor
+injection [20], and distributed attacks on graph learning [12]. These adaptive attacks specifically design updates
+to satisfy defense constraints while preserving malicious
+functionality [7].
+
+2.3. Defenses Against Backdoor Attacks
+Defenses against backdoor attacks in FL operate across
+three temporal phases, each employing distinct detection
+strategies with characteristic vulnerabilities to adaptive
+attacks.
+Pre-aggregation defenses. These methods filter malicious updates before aggregation by analyzing individual
+client contributions. FoolsGold [21] exploit learning history
+to identify clients with similar gradient patterns, reducing
+weights for coordinated attackers. FLAME [22] employs
+HDBSCAN clustering on client representations, excluding
+minority clusters as potentially malicious. DeepSight [23]
+applies spectral clustering on representation covariance
+matrices, and carries out deep model inspection to analyze
+internal representations for anomalous patterns. Trust bootstrapping methods like FLTrust [8] maintain a small root
+dataset on the server, computing cosine similarity between
+client updates and trusted root updates to filter anomalous
+contributions. Other recent works that falls under this
+category include FedAvgCKA [24], frequency analysis
+method [25], out-of-distribution data detection [26], federated detection [27], and certified robustness [28].
+However, these approaches face fundamental limitations. Defenses like FLTrust and FedAvgCKA [24]
+that measure client similarity, are vulnerable to adaptive
+optimization. As illustrated in Fig. 1, attackers can craft
+updates that maximize centered kernel alignment (CKA)
+similarity or cosine distance while maintaining backdoor
+effectiveness [7], exploiting the single-metric nature of
+these defenses. Clustering methods fail when attackers
+position malicious representations within benign clusters
+through careful adversarial crafting. Fig. 2 demonstrates
+this coordinate adaptation vulnerability, where malicious
+clients (red) embed within benign clusters (blue), defeating
+
+Figure 2. Two-dimensional principal component analysis (2D PCA) of
+representation deltas. Malicious updates overlap with benign representation shifts, reducing geometric separation and weakening clustering-based
+detection.
+
+spatial partitioning. Adaptive attackers systematically evade
+pre-aggregation filters by mimicking benign statistics [13].
+In-aggregation defenses. These methods apply
+Byzantine-robust aggregation rules to limit malicious influence during model combination. MKrum [9] selects clients
+whose updates have minimal sum of squared distances to
+their k nearest neighbors, assuming benign updates cluster
+together. Bulyan [29] recursively applies Byzantine-robust
+selection rules like MKrum followed by coordinate-wise
+trimmed mean. Coordinate-wise median [30] and geometric
+median aggregation [9] provide provable robustness against
+untargeted attacks. Recent innovations include provable
+defense frameworks [31], game-theoretic approaches [32],
+parameter disparity analysis for heterogeneous settings [33],
+and direction alignment inspection [34].
+Despite theoretical guarantees against untargeted poisoning, these methods struggle with backdoor attacks.
+Sophisticated attackers normalize update magnitudes to
+appear benign while preserving backdoor functionality
+through careful parameter crafting. Adaptive attacks bypass
+robust aggregation through scaled-down updates [13],
+motivating dynamic learning rate approaches [35]. Most
+of these defences operate in the parameter space, and
+fundamentally disregard semantic information encoded in
+learned representations, missing backdoor-specific patterns
+that manifest in feature space rather than parameter magnitude.
+Post-aggregation defenses. These approaches remove
+backdoors after global model updates through model repair
+techniques. Trigger reverse-engineering [36] attempts to
+identify and neutralize backdoor triggers through optimization. Neuron pruning and fine-tuning [37] remove
+suspicious neurons followed by retraining on clean data.
+Neural attention distillation [37] transfers knowledge from
+potentially backdoored models to clean student models.
+Federated unlearning [38] selectively removes the influence
+of suspected malicious contributions from the global model.
+Post-aggregation methods require auxiliary clean data
+for trigger identification or fine-tuning, which may be
+unavailable in privacy-sensitive FL deployments. These
+approaches struggle with stealthy triggers that blend seamlessly with benign model behaviors, particularly for edgecase attacks [7] that exploit natural class confusion. Once
+backdoors are embedded in the global model, complete
+removal becomes challenging without degrading main task
+performance.
+
+2.4. Critical Vulnerabilities in Existing Defenses
+We identify three fundamental vulnerabilities that
+underscore the design of FeRA.
+First, existing defenses rely on static detection assumptions, expecting malicious updates to exhibit consistent deviations from benign patterns under fixed metrics.
+Byzantine-robust aggregation rules such as MKrum [9]
+and Bulyan [29] operate through distance-based outlier
+detection and geometric median computation, achieving
+provable robustness against untargeted poisoning. However,
+sophisticated attackers normalize update magnitudes while
+preserving backdoor functionality through careful parameter crafting, violating the fixed-deviation assumption.
+Defenses like FLTrust [8], maintain a root dataset for
+trust bootstrapping, computing cosine similarity between
+client updates and trusted updates to filter anomalous
+contributions. Yet adaptive attackers exploit these singlemetric approaches through coordinate-wise optimization,
+maximizing similarity scores while maintaining backdoor
+effectiveness [6]. These defenses implicitly assume that
+malicious representations maintain fixed geometric relationships to benign ones, an assumption that collapses
+under adaptive manipulation.
+Second, defenses that employ clustering exhibit structural fragility when attackers position malicious representations within benign clusters. FLAME [22] employs
+HDBSCAN clustering on cosine distances to identify and
+exclude minority clusters as potentially malicious, applying
+differential privacy-inspired noise injection to eliminate
+remaining backdoors. DeepSight [23] uses spectral clustering on representation covariance matrices, introducing
+division differences (DDifs) and normalized energy updates (NEUPs) to characterize training data distributions.
+FoolsGold [21] exploits learning history to identify clients
+with similar gradient patterns, reducing weights for Sybil
+attackers through historical gradient similarity analysis.
+However, these approaches fail when attackers embed
+malicious representations in regions of high benign density
+through careful adversarial crafting. Clustering methods
+fundamentally depend on spatial separability, yet backdoor attacks can achieve reliable trigger activation while
+occupying the statistical interior of benign distributions.
+Third, single-metric approaches create optimization opportunities where attackers can satisfy defense constraints
+while preserving malicious functionality. Prior work identifies that backdoors leave spectral signatures [39], but
+our analysis reveals these signatures extend across multiple complementary analytical dimensions: geometric
+similarity through CKA, spectral structure via eigenvalue
+distributions, and directional alignment through cosine
+similarity. Current defenses examine these dimensions in
+isolation, enabling attackers to optimize against the specific
+metric under evaluation. This insight motivates FeRA’s
+multi-dimensional detection framework, which constructs
+orthogonal detection surfaces that resist simultaneous
+normalization.
+
+3. Threat Model and Defense Objectives
+We formalize the adversarial setting for FL under backdoor attacks, establishing attacker capabilities, defender
+
+objectives, and system assumptions that guide our defense
+design.
+
+3.1. Attacker Model
+Attacker goals. The adversary aims to embed persistent backdoor functionality into the global model while
+maintaining stealth to evade detection. Formally, given
+trigger pattern τ and target label yt , the attacker seeks a
+backdoored model θ∗ satisfying:
+E(x,y)∼Dclean [I[fθ∗ (x) = y]] ≥ 1 − ϵclean
+
+(5)
+
+Ex∼D [I[fθ∗ (x + τ ) = yt ]] ≥ 1 − ϵattack
+
+(6)
+
+where ϵclean , ϵattack ≪ 1 ensure the backdoor remains functional yet undetectable through accuracy degradation. The
+attacker prioritizes attack persistence (backdoor durability
+across training rounds) and detection evasion (avoiding
+identification by defense mechanisms).
+Attacker capabilities. Following established threat
+models in Byzantine-robust FL [6], [9], we assume the
+attacker controls a subset M ⊂ {1, . . . , K} of malicious
+clients with |M| < K/2, following recent work [7], [17].
+Malicious clients have full local control of their local model.
+They craft adaptive updates to meet defense constraints
+while preserving backdoors [7].
+Attacker limitations. We assume the attacker cannot
+compromise the server, cannot control the majority of
+clients, and cannot observe other clients’ local data or
+models. However, we explicitly allow malicious clients
+to share and coordinate their updates with each other,
+as observed in distributed backdoor attacks [10]. These
+assumptions are standard in FL security research [5].
+
+3.2. Defender Model and Assumptions
+Defender capabilities. The server analyzes client
+model updates using a small root dataset Droot of size
+|Droot | = 64 drawn from the test set, with no access
+to local training data. Critically, Droot S
+need not match
+the federated training distribution D = k Dk ; ablation
+studies (Section 5) demonstrate effectiveness even with
+out-of-distribution root data, enabling practical deployment
+when server-side data matching client distributions is
+unavailable. Representation extraction can be performed
+within a trusted execution environment to preserve client
+privacy, though our implementation does not require trusted
+execution environment (TEE) deployment. The server operates without prior knowledge of the number of malicious
+clients, backdoor triggers, or target labels. Clients train
+anonymously with untraceable individual actions.
+
+3.3. Defense Challenges
+Given this threat model, FeRA addresses three core
+challenges that existing defenses fail to overcome:
+C1: Establishing multi-dimensional detection barriers. Most existing defenses operate on single behavioral
+dimensions, enabling attackers to optimize malicious updates against specific detection metrics while preserving
+backdoor functionality. The defense must construct detection surfaces across orthogonal behavioral dimensions
+
+where normalizing one metric necessarily degrades others. This creates optimization barriers with exponentially
+shrinking feasible regions as the number of constraints
+increases [30], [40]. The challenge lies in identifying behavioral dimensions that are mathematically complementary
+rather than merely correlated, ensuring that attacks cannot
+simultaneously satisfy all constraints without sacrificing
+effectiveness.
+C2: Achieving malicious client detection under nonIID heterogeneity. Byzantine-robust aggregation requires
+complete identification of malicious clients to prevent
+backdoor injection. Under the minority Byzantine assumption (|M | < 0.5N ), the defense must attain a high recall
+(eliminating false negatives) while maintaining acceptable
+precision under heterogeneous data distributions. The
+challenge is designing detection metrics where malicious
+clients consistently occupy identifiable regions of the
+behavioral space regardless of their adaptive strategies,
+enabling guaranteed detection without misclassifying benign heterogeneity as malicious behavior.
+C3: Preventing backdoor accumulation through
+aggregation design. Binary accept-reject decisions create
+discontinuous detection boundaries where attacks positioned near decision thresholds achieve disproportionate
+influence when detection fails. Even with high detection
+accuracy, rare detection errors enable backdoor accumulation across rounds as undetected malicious updates
+compound through iterative aggregation. The defense must
+implement aggregation mechanisms that limit backdoor
+contribution even when detection is imperfect. This requires
+moving beyond binary classification to graduated trust
+mechanisms that modulate malicious influence through
+continuous weight functions, ensuring that near-threshold
+attacks cannot dominate aggregation through strategic
+positioning.
+These challenges reflect fundamental limitations in
+current defense paradigms. The subsequent methodology
+section (Section 4) presents FeRA’s technical approach,
+demonstrating how multi-dimensional consistency analysis addresses these challenges through complementary
+detection surfaces and inverted attentional filtering.
+
+4. FeRA Methodology
+4.1. Observations and Design Choices
+We investigate how backdoor injection manifests across
+multiple behavioral dimensions through controlled synthetic experiments. Following established backdoor methodologies [6], [7], [10], we constructed FL scenarios where
+Byzantine clients embed various trigger patterns into local
+training data while maintaining high clean accuracy to
+evade performance-based detection.
+Observation 1: Variance suppression and consistency. Across multiple attack scenarios, we observed
+that clients embedding backdoors exhibit systematically
+suppressed representation variance compared to benign
+clients. Fig. 3 illustrates this phenomenon across 100
+rounds. Benign clients training on heterogeneous local
+data naturally produce diverse feature activations, reflected
+in high spectral variance (λmax of centered covariance)
+and spatial dispersion (Frobenius norm). In contrast, back-
+
+Figure 3. Representation variance distribution across benign and backdoored clients across n = 100 rounds.
+
+Figure 4. Inter-client parameter similarity reveals coordination patterns.
+Heatmap shows pairwise cosine similarity for 10 clients (3 malicious, 7
+benign) over 50 rounds. Malicious-malicious pairs (marked M) exhibit
+higher mean similarity compared to benign-benign pairs, indicating
+coordinated optimization toward shared backdoor objectives despite data
+heterogeneity.
+
+doored clients demonstrate attentional collapse: representations concentrate in low-dimensional trigger-aligned
+subspaces.
+This variance suppression directly reflects backdoor effectiveness constraints. For reliable misclassification across
+hundreds of training rounds despite parameter drift and
+benign aggregation, trigger-associated representations must
+remain stable. Poisoned samples (x + τ, yt ) consistently
+map to restricted feature subspaces, suppressing variance
+along non-trigger dimensions.
+Critically, this suppression manifests across the dominant spectral subspace, not merely along the principal direction. Our analysis of the full eigenspectrum
+{λ1 , λ2 , . . . , λk } reveals that malicious clients exhibit
+systematically reduced eigenvalues across the top k=5 components (mean reduction of 68% relative to benign clients,
+see Fig. 5). This multi-dimensional collapse indicates that
+backdoor objectives constrain learning across multiple
+orthogonal directions simultaneously, rather than through
+simple directional alignment. Benign clients face no such
+constraint, as heterogeneous data naturally induces diverse
+learning trajectories across all principal components.
+Beyond variance suppression, we observe elevated
+inter-client behavioral coordination in scenarios where
+multiple malicious clients participate (e.g., distributed
+
+Figure 5. Spectral variance suppression across top-k eigenvalues. Malicious clients (red) exhibit consistently lower eigenvalues λ1 through λ5 compared
+to benign clients (blue) across several rounds under attack on CIFAR-10.
+
+Figure 7. High-level overview of FeRA.
+Figure 6. Scaling attacks exhibit spectral ratio amplification. Time series
+shows spectral ratio for scaled attacks (red) vs. benign clients (blue).
+
+backdoor attacks [10]). Fig. 4 demonstrates that colluding
+attackers, despite training on different local data partitions,
+exhibit systematically higher pairwise parameter similarity
+compared to benign client pairs. This coordination emerges
+because colluding attackers optimize identical backdoor
+objectives, mapping trigger pattern τ to target label yt
+regardless of local data differences [13]. While benign
+clients’ parameter trajectories diverge due to heterogeneous task distributions, malicious clients converge toward
+shared trigger-aligned representations. Critically, this pattern persists even when individual malicious updates are
+normalized to appear benign in magnitude or direction.
+The coordination signature manifests in the upper tail of
+mutual similarity metrics.
+These observations motivate FeRA’s Consistency Filter,
+which identifies clients exhibiting simultaneously low combined scores (capturing both spectral and spatial variance
+suppression), low directional attention (deviation from
+global trajectory), and high mutual similarity (coordination
+patterns).
+Observation 2: Magnitude amplification in scaling
+attacks. Certain attack strategies dominate aggregation
+through explicit parameter norm inflation. Fig. 6 shows
+that scaling attacks [6] scale malicious updates to ensure
+backdoor dominance despite benign majority.
+While magnitude-agnostic metrics such as directional
+alignment and mutual similarity often fail to expose this
+class of manipulations, spectral decomposition provides
+a more transparent view of the update dynamics. By
+examining the dominant singular value of the largest network layer, we observed that benign client updates exhibit
+tightly bounded spectral behavior consistent with normal
+
+optimization dynamics, reflecting stable learning rates
+and gradient magnitudes, whereas maliciously perturbed
+updates consistently distort this spectral profile, producing
+measurable deviations in the leading singular mode of θ(i)
+relative to θ(global) . This observation motivates FeRA’s
+Norm-Inflation Filter, which flags clients whose spectral
+ratios exceed benign bounds.
+Our empirical findings were synthesized into a coherent
+detection framework as presented in the methodology
+section with details of the algorithmic implementation.
+
+4.2. FeRA Overview
+We present FeRA, a novel multi-dimensional backdoor detection framework that exploits the fundamental
+consistency constraint inherent to backdoor attacks. FeRA
+operates through comprehensive behavioral analysis across
+six complementary metrics, applying two detection mechanisms that create complementary constraints on adversarial
+behavior. It executes as a server-side filtering layer between
+client model reception and global aggregation, analyzing
+representation-space and parameter-space signatures to
+identify malicious updates. The defense operates through a
+two-phase detection pipeline followed by selective aggregation. Fig. 7 presents an overview of the methodology.
+Representation/Activation extraction. FeRA operates
+as a pre-aggregation defense and maintains a small root
+dataset for client representation extraction. For each training round, the global model is initialized and sent to all
+clients selected for the round. The clients trains the models
+and sends their local model to the server. Using the root
+dataset, the server extracts representations from each local
+models and the global model for that round.
+
+Algorithm 1 F E RA
+
+Algorithm 2 C OMPUTE M ETRICS
+
+Client updates {(θ i , ni )}N
+i=1 , global model θ g , root
+
+Require:
+data Droot , clip factor β
+Ensure: Updated global model θ (t+1)
+1: S ← C OMPUTE M ETRICS({(θ i , ni )}, θ g , Droot )
+2: M ← A PPLY F ILTERS(S)
+3: for i = 1 to N do
+4:
+αi ← β if i ∈ M else 1
+PN
+n
+5: θ (t+1) ← θ g + η i=1 P in αi (θ i − θ g ) return θ (t+1)
+j
+j
+
+Phase 1: Comprehensive metric computation. For
+each received client model, FeRA computes six behavioral metrics that capture distinct aspects of backdoorinduced behavioral signatures. The metrics divide into
+two categories: (1) representation-based metrics extracted
+from learned feature representations, comprising Spectral
+Attention Score (SAS), Spatial Attention Score (SpAS),
+their normalized combination, called Combined Score (CS),
+and (2) parameter-based metrics computed from model
+weight distributions, comprising Directional Attention
+Score (DAS), Mutual Similarity (MS), and Spectral Ratio
+(SR) for norm-inflation detection.
+Phase 2: Detection filtering. FeRA applies two detection filters, namely consistency filter and norm-inflation
+filter as discussed in Section 4.1, each targeting distinct
+attack strategies. A client flagged by either mechanism
+is classified as malicious, establishing comprehensive
+attack coverage without requiring simultaneous extreme
+deviations across all dimensions.
+Adaptive aggregation. Following detection, FeRA
+clips the flagged clients and aggregates along with the
+benign clients using standard FedAvg, computing the
+weighted average of their model updates based on local
+dataset sizes.
+
+4.3. FeRA in Detail
+This section presents each phase of FeRA’s detection
+pipeline in detail, describing the algorithmic implementation that realizes the framework overviewed in Section 4.2.
+Alg. 1 provides the complete FeRA procedure, with
+detailed subroutines for metric computation (Alg. 2) and
+filter application (Alg. 3) presented in their respective
+subsections.
+4.3.1. Representation/Activation extraction. FeRA’s detection pipeline begins with extracting learned representations from client models, followed by computing six
+behavioral metrics across two analytical dimensions. For
+(t)
+each client model fi received at round t, we extract
+feature activations at the penultimate fully-connected layer
+using a small root dataset Droot maintained by the server.
+The root requires no overlap with client training data. Layer
+selection follows the principle that backdoor signatures
+manifest most strongly in task-relevant semantic representations immediately preceding classification [39]. We also
+carried out ablations studies to see the impact of using
+different layers in Appendix A.
+Given sample (x, y) ∈ Droot , we extract activations
+′
+(i)
+(t)
+hℓ (x) = featℓ (fi , x) ∈ Rd where d′ denotes the layer’s
+
+Require: Client updates {(θ i , ni )}N
+i=1 , global model θ g , root
+data Droot
+Ensure: Metric set S = {σ, δ, scomb , DAS, MutualSim, r}
+1: for i = 1 to N do
+2:
+Hi ← E XTRACT F EATURES(θ i , Dr )
+3:
+Compute σi , δi using (8) – (9)
+▷ Spectral & Spatial
+4: Compute scomb
+using
+(11)
+▷ Combined Score
+i
+5: for i = 1 to N do
+6:
+Compute DASi using (14)
+▷ Directional Attention
+7:
+Compute MutualSimi using (15) ▷ Mutual Similarity
+8:
+Compute ri using (16)
+▷ Spectral Ratio
+9: return S
+
+output dimension. Extracting representations across all root
+samples yields feature matrix:
+ (i)
+
+hℓ (x1 )⊤
+
+
+..
+n×d′
+Hi = 
+(7)
+∈R
+.
+(i)
+
+hℓ (xn )⊤
+
+We similarly extract the global model’s representation
+matrix Hglobal using the current global model f (t−1) before
+aggregation. These representations form the basis for
+computing representation-based behavioral metrics. The
+choice of representation dimension d′ affects detection
+sensitivity, as higher-dimensional feature spaces provide
+richer variance signatures for distinguishing benign and
+malicious patterns. We investigate the impact of feature
+dimensionality on detection performance in Appendix B,
+demonstrating that FeRA maintains robust detection across
+a wide range of representation dimensions.
+4.3.2. Phase 1: Metric Computation. We compute six
+complementary metrics that capture distinct aspects of
+representation-space behavior under backdoor attacks.
+Alg. 2 summarizes the full procedure, showing how these
+six metrics are derived from client representations and
+parameters.
+Spectral attention score (SAS). SAS quantifies how
+representation variance is distributed across principal
+directions in feature space. For client i, we define the
+representation delta ∆i = Hi − Hglobal , center it as
+∆cent = ∆i − n1 1n 1⊤
+n ∆i , and compute the covariance
+1
+C∆i = n−1
+∆⊤
+cent ∆cent , which captures the variance structure. We observe that backdoor-induced variance suppression occurs across the dominant spectral subspace
+rather than a single principal direction: Fig. 5 shows that
+malicious clients exhibit systematically lower eigenvalues
+across the top-k principal components (k=5), indicating
+multi-dimensional variance collapse. We use the maximum
+eigenvalue as a computationally efficient summary statistic:
+σi = λmax (C∆i )
+
+(8)
+
+This scalar captures the leading signature of the broader
+phenomenon: high σi indicates directional diversity across
+principal components (benign clients learning from heterogeneous data), while low σi indicates variance collapse
+onto low-rank subspaces (backdoor-induced attentional
+focus on trigger features). The full spectral decomposition
+{λ1 , λ2 , . . . , λk } reveals that malicious clients suppress
+variance systematically across multiple orthogonal directions, but λmax provides sufficient discriminative power
+
+without requiring expensive full eigen-decomposition at
+scale. This computational efficiency is critical for practical
+deployment; we analyze FeRA’s computational overhead
+relative to baseline defenses in Appendix C.
+Spatial attention score (SpAS). The Spatial Attention
+Score measures aggregate representation shift magnitude
+through the Frobenius norm:
+sX
+∆i [j, k]2
+(9)
+δi = ∥∆i ∥F =
+j,k
+
+While mathematically′ related to spectral norm through
+Pd
+∥∆i ∥2F = tr(C∆i ) = k=1 λk , the Frobenius and spectral
+norms respond with different sensitivities to eigenvalue
+distribution shape. Consider two backdoor strategies:
+Directional collapse: An attack concentrating variance
+along a single direction produces high λmax (dominant
+eigenvalue) but potentially moderate ∥∆∥F if other dimensions remain active. This pattern evades spectral-only
+detection while maintaining trigger reliability through
+consistent principal direction alignment.
+Uniform suppression: An attack reducing all eigenvalues proportionally produces low ∥∆∥F (total displacement drops) while λmax may remain relatively elevated
+compared to the reduced spectral mass. This pattern
+evades Frobenius-only detection while achieving trigger
+consistency through global variance reduction.
+High δi indicates substantial representation shifts reflecting natural learning variability from diverse local
+data. Low δi indicates minimal positional movement,
+characteristic of backdoor-induced representational stability
+where poisoned samples consistently map to fixed trigger
+subspaces. The complementary failure modes of spectral
+and spatial metrics motivate their joint use in the combined
+score.
+Combined score (CS). To enable unified detection exploiting complementary variance signatures, we normalize
+both metrics using robust statistics resistant to outliers. For
+spectral scores {σi }N
+i=1 :
+σ̃i =
+
+σi − median({σi })
+IQR({σi }) + ϵ
+
+(10)
+
+where IQR(·) = Q75 (·) − Q25 (·) denotes the interquartile
+range and ϵ = 10−12 ensures numerical stability when
+all clients exhibit identical scores. This normalization
+produces z-scores scaled by interquartile range rather than
+standard deviation, providing robustness to extreme outliers.
+Unlike standard z-score normalization using mean and
+standard deviation, the median and IQR remain stable under
+minority Byzantine attacks where malicious clients cannot
+control the median when |M | < 0.5N . The combined
+score fuses both dimensions:
+scomb
+= wσ σ̃i + wδ δ̃i
+i
+
+(11)
+
+The combined score defines a detection boundary in
+normalized (σ̃, δ̃) space. Because both metrics are z-scored
+using robust statistics, the combined score represents a
+weighted linear discriminant. The Consistency Filter flags
+clients in the lower percentiles of this combined score
+distribution, corresponding to simultaneous suppression
+across both spectral and spatial dimensions. While spectral
+and spatial scores exhibit moderate correlation for benign
+
+clients, this correlation breaks for malicious clients attempting metric-specific evasion. Attacks optimizing against
+spectral detection (maintaining high λmax ) necessarily
+reduce total displacement ∥∆∥F when concentrating variance directionally, creating negative δ̃i values that expose
+the attack through the spatial component. Conversely,
+attacks preserving total displacement through uniform
+perturbations inflate maximum eigenvalues, triggering detection through elevated σ̃i . The weighted combination with
+wσ =0.6 and wδ =0.4 reflects empirically-tuned sensitivity
+to these complementary evasion strategies, with higher
+weight on spectral variance capturing the primary backdoor
+signature while spatial magnitude provides secondary
+confirmation. We explore various weight combinations
+in Appendix D.
+Directional attention score (DAS). The Directional
+Attention Score measures directional alignment between
+client model parameters and the global model through
+cosine similarity. For client model parameters θ i and global
+model parameters θ global , we first flatten all parameter
+tensors into vectors:
+P
+θ flat
+i = flatten(θ i ) ∈ R
+
+(12)
+
+Where P denotes the total parameter count. The cosine
+similarity quantifies directional alignment:
+cos(θ i , θ global ) =
+
+flat
+θ flat
+i · θ global
+flat
+∥θ flat
+i ∥2 · ∥θ global ∥2 + ϵ
+
+(13)
+
+To map cosine similarity from [−1, 1] to an interpretable [0, 1] range, we define the Directional Attention
+Score:
+cos(θ i , θ global ) + 1
+DASi =
+(14)
+2
+High DASi ≈ 1 indicates perfect directional alignment
+with the global optimization trajectory, characteristic of
+benign clients pursuing the main task objective. Low
+DASi ≈ 0 indicates directional deviation, where client
+updates point in substantially different directions from
+global convergence, a signature of backdoor injection that
+simultaneously optimizes for trigger activation alongside
+task performance.
+Mutual similarity. The Mutual Similarity score captures inter-client behavioral coordination through pairwise
+parameter similarity. For each client i, we compute the
+maximum cosine similarity to any other client:
+MutualSimi = max cos(θ i , θ j )
+j̸=i
+
+(15)
+
+High mutual similarity among a client subgroup indicates coordinated behavioral patterns characteristic of collusion attacks, where multiple malicious clients converge
+toward shared backdoor representations. Benign clients
+training on heterogeneous local data exhibit lower pairwise
+similarities due to natural distribution differences, while
+colluding attackers optimizing for identical trigger patterns
+produce systematically elevated similarity scores.
+Spectral ratio for Norm-Inflation Detection. To
+detect scaling attacks that amplify malicious update magnitudes, we compute the spectral ratio comparing each
+client’s representation variance against the round-wise
+median, then apply a robust outlier detection test based
+on median absolute deviation (MAD).
+
+Algorithm 3 A PPLY F ILTERS
+Require: Metrics S , thresholds τcomb , τDAS , τmutual , τspec
+Ensure: Malicious client set M
+1: Mc ← ∅, Mn ← ∅
+2: for i = 1 to N do
+▷ Consistency Filter
+3:
+if rank(scomb
+) ≤ τcomb and rank(DASi ) ≤ τDAS and
+i
+rank(MutualSimi ) ≥ τmutual then
+4:
+Mc ← Mc ∪ {i}
+5: for i = 1 to N do
+▷ Norm-Inflation Filter
+6:
+Flag clients using (17)
+7:
+Mn ← Mn ∪ {i}
+8: return M ← Mc ∪ Mn
+
+For each client i in round t, we compute:
+σi
+ri =
+median{σj : j ∈ [1, N ]}
+
+(16)
+
+Where σi = λmax (C∆i ) denotes the spectral attention
+score from (8), and N is the number of clients participating
+in round t. To identify anomalous spectral ratios indicative
+of norm-inflation attacks, we employ the MAD, a robust
+scale estimator resistant to outliers [41]. A client i is
+flagged by the Norm-Inflation Filter if:
+ri > median{rj : j ∈ [1, N ]} + k · MAD
+
+(17)
+
+Where k is a sensitivity parameter controlling the
+detection threshold. Following robust outlier detection
+practices [41], we use k = 6 by default, corresponding to
+flagging extreme spectral ratios that deviate substantially
+from the typical client behavior. This MAD-based approach
+adapts to each round’s empirical distribution while remaining robust under the minority Byzantine assumption, as
+malicious clients (|M | < 0.5N ) cannot control the median.
+The six metrics span orthogonal dimensions of backdoor behavior: representation variance structure (Spectral/Spatial), parameter directionality (DAS), coordination
+patterns (Mutual Similarity), and magnitude manipulation
+(Spectral Ratio). This multi-dimensional coverage ensures
+that attacks normalizing specific metrics inevitably expose
+signatures in complementary dimensions, establishing comprehensive detection surface coverage.
+4.3.3. Phase 2: Detection Mechanisms. FeRA applies
+two complementary detection mechanisms, each targeting
+distinct attack strategies. Alg. 3 formalizes the detection
+procedure, showing how both filters operate on the computed metrics to identify malicious clients.
+Consistency filter. This filter identifies attacks that prioritize reliability through suppressed variance and temporal
+stability. The filter examines clients across three dimensions
+simultaneously: combined representation score (capturing
+variance suppression), directional attention (measuring
+global alignment), and mutual similarity (detecting peer
+coordination). Rather than using fixed thresholds, the filter
+employs percentile-based ranking adapted to each round’s
+empirical distribution. It ranks all clients by three metrics:
+their representation variance (combined spectral/spatial
+score); directional alignment with the global model (DAS);
+and mutual similarity. It then defines decision surfaces
+based on the empirical tails of these distributions. A client
+is flagged if it falls in the lower quantile region for variance
+and alignment metrics while simultaneously residing in the
+
+upper quantile for similarity to peers. This combination
+captures the fundamental trade-off where maintaining
+attack reliability requires behavioral consistency that manifests as suppressed representation diversity, while the
+mutual similarity component captures coordination patterns
+that emerge when colluding attackers optimize identical
+backdoor objectives despite data heterogeneity. This rankbased approach adapts to the observed client behavior
+every round, eschewing any hardcoded cut-off.
+Norm-Inflation Filter. The Norm-Inflation Filter identifies clients with anomalously inflated spectral ratios
+using a MAD-based robust outlier test. We compute
+each client’s spectral ratio ri (as in (16)) and the roundwise MAD. Clients whose spectral ratio exceeds the
+median by more than k MADs are flagged as exhibiting
+norm-inflation behavior. Scaling attacks deliberately inflate
+update magnitudes to dominate aggregation, producing
+spectral ratios exceeding those of benign clients (as illustrated in Fig. 6). The MAD-based threshold adapts to
+the scale and variability of each round’s client behavior,
+providing robustness to benign heterogeneity while exposing magnitude-manipulation strategies. Following best
+practices in robust outlier detection [41], we set k = 6 by
+default, though ablation studies (Appendix D) demonstrate
+stable performance across k ∈ [3, 10].
+4.3.4. Adaptive Aggregation. Following detection, FeRA
+applies a graduated aggregation strategy that balances security and utility preservation. Rather than completely excluding flagged clients, which risks accuracy degradation from
+false positives under severe data heterogeneity, we employ
+adaptive update clipping. Let M = Mconsistency ∪ Mnorm
+denote the union of clients flagged by either detection
+mechanism. The aggregation proceeds as:
+θ (t+1) = θ (t) + η
+
+N
+X
+
+|Di |
+(t)
+· αi · ∆ i
+|D|
+i=1
+
+(18)
+
+where the clipping factor is defined as αi = β for i ∈ M
+and αi = 1 otherwise.
+with β ∈ [0, 1] controlling the contribution of flagged
+clients (default: β = 0.1). This graduated trust mechanism
+ensures that: (1) truly malicious clients have their backdoor
+contributions suppressed by a factor of 1/β = 10×, rendering backdoor injection ineffective, while (2) benign clients
+incorrectly flagged due to extreme non-IID distributions
+or natural variance still contribute to model convergence,
+preventing accuracy degradation. The clipping approach
+addresses the challenge of false positive accumulation (C3)
+by providing a safety margin: even if adaptive attackers
+occasionally evade detection, their unclipped contributions
+remain bounded by the minority assumption, while detected
+attacks are sufficiently attenuated to prevent backdoor
+establishment.
+Specific quantile thresholds used during evaluation are
+treated as hyper-parameters and detailed in Section 5.1.
+
+5. Experimental Evaluation
+In this section we conduct extensive experiments to
+evaluate FeRA’s detection performance across diverse
+attack scenarios, datasets, and system configurations.
+
+TABLE 1. P ERFORMANCE COMPARISON ON IID CIFAR-10 UNDER DIVERSE BACKDOOR ATTACKS . ATTACKERS BEGIN POISONING AT ROUND 2001
+FOR 100 ROUNDS . R ESULTS REPORTED AS MA(%) / BA(%). B OLD INDICATES BEST RESULT IN EACH CATEGORY ( HIGHEST MA, LOWEST BA).
+Defense
+
+No Attack
+
+BadNet [11]
+
+Blended [42]
+
+Edge-case [7]
+
+IBA [18]
+
+Neurotoxin [17]
+
+Chameleon [43]
+
+Avg. MA
+
+Avg. BA
+
+No Defense
+
+88.71 / 0.00
+
+88.23 / 94.35
+
+87.92 / 92.18
+
+88.14 / 89.76
+
+87.58 / 93.81
+
+86.82 / 95.24
+
+87.36 / 91.67
+
+87.79
+
+92.78
+
+Multi-Krum [9]
+FoolsGold [21]
+FLAME [22]
+FLTrust [8]
+RLR [35]
+DeepSight [23]
+
+87.12 / 0.00
+86.47 / 0.00
+87.94 / 0.00
+88.35 / 0.00
+79.26 / 0.00
+85.94 / 0.00
+
+76.34 / 88.42
+82.16 / 76.38
+85.26 / 12.47
+86.74 / 8.26
+76.24 / 2.18
+81.75 / 45.26
+
+74.85 / 85.73
+80.72 / 72.85
+84.15 / 15.28
+85.48 / 11.53
+77.93 / 3.46
+80.34 / 48.73
+
+75.91 / 84.26
+81.34 / 74.12
+84.63 / 13.84
+86.16 / 9.74
+77.75 / 2.84
+81.92 / 46.85
+
+76.84 / 87.35
+79.85 / 78.74
+83.75 / 16.42
+84.93 / 12.85
+73.64 / 4.57
+79.27 / 51.34
+
+73.27 / 89.18
+79.63 / 78.46
+82.91 / 18.35
+84.82 / 13.27
+78.26 / 4.23
+79.46 / 52.18
+
+76.83 / 86.94
+81.95 / 75.79
+84.78 / 14.16
+86.24 / 10.48
+77.94 / 3.47
+82.15 / 47.36
+
+76.69
+81.11
+84.42
+85.73
+76.68
+81.05
+
+86.93
+76.03
+15.07
+11.02
+3.46
+48.64
+
+FeRA (Ours)
+
+88.42 / 0.00
+
+87.93 / 1.26
+
+87.24 / 3.35
+
+87.63 / 0.94
+
+86.95 / 5.08
+
+86.54 / 0.93
+
+87.85 / 1.47
+
+87.42
+
+2.17
+
+5.1. Experimental Setup
+Datasets and models. We evaluate FeRA on four
+widely-used image classification benchmarks: CIFAR-10,
+CIFAR-100 [44], Tiny-ImageNet, and German Traffic Sign
+Recognition Benchmark (GTSRB) [45] dataset. For model
+architectures, we employ ResNet-18 [46] as our primary
+architecture, with additional evaluation on ResNet-34 [46]
+and VGG-16 [47] to demonstrate architecture-agnostic
+effectiveness.
+FL configuration. Our FL setup uses N = 100 clients,
+with m = 10 sampled uniformly at random each round to
+train the global model. A fixed subset of clients is set to be
+malicious (by default 10% of the population, unless stated
+otherwise), and their identities remain constant throughout
+training. Each round may include zero, one, or multiple
+malicious clients, with their proportion in the sampled set
+capped at 40%.
+We consider both IID and non-IID data partitions. For
+the IID case, training data are evenly distributed across
+clients. For the non-IID case, we follow the standard
+Dirichlet procedure [40], [48], [49], drawing each client’s
+data proportion from Dir(α) with default α = 0.5. Local
+training uses SGD with server learning rate η = 0.5, client
+learning rate α = 0.1, and two local epochs per round.
+As is common in FL, we use dataset-specific pretraining
+before enabling attacks: CIFAR-10 is pretrained for 2000
+rounds, CIFAR-100 for 1000, and Tiny-ImageNet for 500;
+GTSRB and MNIST variants are trained from scratch, with
+attacks starting after 50 and 5 rounds, respectively. Unless
+otherwise specified, attacks are then run for 100 rounds.
+The server aggregates updates using FedAvg [1].
+FeRA employs percentile-based detection thresholds.
+The consistency filter uses quantile thresholds τcomb = 0.50
+(combined score), τDAS = 0.50 (DAS), and τmutual = 0.60
+(mutual similarity). The combined representation-variance
+score uses weights wspectral = 0.6 and wδ = 0.4. The
+Norm-Inflation Filter applies MAD-based outlier detection
+with sensitivity parameter k = 6. All threshold and weighting parameters are treated as tunable hyperparameters;
+Appendix D reports ablations on their sensitivity.
+Attack scenarios. We evaluate against eight attack variants: BadNet [11], Blended [42], Edge-case [7], DBA [10],
+Neurotoxin [17],Chameleon [43], IBA [18], A3FL [14],
+and an adaptive attack. In our ablation studies we also
+evaluate against Anticipate [15] attack which by principle
+of its design can evade some of our defense filter. During
+training, attackers may control single or multiple clients,
+initiating poisoning from the poisoning starting round as
+described initially.
+
+TABLE 2. P ERFORMANCE ON CIFAR-100 AND T INY-I MAGE N ET
+UNDER PIXEL - PATTERN ATTACKS . P OISONING BEGINS AT ROUND 2001
+FOR 100 ROUNDS . R ESULTS : MA(%) / BA(%). B OLD INDICATES BEST
+RESULT IN EACH COLUMN .
+Defense
+
+CIFAR-100
+
+Tiny-ImageNet
+
+Avg. MA
+
+Avg. BA
+
+No Defense
+
+62.84 / 84.57
+
+45.36 / 88.25
+
+54.10
+
+86.41
+
+Multi-Krum [9]
+FoolsGold [21]
+FLAME [22]
+FLTrust [8]
+RLR [35]
+DeepSight [23]
+
+58.47 / 87.85
+61.25 / 84.46
+59.74 / 12.85
+60.46 / 9.47
+44.35 / 0.46
+57.94 / 61.35
+
+41.73 / 89.74
+43.84 / 86.57
+42.16 / 18.47
+43.64 / 12.75
+32.74 / 0.42
+40.26 / 64.83
+
+50.10
+52.55
+50.95
+52.05
+38.55
+49.10
+
+88.80
+85.52
+15.66
+11.11
+0.44
+63.09
+
+FeRA (Ours)
+
+61.84 / 0.35
+
+44.16 / 0.12
+
+53.00
+
+0.24
+
+Baseline defenses. We compare FeRA with the nonrobust baseline FedAvg and against state-of-the-art defenses: Multi-Krum [9], FoolsGold [21], FLAME [22],
+FLTrust [8], RLR [35], Lockdown [49] and Deepsight [23].
+Evaluation metrics. Performance is assessed using
+Main task Accuracy (MA), measuring classification performance on benign test data; and Backdoor Accuracy (BA),
+measuring attack success rate when triggers are present.
+Lower BA with minimal MA degradation indicates superior
+defense.
+
+5.2. Performance on IID Data
+Table 1 presents results under IID CIFAR-10 settings
+across six attack types. FeRA achieves 2.17% average BA
+while maintaining 87.42% average MA, outperforming
+all baselines. Against BadNet, FeRA limits BA to 1.26%
+at 87.93% MA, whereas competing methods either fail
+to mitigate attacks (Multi-Krum: 88.42% BA, FoolsGold:
+76.38% BA, Deepsight: 45.26% BA) or sacrifice utility
+(FLAME: 12.47% BA at 85.26% MA). For Neurotoxin,
+which achieves 95.24% BA without defense, FeRA reduces
+BA to 0.93% while maintaining 86.54% MA.
+FeRA provides 80.29% BA reduction compared to
+FLTrust (11.02% average BA) while suffering only 0.58%1.69% MA degradation versus no-defense baselines. RLR
+achieves comparable BA (2.18%-4.57%) but incurs 17.42%
+MA loss (76.24%-73.64% MA). BA variance across attacks
+is 4.15% for FeRA versus 5.88% for FLAME and 5.01%
+for FLTrust, confirming consistent detection regardless of
+trigger type or injection strategy.
+
+5.3. Performance on Additional Datasets
+Generalization across dataset complexities. To validate FeRA’s robustness beyond CIFAR-10, we extend
+
+TABLE 3. P ERFORMANCE UNDER NON -IID DATA DISTRIBUTIONS .
+N EUROTOXIN ATTACK ON CIFAR-10, POISONING FROM ROUND 2001
+FOR 100 ROUNDS . D IRICHLET PARAMETER α CONTROLS
+HETEROGENEITY ( LOWER = MORE SEVERE ). R ESULTS : MA(%) /
+BA(%). B OLD INDICATES BEST RESULT IN EACH COLUMN .
+α=0.2
+
+α=0.5
+
+α=0.7
+
+Avg. MA
+
+Avg. BA
+
+No Defense
+
+88.26 / 93.74
+
+87.85 / 91.47
+
+87.53 / 89.84
+
+87.88
+
+91.68
+
+Multi-Krum [9]
+FoolsGold [21]
+FLAME [22]
+FLTrust [8]
+DeepSight [23]
+
+76.14 / 89.26
+81.74 / 68.47
+84.85 / 14.73
+85.94 / 10.35
+80.35 / 47.84
+
+77.45 / 87.63
+82.95 / 72.16
+85.36 / 11.84
+86.47 / 8.74
+81.63 / 44.26
+
+78.35 / 85.47
+83.84 / 76.85
+85.74 / 9.26
+86.85 / 7.16
+82.74 / 38.95
+
+77.31
+82.84
+85.32
+86.42
+81.57
+
+87.45
+72.49
+11.94
+8.75
+43.68
+
+FeRA (Ours)
+
+84.05 / 1.74
+
+87.16 / 1.35
+
+86.94 / 1.93
+
+86.05
+
+1.67
+
+Defense
+
+our evaluation to CIFAR-100 (100 classes, finer-grained
+categories) and Tiny-ImageNet (200 classes, more complex
+visual patterns). Table 2 demonstrate FeRA’s consistent
+effectiveness across varying dataset complexities.
+Dataset complexity robustness. FeRA maintains
+strong performance on complex datasets with numerous
+classes (CIFAR-100: 100 classes) and high-resolution
+images (Tiny-ImageNet: 64×64, 200 classes). Average BA
+of 0.24% represents 97.84% reduction compared to FLTrust
+(11.11%) and 98.47% reduction compared to FLAME
+(15.66%). On CIFAR-100, FeRA achieves 0.35% BA with
+only 1.00% MA degradation, whereas FLTrust incurs 2.38%
+MA loss while achieving 9.47% BA. For Tiny-ImageNet,
+FeRA limits BA to 0.12% with 44.16% MA. Other methods
+either fail completely (Multi-Krum: 89.74% BA, FoolsGold: 86.57% BA, Deepsight: 64.83% BA) or sacrifice
+substantial utility like RLR with 32.74% MA. FeRA’s
+effectiveness on Tiny-ImageNet shows that representationlevel variance suppression remains detectable even when
+task complexity increases.
+
+5.4. Resilience Under Data Heterogeneity
+Data heterogeneity poses a fundamental challenge for
+backdoor defense, as non-IID distributions amplify natural
+variation in client updates, potentially masking malicious
+patterns. Table 3 examines FeRA’s robustness across varying non-IID degrees (α ∈ {0.2, 0.5, 0.7}) for Neurotoxin
+attacks on CIFAR-10. FeRA maintains consistently low
+BA (1.35%–1.93%) across all heterogeneity levels, with
+0.58% variance. At extreme heterogeneity (α = 0.2),
+FeRA achieves 1.74% BA with 84.05% MA, compared to
+Multi-Krum (89.26% BA), FoolsGold (68.47% BA), and
+Deepsight (47.84% BA). FLAME and FLTrust achieve
+14.73% and 10.35% BA respectively; FeRA provides
+88.18% and 83.19% reductions. As α increases from
+0.2 to 0.7, FLAME’s BA decreases from 14.73% to
+9.26% and FLTrust from 10.35% to 7.16%, reflecting
+that distance-based and trust-score methods benefit from
+reduced benign update variance under more IID conditions.
+FeRA’s BA remains stable at 1.67% average, confirming
+that representation-level variance suppression persists regardless of data distribution characteristics.
+FeRA maintains 84.05%–87.16% MA across all α
+values. At α = 0.2, FeRA achieves 84.05% MA, only
+4.21% below the no-defense baseline (88.26% MA), with
+degradation primarily from non-IID learning difficulty
+rather than defense-induced removals. At α = 0.5, FeRA
+achieves 87.16% MA, within 0.69% of baseline.
+
+Robustness across data heterogeneity levels on more
+attacks. Table 4 evaluates FeRA on CIFAR-10 under
+varying non-IID severity (α ∈ {0.1, 0.2, 0.5, 0.7, 1.0})
+across eight backdoor variants. FeRA sustains low mean
+BA at moderate heterogeneity, achieving 1.92% at α = 0.2
+and 1.70% at α = 0.5. Under extreme non-IID conditions
+(α = 0.1), the mean BA increases to 7.63%, driven mainly
+by three attacks (BadNet: 15.74%, Blended: 18.69%, IBA:
+12.83%). Pattern-based attacks (Pattern, Pixel, DBA, A3FL,
+Edge-case) remain below 2.16% across all α, indicating
+that variance-based signals remain detectable even when
+client distributions diverge. MA increases steadily from
+79.80% at α = 0.1 to 91.81% under IID data, remaining
+within 0.30% of no-defense baselines.
+
+5.5. Cross-Silo Federated Learning
+Effectiveness in cross-silo setting. To evaluate FeRA
+in a different FL deployment scenario, we simulate crosssilo FL with 10 total clients where all clients participate
+each round. Unlike the cross-device setting in Section 5.1
+(100 clients with 10 sampled per round), this cross-silo
+configuration models organizational FL where a small number of institutions (e.g., hospitals, banks) collaborate with
+full participation. This setting presents distinct challenges:
+with fewer clients and full participation, malicious clients
+constitute a higher proportion of each round’s updates,
+potentially overwhelming detection mechanisms. Results
+in Table 5 validate FeRA’s robustness under this more
+adversarial deployment constraint.
+FeRA achieves 0.94% BA under IID and 1.93% under
+non-IID cross-silo settings, demonstrating robustness to
+client sampling dynamics. FoolsGold failed (BA> 60%),
+Lockdown and RLR show improved performance (6.35%
+and 2.35% BA respectively) in IID setting. The minimal
+gap between IID (0.94% BA) and non-IID (1.93% BA)
+cross-silo settings validates FeRA’s adaptability. FeRA
+maintains 88.25% and 85.74% MA respectively, representing only 0.11% and 0% degradation from no-defense
+baselines. This confirms that FeRA’s representation-level
+detection remains effective regardless of sampling patterns
+or data heterogeneity, making it suitable for realistic
+large-scale FL deployments where client participation is
+intermittent and unpredictable.
+
+5.6. Ablation Studies
+To understand how each detection mechanism contributes to FeRA’s overall effectiveness, we conduct systematic ablation studies on Neurotoxin and Anticipate
+attacks under non-IID settings (α = 0.5). By isolating the
+Consistency Filter and Norm-Inflation Filter, we reveal
+their complementary roles in addressing different attack
+strategies. Results are presented in Table 6.
+Complementary detection mechanisms. The two
+detection mechanisms address distinct attack strategies with
+minimal overlap. For Neurotoxin attacks, the Consistency
+Filter alone reduces BA from 95.24% to 1.74% (98.17%
+attack suppression), demonstrating that representation-level
+variance suppression combined with coordination pattern
+analysis provides robust detection. Adding the NormInflation Filter marginally improves BA to 1.35% while
+slightly reducing MA to 87.16%, as Neurotoxin primarily
+
+TABLE 4. P ERFORMANCE OF F E RA UNDER VARYING NON -IID SEVERITY (α) ACROSS EIGHT BACKDOOR ATTACKS ON CIFAR-10. F E RA
+MAINTAINS LOW BA UNDER MODERATE HETEROGENEITY AND DEGRADES ONLY UNDER EXTREME DATA SKEW ( α = 0.1 ), WHILE PRESERVING
+HIGH MA ACROSS ALL SETTINGS . B OLD INDICATES MEAN RESULT.
+α = 0.1
+
+Attack
+
+α = 0.2
+
+α = 0.5
+
+α = 0.7
+
+α = 1.0 (IID)
+
+Avg. MA
+
+Avg. BA
+
+0.00
+
+88.18
+
+0.00
+
+91.84
+91.85
+91.74
+91.47
+92.05
+91.74
+91.94
+91.84
+
+1.36
+1.26
+1.36
+1.14
+0.94
+1.26
+2.94
+1.47
+
+86.39
+87.94
+87.70
+87.85
+87.55
+87.96
+87.04
+88.42
+
+1.41
+2.04
+4.19
+6.26
+1.96
+1.25
+6.25
+1.38
+
+91.81
+
+1.47
+
+87.61
+
+3.09
+
+MA
+
+BA
+
+MA
+
+BA
+
+MA
+
+BA
+
+MA
+
+BA
+
+MA
+
+BA
+
+No attack
+
+80.15
+
+0.00
+
+85.26
+
+0.00
+
+91.47
+
+0.00
+
+91.84
+
+0.00
+
+92.16
+
+Pattern [11]
+Pixel [11]
+BadNet [11]
+Blended [42]
+Edge-case [7]
+A3FL [14]
+IBA [18]
+DBA [10]
+
+72.04
+82.47
+80.16
+79.94
+82.85
+80.16
+79.16
+81.63
+
+1.85
+5.63
+15.74
+18.69
+2.05
+2.05
+12.83
+2.16
+
+85.47
+85.05
+84.36
+86.74
+83.84
+86.74
+82.47
+86.74
+
+1.16
+0.74
+0.84
+4.05
+0.63
+0.63
+6.25
+1.05
+
+91.26
+90.05
+91.63
+91.36
+90.94
+89.63
+91.16
+90.63
+
+1.53
+0.94
+1.26
+1.53
+1.36
+1.05
+5.13
+0.84
+
+91.35
+90.26
+90.63
+89.74
+88.05
+91.53
+90.47
+91.26
+
+1.14
+1.63
+1.74
+5.90
+4.84
+1.26
+4.12
+1.36
+
+Mean
+
+79.80
+
+7.63
+
+84.95
+
+1.92
+
+90.83
+
+1.70
+
+90.41
+
+2.75
+
+TABLE 5. P ERFORMANCE IN CROSS - SILO FL WITH 10 TOTAL
+CLIENTS , ALL PARTICIPATING EACH ROUND . P IXEL - PATTERN ATTACK
+ON CIFAR-10 UNDER IID AND NON -IID ( α = 0.5 ) SETTINGS .
+R ESULTS : MA(%) / BA(%). B OLD INDICATES BEST RESULT IN EACH
+COLUMN .
+Defense
+
+IID
+
+Non-IID
+
+Avg. MA
+
+Avg. BA
+
+No Defense
+
+88.36 / 92.84
+
+85.74 / 91.47
+
+87.05
+
+92.16
+
+FoolsGold [21]
+Lockdown [49]
+FLAME [22]
+FLTrust [8]
+RLR [35]
+
+88.25 / 69.16
+88.14 / 6.35
+83.94 / 18.74
+85.16 / 14.36
+79.26 / 2.35
+
+85.73 / 20.25
+81.36 / 10.84
+81.26 / 22.47
+82.84 / 17.95
+59.94 / 3.36
+
+86.99
+84.75
+82.60
+84.00
+69.60
+
+44.71
+8.60
+20.61
+16.16
+2.86
+
+FeRA (Ours)
+
+88.25 / 0.94
+
+85.74 / 1.93
+
+87.00
+
+1.44
+
+TABLE 6. A BLATION STUDY: DETECTION MECHANISM
+CONTRIBUTIONS UNDER TWO ATTACK SCENARIOS . CIFAR-10,
+α = 0.5, POISONING FROM ROUND 2001 FOR 100 ROUNDS . R ESULTS :
+MA(%) / BA(%).
+
+Configuration
+
+Neurotoxin [17]
+
+Anticipate [15]
+
+No Defense
+
+90.16 / 95.24
+
+87.15 / 93.74
+
+Consistency Filter Only
++ Norm-Inflation Filter
+
+87.26 / 1.74
+87.16 / 1.35
+
+85.05 / 95.53
+91.05 / 1.84
+
+relies on stealth rather than magnitude manipulation. The
+Anticipate attack [15] reveals the complementary nature
+of these mechanisms. Anticipate optimizes poisoning by
+strategically anticipating future client behaviors, generating
+persistent backdoors through careful update planning that
+deliberately injects variance to evade consistency-based
+detection. With the Consistency Filter alone, BA remains at
+95.53%, as the attack successfully mimics benign variance
+patterns. However, adding the Norm-Inflation Filter reduces
+BA to 1.84% with 91.05% MA, exposing Anticipate’s
+reliance on norm manipulation to maintain backdoor
+effectiveness while evading variance-based detection.
+Root dataset size sensitivity. Table 7 investigates root
+dataset size requirements for optimal detection performance
+on CIFAR-10 with Neurotoxin attacks. Performance stabilizes at |Droot | = 64, achieving 1.35% BA with 87.26%
+MA. Smaller datasets (|Droot | = 32) yield 3.63% BA due to
+insufficient representation diversity, with limited samples,
+representation statistics lack reliability. Larger datasets
+maintain similar performance, confirming 64 samples
+provide sufficient statistical power. Table 8 evaluates FeRA
+
+TABLE 7. ROOT DATASET SIZE SENSITIVITY ANALYSIS . N EUROTOXIN
+ATTACK ON CIFAR-10, α = 0.5 , POISONING FROM ROUND 2001 FOR
+100 ROUNDS . R ESULTS : MA(%) / BA(%).
+|Droot |
+
+32
+
+64
+
+128
+
+256
+
+512
+
+MA (%)
+BA (%)
+
+85.84
+3.63
+
+87.26
+1.35
+
+89.15
+1.16
+
+90.53
+1.05
+
+90.16
+0.74
+
+TABLE 8. ROOT DATASET SIZE SENSITIVITY ANALYSIS . N EUROTOXIN
+ATTACK ON CIFAR-10 WITH CIFAR100 AS OOD DATASET, α = 0.5 ,
+POISONING FROM ROUND 2001 FOR 100 ROUNDS . R ESULTS : MA(%) /
+BA(%).
+|Droot |
+
+32
+
+64
+
+128
+
+MA (%)
+BA (%)
+
+81.85
+4.15
+
+84.47
+3.64
+
+86.16
+2.63
+
+using CIFAR-100 samples (100 classes, different objects)
+as root dataset for CIFAR-10 detection. Even with this
+severe distribution mismatch, FeRA achieves 3.64% BA at
+|Droot | = 64, with only modest MA degradation (84.47% vs
+87.26% for in-distribution root). This demonstrates FeRA’s
+robustness to root dataset selection: even public datasets
+from different domains suffice for effective detection.
+
+5.7. Architecture Generalization
+Performance across network architectures. Defense
+mechanisms that rely on architecture-specific properties
+may fail when deployed on different model families.
+We evaluate FeRA’s generalization across CNN variants
+with different depths and architectural designs to assess
+its applicability beyond the default ResNet-18. Table 9
+demonstrates FeRA’s architecture-agnostic effectiveness.
+Cross-Architecture Performance. FeRA maintains
+BA below 1.50% across ResNet-18 (0.94%), ResNet-34
+(1.26%), and VGG-16 (1.47%), with standard deviation
+of 0.27%. This represents 85.96%–88.62% BA reduction
+compared to FLTrust (8.26%–10.47%), confirming FeRA’s
+detection principles generalize across architectural choices.
+The minimal variance demonstrates reliability regardless
+of network depth (18 vs 34 layers) or design patterns
+(residual vs sequential).
+
+TABLE 9. P ERFORMANCE ACROSS MODEL ARCHITECTURES ON
+CIFAR-10. P IXEL - PATTERN ATTACK , POISONING FROM ROUND 1200
+FOR 250 ROUNDS . R ESULTS : MA(%) / BA(%). B OLD INDICATES BEST
+RESULT IN EACH COLUMN .
+Defense
+
+ResNet-18
+
+ResNet-34
+
+VGG-16
+
+Avg. MA
+
+Avg. BA
+
+No Defense
+
+88.26 / 94.35
+
+87.84 / 92.74
+
+86.94 / 93.85
+
+87.68
+
+93.65
+
+Multi-Krum [9]
+FLAME [22]
+FLTrust [8]
+
+76.35 / 88.47
+85.26 / 12.47
+86.74 / 8.26
+
+75.74 / 86.94
+84.63 / 14.36
+86.16 / 9.84
+
+74.26 / 87.53
+83.94 / 13.74
+85.36 / 10.47
+
+75.45
+84.61
+86.09
+
+87.65
+13.52
+9.52
+
+FeRA (Ours)
+
+87.94 / 0.94
+
+87.16 / 1.26
+
+86.47 / 1.47
+
+87.19
+
+1.22
+
+TABLE 10. P ERFORMANCE AGAINST A3FL TRIGGER - OPTIMIZATION
+ATTACK ON CIFAR-10 UNDER D IRICHLET α = 0.5 . R ESULTS :
+MA(%) / BA(%).
+Defense
+
+MA(%) / BA(%)
+
+FedAvg [1]
+DeepSight [23]
+RLR [35]
+
+86.36 / 92.47
+80.84 / 91.85
+75.26 / 92.36
+
+FeRA (Ours)
+
+84.26 / 1.26
+
+5.8. Advanced Attack Scenarios
+Table 10 evaluates FeRA against A3FL [14], a stateof-the-art trigger-optimization attack. FeRA attains 1.26%
+BA and 84.26% MA under A3FL, corresponding to a
+98.64% BA reduction relative to undefended FedAvg
+(92.47% BA). Despite A3FL’s optimization for stealth
+and minimal parameter perturbation, backdoor samples
+remain fundamentally out-of-distribution (OOD) with respect to the benign target-class distribution; this OOD
+nature induces representation-level variance suppression
+that FeRA exploits. In contrast, DeepSight and RLR
+fail completely (BA 91.85% and 92.36%, respectively),
+highlighting FeRA’s unique effectiveness against triggeroptimized attacks.
+We further study the effect of non-IID severity (Dirichlet parameter α) on clean and backdoor accuracy under
+A3FL. Fig. 8 reports results on CIFAR-10, CIFAR-100, and
+Tiny-ImageNet. Across all datasets, FeRA preserves clean
+accuracy while strongly suppressing backdoor effectiveness
+as the data distribution approaches IID (α → 1), demonstrating robustness to client heterogeneity. On CIFAR-10,
+BA decreases from 1.87% at α = 0.2 to 0.24% under
+IID. On CIFAR-100, BA drops from 0.30% to 0.28%. On
+Tiny-ImageNet, BA remains below 0.50% for all α, with
+a mild peak at α = 0.5 and a subsequent decrease under
+IID conditions.
+
+5.9. Resilience Against Adaptive Attacks
+We evaluate FeRA under Adaptive BadNet, a defenseaware variant that combines four evasion strategies: (1)
+norm clipping to suppress magnitude cues, (2) direction
+alignment to mimic benign trajectories, (3) gradual rampup over 10 rounds to avoid early detection, and (4) adaptive
+scaling guided by benign behavior. These mechanisms
+reflect realistic responses to multi-metric defenses. Table 11
+shows that FeRA retains strong robustness across five
+datasets, achieving 0.12%–10.92% BA. On CIFAR-10, BA
+reaches 10.92%, indicating that partial evasion is possible
+but comes at the cost of reduced backdoor strength. Simpler
+datasets (MNIST, EMNIST, FEMNIST) remain near-fully
+protected, with BA between 0.12% and 0.46%.
+
+Figure 8. A3FL attack: variation of backdoor accuracy (%) across
+different non-IID levels (Dirichlet α) on CIFAR-10, CIFAR-100, and
+Tiny-ImageNet. FeRA consistently reduces backdoor success as data
+distribution becomes more uniform.
+TABLE 11. D EFENSE P ERFORMANCE AGAINST A DAPTIVE BAD N ET
+ATTACK . T HE ATTACK EMPLOYS NORM CLIPPING (75% REDUCTION ),
+DIRECTION ALIGNMENT (30% BLEND ), GRADUAL RAMPING (10
+ROUNDS ), AND ADAPTIVE SCALING TO EVADE DETECTION METRICS .
+Dataset
+
+Architecture
+
+MA(%)
+
+BA(%)
+
+CIFAR-10
+CIFAR-100
+MNIST
+EMNIST
+FEMNIST
+
+ResNet-18
+ResNet-18
+MnistNet
+MnistNet
+MnistNet
+
+92.31
+65.88
+99.13
+83.13
+78.23
+
+10.92
+0.46
+0.12
+0.13
+0.46
+
+Full evasion would require simultaneously suppressing
+spectral and delta norms while matching benign directional
+and similarity patterns, which materially weakens the
+attack’s ability to shift the global model. The aggressive
+clipping and alignment required to obscure detection also
+diminish the impact of malicious updates, leading to the
+observed 0.12%–10.92% BA. These results reinforce the
+value of combining complementary metrics rather than
+relying on a single detection signal.
+
+6. Limitations and Future Work
+While FeRA achieves strong empirical performance
+across diverse attack types and datasets, our evaluation on
+MNIST-family datasets (Appendix E) reveals architectural
+dependencies. FeRA’s detection efficacy degrades on shallow network architectures commonly deployed for simple
+datasets. Specifically, MNIST variants achieve 4.26%–
+15.26% BA compared to 1.35%–3.68% BA on CIFAR/TinyImageNet benchmarks. This performance gap stems from
+limited representational depth in shallow CNNs (2–3 layers), where penultimate-layer feature dimensions (d′ ) compress both benign and malicious distributions into lowerdimensional manifolds. Such dimensional compression
+attenuates the spectral and spatial variance discriminability
+that underpins FeRA’s Consistency Filter, making backdoorinduced variance suppression less distinguishable from benign low-variance patterns. Future work should investigate
+adaptive feature extraction strategies—such as multi-layer
+aggregation or dimensionality-aware thresholding—to improve detection in representation-constrained architectures.
+Beyond architectural considerations, FeRA opens several promising research directions. FeRA’s theoretical underpinnings in representation variance suppression require
+deeper analytical modeling, potentially formalizing the
+
+relationship between feature-space stability and backdoor
+persistence.
+
+7. Conclusion
+This work presented FeRA, a representation-space
+defense framework for federated learning that redefines
+the conventional detection paradigm against backdoor
+attacks. By focusing on behavioral consistency rather than
+statistical outliers, FeRA leverages inherent constraints of
+backdoor persistence to expose malicious clients through
+low-variance attention and coordinated representational
+patterns. The proposed dual-mechanism design, comprising
+consistency analysis and norm-inflation detection, captures
+complementary attack strategies spanning stealth-based
+and magnitude-based approaches that evade single-metric
+defenses. Extensive empirical evaluation demonstrates
+FeRA’s robustness across datasets, attack types, and system
+settings, maintaining high clean accuracy and achieving
+significant reductions in backdoor success rates compared
+to state-of-the-art methods.
+
+References
+
+[12] Y. Yang, Q. Li, J. Jia, Y. Hong, and B. Wang, “Distributed backdoor
+attacks on federated graph learning and certified defenses,” in
+Proceedings of the 2024 on ACM SIGSAC Conference on Computer
+and Communications Security, 2024, pp. 2829–2843.
+[13] M. Fang, X. Cao, J. Jia, and N. Gong, “Local model poisoning
+attacks to byzantine-robust federated learning,” in 29th USENIX
+Security Symposium (USENIX Security 2020), 2020, pp. 1605–1622.
+[Online]. Available: https://www.usenix.org/system/files/sec20-fang.
+pdf
+[14] H. Zhang, J. Jia, J. Chen, L. Lin, and D. Wu, “A3fl: Adversarially
+adaptive backdoor attacks to federated learning,” Advances in neural
+information processing systems, vol. 36, pp. 61 213–61 233, 2023.
+[15] Y. Wen, J. Geiping, L. Fowl, H. Souri, R. Chellappa, M. Goldblum,
+and T. Goldstein, “Thinking two moves ahead: Anticipating other
+users improves backdoor attacks in federated learning,” arXiv
+preprint arXiv:2210.09305, 2022.
+[16] L. Itti, C. Koch, and E. Niebur, “A model of saliency-based visual
+attention for rapid scene analysis,” IEEE Transactions on Pattern
+Analysis and Machine Intelligence, vol. 20, no. 11, pp. 1254–1259,
+2002.
+[17] Z. Zhang, A. Panda, L. Song, Y. Yang, M. Mahoney, P. Mittal,
+R. Kannan, and J. Gonzalez, “Neurotoxin: Durable backdoors in
+federated learning,” in International conference on machine learning.
+PMLR, 2022, pp. 26 429–26 446.
+[18] T. D. Nguyen, T. A. Nguyen, A. Tran, K. D. Doan, and K.-S. Wong,
+“Iba: Towards irreversible backdoor attacks in federated learning,”
+Advances in Neural Information Processing Systems, vol. 36, pp.
+66 364–66 376, 2023.
+
+[1]
+
+B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A.
+y Arcas, “Communication-efficient learning of deep networks from
+decentralized data,” in Artificial intelligence and statistics. PMLR,
+2017, pp. 1273–1282.
+
+[19] X. Lyu, Y. Han, W. Wang, J. Liu, Y. Zhu, G. Xu, J. Liu, and
+X. Zhang, “Lurking in the shadows: Unveiling stealthy backdoor
+attacks against personalized federated learning,” in 33rd USENIX
+Security Symposium (USENIX Security 24), 2024, pp. 4157–4174.
+
+[2]
+
+D. C. Nguyen, Q.-V. Pham, P. N. Pathirana, M. Ding, A. Seneviratne,
+Z. Lin, O. Dobre, and W.-J. Hwang, “Federated learning for smart
+healthcare: A survey,” ACM Computing Surveys (Csur), vol. 55,
+no. 3, pp. 1–37, 2022.
+
+[20] M. Li, W. Wan, Y. Ning, S. Hu, L. Xue, L. Y. Zhang, and Y. Wang,
+“Darkfed: A data-free backdoor attack in federated learning,” in
+arXiv preprint arXiv:2405.03299, 2024.
+
+[3]
+
+S. Silva, B. A. Gutman, E. Romero, P. M. Thompson, A. Altmann, and M. Lorenzi, “Federated learning in distributed medical
+databases: Meta-analysis of large-scale subcortical brain data,” in
+2019 IEEE 16th international symposium on biomedical imaging
+(ISBI 2019). IEEE, 2019, pp. 270–274.
+
+[4]
+
+Q. Li, Z. Wen, Z. Wu, S. Hu, N. Wang, Y. Li, X. Liu, and B. He,
+“A survey on federated learning systems: Vision, hype and reality
+for data privacy and protection,” IEEE Transactions on Knowledge
+and Data Engineering, vol. 35, no. 4, pp. 3347–3366, 2021.
+
+[5]
+
+P. Kairouz, H. B. McMahan, B. Avent, A. Bellet, M. Bennis, A. N.
+Bhagoji, K. Bonawitz, Z. Charles, G. Cormode, R. Cummings et al.,
+“Advances and open problems in federated learning,” Foundations
+and trends® in machine learning, vol. 14, no. 1–2, pp. 1–210, 2021.
+
+[6]
+
+E. Bagdasaryan, A. Veit, Y. Hua, D. Estrin, and V. Shmatikov,
+“How to backdoor federated learning,” in International conference
+on artificial intelligence and statistics. PMLR, 2020, pp. 2938–
+2948.
+
+[7]
+
+H. Wang, K. Sreenivasan, S. Rajput, H. Vishwakarma, S. Agarwal,
+J.-y. Sohn, K. Lee, and D. Papailiopoulos, “Attack of the tails: Yes,
+you really can backdoor federated learning,” Advances in neural
+information processing systems, vol. 33, pp. 16 070–16 084, 2020.
+
+[8]
+
+[9]
+
+X. Cao, M. Fang, J. Liu, and N. Z. Gong, “Fltrust: Byzantinerobust federated learning via trust bootstrapping,” arXiv preprint
+arXiv:2012.13995, 2020.
+P. Blanchard, E. M. El Mhamdi, R. Guerraoui, and J. Stainer,
+“Machine learning with adversaries: Byzantine tolerant gradient
+descent,” Advances in neural information processing systems,
+vol. 30, 2017.
+
+[21] C. Fung, C. J. Yoon, and I. Beschastnikh, “The limitations of federated learning in sybil settings,” in 23rd International symposium
+on research in attacks, intrusions and defenses (RAID 2020), 2020,
+pp. 301–316.
+[22] T. D. Nguyen, P. Rieger, H. Chen, H. Yalame, H. Möllering,
+H. Fereidooni, S. Marchal, M. Miettinen, A. Mirhoseini, S. Zeitouni
+et al., “{FLAME}: Taming backdoors in federated learning,” in
+31st USENIX Security Symposium (USENIX Security 22), 2022, pp.
+1415–1432.
+[23] P. Rieger, T. D. Nguyen, M. Miettinen, and A.-R. Sadeghi,
+“Deepsight: Mitigating backdoor attacks in federated learning
+through deep model inspection,” in ArXiv, vol. abs/2201.00763,
+2022. [Online]. Available: https://api.semanticscholar.org/CorpusID:
+245650333
+[24] K. Walter, S. Nepal, and S. S. Kanhere, “Exploiting layerwise feature
+representation similarity for backdoor defence in federated learning,”
+in European Symposium on Research in Computer Security,
+2024. [Online]. Available: https://api.semanticscholar.org/CorpusID:
+272602677
+[25] H. Fereidooni, A. Pegoraro, P. Rieger, A. Dmitrienko, and
+A. Sadeghi, “Freqfed: A frequency analysis-based approach
+for mitigating poisoning attacks in federated learning,” in
+ArXiv, vol. abs/2312.04432, 2023. [Online]. Available: https:
+//api.semanticscholar.org/CorpusID:266051877
+[26] S. Li and Y. Dai, “{BackdoorIndicator}: Leveraging {OOD} data
+for proactive backdoor detection in federated learning,” in 33rd
+USENIX Security Symposium (USENIX Security 24), 2024, pp.
+4193–4210.
+
+[10] C. Xie, K. Huang, P.-Y. Chen, and B. Li, “Dba: Distributed backdoor
+attacks against federated learning,” in International conference on
+learning representations, 2019.
+
+[27] P. Rieger, T. Krauß, M. Miettinen, A. Dmitrienko,
+and A.-R. Sadeghi, “Crowdguard: Federated backdoor
+detection in federated learning.” Internet Society, 2024.
+[Online]. Available: https://www.ndss-symposium.org/ndss-paper/
+crowdguard-federated-backdoor-detection-in-federated-learning/
+
+[11] T. Gu, K. Liu, B. Dolan-Gavitt, and S. Garg, “Badnets: Evaluating
+backdooring attacks on deep neural networks,” Ieee Access, vol. 7,
+pp. 47 230–47 244, 2019.
+
+[28] C. Xie, M. Chen, P.-Y. Chen, and B. Li, “Crfl: Certifiably robust
+federated learning against backdoor attacks,” in International
+conference on machine learning. PMLR, 2021, pp. 11 372–11 382.
+
+[29] R. Guerraoui, S. Rouault et al., “The hidden vulnerability of
+distributed learning in byzantium,” in International conference on
+machine learning. PMLR, 2018, pp. 3521–3530.
+
+[48] T.-M. H. Hsu, H. Qi, and M. Brown, “Measuring the effects of
+non-identical data distribution for federated visual classification,”
+in arXiv preprint arXiv:1909.06335, 2019.
+
+[30] D. Yin, Y. Chen, R. Kannan, and P. Bartlett, “Byzantine-robust distributed learning: Towards optimal statistical rates,” in International
+conference on machine learning. Pmlr, 2018, pp. 5650–5659.
+
+[49] T. Huang, S. Hu, K.-H. Chow, F. Ilhan, S. Tekin, and L. Liu,
+“Lockdown: backdoor defense for federated learning with isolated
+subspace training,” in Advances in Neural Information Processing
+Systems, vol. 36, 2023, pp. 10 876–10 896.
+
+[31] K. Zhang, G. Tao, Q. Xu, S. Cheng, S. An, Y. Liu,
+S. Feng, G. Shen, P.-Y. Chen, S. Ma, and X. Zhang, “FLIP:
+A provable defense framework for backdoor mitigation in
+federated learning,” in The Eleventh International Conference
+on Learning Representations, 2023. [Online]. Available: https:
+//openreview.net/forum?id=Xo2E217 M4n
+[32] J. Jia, Z. Yuan, D. Sahabandu, L. Niu, A. Rajabi, B. Ramasubramanian, B. Li, and R. Poovendran, “Fedgame: a game-theoretic
+defense against backdoor attacks in federated learning,” in Advances
+in Neural Information Processing Systems, vol. 36, 2023, pp. 53 090–
+53 111.
+[33] W. Huang, M. Ye, Z. Shi, G. Wan, H. Li, and B. Du, “Parameter
+disparities dissection for backdoor defense in heterogeneous federated learning,” in Advances in Neural Information Processing
+Systems, vol. 37, 2024, pp. 120 951–120 973.
+[34] J. Xu, Z. Zhang, and R. Hu, “Detecting backdoor attacks in federated
+learning via direction alignment inspection,” in Proceedings of the
+Computer Vision and Pattern Recognition Conference, 2025, pp.
+20 654–20 664.
+[35] M. S. Ozdayi, M. Kantarcioglu, and Y. R. Gel, “Defending against
+backdoors in federated learning with robust learning rate,” in
+Proceedings of the AAAI conference on artificial intelligence, vol. 35,
+no. 10, 2021, pp. 9268–9276.
+[36] B. Wang, Y. Yao, S. Shan, H. Li, B. Viswanath, H. Zheng, and
+B. Y. Zhao, “Neural cleanse: Identifying and mitigating backdoor
+attacks in neural networks,” in 2019 IEEE symposium on security
+and privacy (SP). IEEE, 2019, pp. 707–723.
+[37] K. Liu, B. Dolan-Gavitt, and S. Garg, “Fine-pruning: Defending
+against backdooring attacks on deep neural networks,” in International symposium on research in attacks, intrusions, and defenses.
+Springer, 2018, pp. 273–294.
+[38] Z. Sun, P. Kairouz, A. T. Suresh, and H. B. McMahan, “Can
+you really backdoor federated learning?” in arXiv preprint
+arXiv:1911.07963, 2019.
+[39] B. Tran, J. Li, and A. Madry, “Spectral signatures in backdoor
+attacks,” in Advances in neural information processing systems,
+vol. 31, 2018.
+[40] S. Huang, Y. Li, C. Chen, L. Shi, and Y. Gao, “Multi-metrics adaptively identifies backdoors in federated learning,” in Proceedings of
+the IEEE/CVF International Conference on Computer Vision, 2023,
+pp. 4652–4662.
+[41] C. Leys, C. Ley, O. Klein, P. Bernard, and L. Licata, “Detecting
+outliers: Do not use standard deviation around the mean, use
+absolute deviation around the median,” Journal of experimental
+social psychology, vol. 49, no. 4, pp. 764–766, 2013.
+[42] X. Chen, C. Liu, B. Li, K. Lu, and D. Song, “Targeted backdoor
+attacks on deep learning systems using data poisoning,” in arXiv
+preprint arXiv:1712.05526, 2017.
+[43] Y. Dai and S. Li, “Chameleon: Adapting to peer images for
+planting durable backdoors in federated learning,” in International
+Conference on Machine Learning. PMLR, 2023, pp. 6712–6725.
+[44] A. Krizhevsky, G. Hinton et al., “Learning multiple layers of
+features from tiny images,” Tech. Rep., 2009.
+[45] N. Mehran, D. Kimovski, Z. Najafabadi Samani, N. Nikolov,
+R. Farahani, and R. Prodan, “Gtsrb - german traffic sign
+recognition benchmark (version 2),” 2012. [Online]. Available:
+https://doi.org/10.5281/zenodo.13741936
+[46] K. He, X. Zhang, S. Ren, and J. Sun, “Deep residual learning
+for image recognition,” in Proceedings of the IEEE conference on
+computer vision and pattern recognition, 2016, pp. 770–778.
+[47] K. Simonyan and A. Zisserman, “Very deep convolutional networks for large-scale image recognition,” in arXiv preprint
+arXiv:1409.1556, 2014.
+
+Appendix A.
+Impact of Layer Selection for Representation
+Extraction
+Neural networks encode information hierarchically,
+with early layers capturing low-level features and deeper
+layers encoding task-specific semantics. The choice of
+which layer to extract representations from will significantly impact detection performance. We conduct ablation
+studies comparing representation extraction from different
+network depths, with results presented in Table 12.
+The penultimate layer (final feature representation before classifier) achieves optimal performance with 87.16%
+MA and 1.35% BA. This layer balances semantic richness, where task-relevant features concentrated in later
+layers effectively capture backdoor-induced representation
+collapse. In contrast, the mid layer achieves 90.94% MA
+with 10.63% BA—the significantly higher BA suggests
+mid-layer features capture less backdoor-specific variance
+suppression, while higher MA indicates mid-layer removals
+are less aggressive. Interestingly, combining multiple layers
+(early + mid + penultimate) yields 91.53% MA but with
+92.84% BA, demonstrating that multi-layer concatenation
+creates high-dimensional spaces where malicious variance
+becomes harder to distinguish from benign heterogeneity.
+The increased dimensionality dilutes detection signals
+rather than enhancing them.
+TABLE 12. E FFECT OF REPRESENTATION EXTRACTION DEPTH IN
+R ES N ET 18 ON DEFENSE PERFORMANCE AGAINST THE N EUROTOXIN
+ATTACK (CIFAR-10, D IRICHLET α = 0.5 ). R ESULTS ARE REPORTED
+AS MA(%) / BA(%).
+Layer
+Mid Layer
+Penultimate Layer
+Mid Layer + Penultimate Layer + early layer
+
+MA(%) / BA(%)
+90.94 / 10.63
+87.16 / 1.35
+91.53 / 92.84
+
+Appendix B.
+Impact of Feature Dimension
+Representation dimensionality affects the separability
+of benign and malicious patterns in feature space. We
+investigate FeRA’s sensitivity to feature dimensions ranging
+from 64 to 512 for Neurotoxin attacks on CIFAR-10. As
+shown in Table 13, FeRA maintains stable performance
+across this range, with BA varying minimally (0.63%–
+1.36%). At the lowest dimension (64), FeRA achieves
+91.36% MA with 1.36% BA, demonstrating that even
+compact representations preserve sufficient discriminative
+information for detection. Performance peaks at 128 dimensions (0.63% BA with 90.36% MA), while higher
+dimensions (256, 512) maintain comparable results. This
+stability demonstrates FeRA’s robustness to architectural
+choices regarding representation capacity.
+
+TABLE 13. F EATURE D IMENSION I MPACT. N EUROTOXIN ATTACK ON
+CIFAR-10, α = 0.5, POISONING FROM ROUND 2001 FOR 100
+ROUNDS .
+|FDim |
+
+64
+
+128
+
+256
+
+512
+
+MA (%)
+BA (%)
+
+91.36
+1.36
+
+90.36
+0.63
+
+91.16
+1.35
+
+87.16
+1.35
+
+TABLE 14. C OMBINED S CORE W EIGHT C ONFIGURATION
+P ERFORMANCE FOR CIFAR-10 UNDER N EUROTOXIN ATTACK WITH
+D IRICHLET α = 0.5.
+Weight Configuration
+
+Performance
+
+wσ
+
+wδ
+
+Description
+
+MA (%)
+
+BA (%)
+
+0.5
+0.4
+0.6
+
+0.5
+0.6
+0.4
+
+Equal weighting
+Spatial-prioritized
+Spectral-prioritized (default)
+
+91.35
+89.99
+90.46
+
+0.88
+0.81
+0.79
+
+Appendix C.
+Computational Cost Analysis
+We evaluate FeRA’s computation overhead compared
+with established Byzantine-robust aggregators. FeRA computes representation-space metrics via spectral decomposition with complexity O(C × D2 ), where C is the
+number of clients and D the representation dimension,
+and computes client-parameter mutual similarity with
+complexity O(C 2 × P ), where P is the model parameter
+count. The detection stage adds O(C) for applying both
+mechanisms; benign aggregation then costs O(C × P ).
+Thus, the worst-case cost is O(C × D2 + C 2 × P + C).
+By contrast, methods such as Multi-Krum have complexity
+O(d × N 2 ) and FoolsGold requires O(N 2 ), both scaling
+quadratically in the number of clients N . Since D ≪ P
+(for example, D ≈ 64 − 512 and P ≈ 106 − 107 ), the
+D2 term remains modest, while the C 2 term applies only
+to similarity filtering and can be approximated through
+sampling. Empirically, on CIFAR-10 with ResNet-18 and
+N = 10, FeRA adds approximately 6.4 s per round (3.3 s
+for metric computation and 3.0 s for filtering), representing
+about 23% of the total round time. All detection and
+filtering occur on the server side, introducing zero overhead
+on clients.
+
+Appendix D.
+Impact of Hyper-parameters
+We examine FeRA’s detection performance across
+varying detection mechanism configurations to characterize
+the accuracy-security-precision trade-offs inherent in each
+component. For each mechanism we keep the other at its
+default values while varying threshold parameters to assess
+impact. Note that these are not hard threshold values, but
+rather percentile rankings.
+Combined Score Weight Sensitivity. The Combined
+Score fuses spectral and spatial attention metrics through
+weighted linear combination, with weights wσ and wδ
+controlling the relative influence of each component. Table 14 evaluates three weight configurations for Neurotoxin
+attacks on CIFAR-10 under Dirichlet α = 0.5. Equal
+weighting (wσ = 0.5, wδ = 0.5) achieves strong main task
+accuracy (91.35%) but yields slightly elevated backdoor
+
+accuracy (0.88%) compared to asymmetric configurations.
+Reversing the default weighting (wσ = 0.4, wδ = 0.6) prioritizes spatial magnitude over spectral variance, achieving
+0.81% BA with 89.99% MA. Our default configuration
+(wσ = 0.6, wδ = 0.4) achieves optimal balance, achieving the lowest BA (0.79%) while maintaining high MA
+(90.46%). This weighting reflects the empirical observation
+that spectral variance suppression provides the primary
+discriminative signal for backdoor detection, as backdoorinduced attentional collapse manifests most strongly in
+eigenvalue distributions across principal components. The
+spatial component serves as a complementary confirmation
+signal, capturing attacks that attempt to evade spectral
+detection through directional variance concentration. The
+0.6/0.4 split ensures that spectral signatures dominate
+detection decisions while spatial metrics provide robustness
+against evasion strategies targeting spectral metrics alone.
+Consistency Filter Threshold Sensitivity. Table 15
+evaluates Combined Score, Directional Attention Score
+(DAS), and Mutual Similarity thresholds for Neurotoxin
+attacks on CIFAR-10 under Dirichlet α = 0.5 with 10%
+malicious clients. Stricter thresholds (Combined ≤40%,
+DAS ≤40%, Mutual Similarity ≥80%) achieve optimal precision (0.74) with minimal false positives (FPR=0.16) while
+maintaining 90.63% MA, though BA increases to 3.16%
+as tighter constraints allow sophisticated attacks to evade
+detection. Conversely, permissive thresholds (Combined
+≤60%, DAS ≤60%, Mutual Similarity ≥60%) achieve
+strongest attack suppression (BA=0.63%) with TPR=1.00
+but incur highest false positive rate (FPR=0.36), degrading
+MA to 85.63% through excessive benign client exclusion.
+The default configuration (50%/50%/70%) balances these
+objectives, achieving 1.36%–2.36% BA while maintaining
+90.05%–90.53% MA and TPR near 0.94 across random
+seed variations.
+Norm-Inflation Filter Spectral Ratio Sensitivity.
+Table 16 examines the MAD multiplier k controlling
+the norm-inflation detection threshold under Anticipate
+attacks. Conservative threshold (k = 3) achieves optimal
+precision (0.90) with minimal false positives (FPR=0.02)
+while maintaining 89.95% MA and 0.84% BA, effectively
+isolating extreme norm inflation without benign client
+interference. Aggressive threshold (k = 12) achieves comparable BA (0.78%) with perfect TPR (1.00) but reduces
+precision to 0.80 as lower thresholds flag benign variance.
+Moderate threshold (k = 6, our default) balances these
+objectives, achieving 0.77% BA with 90.32% MA and 0.90
+precision. The threshold range k ∈ [3, 12] maintains BA
+below 0.85% with MA above 89.95%, demonstrating robust
+performance across Anticipate attack scenarios where norm
+manipulation dominates evasion strategy. This MAD-based
+approach provides automatic adaptation to each round’s
+empirical distribution, eschewing fixed thresholds that
+would require manual tuning across different datasets or
+training dynamics.
+
+Appendix E.
+Effectiveness on More Datasets
+MNIST-Family Evaluation. To assess FeRA’s performance across diverse visual domains, we conduct additional experiments on MNIST-family datasets including
+
+TABLE 15. T HRESHOLD C ONFIGURATION P ERFORMANCE FOR CIFAR-10 UNDER N EUROTOXIN ATTACK WITH D IRICHLET α = 0.5 AND 10%
+M ALICIOUS C LIENTS .
+Threshold Configuration
+
+Performance Metrics
+
+Combined
+
+DAS
+
+Mutual Sim.
+
+MA (%)
+
+BA (%)
+
+Precision
+
+FPR
+
+TPR
+
+≤50%
+
+≤50%
+
+≥70%
+
+90.53
+
+1.47
+
+0.53
+
+0.26
+
+0.94
+
+≤40%
+
+≤40%
+
+≥80%
+
+90.63
+
+3.16
+
+0.74
+
+0.16
+
+0.94
+
+≤60%
+
+≤60%
+
+≥60%
+
+85.63
+
+0.63
+
+0.47
+
+0.36
+
+1.00
+
+≤50%
+
+≤50%
+
+≥70%
+
+90.47
+
+1.36
+
+0.63
+
+0.16
+
+0.94
+
+≤50%
+
+≤50%
+
+≥70%
+
+90.05
+
+2.36
+
+0.47
+
+0.36
+
+0.94
+
+TABLE 16. N ORM -I NFLATION F ILTER : MAD S ENSITIVITY
+PARAMETER A BLATION ON CIFAR-10 (A NTICIPATE , R ES N ET-18,
+D IRICHLET α = 0.5, 10% M ALICIOUS C LIENTS ). MAD M ULTIPLIER
+k CONTROLS DETECTION THRESHOLD .
+k
+
+MA (%)
+
+BA (%)
+
+Precision
+
+FPR
+
+TPR
+
+3
+6
+9
+12
+
+89.95
+90.32
+90.43
+90.16
+
+0.84
+0.77
+0.80
+0.78
+
+0.90
+0.90
+0.80
+0.80
+
+0.02
+0.01
+0.03
+0.05
+
+1.00
+0.90
+1.00
+1.00
+
+Defense
+
+MNIST
+BA↓
+MA↑
+
+F-MNIST
+BA↓
+MA↑
+
+EMNIST
+BA↓
+MA↑
+
+FedAvg [1]
+FoolsGold [21]
+DeepSight [23]
+FLAME [22]
+Multi-Krum [9]
+FLTrust [8]
+FeRA
+
+98.47
+67.26
+28.63
+14.74
+19.36
+8.47
+4.26
+
+96.74
+61.84
+24.36
+12.84
+16.26
+7.16
+6.94
+
+96.47
+73.94
+44.16
+31.84
+37.63
+23.47
+15.26
+
+88.94
+85.26
+87.47
+86.74
+84.36
+88.16
+88.63
+
+Percentage Data Poisoned
+
+10%
+
+20%
+
+30%
+
+40%
+
+50%
+
+MA (%)
+BA (%)
+
+89.36
+3.26
+
+91.47
+1.47
+
+91.05
+1.26
+
+90.94
+1.16
+
+90.74
+0.94
+
+Appendix F.
+Impact of Poisoning Data Percentage
+
+TABLE 17. D EFENSE PERFORMANCE ACROSS MNIST- FAMILY
+DATASETS (DBA ATTACK ).
+
+97.94
+95.36
+96.84
+96.26
+94.74
+97.26
+97.84
+
+TABLE 18. P OISONING P ERCENTAGE I MPACT. N EUROTOXIN ATTACK
+ON CIFAR-10, α = 0.5 , POISONING FROM ROUND 2001 FOR 100
+ROUNDS .
+
+84.53
+80.16
+82.94
+81.74
+78.84
+83.47
+84.63
+
+handwritten digits (MNIST), fashion products (F-MNIST),
+and characters (EMNIST) under DBA attacks. As shown in
+Table 17, FeRA achieves 4.26%–15.26% BA while maintaining 84.63%–97.84% MA, consistently outperforming
+FLTrust (7.16%–23.47% BA) and other baselines.
+The elevated BA compared to CIFAR-10/100 (1.35%–
+1.84% BA) stems from shallow CNN architectures (2–3
+layers) used in MNIST variants. Limited representational
+depth (d′ ≪ 512) compresses benign and malicious
+feature distributions, reducing discriminability of variance
+suppression signatures that drive FeRA’s detection.
+We further evaluate FeRA on the GTSRB dataset,
+a real-world dataset with natural image variations and
+lighting conditions. Training proceeds for 100 rounds with
+poisoning starting at round 50. Fig. 9 shows performance
+across four attack types. FeRA achieves 1.20%-4.03% BA
+while maintaining 71.89%-82.43% MA. Against Neurotoxin, FeRA suppresses BA to 1.36% (98.64% reduction vs.
+undefended), demonstrating robust detection despite realworld feature complexity. Consistent performance across
+synthetic and real-world datasets validates FeRA’s practical
+applicability for safety-critical deployments.
+
+Sensitivity to Poisoning Intensity. Attackers may vary
+the percentage of their local dataset that is poisoned with
+backdoor samples to balance stealth and effectiveness.
+We examine FeRA’s robustness across poisoning rates
+from 10% to 50% for Neurotoxin attacks on CIFAR10. Results in Table 18 demonstrate consistent detection
+across this range. For moderate poisoning (10%–40%),
+BA ranges from 1.16% to 1.47% with median 1.26%,
+showing minimal variation despite differences in poisoning
+intensity. Interestingly, at 50% poisoning, BA decreases
+to 0.94% as the heavily poisoned dataset creates more
+pronounced representation anomalies, making detection
+easier. MA remains stable at 89.36%–91.47%, confirming
+utility preservation independent of poisoning rate. These
+findings indicate that even minimal backdoor injection
+(10%) creates sufficient representation-level variance suppression for reliable identification.
+
+Figure 9. FeRA performanance on GTSRB dataset across four attacks over 100 training rounds. Poisoning begins at round 50 (vertical line); shaded
+region indicates poisoning phase. Bands show mean ± 1 std.
+
+

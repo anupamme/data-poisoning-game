@@ -1,0 +1,2991 @@
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020
+
+1
+
+DP2Guard: A Lightweight and Byzantine-Robust Privacy-Preserving
+Federated Learning Scheme for Industrial IoT
+
+arXiv:2507.16134v2 [cs.CR] 7 May 2026
+
+Baofu Han, Bing Li, Yining Qi, Member, IEEE, Zhiquan Liu, Senior Member, IEEE, Raja Jurdak, Senior
+Member, IEEE, Kaibin Huang, Fellow, IEEE, and Chau Yuen, Fellow, IEEE
+
+Abstract—Privacy-Preserving Federated Learning (PPFL)
+has emerged as a secure distributed Machine Learning (ML)
+paradigm that aggregates locally trained gradients without
+exposing raw data. To defend against model poisoning threats,
+several robustness-enhanced PPFL schemes have been proposed by integrating anomaly detection. Nevertheless, they
+still face two major challenges: (1) the reliance on heavyweight
+encryption techniques results in substantial communication
+and computation overhead; and (2) single-strategy defense
+mechanisms often fail to provide suﬀicient robustness against
+adaptive adversaries. To overcome these challenges, we propose
+DP2Guard, a lightweight PPFL framework that enhances both
+privacy and robustness. DP2Guard leverages a lightweight
+gradient masking mechanism to replace costly cryptographic
+operations while ensuring the privacy of local gradients. A
+hybrid defense strategy is proposed, which extracts gradient features using singular value decomposition and cosine
+similarity, and applies a clustering algorithm to effectively
+identify malicious gradients. Additionally, DP2Guard adopts
+a trust score–based adaptive aggregation scheme that adjusts
+client weights according to historical behavior, while blockchain
+records aggregated results and trust scores to ensure tamperproof and auditable training. Extensive experiments conducted
+on two public datasets demonstrate that DP2Guard effectively
+defends against four advanced poisoning attacks while ensuring
+privacy with reduced communication and computation costs.
+Index Terms—Blockchain, federated learning, poisoning attack, privacy preserving, hybrid-defense strategy.
+
+I. Introduction
+
+T
+
+He Industrial Internet of Things (IIoT) connects
+various industrial devices through networks, enabling
+
+This work was supported in part by the Postgraduate Research & Practice Innovation Program of Jiangsu Province under Grant KYCX23_0320; in part by the Shenzhen Science
+Technology and Innovation Commission (SZSTI) under Grant
+JCYJ20170817115500476. (Corresponding author: Bing Li.)
+Baofu Han is with the School of Cyber Science and Engineering,
+Southeast University, Nanjing 211102, China, and also with the
+School of Computing, National University of Singapore, Singapore
+(e-mail: hanbaofu@seu.edu.cn, baofu.han@comp.nus.edu.sg).
+Bing Li is with the School of Microelectronics, Southeast University, Nanjing 211102, China (e-mail: bernie_seu@seu.edu.cn).
+Yining Qi is with the School of Computer Science and Technology,
+Huazhong University of Science and Technology, Wuhan 430074,
+China (e-mail: qiyining@hust.edu.cn).
+Z. Liu is with the College of Cyber Security, Jinan University,
+Guangzhou 510632, China. (e-mail: zqliu@jnu.edu.cn).
+Raja Jurdak is with the School of Computer Science, Queensland
+University of Technology, Australia (e-mail: r.jurdak@qut.edu.au).
+Kaibin Huang is with the Department of Electrical and Electronic
+Engineering, The University of Hong Kong, Hong Kong SAR, China
+(e-mail: huangkb@hku.hk).
+Chau Yuen is with the School of Electrical and Electronic
+Engineering, Nanyang Technological University, Singapore (email:
+chau.yuen@ntu.edu.sg).
+
+data collection, exchange, and analysis, and has played a
+significant role in advancing the digital transformation of
+industrial systems [1], [2], [3]. Meanwhile, the integration
+of machine learning (ML) with IIoT enables industrial
+terminals to extract valuable insights from massive sensory
+data and make intelligent decisions in complex scenarios
+[4], [5], [6]. However, the advancement of industrial intelligence heavily depends on large-scale data collection
+and sharing, which raises serious concerns regarding data
+privacy and security [7], [8], [9]. Thus, how to fully realise
+the potential of ML in IIoT systems while preserving data
+privacy has become a critical challenge.
+Federated Learning (FL) has emerged as a distributed
+Machine Learning (ML) paradigm that enables multiple
+organizations to collaboratively train a global model
+without sharing raw data, thereby preserving user privacy
+[10], [11], [12], [13]. However, recent studies indicate that
+FL still encounters challenges that adversaries can infer
+sensitive information from shared model updates [14], [15],
+[16]. To address the privacy leakage in FL, some privacypreserving federated learning (PPFL) based on Differential Privacy (DP) [17], [18], Homomorphic Encryption
+(HE) [19], [20], [21], and Secure Multi-Party Computation
+(SMPC) [22], [23], [24], [25] have been proposed. DP
+achieves privacy guarantees by injecting calibrated noise
+into local model gradients, but this inevitably introduces a
+trade-off between privacy and model utility. SMPC allows
+participants to jointly compute global models without
+revealing their inputs, but the interaction processes of
+SMPC incur heavy communication burdens on clients. In
+contrast, HE enables secure computation on encrypted
+data and offers a compelling balance between privacy and
+accuracy.
+Another security threat in FL is model poisoning attacks
+(MPAs), in which malicious clients submit manipulated
+gradients to interfere with the training process and
+compromise the integrity of the global model [26]. As
+illustrated in Fig. 1, such attacks become even more
+diﬀicult to detect in PPFL due to the invisibility of
+individual gradients resulting from encryption or perturbation mechanisms. To address this issue, several defense
+strategies have been proposed, including cosine similaritybased [27], [28] and distance-based methods [29], [30],
+[31], which identify abnormal updates by measuring their
+deviation from the majority. However, recent studies [32],
+[33] have shown that under complex attacks-such as
+LIE [34] and Min-Max/Min-Sum [35]-attackers can craft
+malicious gradients that closely mimic benign behavior,
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020
+
+thereby evading detection. Thus, single-strategy defenses
+are inadequate for addressing increasingly sophisticated
+poisoning threats, highlighting the need to develop more
+robust and hybrid defense mechanisms in PPFL.
+
+Fig. 1: The example of model poisoning attacks in PPFL.
+Client 1 uploads a poisoned local mode gradient, guiding
+the global model towards a predefined direction and
+impacting overall model performance.
+To address the aforementioned challenges, we propose
+DP2Guard, a lightweight PPFL framework that enhances
+both privacy and robustness. DP2Guard adopts a gradient
+masking strategy to protect local model updates without
+relying on computationally expensive cryptographic techniques such as HE or MPC. It also incorporates a hybrid
+anomaly detection strategy to identify malicious updates.
+Blockchain is further integrated to secure the training
+process and provide auditability. The main contributions
+of this work are summarized as follows:
+1) We propose a lightweight PPFL framework that
+utilizes eﬀicient gradient masking to avoid the heavy
+overhead of cryptographic approaches. Furthermore,
+blockchain is integrated to enhance training security
+and auditability.
+2) We develop a hybrid anomaly detection mechanism
+combining cosine similarity and spectral analysis,
+which more effectively detects malicious updates compared to conventional single-strategy defenses, and
+does so without accessing raw gradient data.
+3) We introduce a trust score–based aggregation mechanism that dynamically adjusts client contributions
+based on their historical behavior to improve global
+model performance.
+4) Extensive experiments on two public datasets demonstrate that DP2Guard provides strong resistance
+against four advanced poisoning attacks, while achieving privacy protection with reduced communication
+and computation costs.
+The remainder of this paper is organized as follows:
+Section II reviews related work in areas relevant to our
+study. Section III introduces the preliminary knowledge.
+Section IV illustrates the system model and the threat
+model. The proposed scheme is elaborated in Section V.
+Section VI provides the security and privacy analysis.
+
+2
+
+Section VII presents performance evaluation. Finally,
+Section VIII concludes this work.
+II. Related work
+PPFL employs advanced techniques such as DP, HE,
+and SMPC to protect the confidentiality of model updates.
+Jiang et al. [44] proposed a DP-based PPFL framework
+with adaptive gradient compression to enhance privacy
+while reducing communication overhead. Gu et al. [45]
+introduced FL2DP, which leverages exponential-based
+noise and gradient shuffling to protect both gradient
+and identity privacy. Li et al. [46] designed an adaptive
+noise injection strategy to balance privacy protection with
+model accuracy. However, DP-based methods inevitably
+introduce utility loss, making it diﬀicult to optimize both
+privacy and performance. To improve eﬀiciency, SMPCbased PPFL approaches have been explored. Bonawitz
+et al. [47] introduced a secure aggregation scheme using
+double masking with Shamir’s Secret Sharing (SSS) to
+protect client data privacy during aggregation. Xu et al.
+[24] proposed VerifyNet, which integrates homomorphic
+hash-based verifiability with secret sharing to protect
+gradient privacy and handle user dropout. Nevertheless,
+such methods still suffer from increasing communication
+overhead as the number of clients grows. HE-based approaches offer stronger privacy guarantees by enabling
+computations on encrypted data. Li et al. [48] utilized a
+CKKS cryptosystem to protect model parameters during
+training. However, HE-based approaches incur substantial
+ciphertext expansion and computational overhead.
+To address the poisoning attacks, numerous Byzantinerobust algorithms have been proposed. For instance, Cao
+et al. [36] introduced FLTrust, which calculates the cosine
+similarity between local and root gradients. However, this
+approach relies heavily on a root dataset. DnC [35] adopts
+random projection for dimensionality reduction, followed
+by spectral analysis using SVD to identify and filter out
+malicious clients. However, DnC require a preset number
+of malicious clients, leading to limitations in practical
+applications. To improve privacy, Shayan et al. [39] proposed Biscotti, a robust PPFL scheme that combines the
+Multi-Krum [37] strategy with differential privacy, detecting anomalous updates based on Euclidean distances.
+However, these strategies require access to plaintext local
+models. Li et al. [38] proposed a robust PPFL based on
+Krum to defend against model poisoning attacks under
+encrypted gradient aggregation. Mai et al. [40] introduced
+RFLPA, which integrates cosine similarity detection with
+verifiable secret sharing to ensure secure aggregation. Ma
+et al. [41] proposed ShieldFL, utilizing double-trapdoor
+HE and secure cosine similarity to identify malicious
+clients. Liu et al. [42] introduced PEFL based on partially
+homomorphic encryption, which computes the coordinatewise median as a benchmark and excludes updates with
+low Pearson correlation to the benchmark. Feng et al.
+[43] introduced DPFLA, combining removable masks with
+SVD-based techniques for malicious gradient filtering, yet
+it assumes a non-colluding single server and remains
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020
+
+3
+
+TABLE I: Existing Approaches Based on Malicious Client Detection in PPFL
+Solution
+
+Privacy
+
+Detection
+approach
+
+Adaptive
+Aggregation
+
+Test
+dataset
+
+Blockchain
+
+Byzantine
+Robustness
+
+Distribution
+setting
+
+FLTrust [36]
+
+#
+
+Cosine similarity
+
+#
+
+#
+
+#
+
+#
+G
+
+IID and
+Non-IID
+
+Multi-Krum
+[37]
+
+#
+
+Krum
+
+#
+
+#
+
+#
+
+IID
+
+DnC [35]
+
+#
+
+SVD
+
+#
+G
+
+#
+
+#
+G
+
+IID
+
+#
+G
+
+IID and
+Non-IID
+
+RFLP [38]
+
+HE
+
+Krum
+
+#
+G
+
+Biscotti [39]
+
+DP
+
+Multi-Krum
+
+#
+G
+
+RFLPA [40]
+
+HE
+
+Cosine similarity
+
+#
+G
+
+ShieldFL [41]
+
+Double-trapdoor
+HE
+
+Cosine similarity
+
+#
+G
+
+FLOD [30]
+
+SMPC
+
+Hamming
+distance
+
+#
+
+PEFL [42]
+
+HE
+
+Statistical
+correlationbased
+
+#
+
+VerifyNet [24]
+
+VSS
+
+No
+
+#
+
+DPFLA [43]
+
+Removable mask
+
+SVD
+
+#
+
+DP2Guard
+
+Mask
+
+#
+
+#
+G
+
+IID
+
+#
+G
+
+IID and
+Non-IID
+
+#
+G
+
+IID and
+Non-IID
+
+#
+
+#
+
+IID
+
+#
+
+#
+
+IID
+
+#
+
+#
+
+IID
+
+#
+
+#
+G
+
+#
+
+#
+
+#
+
+IID
+IID and
+Non-IID
+
+Hybrid strategy
+
+* The symbol
+indicates YES, # indicates NO, G
+# indicates Partially YES. In the column of Byzantine Robustness and
+Adaptive Aggregation, the half circle G
+# indicates moderate support or defense. A full circle
+indicates strong
+support/robustness.
+
+vulnerable to collusion attacks. Overall, most existing
+robust and privacy-preserving FL schemes depend on
+a single defense mechanism, and as adversarial tactics
+become more adaptive and sophisticated, their robustness
+guarantees remain limited.
+In Table I, we provide a comprehensive summary of
+the state-of-the-art robust PPFL approaches and compare
+them with our proposed scheme. The comparison highlights the advantages of our design in terms of privacy
+preservation, Byzantine robustness, and computational
+eﬀiciency.
+III. Preliminaries
+In this section, we provide background on federated
+learning and briefly review state-of-the-art poisoning attacks.
+A. Federated Learning
+Assume there are N clients, each of them owns a private
+dataset Di , where i ∈ [1, N ]. The objective of FL is to
+learn a global model ω that minimizes the overall global
+loss across all clients [49]:
+N
+X
+
+|Di |
+· Li (ω),
+(1)
+PN
+j=1 |Dj |
+i=1
+P
+where Li (ω) = |D1i | x∈Di ℓ(ω, x), and ℓ(ω, x) denotes the
+loss function evaluated on sample x using model ω.
+min
+ω
+
+At the t-th iteration, the server distributes the current
+global model ωt to all clients. Each client i performs local
+training by minimizing its local loss Li (ωt ) using a local
+optimizer (e.g., stochastic gradient descent), and computes
+the gradient:
+(t)
+gi = ∇ω Li (ωt ) .
+(2)
+The client then updates its local model as ωit = ωt −
+(t)
+ηgi , where η is the learning rate. The resulting model
+(t)
+update ∆i = ωit −ωt is sent back to the server. The server
+aggregates the received updates using FedAvg algorithm
+[49]:
+1 X (t)
+ωt+1 = ωt +
+∆i
+(3)
+|St |
+i∈St
+
+This process is repeated until the global model converges
+or satisfies a predefined stopping criterion.
+B. Poisoning Attacks on FL
+Due to the decentralized nature of FL and the inability
+of the server to access raw client data or verify local
+updates, adversaries may interfere with the model aggregation process by injecting mislabeled data or constructing
+malicious model updates. These attacks are typically classified as non-adaptive or adaptive, depending on whether
+the perturbation is adjusted during training.
+1) Non-Adaptive Attack: Non-adaptive attacks generate
+malicious updates using fixed strategies, regardless of their
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020
+
+4
+
+actual effect on the model. A common method is the labelflipping attack [50], where the attacker replaces a sample’s
+truth label y with an adversarial label ŷ, computed as:
+ŷ = y + lflip mod L,
+
+(4)
+
+where L is the total number of classes and lflip is a
+fixed offset. The poisoned gradients are then uploaded
+for aggregation.
+2) Adaptive Attack: Adaptive attacks dynamically adjust the perturbation direction or magnitude to improve
+both the effectiveness and stealth of the attack. Three
+representative adaptive attack strategies [51], [35] are
+outlined below.
+• Fang attack [51]: In this attack, the attacker simulates
+the aggregation rule using known benign gradients
+and inserts perturbations in the opposite direction:
+!
+Pk
+Pk
+g
+g
+i
+i
+i=1
+,
+(5)
+ĝm = i=1 − λ ∗ Sign
+k
+k
+where λ is the perturbation factor, and gi represents
+benign gradients. The attacker iteratively tunes λ to
+ensure that the crafted gradients are accepted by the
+target aggregation rule.
+• Min-Max [35]: The Min-Max attack aims to maximize
+the separation between the malicious gradient and
+benign gradients, while keeping the distance within
+the natural variation among benign clients. The
+formulation is:
+arg max max ∥ĝm − gi ∥2 ≤ max ∥gi − gj ∥2 ,
+γ
+
+i∈[1,n]
+
+i=1 gi
+
+device i performs local training and splits its computed
+gradient Gi into two masked parts, denoted as G1i and
+G2i . The Secondary Server (S2) performs hybrid anomaly
+detection to identify malicious updates and aggregates the
+G2i shares. This aggregated result is then written to the
+blockchain to prevent tampering. The Primary Server (S1)
+retrieves the aggregated gradient from the blockchain and
+combines it with the sum of G1i to reconstruct the global
+update. The updated model is subsequently distributed
+to all devices via the blockchain, enabling eﬀicient and
+trustworthy collaboration in IIoT network.
+
+i,j∈[1,n]
+
+Pk
+
+ĝm =
+
+Fig. 2: System architecture of the DP2Guard.
+
+(6)
+B. Threat Model
+
++ γ∇p ,
+
+k
+where n is the total number of clients, ∇p is a
+predefined perturbation direction, and γ is a scaling
+factor optimized by the adversary.
+• Min-Sum [35]: In the Min-Sum attack, the goal is
+to minimize the cumulative distance between the
+malicious update and all benign gradients, thereby
+increasing its similarity to the majority and reducing
+its detectability. The optimization objective is:
+ĝm = arg min
+ĝ
+
+n
+X
+
+∥ĝ − gi ∥2 + γ · ∇p
+
+(7)
+
+i=1
+
+where γ ·∇p introduces controlled perturbation in the
+direction determined by the attacker.
+IV. System and Threat Model
+In this section, we will describe the system model, threat
+model, and design goals, respectively.
+A. System Model
+As illustrated in Fig. 2, DP2Guard is a privacypreserving and Byzantine-robust FL framework designed
+for IIoT environments. It adopts a dual-server structure
+integrated with a blockchain to ensure secure, reliable,
+and auditable aggregation. In each training round, an edge
+
+We consider two types of clients: (1) malicious clients;
+and (2) curious-but-honest clients. Malicious clients deliberately compromise the training process by submitting poisoned gradients aimed at degrading the global
+model’s accuracy. We assume that the maximum proportion of malicious clients does not exceed half of
+the total participating devices. In contrast, curious-buthonest clients follow the protocol but may attempt to
+infer private information from shared local updates, and
+potentially collaborate with others to improve inference
+success. The aggregation process is jointly managed by
+two servers, S1 and S2, which are assumed to be noncolluding and curious-but-honest—that is, they faithfully
+execute the protocol but may analyze collected data to
+recover individual client updates. For the blockchain, we
+follow a standard Byzantine fault tolerance (BFT) model
+commonly employed in permissioned blockchain systems
+[52], [53], where at least ζ > 2/3 of trustee nodes are
+trustworthy and consistently return correct computation
+results. For simplicity, we assume all trustees have uniform
+computational power.
+C. Design Goal
+Given the aforementioned security and privacy threats
+in FL, DP2Guard is designed to meet four key goals:
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020
+
+1) Accuracy: The scheme should preserve the accuracy
+of the global model when no attacks are present.
+Specifically, the integration of privacy-preserving and
+anomaly detection mechanisms should not negatively
+impact the model’s ability to learn from legitimate
+client updates.
+2) Robustness: The scheme should exhibit strong resilience against various types of poisoning attacks,
+including more complex and adaptive ones. It must be
+capable of detecting or mitigating malicious updates
+effectively, while preserving the privacy of benign
+clients.
+3) Privacy: The scheme must guarantee the privacy of
+each client’s local updates, ensuring that no adversary
+(e.g., the servers or other clients) can infer sensitive
+information from the shared local updates. Only the
+originating client should have access to the underlying
+private data.
+4) Eﬀiciency: Given the limited computational and communication resources of edge devices, the scheme
+should be designed with minimal overhead under
+privacy-preserving requirements, making it suitable
+for deployment on resource-limited clients.
+V. DP2Guard Algorithms and Architecture
+In this section, we first introduce the overview of
+DP2Guard scheme. Then, we elaborate on the detailed
+design of DP2Guard. The main notations are shown in
+TABLE II.
+TABLE II: Notation and Description
+Notation Description
+Ei
+gi
+ωt
+ri
+η
+si
+ci
+(t)
+
+τi
+
+Notation Description
+
+Client i
+Di
+Local dataset of Ei
+(1)
+(2)
+Local gradient
+g̃i /g̃i Masked gradient
+t-th round global
+ωti
+t-th round local model
+model
+Random mask value ĝi(1) /ĝi(2) Mean-centered gradient
+Learning rate
+G
+Matrix of centered
+gradients
+Spectral
+deviation
+fi
+Feature vector of
+score
+client Ei
+Median cosine simi- Trust(t)
+Trust score
+i
+larity score
+(1)
+(2)
+Aggregation weight
+g̃agg /g̃agg Aggregated masked
+gradients on S1 and
+S2
+
+A. Overview
+To mitigate both privacy leakage and gradient poisoning
+in FL under IIoT scenarios, we propose DP2Guard, a
+dual-server defense framework that ensures both privacy
+preservation and Byzantine robustness. As illustrated
+in Fig. 3, DP2Guard integrates gradient splitting and
+masking with hybrid anomaly detection to achieve secure
+model aggregation.
+During the local training phase, each edge device i
+computes a gradient vector gi based on its private data.
+
+5
+
+(1)
+
+The client then splits gi into two additive shares, gi and
+(2)
+(1)
+(2)
+gi , such that gi = gi +gi . Each share is independently
+(1)
+(1)
+masked with a random vector ri , forming g̃i = gi + ri
+(2)
+(2)
+and g̃i = gi − ri , which are transmitted to S1 and S2,
+respectively.
+Upon receiving the masked shares from all clients, S1
+(1)
+performs mean-centering on the collected g̃i vectors and
+forwards the processed results to S2. Leveraging both the
+(2)
+centered gradients and the locally held g̃i , S2 executes a
+hybrid anomaly detection mechanism to identify malicious
+behaviors, calculates trust scores for each client, and
+conducts trust-weighted aggregation. The resulting global
+update and trust weights are recorded on the blockchain
+to ensure transparency and tamper resistance. Finally,
+S1 downloads the aggregated gradients and trust weights
+from the blockchain and completes the final aggregation
+using its own masked shares.
+B. Design of DP2Guard
+DP2Guard consists of four main phases: task initialization, local model training, privacy-preserving hybrid
+defense, and adaptive aggregation. Below, we provide a
+detailed description of each phase.
+1) Task Initialization: In this phase, the task publisher
+initializes the FL process by defining an initial global
+model, denoted as w(0) , which is then published to
+the blockchain to guarantee verifiability, integrity, and
+consistency across all participating devices. A subset of
+eligible mobile edge devices is then selected to participate
+in the training. Each selected device downloads the initial
+global model parameters w(0) from the blockchain, which
+serve as the starting point for local training.
+2) Local Model Training: In the t-th communication
+round, each edge device Ei updates its local model by
+training on its private dataset using the global model
+parameters w(t−1) retrieved from the blockchain. After
+completing local training, the device computes its local
+(t)
+gradient update gi . To protect the privacy of this
+gradient, DP2Guard designs a gradient splitting and
+masking strategy. Specifically, edge device Ei first splits
+(1)
+(2)
+its gradient gi into two additive shares gi and gi , such
+(1)
+(2)
+that gi = gi +gi . To obfuscate the true gradient values,
+each device independently generates a fresh random mask
+vector ri ∈ Rm×n at each communication round using a
+pseudo-random number generator (PRNG), where each element is independently and uniformly sampled. The mask
+generation is performed entirely locally on the device,
+without requiring any key agreement or coordination with
+other clients or servers. Using this mask vector, the device
+creates two masked gradient shares:
+(1)
+
+g̃i
+
+(1)
+
+= gi
+
++ ri ,
+
+(2)
+
+g̃i
+
+(2)
+
+= gi
+
+− ri .
+
+(8)
+
+These masked gradients are transmitted separately to
+Servers S1 and S2. This mechanism effectively safeguards
+against direct gradient leakage, no single server can infer
+the original gradient or any intermediate component
+without collaboration. The detailed procedure for this
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020
+
+6
+
+Server 2
+
+Genesis
+
+(#) (#)
+#
+[g# , g % , … , g ! ]
+
+Delete
+
+Block
+
+4
+Benign gradient sets Filter Malicious gradient sets
+Calculate aggregation weights 𝜏
+
+5
+
+1
+
+Initialization training
+
+2
+
+Local Training
+
+3
+
+Split gradient and mask
+
+4
+
+Filter malicious gradients
+
+5
+
+Calculate the sum of the masks
+
+6
+
+Aggregate gradient
+
+7
+
+Send to blockchain
+
+g (")
+
+Server 1
+
+Block
+
+Aggregate gradient
+*
+
+(()
+
+6
+
+(()
+
+(g %&& = * 𝜏!" (g !
+
+(#)
+
+(#)
+
+#
+
+[g# , g % , … , g ! ]
+𝜏
+
+!+$
+
+6 Calculate sum of mask g ($)
+
+Block
+
+Blockchain
+
+7
+
+(#)
+
+g# =g# 𝑃
+Block
+
+Masked
+
+3
+
+(#)
+
+(%)
+
+g# =g# 𝑃&
+
+g!
+
+=g ! 𝑃
+Masked
+
+Masked
+
+Split gradient g$
+
+…
+
+3
+
+g"
+
+2
+
+𝑤$"#$ = 𝑤$" − 𝜂g$
+g$
+
+Masked
+
+Split gradient g !
+Local dataset 𝐷!
+
+Local dataset 𝐷$
+
+1
+
+(%)
+
+g ! =g ! 𝑃&
+
+2
+
+𝑤!"#$ = 𝑤!" − 𝜂g !
+g!
+
+Fig. 3: A brief workflow of the DP2Guard.
+gradient splitting and masking process is presented in
+Algorithm 1.
+Remark. Since each client generates its mask vector
+independently and locally, no inter client communication
+or key negotiation is required, resulting in O(N ) communication complexity, which is significantly more eﬀicient
+than secure aggregation protocols (e.g., SecAgg
+ [47]) that
+require pairwise key agreement with O N 2 overhead.
+Furthermore, a fresh mask vector is independently generated at each round, ensuring statistical independence
+across rounds and preventing attackers from recovering
+true gradients through multi-round differential analysis.
+Specifically, for any
+ two rounds
+ t1 and t2 , the difference
+(1,t )
+(1,t )
+(t )
+(t )
+(t )
+(t )
+g̃i 1 − g̃i 2 = gi 1 − gi 2 + ri 1 − ri 2 remains
+masked by the difference of two independent random
+vectors, which cannot be eliminated.
+3) Privacy-Preserving Hybrid Defense: During each
+training round, an honest edge device Ei randomly
+samples a mini-batch di from its local dataset Di , and
+computes a benign gradient gi accordingly. In contrast,
+malicious clients may submit adversarial gradients deliberately crafted to impair the performance of the global
+
+Algorithm 1: Local Model Training
+Input : Global model w(t−1) , Dataset Di , Local
+(t)
+gradient matrix gi ∈ Rm×n
+(1)
+(2)
+Output: Masked gradients g̃i , g̃i
+r
+r−1
+1 Initialization: wi = w
+;
+/* Training Model and Updating Gradient
+*/
+2 for each edge device i do
+
+(t)
+3
+Compute local gradient: gi ← ∇ℓ w(t−1) ; Di ;
+(t)
+(t)
+4
+Update local model: wi ← w(t−1) − η · gi ;
+/* Gradient Splitting and Masking
+*/
+5
+Generate a random matrix ri ∈ Rm×n ;
+(1)
+6
+Generate two gradient shares gi ∈ Rm×n and
+(2)
+gi ∈ Rm×n ;
+(1)
+(1)
+7
+Compute masked share g̃i ← gi + ri ;
+(2)
+(2)
+8
+Compute masked share g̃i ← gi − ri ;
+/* Sending the Masked Gradient to S1 and S2
+*/
+(1)
+9
+Send g̃i to server S1 ;
+(2)
+10
+Send g̃i to server S2 ;
+11 end
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020
+
+model. This behavior can be formally described as:
+(
+
+∇L wit−1 , di ,
+if device i is honest
+t
+gi =
+Aattack (t, Ghonest , Θ) , if device i is malicious
+(9)
+where Aattack(·) denotes an attack-generation function
+that may utilize the current training round t, the set
+of gradients from honest clients Ghonest, and auxiliary
+parameters Θ.
+While traditional defense schemes (e.g., Euclidean distance [36], cosine similarity [37]) are effective in simple
+scenarios, they may struggle under adaptive poisoning attacks. Furthermore, such methods usually require access to
+raw gradient data, introducing significant privacy risks. To
+mitigate this, DP2Guard introduces a privacy-preserving
+hybrid defense mechanism that enables malicious gradient
+detection without compromising data privacy. The entire
+process is presented in Algorithm 3, which consists of the
+following key steps:
+1) Mean-Centering Gradient: Both servers independently perform mean-centering on the masked gradient
+shares they receive. Specifically, Server S1 computes the
+(1)
+centered vectors ĝi by subtracting the mean of all
+(1)
+(2)
+received masked shares g̃i . Likewise, S2 processes g̃i :
+(1)
+
+− g̃
+
+(1)
+
+(2)
+
+− g̃
+
+(2)
+
+(1)
+
+= g̃i
+
+(2)
+
+= g̃i
+
+ĝi
+
+ĝi
+
+,
+
+where
+
+g̃
+
+,
+
+where
+
+g̃
+
+(1)
+
+(2)
+
+N
+X
+
+=
+
+1
+(1)
+g̃
+N j=1 j
+
+(10)
+
+=
+
+1 X (2)
+g̃
+N j=1 j
+
+(11)
+
+N
+
+(1)
+
+Server S1 then forwards the centered results ĝi to S2 ,
+which conducts hybrid detection without gaining access
+to any individual client’s raw updates.
+(1)
+2) Gradient Reconstruction: Upon receiving ĝi from
+S1 , server S2 reconstructs the centered gradients as follows:
+(1)
+(2)
+ĝi = ĝi + ĝi
+(12)
+where random masks can cancel each other out:
+
+ 
+
+(1)
+(2)
+(1)
+(2)
+ĝi = g̃i − g̃
++ g̃i − g̃
+
+ 
+
+(1)
+(2)
+= gi + ri − g(1) − r + gi − ri − g(2) + r
+(1)
+
+= gi
+
+(2)
+
++ gi
+
+7
+
+Algorithm 2: Gradient Mean-Central
+(1)
+
+where each column corresponds to a centered gradient
+vector from a client. Singular value decomposition (SVD)
+[54] is then applied to extract the principal components:
+G = UΣV⊤
+
+(13)
+
+= gi − g
+
+(15)
+
+Here, U ∈ R
+contains the left singular vectors,
+Σ ∈ Rd×N is a diagonal matrix of singular values
+sorted in descending order, and V ∈ RN ×N contains the
+right singular vectors. The top right singular vector v1
+(corresponding to the largest singular value) is selected as
+the dominant direction. Each client’s gradient is projected
+onto v1 to compute its spectral score:
+2
+(16)
+si = ĝi⊤ v1
+d×d
+
+Clients with high si values are more likely to be
+malicious as their gradients deviate significantly from the
+principal component.
+Cosine similarity: To further assess the directional
+consistency, the cosine similarity between each client’s
+centered gradient and others is calculated as:
+cij =
+
+− g(1) − g(2)
+
+(2)
+
+Input : Masked shares:g̃i and g̃i
+Output: ĝi
+/* Mean-Centering of Shares
+*/
+1 Server S1 : Mean-Centering of First Shares;
+(1)
+2 Receive g̃i
+from all clients;
+3 for each edge device i do
+PN
+(1)
+(1)
+(1)
+4
+Compute:ĝi = g̃i − N1 j=1 g̃j ;
+5 end
+(1)
+6 Send ĝi
+to S2 ;
+7 Server S2 : Construction of Centered Gradient
+(1)
+(2)
+Receive ĝi from S1 and g̃i from all clients;
+8 for each edge device i do
+PN
+(2)
+(2)
+(2)
+9
+Compute:ĝi = g̃i − N1 j=1 g̃j ;
+10 end
+(1)
+(2)
+11 Obtain centered gradient: ĝi = ĝi + ĝi
+= gi − ḡ;
+N
+12 Use {ĝi }i=1 for following anomaly detection;
+
+ĝi⊤ ĝj
+,
+∥ĝi ∥ · ∥ĝj ∥
+
+∀i ̸= j
+
+The median cosine similarity for each client is used as
+a reliability score:
+ci = median ({cij | j ̸= i})
+
+PN
+1
+
+(17)
+
+(18)
+
+Clustering-Based Detection: Next, a two-dimensional
+feature vector is constructed for each client:
+
+Here, g = N j=1 gj denotes the global mean of the true
+(unmasked) gradients.
+3) Malicious Gradient Detection: At this stage, server
+S2 conducts a hybrid anomaly detection procedure in
+collaboration with S1 . The process integrates spectral
+analysis and cosine similarity to the reliability of client
+gradients.
+Spectral Projections: Server S2 aggregates all centered
+gradients into a matrix:
+
+A K-means clustering algorithm with K = 2 is applied
+to these features, producing two clusters C1 and C2 with
+centroids µ1 and µ2 , respectively. To ensure reliable detection, a cluster separation check is performed. We compute
+the Euclidean distance between the two centroids:
+
+G = [ĝ1 , ĝ2 , . . . , ĝN ] ∈ Rd×N
+
+D = ∥µ1 − µ2 ∥
+
+(14)
+
+fi = [si , ci ]
+
+⊤
+
+(19)
+
+(20)
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020
+
+feature vectors are far from the benign centroid, leading
+(t)
+(t)
+to a large Disi and a near-zero γi .
+To balance historical performance and recent behavior,
+DP2Guard utilizes a time-based trust mechanism. For
+each client i, the trust score is updated as:
+
+Algorithm 3: Privacy-Preserving Malicious Gradient Detection
+(1)
+
+Input: Mean-centered masked gradients ĝi from
+(2)
+S1 , masked gradients g̃i from clients
+Output: Trusted gradient set G
+N ×d
+1 Stack all ĝi into matrix G ∈ R
+⊤
+2 Perform SVD: G = U ΣV ; let v1 be the top right
+singular vector
+3 foreach client i do
+4
+Compute spectral score: ssvd
+← |⟨ĝi , v1 ⟩|
+i
+5
+Compute cosine similarity with others:
+6
+ci ← median({cos(ĝi , ĝj )}j̸=i )
+7
+Construct feature vector: ϕi ← [ssvd
+i , ci ]
+8 end
+N
+9 Apply Mean Shift clustering on {ϕi }i=1
+10 Let G ← the cluster with the largest number of
+clients
+11 return G
+
+(t)
+
+(t)
+fi − µ(t)
+
+(t−1)
+
+Trusti = β · Trusti
+
+(t)
+
++(1 − β) · γi ,
+
+β ∈ [0, 1) (24)
+
+Note that this update is applied to all clients in each round,
+including those excluded by the clustering mechanism. For
+(t)
+excluded clients, their near-zero γi causes a significant
+drop in their trust score, ensuring that clients exhibiting
+malicious behavior are penalized even when their gradients
+are already excluded from aggregation. This is particularly
+effective against on-off attacks where adversaries alternate
+between benign and malicious behavior. The normalized
+trust value is used to compute the aggregation weight:
+(t)
+
+(t)
+
+τi
+
+and compare it with an adaptive threshold ϵ derived from
+the intra-cluster distances:
+
+1 ¯
+ϵ=α·
+d1 + d¯2
+(21)
+2
+P
+1
+and d¯2
+=
+where d¯1
+=
+fj ∈C1 ∥fj − µ1 ∥
+|C1 |
+P
+1
+∥f
+−
+µ
+∥
+denote
+the
+average
+intra-cluster
+j
+2
+fj ∈C2
+|C2 |
+distances, and α > 1 is a scaling factor. If D < ϵ, the
+inter-cluster separation is smaller than the intra-cluster
+spread, indicating that all clients exhibit similar behavior
+in the current round. In this case, all clients are treated
+as benign and included in aggregation. If D ≥ ϵ, clients in
+the larger cluster are considered benign, while those in the
+smaller cluster are identified as anomalous and excluded
+from aggregation. This adaptive separation check avoids
+false exclusion of benign clients in attack-free rounds
+while maintaining effective detection when attacks are
+present.
+4) Trust Scoring-Based Weight Computation: The trust
+scoring mechanism ensures that individual client nodes
+contribute appropriately to the global model aggregation
+process [55]. Unlike prior approaches that rely solely on
+per-round behavior, DP2Guard introduces a time-evolving
+trust evaluation scheme that captures clients’ long-term
+reliability.
+In each round t, server S2 calculates the Euclidean
+(t)
+distance between each client’s feature vector fi and the
+(t)
+benign cluster centroid µ :
+(t)
+Disi =
+
+8
+
+(22)
+
+Based on this distance, the direct trust score for device
+Ei is computed as:
+
+
+(t)
+(t)
+γi = 1/ 1 + Disi
+(23)
+For clients in the benign cluster, their feature vectors are
+close to the centroid, resulting in a small Disi (t) and a high
+(t)
+γi . For clients assigned to the anomalous cluster, their
+
+Trusti
+= PN
+(t)
+j=1 Trustj
+
+Server S2 then applies these weights to aggregate the
+received masked gradients:
+N
+X
+
+(2)
+g̃agg
+=
+
+(t)
+
+τi
+
+(2)
+
+· g̃i
+
+(25)
+
+i=1
+
+n
+oN
+(2)
+(t)
+Then, both g̃agg and trust weights τi
+are published
+i=1
+to the blockchain.
+4) Adaptive Aggregation: In the stage, server S1 down(2)
+loads the aggregated masked gradient g̃agg and corresponding trust scores from blockchain. Using the same
+trust weights, S1 performs weighted aggregation over its
+local set of masked gradients:
+(1)
+g̃agg
+=
+
+N
+X
+
+(t)
+
+τi
+
+(1)
+
+· g̃i
+
+(26)
+
+i=1
+
+The final gradient can be reconstructed by combining the
+two:
+(1)
+(2)
+g̃agg = g̃agg
++ g̃agg
+N
+
+
+X
+(t)
+(1)
+(2)
+=
+τi
+gi + ri + gi − ri
+i=1
+
+=
+
+N
+X
+
+(t)
+
+τi
+
+
+
+(1)
+
+gi
+
+(2)
+
+
+
++ gi
+
+(27)
+
+i=1
+
+=
+
+N
+X
+
+(t)
+
+τi
+
+· gi
+
+i=1
+
+This aggregated result g̃agg is then submitted to the
+blockchain to support model updates in the next training
+round.
+VI. Security Analysis
+In this section, we prove the privacy and robustness of
+DP2Guard, and analyze the computational and communication complexity in DP2Guard.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020
+
+Algorithm 4: Trust-Weighted Adaptive Aggregation
+(t)
+
+Input: Trust weights {τi }N
+i=1 ,
+(1)
+Masked gradients {g̃i }N
+i=1 at S1 ,
+(2) N
+{g̃i }i=1 at S2
+Output: Global aggregated gradient g̃agg
+1 At Server S2 :
+2
+Compute weighted aggregation of second shares:
+PN (t) (2)
+(2)
+3
+g̃agg ← i=1 τi · g̃i
+(2)
+(t)
+4
+Send g̃agg and {τi } to blockchain
+At Server S1 :
+(2)
+(t)
+Download the g̃agg and {τi } from blockchain
+7
+Compute weighted aggregation of first shares:
+PN (t) (1)
+(1)
+8
+g̃agg ← i=1 τi · g̃i
+9
+Reconstruct the global aggregated gradient:
+(1)
+(2)
+10
+g̃agg ← g̃agg + g̃agg
+11 return g̃agg
+5
+6
+
+Theorem 1 (Privacy protection against honest-but-curious
+servers). Under the assumption that servers S1 and S2
+do not collude, the execution of DP2Guard does not leak
+any information about the true local gradients gi to either
+server individually.
+We use a standard hybrid argument [56] to prove
+the Theorem 1. Let REALΠ
+A denote the view of an
+adversary A during the real execution of protocol Π,
+and let IDEALF
+A∗ denote the ideal execution where a
+trusted functionality F performs all privacy-sensitive operations. We construct a sequence of hybrid experiments,
+H0 , H1 , . . . , H5 , such that each pair of consecutive hybrids
+is computationally indistinguishable.
+Hyb0 : This hybrid corresponds to the actual execution
+of the DP2Guard protocol (as described in Section V).
+(t)
+Each client computes its true local gradient gi , splits it
+(1)
+(2)
+into two parts gi and gi , and applies a random mask
+(1)
+(1)
+(2)
+(2)
+ri to obtain g̃i = gi + ri and g̃i = gi − ri , which are
+sent to S1 and S2 , respectively.
+Hyb1 : In this hybrid, the simulator replaces the masked
+(1)
+gradient share g̃i sent to S1 with a uniformly random
+(1)
+vector χi of the same dimension. The second share
+(2)
+(1)
+g̃i remains unchanged. Since χi is independent and
+indistinguishable from a valid masked share, and S1 does
+not access the corresponding second share, this view is
+computationally indistinguishable from Hyb0 .
+Hyb2 : Building on Hyb1 , this hybrid replaces the share
+sent to S2 as well. Each client sends a uniformly random
+(2)
+(1)
+(2)
+vector χi to S2 , where χi + χi = χi and χi is
+sampled uniformly at random. As both shares are now
+random and the servers are non-colluding, this hybrid is
+indistinguishable from Hyb1 .
+Hyb3 : In this hybrid, we simulate the internal computations of S1 that are transmitted to S2 , such as
+(1)
+the mean-centered gradients ĝi . Specifically, for each
+(1)
+client i, the simulator replaces ĝi with a randomly
+
+9
+
+(1)
+
+generated vector ψi sampled from a distribution that
+is statistically consistent with that of the true centered
+values. Since S2 does not observe the raw gradients or the
+corresponding masked shares held by S1 , its view remains
+computationally indistinguishable from Hyb2 .
+Hyb4 : Similarly, this hybrid simulates the internal
+computations of S2 that are sent to S1 (e.g., trust scores or
+aggregation results). Each intermediate value is replaced
+(2)
+by a random vector ψi drawn from a consistent distribution. As S1 does not observe the raw gradients or masked
+shares held by S2 , its view remains indistinguishable from
+Hyb3 .
+Hyb5 : Finally, we simulate the messages that S1 sends
+back to the clients (e.g., global model updates) using
+random values that are statistically indistinguishable from
+actual aggregated updates. This completes the transition
+from the real-world protocol to an ideal-world simulation.
+By the transitivity of computational indistinguishability, we conclude that the output of the simulator SIM is
+indistinguishable from the real execution:
+F
+REALΠ
+A ≈ IDEALA∗
+
+Hence, DP2Guard preserves the privacy of local gradients under the honest-but-curious model, ensuring that
+neither S1 nor S2 can learn any sensitive information
+individually.
+VII. Performance Evaluation
+A. Experimental Settings
+All experiments were conducted on a high-performance
+workstation running Ubuntu 20.04 LTS, equipped with
+an Intel i9 CPU, 64 GB of RAM, and four NVIDIA RTX
+4090 GPUs. The FL framework was implemented using
+PyTorch version 1.6.0 and Python version 3.8.10.
+Datasets and Model Architectures: We evaluate our
+proposed scheme on three benchmark datasets: MNIST,
+Fashion-MNIST, and CIFAR-10. The MNIST dataset
+contains 60,000 training and 10,000 testing grayscale
+images of handwritten digits, each of size 28 × 28 pixels
+and classified into 10 categories. The Fashion-MNIST
+dataset consists of 60,000 training and 10,000 testing
+grayscale images representing various types of clothing
+items, also distributed across 10 classes. The CIFAR-10
+dataset contains 50,000 training and 10,000 testing color
+images of size 32 × 32 pixels across 10 classes. For MNIST
+and Fashion-MNIST, we employ the LeNet5 model [57]
+to perform the training tasks. For CIFAR-10, we adopt
+the deeper ResNet18 model [58] to better handle the
+increased complexity of the color image dataset. For all
+experiments, we adopt stochastic gradient descent (SGD)
+as the optimizer, with a learning rate η = 0.01 and a batch
+size of 32.
+Datasets Distribution: We conduct experiments under
+both independent and identically distributed (IID) and
+non-IID data settings. In the IID setting, data samples
+are randomly and uniformly distributed among clients. For
+the non-IID setting, we adopt the commonly used Dirichlet
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020
+
+(a) MNIST (IID)
+
+(c) Fashion-MNIST (IID)
+
+10
+
+(b) MNIST (Non-IID)
+
+(d) Fashion-MNIST
+IID)
+
+(Non-
+
+Fig. 5: Class-wise sample distribution heatmap for 10
+randomly selected clients in a FL setup with 50 clients.
+The datasets used are FashionMNIST and MNIST. Data
+partitioning is performed using a Dirichlet distribution
+with a heterogeneity parameter of α = 0.5 to simulate
+non-IID conditions.
+
+Fig. 4: Impact of training iterations on the effectiveness of
+defense strategies on MNIST and Fashion-MNIST datasets
+under IID and Non-IID settings.
+
+a two-trapdoor HE protocol. These baselines have been
+discussed in detail in Section II. Note that since PBFL
+does not incorporate Byzantine-resilient aggregation, it is
+excluded from the robustness evaluation against poisoning
+attacks and is only included in the privacy and eﬀiciency
+comparisons.
+Attack Type: To comprehensively evaluate the robustness of DP2Guard, we consider four advanced poisoning
+attack scenarios:
+
+distribution strategy [59] to partition the datasets among
+clients. According to the configuration in prior work [60],
+the data heterogeneity parameter is set to α = 0.5, where
+a smaller α indicates higher data skewness and greater
+class imbalance across clients. Fig. 5 illustrates the class
+distribution of 10 selected clients out of a total of 50 under
+this partitioning scheme.
+FL System Settings: In our experiments, we set up 50
+clients for FL training process. Each client computes local
+gradients and sends them to the central server, which
+aggregates these updates using different aggregation rules.
+The FedAvg [49] is adopted as the default aggregation
+mechanism. The training is conducted over 300 global
+communication rounds, with each client performing one
+local epoch per round. To assess the impact of adversarial
+behavior, we set the ratio of adversary Att ratio =
+{0%, 10%, 20%, 30%, 40%}.
+Baselines: We compare DP2Guard with the following
+state-of-the-art methods. For robust FL, we consider
+Multi-Krum [37], DnC [35], and FLTrust [36], which
+focus on defending against poisoning attacks. For privacypreserving FL, we include PBFL [61], which employs
+a double-masking protocol to protect gradient privacy
+but does not support Byzantine attack detection. For
+robust privacy-preserving FL, we consider ShieldFL [41],
+which integrates cosine similarity-based detection with
+
+1) Label-Flipping attack: Label-flipping attacks [62] manipulate the labels of selected training samples on
+the malicious client, causing the local model to learn
+incorrect class boundaries. For example, samples with
+the true label 2 may be maliciously relabeled as 7 to
+cause targeted misclassification. In our experiments,
+each malicious client flips 30% of its local labels.
+2) Fang Attack: In this adaptive attack, the adversary is
+assumed to have full knowledge of all benign gradients
+and the aggregation rule. Following the setting in
+[51], we set the perturbation threshold γmin = 1e − 5,
+and the optimization step size to α = 0.5. The unit
+perturbation direction is determined by the sign of
+the pre-aggregation gradient computed locally by the
+adversary.
+3) Min-Max [35]: In this adaptive attack, the adversary
+has access to all benign client gradients but does
+not know the aggregation rule. An eﬀicient binary
+search algorithm is used to determine the optimal
+perturbation coeﬀicient λ. The initial perturbation
+factor is set to γ = 10, with an initial step size of
+γ/2 = 5, and the search stops when the perturbation
+threshold γmin = 1 × 10−5 is reached. The direction
+of the perturbation is defined as the unit vector of
+the mean of the known benign gradients.
+4) Min-Sum Attack [35]: Min-Sum follows the same pro-
+
+(e) CIFAR10 (IID)
+
+(f) CIFAR10 (Non-IID)
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020
+
+11
+
+TABLE III: Comparison of defense strategies against four poisoning attacks on MNIST, Fashion-MNIST, and CIFAR10 in the IID setting, with malicious-client ratios ranging from 10% to 40%. The best and second-best results are
+highlighted.
+Data set
+
+FedAvg
+
+MNIST
+
+Fashion-MNIST
+
+CIFAR-10
+
+LF Attack
+
+Method
+
+Fang Attack
+
+Min-Max
+
+Min-Sum Attack
+
+10
+
+20
+
+30
+
+40
+
+10
+
+20
+
+30
+
+40
+
+10
+
+20
+
+30
+
+40
+
+10
+
+20
+
+30
+
+40
+
+90.0 84.2
+
+65.4
+
+10.1
+
+95.0
+
+92.4
+
+87.0
+
+80.3
+
+94.0
+
+90.4
+
+86.0
+
+82.9
+
+95.2
+
+93.4
+
+90.1
+
+85.3
+
+FLTrust
+96.5
+MultiKrum 96.0
+
+96.2
+95.8
+
+95.9
+95.4
+
+94.6 96.4 95.0 94.0 93.4 95.9 95.2 94.7 94.1 96.0 95.4 95.0 94.7
+94.0 95.1 90.8 85.2 74.3 96.2 95.0 94.0 85.5 95.7 94.0 92.0 86.3
+
+ShieldFL
+DnC
+
+96.9
+97.0
+
+96.6 96.24 94.5 96.0 95.4 94.1 93.3 96.8 96.0 95.2 94.4 96.5 96.0 95.6 95.1
+96.59 96.26 95.0 95.1 93.6 93.0 92.5 96.0 95.4 95.0 94.1 95.9 95.2 94.7 93.7
+
+DP2Guard
+
+97.2
+
+96.9
+
+96.6
+
+FedAvg
+
+78.0
+
+77.4
+
+76.0
+
+72.3
+
+72.0 65.4
+
+50.0
+
+10.0
+
+76.0
+
+FLTrust
+
+79.2
+
+79.0
+
+78.5
+
+78.2
+
+79.2
+
+78.5
+
+74.7
+
+79.2
+
+MultiKrum 78.7
+ShieldFL
+79.3
+
+78.4
+78.6
+
+78.2
+78.4
+
+78.0 75.7 72.4 63.2 47.2 77.7 76.4 74.2 68.6 77.7 75.4 72.2 68.6
+78.3 79.3 78.6 78.4 74.2 79.3 78.6 78.4 76.9 79.3 78.6 78.4 76.9
+
+DnC
+DP2Guard
+
+79.5
+79.9
+
+79.0
+79.5
+
+78.7
+79.2
+
+78.4 79.2 77.2 76.7 73.9 79.2 78.2 76.7 74.1 78.2 77.0 75.7 74.4
+78.7 79.9 79.5 79.4 78.2 79.9 79.5 79.4 78.6 79.4 78.9 78.7 78.3
+
+FedAvg
+FLTrust
+
+65.0
+72.5
+
+62.4
+72.0
+
+58.0
+71.5
+
+50.3
+70.2
+
+58.0 47.4 28.0 10.0 64.0 61.4 55.0 44.1 64.0 60.4 55.0 47.1
+72.5 71.0 70.5 68.7 72.2 71.0 70.5 68.7 72.0 71.7 71.0 69.7
+
+MultiKrum 71.0
+
+70.4
+
+69.2
+
+67.0
+
+68.1 62.8
+
+ShieldFL
+DnC
+
+73.0
+73.5
+
+72.6
+72.9
+
+72.4
+72.4
+
+71.5 73.0 71.4 70.1 67.2 73.0 72.0 71.2 70.4 73.3 72.6 72.0 70.9
+71.8 71.1 69.6 69.0 66.5 72.0 71.4 71.0 69.1 72.2 71.2 70.7 69.4
+
+DP2Guard
+
+74.2
+
+73.9
+
+73.5
+
+72.4
+
+95.4
+
+96.4
+
+73.4
+
+cedure as Min-Max but changes the objective: instead
+of maximizing the largest deviation, it minimizes the
+sum of squared distances to all benign gradients.
+A binary search is used with γ = 10, step size
+= 5, and stopping threshold γmin = 1 × 10−5 . The
+perturbation direction is the unit vector of the mean
+benign gradient.
+B. Experimental Results
+1) Accuracy evaluation: To evaluate the convergence efficiency of different aggregation algorithms, we conducted
+experiments over 300 global communication rounds on the
+MNIST, Fashion-MNIST, and CIFAR-10 datasets under
+a no-attack scenario, using both IID and non-IID data
+settings. As shown in Fig. 4, all methods achieve high final
+accuracy under the IID setting on MNIST and FashionMNIST. However, DP2Guard stabilizes within the first
+50 rounds, whereas FedAvg and MultiKrum typically
+require over 100 rounds to converge. Under the nonIID setting, the performance gap widens. In particular,
+on the Fashion-MNIST dataset, FedAvg and MultiKrum
+show noticeable fluctuations during training, indicating
+sensitivity to data heterogeneity. In contrast, ShieldFL
+and DP2Guard exhibit smoother convergence curves. On
+the CIFAR-10 dataset with ResNet-18, all methods exhibit
+slower convergence due to the increased model complexity
+and data diversity. Nevertheless, DP2Guard consistently
+achieves competitive final accuracy and demonstrates
+
+95.4
+
+79.0
+
+72.5
+
+95.3
+
+52.2
+
+72.3
+
+95.0
+
+38.3
+
+71.0
+
+97.0
+
+70.2
+
+74.0
+
+96.5
+
+96.0
+
+95.2
+
+74.4
+
+69.0
+
+61.1
+
+76.0
+
+72.4
+
+67.0
+
+61.1
+
+79.0
+
+78.5 74.7
+
+79.0
+
+78.7 78.0
+
+75.7
+
+68.0
+
+73.5
+
+64.2
+
+73.0
+
+57.6
+
+72.2
+
+97.0
+
+70.7
+
+74.0
+
+96.5 96.0
+
+68.0
+
+64.2
+
+73.5 73.0
+
+more stable convergence compared to other baselines
+under both IID and non-IID settings.
+2) Robustness: To comprehensively evaluate the robustness of DP2Guard, we compare all defense methods
+against four representative poisoning attacks: Label Flipping (LF), Fang, Min-Max, and Min-Sum, with maliciousclient ratios ranging from 10% to 40%. Experiments are
+conducted on MNIST, Fashion-MNIST, and CIFAR-10
+datasets under both IID and Non-IID settings. The results
+are summarized in Table III and Table IV.
+Performance under IID setting. As shown in Table
+III, DP2Guard consistently achieves the highest accuracy across all datasets, attack types, and maliciousclient ratios. On the MNIST dataset, DP2Guard maintains accuracy above 95% even under 40% adversary
+ratio across all four attacks, while FedAvg drops sharply
+under Fang attack (from 90.0% to 10.1%) and MultiKrum degrades significantly under Min-Max and MinSum attacks. On Fashion-MNIST, the performance gap
+becomes more evident. Under the Fang attack with 40%
+adversaries, FedAvg collapses to 10.0% and MultiKrum
+falls to 47.2%, whereas DP2Guard retains 78.2%, outperforming ShieldFL (74.2%) and DnC (73.9%). On the more
+complex CIFAR-10 dataset, all methods exhibit lower
+overall accuracy due to the increased task diﬀiculty. Nevertheless, DP2Guard consistently leads, achieving 72.4%
+under LF attack, 71.0% under Fang attack, 72.2% under
+Min-Max attack, and 72.7% under Min-Sum attack at
+
+95.7
+
+57.6
+
+72.7
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020
+
+12
+
+TABLE IV: Comparison of defense strategies against four poisoning attacks on MNIST, Fashion-MNIST, and CIFAR10 in the Non-IID setting, with malicious-client ratios ranging from 0% to 40%. The best and second-best results are
+highlighted.
+Data set
+
+Fashion-MNIST
+
+CIFAR-10
+
+Fang Attack
+
+Min-Max
+
+Min-Sum Attack
+
+10
+
+20
+
+30
+
+40
+
+10
+
+20
+
+30
+
+40
+
+10
+
+20
+
+30
+
+40
+
+10
+
+20
+
+30
+
+40
+
+91.2
+
+88.4
+
+83.0
+
+76.3
+
+84.0 72.2
+
+42.4
+
+10.0
+
+90.0
+
+86.4
+
+79.0
+
+69.3
+
+89.0
+
+84.4
+
+78.0
+
+72.9
+
+FLTrust
+94.5
+MultiKrum 93.0
+
+94.0
+92.4
+
+93.5 92.2 94.0 92.5 91.0 89.4 94.0 93.0 92.0 90.1 94.0 93.4 92.5 90.7
+91.0 87.0 92.1 82.8 70.2 53.3 93.0 90.0 86.0 74.5 92.7 88.0 83.0 74.3
+
+FedAvg
+
+MNIST
+
+LF Attack
+
+Method
+
+ShieldFL
+DnC
+
+95.0 94.5
+95.2 94.6
+
+93.8
+93.8
+
+91.5 94.0 93.0 91.5 88.0
+92.0 93.0 91.0 89.5 87.5
+
+95.0 94.0 93.0 91.4 94.5 94.0 93.0 91.5
+94.0 93.4 92.5 90.1 93.5 92.8 91.7 89.7
+
+DP2Guard
+
+95.5
+
+95.2
+
+94.8
+
+93.5
+
+95.0
+
+93.8
+
+93.5
+
+92.5
+
+95.2 94.5
+
+FedAvg
+
+73.0
+
+71.4
+
+68.0
+
+63.3
+
+64.0 53.4
+
+32.0
+
+10.0
+
+71.0
+
+67.4
+
+60.0
+
+50.1
+
+71.0
+
+65.4
+
+58.0
+
+50.1
+
+FLTrust
+
+76.2
+
+75.8
+
+75.0
+
+74.2
+
+75.2 74.5
+
+73.0 69.7 75.2
+
+74.5
+
+73.5
+
+69.7
+
+75.0
+
+74.7
+
+73.5
+
+70.7
+
+94.0
+
+92.8
+
+95.2
+
+94.8
+
+94.2
+
+93.2
+
+MultiKrum 74.7 74.0 72.2 68.0 70.7 63.4 50.2 34.2 73.7 70.4 65.2 56.6 73.7 69.4 63.2 56.6
+ShieldFL
+76.3 75.6 75.0 74.3 75.3 74.6 73.4 69.2 76.0 75.0 74.0 72.4 76.3 75.6 74.4 72.4
+DnC
+DP2Guard
+
+76.5
+77.0
+
+76.0
+76.5
+
+75.2
+76.2
+
+74.4 74.2 72.2 70.7 67.9 75.2 74.0 72.2 69.1 74.2 73.0 71.0 69.4
+75.4 76.9 76.0 75.4 74.2 76.9 76.5 75.9 74.6 76.0 75.9 75.4 74.8
+
+FedAvg
+FLTrust
+
+57.0
+66.5
+
+54.4
+65.8
+
+49.0
+65.0
+
+40.3
+63.2
+
+48.0 35.4
+66.0 64.5
+
+18.0 10.0 56.0 53.4 46.0 34.1 56.0 52.4 46.0 37.1
+63.0 60.7 66.2 64.5 63.5 61.2 66.0 65.2 64.5 62.2
+
+MultiKrum 63.0
+
+62.0
+
+59.2 55.0
+
+58.1 50.8
+
+38.2
+
+24.3
+
+62.2
+
+58.0
+
+52.2
+
+43.6
+
+62.7
+
+58.0
+
+52.2
+
+43.6
+
+ShieldFL
+DnC
+
+67.3 66.6
+67.5 66.9
+
+66.0
+66.0
+
+64.5 67.0 65.0 63.1 59.2
+65.0 64.1 62.6 61.0 58.5
+
+67.0 66.0 64.8 63.4 67.3 66.2 65.5 64.0
+66.0 65.0 64.2 62.1 66.2 65.0 64.0 62.4
+
+DP2Guard
+
+68.5
+
+67.5
+
+66.4
+
+68.0 67.5
+
+68.0
+
+67.4
+
+40% adversary ratio, surpassing all baselines by 1%–4%.
+Notably, DP2Guard demonstrates the smallest accuracy
+degradation as the poisoning ratio increases, indicating
+strong resilience against escalating adversarial threats.
+Performance under Non-IID setting. As shown in Table IV, the Non-IID data distribution introduces additional challenges, with all methods experiencing accuracy
+reduction compared to the IID setting. Despite this,
+DP2Guard consistently maintains the best performance.
+On MNIST, DP2Guard achieves 93.5% under LF attack,
+92.5% under Fang attack, 92.8% under Min-Max attack,
+and 93.2% under Min-Sum attack at 40% adversary
+ratio, outperforming all baselines. The Fang attack proves
+most destructive in the Non-IID setting: FedAvg and
+MultiKrum nearly collapse on all three datasets, with
+accuracy dropping below 10% and 24% respectively on
+CIFAR-10 at 40% adversary ratio. In contrast, DP2Guard
+retains 64.5% accuracy under the same condition. On
+Fashion-MNIST and CIFAR-10, DP2Guard maintains a
+consistent advantage of 1%–5% over ShieldFL and DnC
+across all attack scenarios, demonstrating its effectiveness
+under data heterogeneity.
+Overall, across all three datasets, four attack types,
+and both IID and Non-IID settings, DP2Guard consistently achieves the highest accuracy with the smallest
+performance degradation as the adversary ratio increases.
+These results validate the effectiveness of the hybrid detection mechanism and trust-based adaptive aggregation
+
+66.5
+
+66.0
+
+64.5
+
+67.0
+
+65.7
+
+68.0
+
+67.5
+
+67.0
+
+66.2
+
+in DP2Guard, confirming its robustness against a wide
+range of poisoning threats in federated learning.
+3) Privacy: To evaluate the privacy-preserving effectiveness of DP2Guard, we conduct gradient inversion
+attacks using the DLG (Deep Leakage from Gradients) [63]
+algorithm, which attempts to reconstruct private training
+data from observed gradients. Experiments are performed
+on both the MNIST and CIFAR-10 datasets.
+We first compare DP2Guard with ShieldFL and FedAvg
+under the standard honest-but-curious server model. As
+shown in Fig. 6, FedAvg, which provides no privacy
+protection, allows the attacker to successfully reconstruct
+recognizable training images. In contrast, both ShieldFL
+and DP2Guard effectively prevent gradient reconstruction, with the reconstructed images being indistinguishable from random noise. These results demonstrate that
+the lightweight gradient splitting and masking mechanism
+in DP2Guard provides privacy protection comparable to
+the HE-based approach adopted by ShieldFL.
+We further evaluate the privacy resilience under a
+more challenging server-client collusion scenario, comparing DP2Guard with DPFLA. As shown in Fig. 7,
+when a server colludes with a client, DPFLA fails to
+protect gradient privacy, and the attacker can successfully
+reconstruct recognizable training images. Under the same
+collusion setting, DP2Guard exhibits some residual visual
+features in the reconstructed images; however, the reconstruction quality is severely degraded and insuﬀicient for a
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020
+
+Ground Truth Iter 0
+
+Iter 30
+
+Iter 150
+
+Ground Truth Iter 0
+
+FedAvg
+
+FedAvg
+
+ShieldFL
+
+ShieldFL
+
+DP2Guard
+
+DP2Guard
+
+(a) MNIST dataset.
+
+Iter 200
+
+Iter 1000
+
+(b) CIFAR-10 dataset.
+
+Fig. 6: Visual comparison of images reconstructed by
+the DLG attack under different defense mechanisms on
+MNIST and CIFAR-10 datasets.
+Ground
+Truth
+
+No
+Server-Client
+Collusion Collusion
+
+Ground
+Truth
+
+DPFLA
+
+DPFLA
+
+DP2Guard
+
+DP2Guard
+
+(a) MNIST dataset.
+
+13
+
+No
+Server-Client
+Collusion Collusion
+
+(a) Computation Cost
+
+(b) Communication Cost
+
+Fig. 8: Per-iteration overhead comparison under 40%
+Byzantine clients. (a) Computational costs. (b) Communication costs.
+
+(b) CIFAR-10 dataset.
+
+Fig. 7: Visual comparison of images reconstructed by the
+DLG attack under server-client collusion between DPFLA
+and DP2Guard on MNIST and CIFAR-10 datasets.
+successful attack. This is because DP2Guard only requires
+non-collusion between the two servers S1 and S2 , and
+does not rely on the assumption of non-collusion between
+servers and clients. These results confirm that DP2Guard
+provides stronger privacy protection than DPFLA even
+under server-client collusion.
+4) Eﬀiciency: We evaluate the eﬀiciency of DP2Guard
+from both theoretical complexity and runtime overhead
+perspectives.
+Complexity Analysis: Table V summarizes the computational and communication complexity of DP2Guard compared with state-of-the-art schemes: PEFL [42], VerifyNet
+[24], and ShieldFL [41]. On the client side, DP2Guard
+requires O (dTprg ) + O (dTadd ) computation for pseudorandom mask generation and gradient splitting, where
+Tprg denotes the cost of generating a pseudo-random
+number and Tadd denotes the cost of a single addition
+operation. These are lightweight arithmetic operations
+without any cryptographic overhead. In contrast, PEFL
+and ShieldFL require O (dTphe ) due to per-element PHE
+encryption, where Tphe ≫ Tadd , and VerifyNet incurs
+O (dN Tvss ) due to per-element verifiable secret sharing
+across N clients. For communication, DP2Guard transmits
+two plaintext masked gradient shares at O(2d|ω|), where
+|ω| is the size of a single plaintext number. PEFL and
+ShieldFL transmit HE ciphertexts at O (d |ωphe |), where
+|ωphe | ≫ |ω| due to ciphertext expansion. VerifyNet
+requires O ((N + dN ) |ωvss |) due to inter-client secret
+sharing. On the server side, the computation of DP2Guard
+
+is dominated by pairwise cosine similarity at O n2 dTadd ,
+performed entirely in plaintext. ShieldFL and PEFL
+perform analogous
+ pairwise operations on HE ciphertexts
+at O n2 dTphe , resulting in substantially higher actual
+computation time since Tphe is orders of magnitude larger
+
+(a) Computation Costs.
+
+(b) Communication Costs.
+
+Fig. 9: Computational and communication overheads for
+different numbers of clients. (a) Computational costs. (b)
+Communication costs.
+than Tadd .
+Runtime Overhead: To further validate the eﬀiciency advantage of DP2Guard, we measure the actual computation
+time and communication cost per training round, comparing DP2Guard with PEFL, VerifyNet, and ShieldFL.
+Fig. 8a presents the per-round execution time breakdown across different phases: local model training, gradient privacy protection, poisoning detection, and secure
+aggregation. The results show that ShieldFL incurs the
+highest overhead, followed by PEFL, both due to HE
+ciphertext operations in the secure aggregation phase.
+VerifyNet introduces significant overhead in the gradient
+privacy protection phase due to inter-client secret sharing
+and verification. In contrast, DP2Guard introduces minimal overhead beyond FedAvg, as its gradient splitting
+and masking operations require only lightweight plaintext arithmetic without any cryptographic operations.
+Fig. 8b shows the communication overhead comparison.
+DP2Guard transmits plaintext masked gradient shares,
+resulting in substantially lower communication cost compared to VerifyNet and ShieldFL, which are dominated by
+inter-client secret sharing messages and HE ciphertexts,
+respectively. PEFL incurs moderate communication overhead due to ciphertext transmission.
+Scalability evaluation: To further validate the practical
+eﬀiciency of DP2Guard, we measure the actual computation time and communication cost under different numbers
+of clients N ∈ {50, 100, 150, 200}. As shown in Fig. 9,
+both the computation time and communication overhead
+of DP2Guard grow linearly with the number of clients,
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020
+
+14
+
+TABLE V: Comparison of computational and communication complexity.
+Scheme
+
+Technique
+
+Computation
+Server
+
+PEFL [42]
+VerifyNet [24]
+ShieldFL [41]
+DP2Guard
+
+PHE
+VSS
+PHE
+GSM
+
+Communication
+
+Client
+
+Server
+
+Client
+
+O(n2 dTphe )
+O(dTphe )
+O(nd|ωphe |)
+O(d|ωphe |)
+O(n2 dTvss )
+O(dN Tvss )
+O((n2 + nd)|ωvss |) O((N + d)|ωvss |)
+O(n2 dTphe )
+O(dTphe )
+O(nd|ωphe |)
+O(d|ωphe |)
+O(n2 dTadd ) O(dTprg ) + O(dTadd )
+O(nd|ω|)
+O(2d|ω|)
+
+PHE: partially homomorphic encryption; GSM: gradient splitting and masking; VSS: verifiable secret sharing. d: gradient dimension; n:
+number of clients. Tprg : cost of generating a pseudo-random number; Tadd : cost of a plaintext addition; Tphe : cost of a PHE encryption
+(Tphe ≫ Tadd ); Tvss : cost of generating a VSS share. |ω|: size of a plaintext number; |ωphe |: size of a PHE ciphertext (|ωphe | ≫ |ω|);
+|ωvss |: size of a VSS share.
+
+remaining close to FedAvg across all scales. In contrast,
+VerifyNet exhibits near-quadratic growth in both computation and communication as N increases, becoming
+increasingly impractical at larger scales. ShieldFL and
+PEFL maintain moderate growth but incur substantially
+higher overhead than DP2Guard due to HE ciphertext
+operations. These results confirm that DP2Guard achieves
+a favorable balance between privacy protection and eﬀiciency, and scales well to larger client populations.
+5) Impact of Parameter β: To investigate the sensitivity
+of DP2Guard to the parameter β, we conduct a parameter
+sensitivity analysis under different attack intensities. Fig.
+10a illustrates the convergence curves under different
+β values with a 40% Byzantine ratio on the MNIST
+dataset. A larger β (e.g., 0.9) assigns excessive weight
+to historical trust, allowing malicious clients to maintain
+high trust scores over extended periods, resulting in slow
+convergence and a final accuracy of only 70.2%. A smaller
+β (e.g., 0.1) responds rapidly to current-round behavior
+but introduces excessive trust score fluctuations, leading
+to unstable aggregation and a limited accuracy of 77.8%.
+In contrast, β = 0.7 achieves the fastest convergence and
+the highest accuracy, effectively balancing responsiveness
+and stability. Fig. 10b further demonstrates this finding
+across different byzantine ratios, where all curves exhibit
+an inverted-U shape peaking at β = 0.74. Based on these
+results, we adopt β = 0.7 as the default setting across all
+experiments.
+VIII. Conclusion
+In this paper, we presented DP2Guard, a lightweight
+PPFL framework designed to address the dual challenges
+of privacy leakage and vulnerability to model poisoning.
+To reduce computational overhead, DP2Guard replaces
+traditional cryptographic techniques with an eﬀicient gradient splitting and masking strategy that protects the
+privacy of local model updates. To improve robustness,
+we designed a hybrid anomaly detection mechanism that
+combines cosine similarity and spectral analysis to effectively identify malicious updates, complemented by a
+trust scoring mechanism that penalizes both excluded
+and surviving anomalous clients. Furthermore, blockchain
+is integrated to provide a secure and auditable training
+process. Extensive experimental results demonstrate that
+
+(a) Convergence with different
+β.
+
+(b) Effect of β under varying
+Byzantine ratios.
+
+Fig. 10: Impact of the factor β on CIFAR-10. (a) Test
+accuracy over communication rounds with 40% Byzantine
+clients for different β. (b) Test accuracy versus β under
+different Byzantine client ratios.
+DP2Guard achieves superior performance compared to
+state-of-the-art defenses, offering enhanced robustness and
+lower communication and computation costs.
+References
+[1] B. Yang, O. Fagbohungbe, X. Cao, C. Yuen, L. Qian, D. Niyato,
+and Y. Zhang, “A joint energy and latency framework for
+transfer learning over 5g industrial edge networks,” IEEE
+Transactions on Industrial Informatics, vol. 18, no. 1, pp. 531–
+541, 2021.
+[2] X. Cao, B. Yang, K. Wang, X. Li, Z. Yu, C. Yuen, Y. Zhang,
+and Z. Han, “Ai-empowered multiple access for 6g: A survey
+of spectrum sensing, protocol designs, and optimizations,” Proceedings of the IEEE, vol. 112, no. 9, pp. 1264–1302, 2024.
+[3] Y. Yang, W. Sun, Q. Wang, G. Sun, C. Yuen, and Y. Zhang,
+“Asynchronous federated learning in uav swarms for realtime image recognition,” IEEE Journal on Selected Areas in
+Communications, 2025.
+[4] S. Ma, Z. Liu, F. Ye, G. Geng, Y. Miao, J. Guo, and J. Ma,
+“A cloud-assisted multi-dimensional reputation management
+scheme with privacy preservation for emergency message dissemination in vanets,” IEEE Transactions on Dependable and
+Secure Computing, pp. 1–18, 2026.
+[5] W. Yang, W. Shang, Z. Liu, and L. Wang, “Titan: Temporalimplicit topology attention network for resource-optimal intelligent vehicle collaborative sensing,” IEEE Transactions on
+Industrial Informatics, pp. 1–12, 2026.
+[6] A. Arunan, Y. Qin, X. Li, and C. Yuen, “A federated learningbased industrial health prognostics for heterogeneous edge
+devices using matched feature extraction,” IEEE Transactions
+on Automation Science and Engineering, vol. 21, no. 3, pp. 3065–
+3079, 2024.
+[7] X. Tang, L. Lou, R. Peng, T. Zhang, Z. Liu, Z. Liu, J. Kang,
+Z. Han, and D. Niyato, “A verifiable privacy-preserving crosschain protocol for trusted vehicle edge computing,” IEEE
+Transactions on Vehicular Technology, 2025.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020
+
+[8] F. Naeem, M. Ali, G. Kaddoum, C. Huang, and C. Yuen,
+“Security and privacy for reconfigurable intelligent surface in
+6g: A review of prospective applications and challenges,” IEEE
+Open Journal of the Communications Society, vol. 4, pp. 1196–
+1217, 2023.
+[9] G. Zhu, W. Shen, Z. Liu, J. Qin, and J. Ma, “Bpflh: Byzantinerobust privacy-preserving federated learning for heterogeneous
+data,” IEEE Transactions on Dependable and Secure Computing, pp. 1–17, 2026.
+[10] Y. Wang, L. Wu, Y. Su, H. Wang, W. Meng, and Z. Liu, “Qsda:
+Quality-aware secure multi-dimensional data aggregation with
+location privacy for hiot,” IEEE Internet of Things Journal, pp.
+1–1, 2026.
+[11] K. Wang, L. Wang, Z. Liu, Y. Luo, K. Zhang, and W. Li,
+“Shift: Enhancing federated learning robustness through clientside backdoor detection,” Information Fusion, p. 104144, 2026.
+[12] L. You, S. Liu, Y. Chang, and C. Yuen, “A triple-step asynchronous federated learning mechanism for client activation,
+interaction optimization, and aggregation enhancement,” IEEE
+Internet of Things Journal, vol. 9, no. 23, pp. 24 199–24 211,
+2022.
+[13] L. You, Z. Guo, C. Yuen, C. Y.-C. Chen, Y. Zhang, and H. V.
+Poor, “A framework reforming personalized internet of things
+by federated meta-learning,” Nature Communications, vol. 16,
+no. 1, p. 3739, 2025.
+[14] L. You, Z. Guo, B. Zuo, Y. Chang, and C. Yuen, “Slmfed: A
+stage-based and layerwise mechanism for incremental federated
+learning to assist dynamic and ubiquitous iot,” IEEE Internet
+of Things Journal, vol. 11, no. 9, pp. 16 364–16 381, 2024.
+[15] W. Wang, S. Zhang, Z. Khan, Z. Liu, D. Cai, T. Li, H. Huang,
+M. Attique Khan, and W. Boulila, “A privacy-preserving authentication scheme for federated learning in drone-assisted
+vehicular networks,” IEEE Transactions on Intelligent Transportation Systems, pp. 1–15, 2025.
+[16] A. Arunan, Y. Qin, X. Li, U.-X. Tan, H. V. Poor, and C. Yuen,
+“Learning more with less: A generalizable, self-supervised framework for privacy-preserving capacity estimation with ev charging data,” IEEE Transactions on Industrial Informatics, vol. 22,
+no. 1, pp. 543–554, 2026.
+[17] K. Wei, J. Li, M. Ding, C. Ma, H. Su, B. Zhang, and H. V. Poor,
+“User-level privacy-preserving federated learning: Analysis and
+performance optimization,” IEEE Transactions on Mobile Computing, vol. 21, no. 9, pp. 3388–3401, 2022.
+[18] Y. Lu, X. Huang, Y. Dai, S. Maharjan, and Y. Zhang, “Differentially private asynchronous federated learning for mobile
+edge computing in urban informatics,” IEEE Transactions on
+Industrial Informatics, vol. 16, no. 3, pp. 2134–2143, 2020.
+[19] W. Liu, X. A. Wang, W. Zhao, W. Jiang, L. Wu, H. Lei,
+Z. Liu, and D. Tang, “Hidden facial verification scheme in iot
+cloud environment based on homomorphic privacy information
+retrieval,” IEEE Internet of Things Journal, vol. 13, no. 4, pp.
+6824–6835, 2026.
+[20] B. Han, B. Li, R. Jurdak, P. Zhang, H. Zhang, P. Feng, and
+C. Yuen, “Pbfl: A privacy-preserving blockchain-based federated
+learning framework with homomorphic encryption and single
+masking,” IEEE Internet of Things Journal, pp. 1–1, 2024.
+[21] W. Yang, X. Wang, Z. Guan, L. Wu, X. Du, and M. Guizani,
+“Securesl: A privacy-preserving vertical cooperative learning
+scheme for web 3.0,” IEEE Transactions on Network Science
+and Engineering, vol. 11, no. 5, pp. 3983–3994, 2024.
+[22] Z. Yang, M. Zhou, H. Yu, R. O. Sinnott, and H. Liu, “Eﬀicient
+and secure federated learning with verifiable weighted average
+aggregation,” IEEE Transactions on Network Science and Engineering, vol. 10, no. 1, pp. 205–222, 2023.
+[23] R. Bi, J. Xiong, C. Luo, J. Ning, X. Liu, Y. Tian, and Y. Zhang,
+“Communication-eﬀicient privacy-preserving neural network inference via arithmetic secret sharing,” IEEE Transactions on
+Information Forensics and Security, vol. 19, pp. 6722–6737,
+2024.
+[24] G. Xu, H. Li, S. Liu, K. Yang, and X. Lin, “Verifynet: Secure
+and verifiable federated learning,” IEEE Transactions on Information Forensics and Security, vol. 15, pp. 911–926, 2020.
+[25] Z. Zhang and Y. Li, “Nspfl: A novel secure and privacypreserving federated learning with data integrity auditing,”
+IEEE Transactions on Information Forensics and Security,
+vol. 19, pp. 4494–4506, 2024.
+
+15
+
+[26] P. Wang, W. Sun, H. Zhang, W. Ma, and Y. Zhang, “Distributed
+and secure federated learning for wireless computing power
+networks,” IEEE Transactions on Vehicular Technology, vol. 72,
+no. 7, pp. 9381–9393, 2023.
+[27] Z. Yuan, Y. Tian, Z. Zhou, T. Li, S. Wang, and J. Xiong, “Trustworthy federated learning against malicious attacks in web 3.0,”
+IEEE Transactions on Network Science and Engineering, vol. 11,
+no. 5, pp. 3969–3982, 2024.
+[28] R. Fotohi, F. Shams Aliee, and B. Farahani, “A lightweight
+and secure deep learning model for privacy-preserving federated
+learning in intelligent enterprises,” IEEE Internet of Things
+Journal, vol. 11, no. 19, pp. 31 988–31 998, 2024.
+[29] X. Zheng, X. Jia, X. Cheng, W. He, L. Sun, L. Guo, Q. Yu,
+and Y. Luo, “Dm-fedmf: A recommendation model of federated
+matrix factorization with detection mechanism,” IEEE Transactions on Network Science and Engineering, pp. 1–15, 2025.
+[30] Y. Dong, X. Chen, K. Li, D. Wang, and S. Zeng, “Flod: Oblivious defender for private byzantine-robust federated learning
+with dishonest-majority,” in European Symposium on Research
+in Computer Security. Springer, 2021, pp. 497–518.
+[31] T. Gehlhar, F. Marx, T. Schneider, A. Suresh, T. Wehrle, and
+H. Yalame, “Safefl: Mpc-friendly framework for private and
+robust federated learning,” in 2023 IEEE Security and Privacy
+Workshops (SPW), 2023, pp. 69–76.
+[32] H. Kasyap and S. Tripathy, “Sine: Similarity is not enough for
+mitigating local model poisoning attacks in federated learning,”
+IEEE Transactions on Dependable and Secure Computing,
+vol. 21, no. 5, pp. 4481–4494, 2024.
+[33] Z. Wang, Q. Hu, X. Zou, P. Hu, and X. Cheng, “Can we
+trust the similarity measurement in federated learning?” IEEE
+Transactions on Information Forensics and Security, vol. 20, pp.
+3758–3771, 2025.
+[34] G. Baruch, M. Baruch, and Y. Goldberg, “A little is enough:
+Circumventing defenses for distributed learning,” Advances in
+Neural Information Processing Systems, vol. 32, 2019.
+[35] V. Shejwalkar and A. Houmansadr, “Manipulating the byzantine: Optimizing model poisoning attacks and defenses for
+federated learning,” in NDSS, 2021.
+[36] X. Cao, M. Fang, J. Liu, and N. Z. Gong, “Fltrust: Byzantinerobust federated learning via trust bootstrapping,” arXiv
+preprint arXiv:2012.13995, 2020.
+[37] P. Blanchard, E. M. El Mhamdi, R. Guerraoui, and J. Stainer,
+“Machine learning with adversaries: Byzantine tolerant gradient
+descent,” Advances in neural information processing systems,
+vol. 30, 2017.
+[38] X. Li, M. Wen, S. He, R. Lu, and L. Wang, “A scheme for
+robust federated learning with privacy-preserving based on
+krum agr,” in 2023 IEEE/CIC International Conference on
+Communications in China (ICCC), 2023, pp. 1–6.
+[39] M. Shayan, C. Fung, C. J. M. Yoon, and I. Beschastnikh,
+“Biscotti: A blockchain system for private and secure federated learning,” IEEE Transactions on Parallel and Distributed
+Systems, vol. 32, no. 7, pp. 1513–1525, 2021.
+[40] P. Mai, R. Yan, and Y. Pang, “Rflpa: A robust federated
+learning framework against poisoning attacks with secure aggregation,” Advances in Neural Information Processing Systems,
+vol. 37, pp. 104 329–104 356, 2024.
+[41] Z. Ma, J. Ma, Y. Miao, Y. Li, and R. H. Deng, “Shieldfl:
+Mitigating model poisoning attacks in privacy-preserving federated learning,” IEEE Transactions on Information Forensics
+and Security, vol. 17, pp. 1639–1654, 2022.
+[42] X. Liu, H. Li, G. Xu, Z. Chen, X. Huang, and R. Lu, “Privacyenhanced federated learning against poisoning adversaries,”
+IEEE Transactions on Information Forensics and Security,
+vol. 16, pp. 4574–4588, 2021.
+[43] X. Feng, W. Cheng, C. Cao, L. Wang, and V. S. Sheng, “Dpfla:
+defending private federated learning against poisoning attacks,”
+IEEE Transactions on Services Computing, 2024.
+[44] B. Jiang, J. Li, H. Wang, and H. Song, “Privacy-preserving
+federated learning for industrial edge computing via hybrid differential privacy and adaptive compression,” IEEE Transactions
+on Industrial Informatics, vol. 19, no. 2, pp. 1136–1144, 2023.
+[45] C. Gu, X. Cui, X. Zhu, and D. Hu, “Fl2dp: Privacy-preserving
+federated learning via differential privacy for artificial iot,”
+IEEE Transactions on Industrial Informatics, vol. 20, no. 4,
+pp. 5100–5111, 2024.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 18, NO. 9, SEPTEMBER 2020
+
+[46] Z. Li, H. Chen, Z. Ni, Y. Gao, and W. Lou, “Towards adaptive
+privacy protection for interpretable federated learning,” IEEE
+Transactions on Mobile Computing, vol. 23, no. 12, pp. 14 471–
+14 483, 2024.
+[47] K. Bonawitz, V. Ivanov, B. Kreuter, A. Marcedone, H. B.
+McMahan, S. Patel, D. Ramage, A. Segal, and K. Seth,
+“Practical secure aggregation for privacy-preserving machine
+learning,” in proceedings of the 2017 ACM SIGSAC Conference
+on Computer and Communications Security, 2017, pp. 1175–
+1191.
+[48] B. Li, Y. Guo, Q. Du, Z. Zhu, X. Li, and R. Lu, “P 3 : Privacypreserving prediction of real-time energy demands in ev charging
+networks,” IEEE Transactions on Industrial Informatics, vol. 19,
+no. 3, pp. 3029–3038, 2023.
+[49] B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A.
+y Arcas, “Communication-eﬀicient learning of deep networks
+from decentralized data,” in Artificial intelligence and statistics.
+PMLR, 2017, pp. 1273–1282.
+[50] C. Fung, C. J. Yoon, and I. Beschastnikh, “The limitations
+of federated learning in sybil settings,” in 23rd International
+Symposium on Research in Attacks, Intrusions and Defenses
+(RAID 2020), 2020, pp. 301–316.
+[51] M. Fang, X. Cao, J. Jia, and N. Gong, “Local model poisoning
+attacks to {Byzantine-Robust} federated learning,” in 29th
+USENIX security symposium (USENIX Security 20), 2020, pp.
+1605–1622.
+[52] D. Reijsbergen, A. Maw, T. T. A. Dinh, W.-T. Li, and C. Yuen,
+“Securing smart grids through an incentive mechanism for
+blockchain-based data sharing,” in Proceedings of the Twelfth
+ACM Conference on Data and Application Security and Privacy, 2022, pp. 191–202.
+[53] M. B. Mollah, J. Zhao, D. Niyato, Y. L. Guan, C. Yuen, S. Sun,
+K.-Y. Lam, and L. H. Koh, “Blockchain for the internet of
+vehicles towards intelligent transportation systems: A survey,”
+IEEE Internet of Things Journal, vol. 8, no. 6, pp. 4157–4185,
+2020.
+[54] A. Hoecker and V. Kartvelishvili, “Svd approach to data
+unfolding,” Nuclear Instruments and Methods in Physics Research Section A: Accelerators, Spectrometers, Detectors and
+Associated Equipment, vol. 372, no. 3, pp. 469–481, 1996.
+[55] Y. Tong, J. Chen, M. Xu, J. Kang, Z. Xiong, D. Niyato, C. Yuen,
+and Z. Han, “Multi-attribute auction-based resource allocation
+for twins migration in vehicular metaverses: A gpt-based drl
+approach,” IEEE Transactions on Cognitive Communications
+and Networking, 2024.
+[56] Y. Lindell, “How to simulate it–a tutorial on the simulation
+proof technique,” Tutorials on the Foundations of Cryptography: Dedicated to Oded Goldreich, pp. 277–346, 2017.
+[57] Y. LeCun, L. Bottou, Y. Bengio, and P. Haffner, “Gradientbased learning applied to document recognition,” Proceedings
+of the IEEE, vol. 86, no. 11, pp. 2278–2324, 2002.
+[58] K. He, X. Zhang, S. Ren, and J. Sun, “Deep residual learning
+for image recognition,” in Proceedings of the IEEE conference
+on computer vision and pattern recognition, 2016, pp. 770–778.
+[59] G. Chen, X. Li, L. You, A. M. Abdelmoniem, Y. Zhang, and
+C. Yuen, “A data poisoning resistible and privacy protection
+federated-learning mechanism for ubiquitous iot,” IEEE Internet of Things Journal, vol. 12, no. 8, pp. 10 736–10 750, 2025.
+[60] E. Bagdasaryan, A. Veit, Y. Hua, D. Estrin, and V. Shmatikov,
+“How to backdoor federated learning,” in International conference on artificial intelligence and statistics. PMLR, 2020, pp.
+2938–2948.
+[61] Y. Ren, Y. Li, G. Feng, and X. Zhang, “Privacy-enhanced and
+verification-traceable aggregation for federated learning,” IEEE
+Internet of Things Journal, vol. 9, no. 24, pp. 24 933–24 948,
+2022.
+[62] B. Biggio, B. Nelson, and P. Laskov, “Poisoning attacks against
+support vector machines,” arXiv preprint arXiv:1206.6389,
+2012.
+[63] L. Zhu, Z. Liu, and S. Han, “Deep leakage from gradients,”
+Advances in neural information processing systems, vol. 32,
+2019.
+
+16
+
+

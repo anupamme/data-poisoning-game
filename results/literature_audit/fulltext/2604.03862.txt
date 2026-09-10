@@ -1,0 +1,3855 @@
+SecureAFL: Secure Asynchronous Federated Learning
+Anjun Gao∗
+
+Feng Wang∗†
+
+Zhenglin Wan
+
+University of Louisville
+Louisville, USA
+
+Northeastern University
+Shenyang, China
+
+National University of Singapore
+Singapore, Singapore
+
+Yueyang Quan
+
+Zhuqing Liu
+
+Minghong Fang
+
+University of North Texas
+Denton, USA
+
+University of North Texas
+Denton, USA
+
+University of Louisville
+Louisville, USA
+
+arXiv:2604.03862v1 [cs.CR] 4 Apr 2026
+
+Abstract
+Federated learning (FL) enables multiple clients to collaboratively
+train a global machine learning model via a server without sharing
+their private training data. In traditional FL, the system follows
+a synchronous approach, where the server waits for model updates from numerous clients before aggregating them to update the
+global model. However, synchronous FL is hindered by the straggler problem. To address this, the asynchronous FL architecture
+allows the server to update the global model immediately upon
+receiving any client’s local model update. Despite its advantages,
+the decentralized nature of asynchronous FL makes it vulnerable
+to poisoning attacks. Several defenses tailored for asynchronous FL
+have been proposed, but these mechanisms remain susceptible to
+advanced attacks or rely on unrealistic server assumptions. In this
+paper, we introduce SecureAFL, an innovative framework designed
+to secure asynchronous FL against poisoning attacks. SecureAFL
+improves the robustness of asynchronous FL by detecting and discarding anomalous updates while estimating the contributions of
+missing clients. Additionally, it utilizes Byzantine-robust aggregation techniques, such as coordinate-wise median, to integrate the
+received and estimated updates. Extensive experiments on various
+real-world datasets demonstrate the effectiveness of SecureAFL.
+
+1
+
+Introduction
+
+Federated learning (FL) [44] is a distributed machine learning paradigm that has gained considerable traction in recent years. It allows
+multiple clients to collaboratively train a shared global model under
+the coordination of a central server. During each training round,
+the server transmits the global model to the clients, who then refine
+their local models using their respective datasets. The clients subsequently send their local model updates back to the server, which
+aggregates these updates to enhance the global model. With its
+emphasis on respecting client privacy, FL has been widely adopted
+across diverse domains [1, 2, 56].
+Most existing FL systems naturally adopt a synchronous design [7, 11, 19, 22, 29, 45, 49, 64, 77], where the server waits to
+receive local model updates from all or most clients before performing aggregation. While this simplifies FL by ignoring global
+model discrepancies among clients, it suffers from the straggler
+problem, where clients with slower hardware or network delays
+take significantly longer to transmit updates. For instance, training
+large-scale models, such as GPT [8], is computationally intensive,
+often requiring days or even weeks on high-performance GPUs.
+Clients with limited computational resources may take even longer,
+leading to severe delays in FL. As model sizes continue to grow, the
+time required for local training increases accordingly, exacerbating
+the inefficiency of synchronous FL. A simple solution is to discard
+CCS Concepts
+updates from slow clients, but this can harm model accuracy and
+• Security and privacy → Systems security.
+waste resources [60].
+The limitations of synchronous FL underscore the need for an
+Keywords
+asynchronous design. In asynchronous FL [13, 14, 33, 43, 50, 62, 66,
+Asynchronous Federated learning, Poisoning Attacks, Robustness
+69, 73], clients operate on different versions of the global model
+when refining their local models, and, crucially, the server updates
+ACM Reference Format:
+Anjun Gao, Feng Wang, Zhenglin Wan, Yueyang Quan, Zhuqing Liu, and Minghong the global model as soon as it receives an update from any client,
+rather than waiting for all clients to complete their training. This
+Fang. 2026. SecureAFL: Secure Asynchronous Federated Learning. In ACM
+enables continuous learning without being bottlenecked by slower
+Asia Conference on Computer and Communications Security (ASIA CCS ’26),
+clients. However, since clients may use outdated versions of the
+June 01–05, 2026, Bangalore, India. ACM, New York, NY, USA, 17 pages.
+https://doi.org/10.1145/3779208.3807486
+global model, update staleness can arise. Despite this challenge,
+asynchronous FL offers significant advantages in handling straggling clients, improving resource utilization, and enhancing scala∗ Equal contribution.
+† Feng Wang conducted this research while he was an intern under the supervision of
+bility. These benefits have led to its widespread adoption in various
+Minghong Fang.
+applications [4, 33, 50, 55], particularly in scenarios where real-time
+updates are essential.
+Like its synchronous counterpart, asynchronous FL is also susceptible to poisoning attacks [5, 7, 20, 40, 58, 59, 61, 68, 72, 78, 80, 81].
+This work is licensed under a Creative Commons Attribution 4.0 International License.
+Malicious clients controlled by an attacker can corrupt their local
+ASIA CCS ’26, Bangalore, India
+training data or alter their model updates before sending them to
+© 2026 Copyright held by the owner/author(s).
+the server. This allows the attacker to manipulate the global model
+ACM ISBN 979-8-4007-2356-8/2026/06
+https://doi.org/10.1145/3779208.3807486
+
+ASIA CCS ’26, June 01–05, 2026, Bangalore, India
+
+to serve its objective, such as causing widespread misclassification [7, 20, 58, 61] or targeting specific predictions [5, 40, 59, 68, 81].
+To mitigate poisoning attacks, various Byzantine-robust aggregation rules have been developed. However, most of these defenses
+are designed for synchronous FL [11, 15, 26, 38, 45, 51, 52, 54, 63, 70],
+where the server can analyze statistical patterns across multiple
+client updates received simultaneously. These synchronous-based
+defenses, however, are not applicable to asynchronous FL, as updates arrive one at a time, making statistical anomaly detection
+unfeasible. Another key challenge in securing asynchronous FL lies
+in handling delayed updates, which often introduce noise and further complicate the server’s ability to differentiate between benign
+and malicious updates. In response to these issues, a few robust
+asynchronous FL frameworks [17, 21, 71, 76] have emerged in recent
+years. However, existing approaches either remain vulnerable to
+poisoning attacks [17, 76] or rely on strong assumptions about the
+server’s capabilities [21, 71], such as assuming access to a separate
+trusted dataset, an assumption that rarely holds in practice.
+In this paper, we introduce SecureAFL, a defense mechanism
+designed for asynchronous FL that enhances robustness by identifying and discarding anomalous updates while estimating missing
+client contributions. Our SecureAFL first applies a filtering mechanism based on the Lipschitz continuity of local updates, ensuring
+that only those conforming to historical patterns are accepted. By
+tracking the evolution of client updates over time, the server evaluates the smoothness of updates and discards those that exhibit
+abrupt deviations, which could indicate adversarial manipulation.
+This approach enables the server to systematically mitigate the impact of malicious updates while preserving the integrity of benign
+contributions.
+Beyond filtering, our proposed SecureAFL introduces a local
+update estimation strategy to reconstruct missing client updates
+using historical information. By approximating these missing updates based on past update trajectories, the server infers plausible
+updates for clients that have not yet contributed in the current
+round. Finally, a Byzantine-robust aggregation mechanism, such as
+the coordinate-wise median [77], is employed to integrate the received and estimated updates, further improving robustness against
+malicious updates. By combining filtering, estimation, and robust
+aggregation, our SecureAFL enhances the security and stability of
+asynchronous FL systems, effectively mitigating the risks posed by
+poisoning attacks.
+We thoroughly assess the performance of our SecureAFL using
+five datasets from various domains, including large-scale benchmark datasets such as CIFAR-10 [37] and CIFAR-100 [37], as well
+as the real-world autonomous driving dataset Udacity [3]. Our evaluation involves ten poisoning attacks consisting of five untargeted
+attacks, five targeted attacks, and a particularly challenging adaptive attack, alongside comparisons with seven recent asynchronous
+FL approaches. Experimental results demonstrate that SecureAFL effectively mitigates diverse existing and adaptive poisoning attacks,
+even when facing scenarios with a high proportion of malicious
+clients. Furthermore, SecureAFL achieves significant improvements
+compared to existing asynchronous FL methods designed to be
+robust against Byzantine adversaries. The key contributions of this
+paper are summarized as follows:
+
+Anjun Gao et al.
+
+Table 1: Summary of key notation.
+Notation
+Definition
+𝑛
+Number of clients
+𝒘𝑡
+Global model at the 𝑡th training round
+𝒈𝑖𝑡
+Local model update from client 𝑖 at round 𝑡
+𝒈ˆ𝑖𝑡
+Estimated local model update from client 𝑖 at round 𝑡
+𝜏𝑖
+Delay of client 𝑖’s local model update
+𝜆𝑖𝑡
+Lipschitz factor for client 𝑖 at round 𝑡
+• We introduce SecureAFL, a novel defense framework designed to
+mitigate poisoning attacks in asynchronous federated learning.
+• By conducting a thorough evaluation against 10 different poisoning attacks across 5 datasets and benchmarking SecureAFL
+against 7 asynchronous federated learning methods, we validate
+its effectiveness in mitigating the effects of poisoning attacks.
+• We demonstrate the resilience of SecureAFL against powerful
+adaptive attacks and highlight its sustained effectiveness even
+when a substantial portion of clients exhibit malicious behavior.
+
+2
+
+Preliminaries and Related Work
+
+Notations: In this paper, ∥·∥ represents the ℓ2 -norm, while [𝑛]
+denotes the set {1, 2, . . . , 𝑛}. Table 1 lists the key notation used in
+this paper.
+
+2.1
+
+Asynchronous FL
+
+In a federated learning (FL) system comprising 𝑛 clients, each client
+𝑖 maintains a local dataset 𝐷𝑖 for 𝑖 ∈ [𝑛]. For convenience, let 𝐷 =
+Ð
+𝑖 ∈ [𝑛] 𝐷𝑖 denote the combined training dataset across all clients
+and L represents the loss function. The clients collaboratively train
+a global model by minimizing a global objective function defined
+Í
+as min𝒘 𝐹 (𝒘) = min𝒘 𝑖 ∈ [𝑛] 𝑓𝑖 (𝒘), where 𝒘 denotes the model
+parameters, 𝑓𝑖 (𝒘) = L (𝐷𝑖 ;𝒘) is the local objective of client 𝑖.
+Traditional FL follows a synchronous approach, where the server
+waits for all client updates before aggregation. However, this process is often slowed by stragglers—clients with delayed submissions.
+To mitigate this issue, asynchronous FL has been introduced. Unlike
+in synchronous FL, where all clients receive the same global model
+at the beginning of a round and update it simultaneously, asynchronous FL allows the server to update the global model immediately
+upon receiving a local update from any client [13, 31, 69, 73]. As
+a result, clients operate independently and may fetch the global
+model at different times, leading to variations in the model versions
+they use for local training. Consequently, each client fine-tunes
+its local model using a potentially outdated version of the global
+model, introducing update staleness. Specifically, let 𝒘 𝑡 represent
+the global model at the 𝑡th training round, and let 𝒈𝑖𝑡 denote the
+local model update from client 𝑖, which is computed based on 𝒘 𝑡 .
+In the 𝑡th round, suppose the server receives a model update 𝒈𝑖𝑡 −𝜏𝑖
+from client 𝑖, which was computed using an earlier global model
+𝒘 𝑡 −𝜏𝑖 from round 𝑡 − 𝜏𝑖 , where 𝜏𝑖 represents the delay in the local
+model update. Upon receiving this update, the server incorporates
+it into the global model through the following update rule:
+𝒘 𝑡 +1 = 𝒘 𝑡 − 𝜂𝒈𝑖𝑡 −𝜏𝑖 ,
+where 𝜂 represents the global learning rate.
+
+(1)
+
+SecureAFL: Secure Asynchronous Federated Learning
+
+ASIA CCS ’26, June 01–05, 2026, Bangalore, India
+
+Table 2: Comparison of Synchronous FL, Semi-asynchronous FL, and Asynchronous FL.
+Representative methods
+Batch update or single update
+Delay or no delay
+Median [77], Trimmed-mean [77], Krum [7],
+FLAME [51], Baybfed [38], Bucketing [36],
+Foolsgold [29], DnC [58], RFLBAT [65],
+Synchronous FL
+Batch update
+No delay
+SignGuard [74], FLShield [34], FreqFed [28],
+BackdoorIndicator [42], FLTrust [11],
+GAA [52], FLARE [63], FoundationFL [23]
+Semi-asynchronous FL
+Catalyst [16], PoiSAFL [53]
+Batch update
+Delay
+Kardam [17], BASGD [76], Sageflow [54],
+Zeno++ [71], AFLGuard [21],
+Asynchronous FL
+Single update
+Delay
+AsyncDefender [6], SecureAFL (Ours)
+Algorithm 1 Asynchronous FL.
+Server:
+1: Initializes the global model 𝒘 0 and distributes it to all clients.
+2: for 𝑡 = 0, 1, 2, · · · ,𝑇 − 1 do
+3:
+Upon receiving model update 𝒈𝑖𝑡 −𝜏𝑖 from client 𝑖, the global
+model is updated as 𝒘 𝑡 +1 = 𝒘 𝑡 − 𝜂𝒈𝑖𝑡 −𝜏𝑖 .
+4:
+Sends the updated global model 𝒘 𝑡 +1 to client 𝑖.
+5: end for
+Client 𝑖, 𝑖 ∈ [𝑛]:
+6: repeat
+7:
+Obtains the global model 𝒘 𝑡 transmitted by the server.
+Calculates the gradient 𝒈𝑖𝑡 using 𝒘 𝑡 and the local training
+8:
+dataset, then transmits 𝒈𝑖𝑡 to the server.
+9: until Convergence
+
+The procedure for asynchronous FL is outlined in Algorithm 1.
+In this algorithm, 𝑇 represents the total number of training rounds.
+
+2.2
+
+Poisoning Attacks to FL
+
+The decentralized nature of FL makes the global model vulnerable to poisoning attacks through poisoned local training data or
+altered local model updates. Poisoning attacks in FL can be categorized as untargeted [7, 20, 58, 61] or targeted [5, 40, 59, 68, 81].
+Untargeted attacks, such as label flipping attack [61], sign flipping
+attack [20], and Gaussian attack [7], aim to degrade overall model
+performance by introducing misleading updates. Targeted attacks,
+such as backdoor attacks [5, 40, 59, 68, 81], manipulate the model
+to misbehave only under specific conditions. For example, in the
+distributed backdoor attack (DBA) attack [68], the attacker embeds different backdoor triggers into the training data of malicious
+clients, ensuring the model behaves normally in most cases but
+produces malicious outputs for specific inputs.
+
+allowing the server to identify and mitigate malicious behavior
+using robust aggregation rules.
+
+2.4
+
+Existing Defenses for Asynchronous FL
+
+In recent years, several Byzantine-robust methods have been proposed specifically for asynchronous FL [17, 21, 71, 76]. For example,
+BASGD [76] introduces a buffering mechanism that accumulates
+delayed updates, averages updates within each buffer, and then applies a median-based aggregation across buffers. Other approaches,
+such as Sageflow [54], Zeno++ [71], and AFLGuard [21], rely on
+the availability of a trusted dataset at the server to generate reference updates and evaluate incoming updates based on their alignment with this reference. While these methods adapt robustness
+techniques to asynchronous settings, they rely on additional assumptions or mechanisms that may not hold in practice. A more
+recent defense, AsyncDefender [6], assigns weights according to
+the cosine similarity between client updates and the global model.
+
+2.5
+
+Synchronous vs. Semi-Asynchronous vs.
+Asynchronous FL
+
+Robust Aggregation in Synchronous FL
+
+Table 2 summarizes the key differences between synchronous FL,
+semi-asynchronous FL, and asynchronous FL. Synchronous FL
+adopts a batch-update mechanism without update delay, enabling
+a wide range of robust aggregation rules but suffering from the
+straggler problem. Semi-asynchronous FL relaxes strict synchronization by allowing delayed updates while still performing batch
+aggregation, which reduces straggler impact and permits limited
+robust defenses such as Catalyst [16] and PoiSAFL [53]. In contrast, asynchronous FL updates the global model immediately upon
+receiving a single client update, eliminating server-side waiting
+and improving scalability. However, this single-update and delayedupdate setting prevents the direct application of batch-based robust
+aggregation rules, requiring fundamentally different defense designs such as Kardam [17], BASGD [76], Sageflow [54], Zeno++ [71],
+AFLGuard [21], AsyncDefender [6] and our proposed SecureAFL.
+
+Most existing robust aggregation rules for federated learning, including Median and Trimmed-mean [77], Krum [7], FLAME [51],
+Baybfed [38], as well as many others [11, 12, 15, 23–25, 28, 30, 41,
+45, 47, 48, 52, 57, 63, 70, 75, 79], are designed for synchronous FL settings. In synchronous FL, the server collects multiple client updates
+computed from the same global model before aggregation. This
+batch-based setting enables statistical comparisons across updates,
+
+Despite recent progress, existing defenses for asynchronous FL
+exhibit notable limitations. First, methods such as Kardam [17] and
+BASGD [76] fail to effectively mitigate poisoning attacks under
+strong adversarial settings, as demonstrated in our experiments.
+
+2.3
+
+2.6
+
+Limitations of Existing Defenses
+
+ASIA CCS ’26, June 01–05, 2026, Bangalore, India
+
+Second, defenses including Sageflow [54], Zeno++[71], and AFLGuard [21] impose strong assumptions on the server, requiring
+access to a trusted dataset that closely matches the clients’ data distribution, an assumption that is often unrealistic. AsyncDefender [6]
+weights updates by their directional alignment with the global
+model, but this design can be exploited by the attacker who crafts
+well-aligned malicious updates to evade detection.
+Several recent works [16, 27, 46, 53] also address robustness under delayed updates. However, approaches such as Catalyst [16]
+and PoiSAFL [53] operate in semi-asynchronous settings, where the
+server must still wait for a batch of delayed updates. Other methods [27, 46] rely on blockchain or homomorphic encryption, which
+introduce substantial computational and deployment overhead. In
+contrast, we focus on a fully asynchronous setting, where the
+server updates the global model immediately upon receiving a single update, without relying on trusted data or heavy cryptographic
+assumptions. Note that in [35], history is incorporated via per-client
+momentum to improve robust aggregation, whereas our approach
+uses historical patterns to estimate missing or delayed updates,
+leading to a fundamentally different mechanism and objective.
+
+3
+
+Threat Model
+
+Attacker’s goal and knowledge: Building on prior works [11,
+20, 58], we assume that the attacker controls a subset of malicious
+clients capable of either poisoning their local training data or directly altering their model updates to advance the attacker’s objectives. The attacker may possess either full or partial knowledge of
+the FL system. In a full-knowledge attack, the attacker has access to
+all clients’ model updates and is aware of the server’s defense mechanism. In contrast, under a partial-knowledge attack, the attacker is
+limited to the model updates of malicious clients while still knowing
+the server’s defense strategy. As noted in [20, 58], full-knowledge
+attacks are significantly more potent than their partial-knowledge
+counterparts. Therefore, we employ the full-knowledge attack to
+assess the resilience of our proposed defense.
+Defender’s goal and knowledge: The defender lacks any prior
+knowledge of the attacker’s strategy or the number of malicious
+clients in the system. Our objective is to develop a reliable defense
+mechanism for asynchronous FL that meets two key criteria. First,
+in a benign environment where all clients behave honestly, the
+global model trained with our defense should achieve performance
+comparable to that of AsyncSGD [82], the state-of-the-art approach
+in such settings. Second, when facing poisoning attacks, the defense
+must effectively limit the impact of malicious clients, preserving
+the integrity of the learned model.
+
+4 The SecureAFL Algorithm
+4.1 Overview
+Our proposed method, SecureAFL, strengthens asynchronous FL
+systems against adversarial threats by systematically identifying
+malicious updates, reconstructing missing client contributions, and
+applying a resilient aggregation strategy. It begins by evaluating
+the consistency of local updates through their smoothness properties, discarding those that exhibit abrupt deviations from historical
+
+Anjun Gao et al.
+
+trends. To address the challenge of incomplete client participation, SecureAFL approximates the missing updates by leveraging
+past model evolution, ensuring that the aggregation process remains balanced. Finally, the server combines both received and estimated updates using a Byzantine-robust aggregation mechanism
+that limits the influence of malicious manipulations. By seamlessly
+detecting anomalous updates, reconstructing missing client contributions, and employing a resilient aggregation strategy, SecureAFL
+safeguards the learning process from malicious disruptions. This
+cohesive approach ensures that unreliable updates are excluded,
+plausible estimates compensate for incomplete participation, and
+the final aggregation remains robust, ultimately maintaining the
+integrity of the global model.
+
+4.2
+
+Local Model Updates Filtering
+
+Our SecureAFL incorporates a filtering mechanism grounded in the
+Lipschitz-smooth property of local model updates, leveraging their
+inherent smoothness to differentiate between benign and malicious
+contributions. This property ensures that updates do not change
+too abruptly, thereby contributing to the stability of the learning
+process. To illustrate this in the context of our approach, consider a
+training round 𝑡, where the server receives the local model update
+𝜑
+𝒈𝑖𝑡 −𝜏𝑖 from client 𝑖. Let 𝒈𝑖 denote the last local model update that
+client 𝑖 sent to the server during training round 𝜑, where clearly,
+𝜑 < 𝑡 − 𝜏𝑖 . These earlier updates serve as a reference to track the
+evolution of client-side models over time. Additionally, let 𝒘 𝑡 −𝜏𝑖
+and 𝒘 𝜑 represent the corresponding global models used by client 𝑖
+𝜑
+to compute 𝒈𝑖𝑡 −𝜏𝑖 and 𝒈𝑖 , respectively.
+To assess the consistency of the received update, the server
+calculates a Lipschitz factor for client 𝑖 at round 𝑡, denoted as 𝜆𝑖𝑡 ,
+which is defined as:
+𝜑
+𝒈𝑡 −𝜏𝑖 − 𝒈𝑖
+.
+(2)
+𝜆𝑖𝑡 = 𝑖𝑡 −𝜏
+∥𝒘 𝑖 − 𝒘 𝜑 ∥
+By computing 𝜆𝑖𝑡 , the server quantifies the smoothness of the
+local model update, allowing it to evaluate whether the update
+aligns with expected behavior. To systematically track this metric,
+the server maintains a historical record of all computed Lipschitz
+factors. Let 𝑄 𝑡 denote the list of Lipschitz factors up to round 𝑡,
+capturing the evolution of local model updates over time. The motivation behind this approach is to identify anomalous or potentially
+malicious updates by comparing the smoothness of the current
+update against the historical distribution of client behaviors. Specifically, a local model update 𝒈𝑖𝑡 −𝜏𝑖 is deemed benign if it satisfies:
+𝜆𝑖𝑡 ≤ 𝑄 𝛼𝑡 ,
+
+(3)
+
+where 𝑄 𝛼𝑡 represents the 𝛼-th percentile of values in 𝑄 𝑡 . This
+percentile-based threshold helps filter out abnormal updates, ensuring that only those within an expected range are accepted. By
+enforcing this constraint, our method effectively filters out abrupt
+or suspicious changes in model updates, which may indicate malicious behavior, such as data poisoning or model manipulation.
+
+4.3
+
+Local Model Updates Estimation
+
+Our SecureAFL retains both the global model and the received
+local model updates from each training round. At round 𝑡, upon
+receiving the local model update 𝒈𝑖𝑡 −𝜏𝑖 from client 𝑖, the server
+
+SecureAFL: Secure Asynchronous Federated Learning
+
+ASIA CCS ’26, June 01–05, 2026, Bangalore, India
+
+Algorithm 2 Estimate the client’s update.
+
+model version 𝒘 𝑣 , where 𝑣 < 𝑡. Applying the Cauchy mean value
+theorem [39], we estimate the local model update for client 𝑘 at
+round 𝑡 as:
+
+Input: Client 𝑘; global models up to round 𝑡; model updates received up to round 𝑡; L-BFGS buffer size 𝜖.
+Output: Estimated update 𝒈ˆ𝑘𝑡 .
+𝑡,𝜖
+𝑡,𝜖
+1: Update the L-BFGS buffers 𝚽 and 𝚷𝑘 .
+𝑡
+𝑡
+𝑣
+2: Δ𝒘 = 𝒘 − 𝒘 .
+3: // We denote Diag(𝒀 ) as the matrix consisting of the diagonal
+elements of 𝒀 , and Tril(𝒀 ) as the lower triangular portion of
+𝒀 , with 𝒀 ⊤ representing the transpose of 𝒀 .
+𝑡,𝜖
+𝑡,𝜖
+𝑡,𝜖
+4: 𝒀𝑘 = (𝚽 ) ⊤ 𝚷𝑘 .
+𝑡,𝜖
+𝑡,𝜖
+𝑡,𝜖
+𝑡,𝜖
+5: 𝑩𝑘 = Diag(𝒀𝑘 ), 𝑱𝑘 = Tril(𝒀𝑘 ).
+𝑡
+−1
+⊤
+𝑡
+−1
+𝑡
+−1
+6: 𝜇 = ((Δ𝒈𝑘 ) Δ𝒘
+)/((Δ𝒘 ) ⊤ Δ𝒘 𝑡 −1 ).
+ 𝑡,𝜖
+ −1  𝑡,𝜖 ⊤ 𝑡 
+𝑡,𝜖 ⊤
+−𝑩𝑘
+(𝑱𝑘 )
+(𝚷𝑘 ) Δ𝒘
+.
+7: 𝒍 =
+𝑱𝑘𝑡,𝜖
+𝜇 (𝚽𝑡,𝜖 ) ⊤ 𝚽𝑡,𝜖
+𝜇 (𝚽𝑡,𝜖 ) ⊤ Δ𝒘 𝑡
+ 𝑡,𝜖
+
+𝑡,𝜖
+𝑡
+𝑡
+𝑡
+𝜇𝚽
+8: 𝑯𝑘 Δ𝒘 = 𝜇Δ𝒘 − 𝚷𝑘
+𝒍.
+9: 𝒈ˆ𝑘𝑡 = 𝒈𝑘𝑣 + 𝑯𝑘𝑡 Δ𝒘 𝑡 .
+Algorithm 3 Our SecureAFL.
+Server:
+1: Initializes the global model 𝒘 0 and distributes it to all clients.
+2: 𝑄 ← ∅.
+3: for 𝑡 = 0, 1, 2, · · · ,𝑇 − 1 do
+
+After receiving the model update 𝒈𝑖𝑡 −𝜏𝑖 from client 𝑖:
+5:
+if 𝑡 = 0 then
+Apply ℓ2 -norm clipping to 𝒈𝑖0 with threshold 𝐺: if 𝒈𝑖0 >
+6:
+𝐺, rescale 𝒈𝑖0 such that 𝒈𝑖0 = 𝐺.
+7:
+Sets 𝒈 0 ← 𝒈𝑖0 .
+8:
+else
+Determines the Lipschitz factor 𝜆𝑖𝑡 from client 𝑖 using
+9:
+Eq. (2).
+Ð
+10:
+𝑄 ← 𝑄 {𝜆𝑖𝑡 }.
+11:
+Estimates the update 𝒈ˆ𝑘𝑡 for each of the remaining 𝑛 − 1
+clients according to Eq. (4).
+12:
+if Eq. (3) is satisfied then
+13:
+Computes the aggregated update 𝒈𝑡 per Eq. (5).
+14:
+else
+15:
+Computes the aggregated update 𝒈𝑡 per Eq. (6).
+16:
+end if
+17:
+end if
+18:
+Updates the global model as 𝒘 𝑡 +1 = 𝒘 𝑡 − 𝜂𝒈𝑡 .
+19:
+Sends the updated global model 𝒘 𝑡 +1 to client 𝑖.
+20: end for
+4:
+
+does not immediately incorporate it into the global model. Instead,
+utilizing historical information such as stored global models and
+past updates, our SecureAFL approximates the local model updates
+of the remaining 𝑛 −1 clients. Let S represent the set of these clients,
+i.e., S = [𝑛] \ {𝑖}. For each client 𝑘 ∈ S, SecureAFL estimates its
+local model update at round 𝑡, after which the server aggregates
+client 𝑖’s received update 𝒈𝑖𝑡 −𝜏𝑖 with the estimated updates from the
+other 𝑛 − 1 clients. The core challenge, therefore, is to accurately
+infer these missing updates based on historical information.
+For a given client 𝑘 ∈ S, let its most recent model update sent
+to the server be 𝒈𝑘𝑣 , which was computed using a previous global
+
+𝒈ˆ𝑘𝑡 = 𝒈𝑘𝑣 + 𝑯𝑘𝑡 (𝒘 𝑡 − 𝒘 𝑣 ),
+
+(4)
+
+where 𝑯𝑘𝑡 represents the integrated Hessian matrix associated with
+client 𝑘 at training round 𝑡. It is derived by averaging the Hessian
+matrix along the trajectory between the past global model 𝒘 𝑣 and
+∫1
+the current global model 𝒘 𝑡 , computed as 𝑯𝑘𝑡 = 0 𝑯 (𝒘 𝑣 + 𝑥 (𝒘 𝑡 −
+𝒘 𝑣 )) 𝑑𝑥.
+In Eq. (4), it is evident that the server can estimate the updates
+from clients by leveraging both the stored historical data and the
+current global model at round 𝑡. However, directly calculating the
+estimated update 𝒈ˆ𝑘𝑡 from this equation is computationally demanding, primarily due to the need to compute the integrated Hessian
+matrix 𝑯𝑘𝑡 . To address this challenge, we propose an approximation
+of the integrated Hessian matrix using the well-known L-BFGS algorithm [9, 10]. Rather than calculating the Hessian matrix explicitly,
+the L-BFGS method estimates it by utilizing a limited set of historical information from previous training rounds. Specifically, we
+define Δ𝒘 𝑡 = 𝒘 𝑡 − 𝒘 𝑣 as the global model difference at round 𝑡, and
+Δ𝒈𝑘𝑡 = 𝒈ˆ𝑘𝑡 − 𝒈𝑘𝑣 as the difference in the local model update for client
+𝑘 at round 𝑡. Furthermore, 𝚽𝑡,𝜖 = {Δ𝒘 𝑡 −𝜖 , Δ𝒘 𝑡 −𝜖+1, · · · , Δ𝒘 𝑡 −1 } represents the set of global model differences from the past 𝜖 rounds,
+and 𝚷𝑘𝑡,𝜖 = {Δ𝒈𝑘𝑡 −𝜖 , Δ𝒈𝑘𝑡 −𝜖+1, · · · , Δ𝒈𝑘𝑡 −1 } represents the local model
+update differences for client 𝑘 over the same period. The L-BFGS
+method uses these differences, along with the global model difference Δ𝒘 𝑡 , to compute Hessian-vector products 𝑯𝑘𝑡 Δ𝒘 𝑡 , which
+are then used to estimate the local model update 𝒈ˆ𝑘𝑡 . Algorithm 2
+presents the pseudocode for estimating the update of client 𝑘 during
+the training round 𝑡, where 𝑘 ∈ S.
+
+4.4
+
+Local Model Updates Aggregation
+
+After receiving client 𝑖’s update 𝒈𝑖𝑡 −𝜏𝑖 , the server estimates the
+local updates of the remaining clients. To ensure robustness against
+poisoning attacks, it then applies a Byzantine-robust aggregation
+strategy, such as the coordinate-wise median [77], to aggregates
+these updates. Specifically, if Eq. (3) holds, indicating that client 𝑖’s
+update is deemed reliable, the server integrates it with the estimated
+updates as:
+𝒈𝑡 = Median(𝒈𝑖𝑡 −𝜏𝑖 , {𝒈ˆ𝑘𝑡 }𝑘 ∈ S ),
+
+(5)
+
+where 𝒈𝑡 represents the aggregated update, Median(·) denotes the
+coordinate-wise median aggregation [77], and S refers to the set of
+the remaining 𝑛 − 1 clients, excluding client 𝑖. Conversely, if Eq. (3)
+is not satisfied, suggesting that client 𝑖’s update is likely malicious,
+the server disregards it and aggregates only the estimated updates:
+𝒈𝑡 = Median({𝒈ˆ𝑘𝑡 }𝑘 ∈ S ).
+
+(6)
+
+It is important to note that instead of a simple averaging strategy, the server employs a robust aggregation mechanism in both
+Eq. (5) and Eq. (6). This choice stems from the server’s fundamental
+limitation: it lacks prior knowledge of the attacker’s presence. Since
+malicious clients craft their updates strategically, their estimated
+updates remain adversarial, potentially degrading the global model.
+Therefore, using a robust aggregation rule helps mitigate the influence of these harmful updates, enhancing the security and reliability
+
+ASIA CCS ’26, June 01–05, 2026, Bangalore, India
+
+Anjun Gao et al.
+
+of the training process. We also remark that if client 𝑖’s update is
+considered benign, it is not applied directly to the global model.
+Instead, it is combined with estimated updates from other clients
+(see Eq. (5)). This approach ensures that valuable information embedded in benign clients’ past update trajectories is preserved. By
+incorporating estimations based on historical updates, we enhance
+the robustness of SecureAFL, as demonstrated in Table 7.
+Algorithm 3 presents the pseudocode of SecureAFL, focusing
+solely on the server-side procedure. In the first communication
+round, no historical updates are available to compute the Lipschitz
+factor or construct the L-BFGS buffers. Therefore, the server applies ℓ2 -norm clipping to the received updates to ensure bounded
+influence. Specifically, if the ℓ2 norm of a client’s update exceeds
+a predefined threshold 𝐺, the update is rescaled to have norm 𝐺.
+In each of the following training rounds, upon receiving a local
+model update from client 𝑖, the server first calculates the Lipschitz
+factor 𝜆𝑖𝑡 for the client. If the received update is deemed benign, the
+server incorporates it with the estimated updates; otherwise, only
+the estimated updates are aggregated. Finally, the server transmits
+the updated global model back to client 𝑖.
+
+5
+
+Theoretical Performance Analysis
+
+Assumption 1. Each benign objective 𝑓 𝑗 for 𝑗 ∈ H is differentiable
+and has 𝐿-Lipschitz gradient. That is, for all 𝒘, 𝒗 ∈ R𝑑 , and letting
+Í
+𝐹 H (𝒘) = 𝑚1 𝑗 ∈ H 𝑓 𝑗 (𝒘), we have:
+(7)
+
+Consequently, the benign objective 𝐹 H is also 𝐿-smooth.
+
+(8)
+
+𝒘
+
+(12)
+
+Here F𝑡 denotes the sigma-algebra generated by the entire history up
+to 𝒘 𝑡 .
+Assumption 6. For any benign client 𝑗 ∈ H , at any round 𝑡 in
+which 𝑗 ≠ 𝑖, the estimator output satisfies the second-moment bound
+
+
+2
+E ∥𝒈ˆ 𝑡𝑗 − ∇𝑓 𝑗 (𝒘 𝑡 )∥ 2 | F𝑡 ≤ 𝜀 est
+.
+(13)
+The constant 𝜀 est depends on the L-BFGS buffer size, curvature variation, and how often the client updates are refreshed.
+Assumption 7. Byzantine behavior is arbitrary in communication; however, due to the Lipschitz filter and/or an explicit server-side
+clipping rule, all vectors that enter the median satisfy a uniform
+second-moment bound:
+
+
+E ∥𝒗 ∥ 2 | F𝑡 ≤ 𝐺 2, ∀𝒗 ∈ V𝑡 , ∀𝑡 .
+(14)
+Moreover, the number of Byzantine vectors in V𝑡 is at most 𝑏.
+Assumption 8. There exists 𝜁 ≥ 0 such that for all 𝒘,
+1 ∑︁
+∥∇𝑓 𝑗 (𝒘) − ∇𝐹 H (𝒘)∥ 2 ≤ 𝜁 2 .
+𝑚
+
+(15)
+
+Theorem 1 (Convergence of SecureAFL under bounded tracking error). Let Assumptions 1–8 hold. Suppose the stepsize satisfies
+1
+0<𝜂≤
+.
+(16)
+4𝐿
+Then for any 𝑇 ≥ 1,
+
+𝑇 −1
+ 4 𝐹 H (𝒘 0 ) − 𝐹 H ★
+1 ∑︁ 
+2
+E ∥∇𝐹 H (𝒘 𝑡 )∥ 2 ≤
++ 4𝐸 track
+,
+(17)
+𝑇 𝑡 =0
+𝜂𝑇
+2
+where 𝐸 track
+can be chosen as
+
+
+2
+2
+2
+𝐸 track
+≤ 𝐶 med 𝜁 2 + 𝜀 est
++ 𝜎 2 + 𝐿 2𝜂 2𝜏max
+𝐺2 ,
+
+(18)
+
+for an absolute constant 𝐶 med > 0 that depends only on the coordinatewise median bound used in the analysis.
+□
+
+Corollary 5.1 (Diminishing stepsize). Under the conditions of
+1 √𝑐
+Theorem 1, choose 𝜂 = min{ 4𝐿
+,
+} for any 𝑐 > 0. Then
+𝑇
+
+Assumption 3. There are at most 𝑏 Byzantine clients and 𝑚 = 𝑛−𝑏
+benign clients, and the median input size always strictly exceeds twice
+the Byzantine count:
+|V𝑡 | ≥ 2𝑏 + 1,
+
+E[∥𝝃𝑖,𝑡 ∥ 2 | F𝑡 ] ≤ 𝜎 2 .
+
+Proof. The proof is relegated to Appendix B.
+
+Assumption 2. 𝐹 H is bounded from below:
+inf 𝐹 H = 𝐹 H ★ > −∞.
+
+E[𝝃𝑖,𝑡 | F𝑡 ] = 0,
+
+𝑗 ∈H
+
+In this section, we provide a non-convex convergence guarantee
+for SecureAFL under asynchronous updates, L-BFGS-based gradient estimation for non-uploading clients, and coordinate-wise
+median
+in the presence of Byzantine clients. Let V𝑡 =
+ 𝑡 −𝜏𝑖 aggregation
+
+𝒈𝑖
+∪ 𝒈ˆ𝑘𝑡 : 𝑘 ∈ S , which denotes the set of vectors input to
+the coordinate-wise median aggregation at round 𝑡, H be the set
+of benign clients of total clients. We first introduce some necessary
+assumptions for analysis.
+
+∥∇𝑓 𝑗 (𝒘) − ∇𝑓 𝑗 (𝒗)∥ ≤ 𝐿∥𝒘 − 𝒗 ∥.
+
+where 𝝃𝑖,𝑡 is a zero-mean noise term conditioned on the past:
+
+∀𝑡 .
+
+(9)
+
+In particular, since |V𝑡 | ∈ {𝑛 − 1, 𝑛} in SecureAFL, a sufficient condition is
+𝑛−1
+𝑏<
+.
+(10)
+2
+Assumption 4. For any client 𝑖 ∈ [𝑛], the delay 𝜏𝑖 associated with
+any local model update satisfies 𝜏𝑖 ≤ 𝜏max , where 𝜏max acts as the
+global upper bound on the delays across all clients in the system.
+Assumption 5. Whenever the client 𝑖 is benign, its update satisfies
+𝒈𝑖𝑡 −𝜏𝑖 = ∇𝑓𝑖 (𝒘 𝑡 −𝜏𝑖 ) + 𝝃𝑖,𝑡 ,
+
+(11)
+
+𝑇∑︁
+−1
+
+ 1 
+
+1
+2
+E∥∇𝐹 H (𝒘 𝑡 )∥ 2 = O √ + O 𝐸 track
+.
+𝑇 𝑡 =0
+𝑇
+
+(19)
+
+Remark. Assumption 3 is required because the server uses coordinatewise median aggregation; a strict benign majority in the aggregated
+set V𝑡 is sufficient to ensure median robustness in each coordinate.
+Since SecureAFL may aggregate 𝑛 − 1 vectors (when the received update is rejected), a sufficient condition is 𝑏 < (𝑛 − 1)/2. The ℓ2 -norm
+clipping applied at 𝑡 = 0 (Algorithm 3) serves only as initialization
+and is consistent with the boundedness condition in Assumption 7;
+hence it does not affect the convergence analysis for 𝑡 ≥ 1.
+2
+Remark. The term 𝐸 track
+quantifies the combined effect of (i) inter2
+client heterogeneity (𝜁 ), (ii) estimation error for non-uploading clients
+2 ), (iii) stochastic noise from the single fresh upload (𝜎 2 ), and (iv)
+(𝜀 est
+2 𝐺 2 ).
+asynchrony through staleness (𝐿 2𝜂 2𝜏max
+
+SecureAFL: Secure Asynchronous Federated Learning
+
+Table 3: CNN architecture.
+Layer
+Size
+Input
+28 × 28 × 1
+Convolution + ReLU
+3 × 3 × 30
+Max Pooling
+2×2
+Convolution + ReLU
+3 × 3 × 50
+Max Pooling
+2×2
+Fully Connected + ReLU
+100
+Softmax
+10
+
+6 Experimental Evaluation
+6.1 Experimental Setup
+6.1.1 Datasets. We conducted experiments on a diverse selection
+of datasets. These include Fashion-MNIST [67], CIFAR-10 [37],
+CIFAR-100 [37], and Tiny-ImageNet [18] for image classification,
+along with the Udacity dataset [3], which contains real-world data
+from autonomous driving environments. Comprehensive information about these datasets can be found in Appendix C.
+6.1.2 Poisoning Attacks. Our evaluation incorporates five untargeted attacks, including label flipping attack [61], SignFlip attack [20],
+Gaussian attack [7], Min-Max attack [58], and Adaptive attack [58],
+as well as five targeted attacks (e.g., backdoor attacks), namely
+Scaling attack [5], DBA attack [68], Projected gradient descent attack [59], Neurotoxin attack [81], and 3DFed attack [40]. Detailed
+descriptions of these poisoning attacks are provided in Appendix D.
+6.1.3 Compared Methods. By default, we compare SecureAFL with
+six baselines: AsyncSGD [82], Kardam [17], BASGD [76], Sageflow [54], Zeno++ [71], and AFLGuard [21]. Details of these six
+methods are provided in Appendix E. Note that we also include
+a comparison between SecureAFL and the more recent defense
+AsyncDefender [6], as reported in Table 11.
+6.1.4 Evaluation Metrics. We evaluate defense effectiveness using
+task-specific metrics: testing error rate (TER) and attack success rate
+(ASR) for image classification (Fashion-MNIST, CIFAR-10, CIFAR100, and Tiny-ImageNet), and root mean squared error (RMSE) for
+regression (Udacity). TER measures the proportion of clean test
+samples that are misclassified, while ASR quantifies the fraction of
+targeted examples incorrectly classified√︃into the target label. For
+Í𝑀
+regression, RMSE is defined as RMSE = 𝑀1 𝑖=1
+(𝑦¯𝑖 − 𝑦𝑖 ) 2 , where
+𝑦¯𝑖 and 𝑦𝑖 denote the predicted and true values, respectively, and
+𝑀 is the number of test instances. We exclude targeted attacks on
+Udacity, as existing attack methods are not designed for regression
+tasks. For TER, ASR, and RMSE, lower values indicate better defense
+performance.
+6.1.5 Non-IID Setting, and Parameter Settings. A fundamental characteristic of FL is the non-independent and non-identically distributed (Non-IID) nature of client training data. Following [20], we
+simulate Non-IID distributions for the Fashion-MNIST, CIFAR-10,
+CIFAR-100, and Tiny-ImageNet datasets as follows: Given a dataset
+with 𝑧 classes, clients are randomly divided into 𝑧 groups. A training
+sample with label 𝑞 is assigned to clients in group 𝑞 with probability 𝑥, while clients in other groups receive it with probability
+(1−𝑥)/(𝑧 −1). A higher 𝑥 value increases the Non-IID nature of the
+
+ASIA CCS ’26, June 01–05, 2026, Bangalore, India
+
+data distribution, and we set 𝑥 = 0.5 by default. Notably, the Udacity
+dataset inherently exhibits Non-IID characteristics, eliminating the
+need for additional simulation.
+We set up 50 clients for Fashion-MNIST, CIFAR-10, and CIFAR100 datasets, and 10 clients for Tiny-ImageNet and Udacity. In the
+Udacity dataset, each client represents an autonomous driving company. By default, 20% of clients are malicious. For backdoor attacks,
+we insert a 4 × 4 square trigger with random pixel values in the
+bottom-right corner of each image across all datasets. The batch
+size is 32 for Fashion-MNIST and 64 for the others. We train for
+20,000 rounds on Fashion-MNIST and Udacity, 30,000 on CIFAR-10
+and CIFAR-100, and 80,000 on Tiny-ImageNet, using a learning rate
+of 0.01. A CNN is used for Fashion-MNIST (see Table 3 for the CNN
+architecture), and ResNet-20 [32] for the rest. To simulate asynchronous FL, following [21, 71], the server maintains all previous global
+models. In each round, the server randomly selects a client and
+uniformly samples a global model from the past [0, 𝜏max ] rounds,
+where 𝜏max is the maximum delay and is set to 10 by default. The
+sampled global model is then sent to the selected client for local
+training. For all attack settings, attacks start from the first round and
+persist in every subsequent round. For methods such as [21, 54, 71]
+that require a server-side trusted dataset, we uniformly sample 100
+clean examples from the union of all clients’ local training data,
+following prior work [21]. In SecureAFL, we set 𝛼 = 0.8 and buffer
+size 𝜖 = 3. Following [35], we use grid search to determine the value
+of 𝐺. Specifically, we search over 𝐺 ∈ {20, 50, 100}. We observe that
+the performance is stable across different choices of 𝐺, indicating
+that the method is not sensitive to this parameter. Based on this
+observation, we fix 𝐺 = 50 in all experiments. Experiments were
+conducted using NVIDIA V100 GPUs, with each test executed five
+times. We report the average results, and the standard deviations
+are all within 0.03.
+
+6.2
+
+Experimental Results
+
+SecureAFL is Effective: Table 4 summarizes the performance of all
+compared methods on four image classification benchmarks, while
+Table 5 reports results on the Udacity regression task. Across all
+datasets, SecureAFL consistently matches or closely tracks the performance of AsyncSGD in benign settings, demonstrating that the
+proposed defense does not introduce unnecessary bias or degradation when no adversarial behavior is present. For example, under the
+“No attack” condition, SecureAFL achieves testing error rates of 0.12
+on Fashion-MNIST, 0.23 on CIFAR-10, 0.43 on CIFAR-100, and 0.58
+on Tiny-ImageNet, all of which are comparable to or slightly better
+than those of AsyncSGD and other baselines. This confirms that
+the filtering, estimation, and robust aggregation components of SecureAFL do not hinder convergence or accuracy in non-adversarial
+environments. On the Udacity dataset, SecureAFL similarly attains
+an RMSE of 0.17, matching the best-performing baselines and indicating that the framework generalizes well beyond classification
+tasks to regression scenarios
+In adversarial settings, SecureAFL exhibits clear and consistent
+advantages over existing asynchronous FL defenses. Under untargeted attacks such as Labelflip, Signflip, and Gaussian noise,
+SecureAFL maintains low and stable error rates across all datasets,
+
+ASIA CCS ’26, June 01–05, 2026, Bangalore, India
+
+Anjun Gao et al.
+
+Table 4: Performance of different methods on the Fashion-MNIST, CIFAR-10, CIFAR-100, and Tiny-ImageNet datasets. For
+untargeted attacks, results are reported as TER, while for targeted attacks (e.g., backdoor attacks), results are reported as
+TER/ASR. Lower values indicate better defense performance. Results on the Udacity dataset are reported in Table 5.
+(a) Fashion-MNIST dataset.
+
+Method No attack Labelflip Signflip Gaussian Scaling
+DBA
+PGD
+Neurotoxin 3DFed Min-Max Adaptive
+AsyncSGD
+0.12
+0.12
+0.41
+0.52
+0.41/0.69 0.53/0.60 0.28/0.36 0.25/0.25 0.90/1.00
+0.90
+0.90
+Kardam
+0.17
+0.17
+0.18
+0.15
+0.79/0.92 0.45/0.54 0.36/0.36 0.35/0.36 0.35/0.36
+0.62
+0.90
+BASGD
+0.14
+0.16
+0.18
+0.73
+0.36/0.77 0.33/0.65 0.46/0.53 0.34/0.39 0.35/1.00
+0.79
+0.90
+Sageflow
+0.14
+0.14
+0.16
+0.90
+0.70/0.85 0.60/0.69 0.31/0.41 0.32/0.35 0.90/0.88
+0.90
+0.90
+Zeno++
+0.17
+0.18
+0.19
+0.17
+0.21/0.24 0.21/0.21 0.21/0.21 0.22/0.21 0.21/0.20
+0.30
+0.33
+AFLGuard
+0.22
+0.27
+0.34
+0.26
+0.28/0.36 0.26/0.36 0.26/0.15 0.26/0.20 0.26/0.12
+0.33
+0.35
+SecureAFL
+0.12
+0.12
+0.13
+0.14
+0.18/0.07 0.17/0.05 0.16/0.07 0.15/0.06 0.17/0.03
+0.15
+0.18
+(b) CIFAR-10 dataset.
+
+Method No attack Labelflip Signflip Gaussian Scaling
+DBA
+PGD
+Neurotoxin 3DFed Min-Max Adaptive
+AsyncSGD
+0.22
+0.37
+0.48
+0.80
+0.85/1.00 0.86/1.00 0.70/0.97 0.56/0.88 0.90/1.00
+0.84
+0.86
+Kardam
+0.25
+0.33
+0.33
+0.45
+0.56/0.42 0.90/1.00 0.49/0.68 0.71/0.71 0.48/0.29
+0.82
+0.87
+BASGD
+0.29
+0.39
+0.42
+0.81
+0.87/0.97 0.85/0.97 0.73/0.43 0.70/0.56 0.90/1.00
+0.88
+0.89
+Sageflow
+0.28
+0.48
+0.58
+0.83
+0.89/1.00 0.87/1.00 0.85/0.99 0.79/0.92 0.90/1.00
+0.85
+0.81
+Zeno++
+0.23
+0.32
+0.33
+0.33
+0.63/0.54 0.56/0.51 0.52/0.49 0.43/0.37 0.53/0.39
+0.34
+0.32
+AFLGuard
+0.25
+0.36
+0.37
+0.37
+0.44/0.26 0.42/0.30 0.48/0.32 0.45/0.32 0.46/0.17
+0.39
+0.37
+SecureAFL
+0.23
+0.29
+0.29
+0.30
+0.29/0.03 0.26/0.05 0.30/0.10 0.26/0.07 0.28/0.01
+0.32
+0.35
+(c) CIFAR-100 dataset.
+
+Method No attack Labelflip Signflip Gaussian Scaling
+DBA
+PGD
+Neurotoxin 3DFed Min-Max Adaptive
+AsyncSGD
+0.43
+0.53
+0.66
+0.90
+0.95/1.00 0.95/1.00 0.67/0.52 0.61/0.61 0.95/1.00
+0.95
+0.94
+Kardam
+0.47
+0.48
+0.54
+0.61
+0.93/1.00 0.93/1.00 0.71/0.54 0.68/0.38 0.63/0.37
+0.95
+0.91
+BASGD
+0.52
+0.53
+0.64
+0.90
+0.89/0.95 0.91/0.94 0.79/0.26 0.76/0.15 0.95/1.00
+0.95
+0.95
+Sageflow
+0.56
+0.59
+0.75
+0.91
+0.87/0.97 0.89/0.99 0.68/0.13 0.61/0.13 0.95/1.00
+0.94
+0.93
+Zeno++
+0.48
+0.51
+0.51
+0.60
+0.21/0.68 0.63/0.15 0.72/0.19 0.74/0.26 0.67/0.17
+0.63
+0.83
+AFLGuard
+0.43
+0.54
+0.50
+0.47
+0.65/0.18 0.67/0.48 0.67/0.74 0.70/0.38 0.68/0.53
+0.92
+0.85
+SecureAFL
+0.43
+0.46
+0.49
+0.44
+0.53/0.03 0.52/0.07 0.49/0.02 0.53/0.09 0.51/0.05
+0.53
+0.56
+(d) Tiny-ImageNet dataset.
+
+Method No attack Labelflip Signflip Gaussian Scaling
+DBA
+PGD
+Neurotoxin 3DFed Min-Max Adaptive
+AsyncSGD
+0.61
+0.68
+0.75
+0.98
+0.62/1.00 0.62/1.00 0.62/0.44 0.62/0.77 0.62/1.00
+0.98
+0.60
+Kardam
+0.63
+0.66
+0.72
+0.76
+0.76/0.03 0.76/0.05 0.75/0.05 0.76/0.03 0.76/0.03
+0.98
+0.63
+BASGD
+0.63
+0.64
+0.73
+0.64
+0.56/0.39 0.56/0.36 0.56/0.08 0.56/0.10 0.56/0.02
+0.98
+0.63
+Sageflow
+0.63
+0.68
+0.74
+0.99
+0.98/0.97 0.98/0.98 0.83/0.43 0.83/0.36 0.99/1.00
+0.99
+0.99
+Zeno++
+0.62
+0.65
+0.65
+0.66
+0.64/0.03 0.65/0.05 0.63/0.03 0.65/0.05 0.63/0.03
+0.67
+0.64
+AFLGuard
+0.60
+0.68
+0.72
+0.63
+0.61/0.03 0.62/0.03 0.62/0.02 0.60/0.05 0.60/0.03
+0.62
+0.65
+SecureAFL
+0.58
+0.60
+0.66
+0.62
+0.61/0.03 0.61/0.03 0.62/0.03 0.62/0.03 0.64/0.03
+0.60
+0.62
+
+Table 5: RMSE of different methods on Udacity dataset.
+Method No attack Signflip Gaussian Min-Max Adaptive
+AsyncSGD
+0.17
+0.29
+1.10
+0.36
+0.33
+Kardam
+0.18
+0.28
+0.19
+0.55
+0.24
+BASGD
+0.17
+0.19
+0.19
+inf
+0.20
+Zeno++
+0.17
+inf
+0.24
+inf
+inf
+AFLGuard
+0.18
+0.43
+0.25
+0.19
+0.26
+SecureAFL
+0.17
+0.17
+0.18
+0.17
+0.17
+whereas AsyncSGD and several baselines experience severe performance degradation. For instance, on CIFAR-10 under the Gaussian
+attack, SecureAFL limits the testing error to 0.30, compared to 0.80
+for AsyncSGD and over 0.80 for BASGD. Similar trends are observed
+
+on CIFAR-100 and Tiny-ImageNet, where SecureAFL substantially
+suppresses error growth even when attacks are strong. For targeted
+backdoor attacks, SecureAFL is particularly effective in simultaneously controlling both testing error rate (TER) and attack success
+rate (ASR). Across Scaling, DBA, PGD, Neurotoxin, and 3DFed
+attacks, SecureAFL consistently reduces ASR to near-zero levels
+(often below 0.10), while maintaining TER close to benign performance. This dual robustness is notably absent in other defenses,
+many of which either fail to suppress ASR or do so at the cost of
+significantly inflated TER. The effectiveness of SecureAFL is further
+corroborated by Figure 1, which shows that even as the fraction of
+malicious clients increases to 40%, SecureAFL sustains the lowest
+
+SecureAFL: Secure Asynchronous Federated Learning
+
+BASGD
+
+Sageflow
+
+Zeno++
+
+AFLGuard
+
+0.8
+
+0.8
+
+0.8
+
+0.8
+
+0.6
+
+0.6
+
+0.6
+
+0.6
+
+0.6
+
+0.4
+
+0.4
+
+0.4
+
+ASR
+
+0.8
+
+TER
+
+1.0
+
+TER
+
+1.0
+
+TER
+
+1.0
+
+0.4
+
+0.2
+
+0.2
+
+0.2
+
+0.2
+
+0.0
+10%
+20%
+30%
+35%
+40%
+Fraction of malicious clients
+
+0.0
+10%
+20%
+30%
+35%
+40%
+Fraction of malicious clients
+
+0.0
+10%
+20%
+30%
+35%
+40%
+Fraction of malicious clients
+
+0.0
+10%
+20%
+30%
+35%
+40%
+Fraction of malicious clients
+
+(a) Labelflip
+
+(b) Signflip
+
+(c) Gaussian
+
+(d) Scaling
+
+1.0
+
+1.0
+
+1.0
+
+0.2
+0.0
+10%
+20%
+30%
+35%
+40%
+Fraction of malicious clients
+1.0
+0.8
+
+0.6
+
+0.6
+
+0.6
+
+0.6
+
+0.6
+
+0.4
+
+0.4
+
+TER
+
+0.8
+ASR
+
+0.8
+TER
+
+0.8
+
+0.4
+
+SecureAFL
+
+0.4
+
+0.8
+ASR
+
+0.4
+
+(e) Scaling
+
+0.4
+
+0.2
+
+0.2
+
+0.2
+
+0.2
+
+0.2
+
+0.0
+10%
+20%
+30%
+35%
+40%
+Fraction of malicious clients
+
+0.0
+10%
+20%
+30%
+35%
+40%
+Fraction of malicious clients
+
+0.0
+10%
+20%
+30%
+35%
+40%
+Fraction of malicious clients
+
+0.0
+10%
+20%
+30%
+35%
+40%
+Fraction of malicious clients
+
+0.0
+10%
+20%
+30%
+35%
+40%
+Fraction of malicious clients
+
+1.0
+
+(f) DBA
+
+1.0
+
+(g) DBA
+
+1.0
+
+(h) PGD
+
+1.0
+
+(i) PGD
+
+1.0
+
+0.8
+
+0.8
+
+0.8
+
+0.6
+
+0.6
+
+0.6
+
+0.6
+
+0.6
+
+0.4
+
+0.4
+
+0.4
+
+TER
+
+0.8
+
+TER
+
+0.8
+
+ASR
+
+TER
+
+Kardam
+
+1.0
+
+1.0
+
+ASR
+
+AsyncSGD
+
+1.0
+
+TER
+
+TER
+
+AsyncSGD w/o attack
+
+ASIA CCS ’26, June 01–05, 2026, Bangalore, India
+
+0.4
+
+(j) Neurotoxin
+
+0.4
+
+0.2
+
+0.2
+
+0.2
+
+0.2
+
+0.2
+
+0.0
+10%
+20%
+30%
+35%
+40%
+Fraction of malicious clients
+
+0.0
+10%
+20%
+30%
+35%
+40%
+Fraction of malicious clients
+
+0.0
+10%
+20%
+30%
+35%
+40%
+Fraction of malicious clients
+
+0.0
+10%
+20%
+30%
+35%
+40%
+Fraction of malicious clients
+
+0.0
+10%
+20%
+30%
+35%
+40%
+Fraction of malicious clients
+
+(k) Neurotoxin
+
+(l) 3DFed
+
+(m) 3DFed
+
+(n) Min-Max
+
+(o) Adaptive
+
+Figure 1: Impact of fraction of malicious clients on Fashion-MNIST dataset.
+test error and attack success rates among all methods. These results collectively demonstrate that SecureAFL provides strong and
+reliable protection against a wide spectrum of poisoning attacks,
+including adaptive adversaries, while preserving high model utility
+across diverse datasets and system conditions.
+Impact of the fraction of malicious clients: Fig. 1 evaluates
+the robustness of SecureAFL as the proportion of malicious clients
+increases from 10% to 40% on the Fashion-MNIST dataset under a
+wide range of poisoning attacks. As the fraction of malicious participants grows, most baseline methods exhibit a rapid deterioration in
+performance, reflected by sharply increasing testing error rates and,
+for targeted attacks, near-saturated attack success rates. In contrast,
+SecureAFL demonstrates a markedly slower degradation trend and
+consistently maintains superior performance across all evaluated
+attack types. Even at moderate adversarial levels (20%–30% malicious clients), SecureAFL preserves testing error rates close to those
+observed in non-adversarial AsyncSGD, while competing defenses
+such as Kardam and BASGD already show substantial instability.
+When the malicious fraction reaches 40%, a particularly challenging
+regime for Byzantine-robust FL, SecureAFL continues to outperform all baselines, achieving the lowest testing error among the
+compared methods and the lowest attack success rates for backdoorbased attacks. Notably, while AsyncSGD and Sageflow experience
+near-complete compromise under strong attacks such as Scaling,
+DBA, and PGD, SecureAFL effectively suppresses malicious influence, preventing both widespread accuracy collapse and targeted
+misclassification. These results indicate that SecureAFL scales robustly with adversarial strength and can tolerate a high proportion
+of malicious clients, highlighting the effectiveness of its combined
+filtering, update estimation, and robust aggregation mechanisms in
+heavily adversarial asynchronous FL environments.
+Impact of the client delay: Fig. 2 investigates the robustness of
+different asynchronous FL defenses as the maximum client delay
+increases from 5 to 50 on the Fashion-MNIST dataset under various poisoning attacks. As client delays grow, the adverse effects
+of update staleness become increasingly pronounced, significantly
+
+challenging the stability of many baseline methods. In particular,
+Kardam and BASGD exhibit strong sensitivity to delayed updates,
+with their testing error rates escalating rapidly as delays exceed
+moderate levels. For example, under the Gaussian attack, Kardam’s
+testing error increases sharply when the maximum delay rises beyond 20, eventually approaching near-random performance. Similar
+instability trends are observed for BASGD across multiple attack
+scenarios, indicating that buffering-based or deviation-threshold
+defenses struggle to reliably distinguish benign but stale updates
+from malicious ones in highly asynchronous environments.
+In contrast, SecureAFL maintains consistently stable performance
+across the entire range of client delays. Even when the maximum
+delay reaches 50, SecureAFL preserves low testing error rates and,
+for targeted attacks, low attack success rates, demonstrating strong
+resilience to severe asynchrony. This robustness stems from SecureAFL ’s explicit modeling of delayed and missing client updates
+through historical estimation, which mitigates the impact of stale
+information, as well as its Lipschitz-based filtering mechanism that
+remains effective regardless of delay magnitude. Compared to methods such as Sageflow, Zeno++, and AFLGuard, whose performance
+degrades notably as delays increase, often due to their reliance
+on trusted data or sensitivity to stale gradients, SecureAFL consistently delivers superior stability. Overall, these results highlight
+SecureAFL ’s ability to handle extreme client delays, making it particularly well-suited for real-world FL deployments characterized
+by heterogeneous computation and communication latencies.
+Impact of total number of clients: Fig. 4 in the Appendix examines the scalability of SecureAFL by varying the total number
+of participating clients from 50 to 300, while fixing the fraction of
+malicious clients at 20%. As the system scale increases, the learning
+dynamics of asynchronous FL become more complex due to higher
+heterogeneity, increased asynchrony, and a larger volume of potentially malicious updates. Many baseline methods struggle under
+these conditions, exhibiting noticeable performance fluctuations
+as the client population grows. In particular, defenses such as Kardam and BASGD show unstable behavior, with testing error rates
+
+ASIA CCS ’26, June 01–05, 2026, Bangalore, India
+
+AsyncSGD
+
+Sageflow
+
+Zeno++
+
+AFLGuard
+
+0.8
+
+0.8
+
+0.8
+
+0.8
+
+0.8
+
+0.6
+
+0.6
+
+0.6
+
+0.6
+
+0.6
+
+0.4
+
+0.4
+0.2
+
+5
+
+10
+
+20
+30
+Client delay
+
+0.0
+
+50
+
+(a) Labelflip
+
+1.0
+
+0.4
+0.2
+
+5
+
+10
+
+20
+30
+Client delay
+
+0.0
+
+50
+
+(b) Signflip
+
+1.0
+
+ASR
+
+1.0
+
+TER
+
+1.0
+
+TER
+
+1.0
+
+0.0
+
+0.4
+0.2
+
+5
+
+10
+
+20
+30
+Client delay
+
+0.0
+
+50
+
+(c) Gaussian
+
+1.0
+
+0.2
+5
+
+10
+
+20
+30
+Client delay
+
+0.0
+
+50
+
+(d) Scaling
+
+1.0
+
+0.6
+
+0.6
+
+0.6
+
+0.6
+
+0.2
+0.0
+
+0.2
+5
+
+10
+
+20
+30
+Client delay
+
+0.0
+
+50
+
+(f) DBA
+
+1.0
+
+0.4
+0.2
+
+5
+
+10
+
+20
+30
+Client delay
+
+0.0
+
+50
+
+(g) DBA
+
+1.0
+
+TER
+
+0.8
+
+0.6
+
+ASR
+
+0.8
+
+TER
+
+0.8
+
+0.4
+
+0.4
+0.2
+
+5
+
+10
+
+20
+30
+Client delay
+
+0.0
+
+50
+
+(h) PGD
+
+1.0
+
+10
+
+20
+30
+Client delay
+
+0.0
+
+50
+
+(i) PGD
+
+1.0
+0.6
+
+0.6
+
+0.0
+
+0.2
+5
+
+10
+
+20
+30
+Client delay
+
+0.0
+
+50
+
+0.2
+5
+
+10
+
+20
+30
+Client delay
+
+(k) Neurotoxin
+
+0.0
+
+50
+
+TER
+
+0.6
+
+TER
+
+0.6
+
+ASR
+
+0.8
+
+0.6
+
+TER
+
+0.8
+
+0.2
+
+0.4
+0.2
+
+5
+
+10
+
+(l) 3DFed
+
+20
+30
+Client delay
+
+0.0
+
+50
+
+5
+
+50
+
+10
+
+20
+30
+Client delay
+
+50
+
+(j) Neurotoxin
+
+1.0
+
+0.8
+0.4
+
+20
+30
+Client delay
+
+(e) Scaling
+
+0.2
+5
+
+0.8
+0.4
+
+10
+
+0.4
+
+0.8
+0.4
+
+5
+
+1.0
+
+0.8
+
+0.4
+
+SecureAFL
+
+0.4
+
+0.8
+ASR
+
+TER
+
+BASGD
+
+1.0
+
+0.2
+
+ASR
+
+Kardam
+
+1.0
+
+TER
+
+TER
+
+AsyncSGD w/o attack
+
+Anjun Gao et al.
+
+0.4
+0.2
+
+5
+
+(m) 3DFed
+
+10
+
+20
+30
+Client delay
+
+0.0
+
+50
+
+5
+
+(n) Min-Max
+
+10
+
+20
+30
+Client delay
+
+50
+
+(o) Adaptive
+
+Figure 2: Impact of client delay on Fashion-MNIST dataset.
+AsyncSGD
+
+Sageflow
+
+Zeno++
+
+AFLGuard
+
+0.6
+
+0.6
+
+0.6
+
+0.6
+
+0.6
+
+0.4
+
+1.0
+
+0.4
+0.2
+
+0.3
+
+0.5
+Non-IID
+
+0.7
+
+0.0
+0.1
+
+0.9
+
+(a) Labelflip
+
+1.0
+
+0.4
+0.2
+
+0.3
+
+0.5
+Non-IID
+
+0.7
+
+0.0
+0.1
+
+0.9
+
+(b) Signflip
+
+ASR
+
+0.8
+
+TER
+
+1.0
+
+0.8
+
+TER
+
+1.0
+
+0.8
+
+0.0
+0.1
+
+0.4
+0.2
+
+0.3
+
+0.5
+Non-IID
+
+0.7
+
+0.0
+0.1
+
+0.9
+
+(c) Gaussian
+
+1.0
+
+1.0
+
+0.2
+0.3
+
+0.5
+Non-IID
+
+0.7
+
+0.0
+0.1
+
+0.9
+
+(d) Scaling
+
+1.0
+0.8
+
+0.6
+
+0.6
+
+0.6
+
+0.6
+
+0.6
+
+0.2
+0.0
+0.1
+
+0.4
+0.2
+
+0.3
+
+0.5
+Non-IID
+
+0.7
+
+0.0
+0.1
+
+0.9
+
+(f) DBA
+
+1.0
+
+0.4
+0.2
+
+0.3
+
+0.5
+Non-IID
+
+0.7
+
+0.0
+0.1
+
+0.9
+
+(g) DBA
+
+1.0
+
+TER
+
+0.8
+ASR
+
+0.8
+TER
+
+0.8
+
+0.4
+
+0.4
+0.2
+
+0.3
+
+0.5
+Non-IID
+
+0.7
+
+0.0
+0.1
+
+0.9
+
+(h) PGD
+
+1.0
+
+0.5
+Non-IID
+
+0.7
+
+0.0
+0.1
+
+0.9
+
+(i) PGD
+
+1.0
+
+1.0
+
+0.6
+
+0.6
+
+0.6
+
+0.2
+0.0
+0.1
+
+0.2
+0.3
+
+0.5
+Non-IID
+
+0.7
+
+(k) Neurotoxin
+
+0.9
+
+0.0
+0.1
+
+0.2
+0.3
+
+0.5
+Non-IID
+
+0.7
+
+0.9
+
+0.0
+0.1
+
+TER
+
+0.6
+
+TER
+
+0.8
+
+0.6
+
+ASR
+
+0.8
+
+TER
+
+0.8
+0.4
+
+0.4
+0.2
+
+0.3
+
+(l) 3DFed
+
+0.5
+Non-IID
+
+0.7
+
+(m) 3DFed
+
+0.9
+
+0.0
+0.1
+
+0.5
+Non-IID
+
+0.7
+
+0.9
+
+(e) Scaling
+
+0.2
+0.3
+
+0.8
+0.4
+
+0.3
+
+0.4
+
+0.8
+0.4
+
+SecureAFL
+
+0.4
+
+0.8
+ASR
+
+TER
+
+BASGD
+1.0
+
+0.8
+
+0.2
+
+ASR
+
+Kardam
+
+1.0
+
+0.8
+TER
+
+TER
+
+AsyncSGD w/o attack
+1.0
+
+0.3
+
+0.5
+Non-IID
+
+0.7
+
+0.9
+
+(j) Neurotoxin
+
+0.4
+0.2
+
+0.3
+
+0.5
+Non-IID
+
+0.7
+
+0.9
+
+(n) Min-Max
+
+0.0
+0.1
+
+0.3
+
+0.5
+Non-IID
+
+0.7
+
+0.9
+
+(o) Adaptive
+
+Figure 3: Impact of degree of Non-IID on Fashion-MNIST dataset.
+increasing or oscillating as the number of clients rises, indicating
+limited scalability in large-scale federated settings.
+In contrast, SecureAFL demonstrates consistently stable and robust performance across all evaluated client counts. Its testing error
+remains largely unchanged as the number of clients increases, indicating that the proposed framework effectively scales with system
+size. This stability can be attributed to SecureAFL ’s design, which
+aggregates both received and estimated updates using a Byzantinerobust rule, ensuring that the influence of malicious clients does not
+grow disproportionately with the number of participants. Moreover,
+the update estimation mechanism allows SecureAFL to maintain a
+balanced aggregation process even when only a subset of clients
+actively contributes at each round, a scenario that becomes increasingly common in large-scale asynchronous systems. Overall, these
+results confirm that SecureAFL scales effectively to larger FL deployments and remains resilient to poisoning attacks even as the
+number of participating clients grows substantially.
+
+Impact of degree of Non-IID: Fig. 3 evaluates the robustness of
+SecureAFL under varying degrees of data heterogeneity by increasing the Non-IID parameter, which controls how unevenly class
+distributions are partitioned across clients. As the Non-IID level
+intensifies, client updates become more diverse and less representative of the global data distribution, significantly complicating
+the task of distinguishing benign updates from adversarial ones.
+Under mild heterogeneity, most methods maintain reasonable performance; however, as the Non-IID degree increases to more challenging levels (e.g., 0.7 and 0.9), several baseline defenses experience
+severe degradation. In particular, Zeno++ and AFLGuard become
+highly vulnerable even to relatively simple poisoning attacks, with
+testing error rates rising sharply. This failure can be attributed to
+their reliance on a trusted dataset at the server, whose distribution
+becomes increasingly misaligned with client data as heterogeneity grows, rendering similarity-based or reference-gradient checks
+ineffective.
+
+SecureAFL: Secure Asynchronous Federated Learning
+
+𝛼
+0.4
+0.6
+0.8
+
+No attack
+0.13
+0.15
+0.12
+
+Labelflip
+0.15
+0.16
+0.12
+
+Signflip
+0.14
+0.15
+0.13
+
+ASIA CCS ’26, June 01–05, 2026, Bangalore, India
+
+Table 6: Impact of 𝛼 on Fashion-MNIST dataset.
+Gaussian Scaling
+DBA
+PGD
+Neurotoxin
+0.14
+0.19/0.02 0.16/0.02 0.17/0.07
+0.19/0.08
+0.14
+0.18/0.08 0.17/0.03 0.19/0.10
+0.20/0.01
+0.14
+0.18/0.07 0.17/0.05 0.16/0.07
+0.15/0.06
+
+3DFed
+0.19/0.10
+0.17/0.06
+0.17/0.03
+
+Min-Max
+0.22
+0.20
+0.15
+
+Adaptive
+0.23
+0.23
+0.18
+
+Table 7: Different variants of SecureAFL on Fashion-MNIST dataset.
+Variant
+No attack Labelflip Signflip Gaussian Scaling
+DBA
+PGD
+Neurotoxin 3DFed Min-Max Adaptive
+Variant I
+0.12
+0.14
+0.15
+0.14
+0.40/0.36 0.34/0.33 0.40/0.19 0.30/0.22 0.38/0.34
+0.35
+0.35
+Variant II
+0.17
+0.17
+0.20
+0.18
+0.72/0.90 0.44/0.58 0.34/0.38 0.37/0.34 0.35/0.40
+0.87
+0.90
+Variant III
+0.16
+0.16
+0.19
+0.20
+0.34/0.41 0.68/0.53 0.30/0.25 0.29/0.25 0.46/0.47
+0.90
+0.90
+Variant IV
+0.41
+0.56
+0.66
+0.47
+0.57/0.49 0.53/0.53 0.59/0.49 0.48/0.42 0.58/0.46
+0.45
+0.63
+SecureAFL
+0.12
+0.12
+0.13
+0.14
+0.18/0.07 0.17/0.05 0.16/0.07 0.15/0.06 0.17/0.03
+0.15
+0.18
+
+In contrast, SecureAFL demonstrates strong resilience across
+all evaluated Non-IID levels. Its testing error remains stable and
+consistently lower than those of competing methods, even under
+extreme heterogeneity. This robustness stems from the fact that SecureAFL does not depend on any auxiliary trusted dataset or global
+reference update; instead, it leverages historical client update trajectories and Lipschitz-based smoothness constraints that naturally
+adapt to heterogeneous data distributions. As a result, benign but
+highly diverse client updates are preserved, while anomalous and
+malicious updates are effectively filtered out. These results indicate
+that SecureAFL is particularly well-suited for real-world FL scenarios, where data heterogeneity is often severe and unavoidable, and
+further highlight its advantage over defenses that implicitly assume
+near-IID data distributions.
+Impact of 𝛼: In SecureAFL, the parameter 𝛼 determines the strictness of the Lipschitz-based filtering mechanism by specifying the
+percentile threshold used to classify received updates as benign or
+anomalous. A smaller 𝛼 corresponds to a more conservative filter
+that rejects a larger portion of updates, while a larger 𝛼 relaxes the
+filtering criterion and allows more updates to pass through. Table 6
+reports the performance of SecureAFL under different choices of 𝛼,
+demonstrating that the framework remains robust across a wide
+range of values. When 𝛼 is set to lower values, SecureAFL slightly
+increases its rejection rate, which can marginally affect convergence
+speed but provides strong protection against aggressive poisoning
+attacks. Conversely, higher 𝛼 values admit more updates, improving
+learning efficiency while still maintaining strong robustness due to
+the subsequent estimation and Byzantine-robust aggregation steps.
+Importantly, the results indicate that SecureAFL is not overly
+sensitive to the precise tuning of 𝛼. Across all evaluated values,
+SecureAFL consistently achieves low testing error rates and, for
+targeted attacks, maintains very low attack success rates. This stability suggests that the Lipschitz-filtering mechanism effectively
+captures the normal smoothness patterns of benign client updates,
+even when the threshold is moderately relaxed or tightened. Moreover, the complementary design of SecureAFL ensures that even if
+some malicious updates bypass the filter at higher 𝛼 values, their
+influence is further mitigated by the update estimation process and
+coordinate-wise median aggregation. Overall, these findings show
+that SecureAFL is robust to the choice of 𝛼 and can be reliably
+deployed without requiring fine-grained parameter tuning, which
+
+is particularly advantageous in practical FL systems where attack
+characteristics are unknown in advance.
+Different variants of SecureAFL: In this section, we explore
+different variants of our proposed SecureAFL.
+• Variant I: The server uses the FedAvg rule [44] in Eq. (5) and
+Eq. (6).
+• Variant II: The server does not estimate updates from the remaining 𝑛 − 1 clients. It updates the global model using 𝒈𝑖𝑡 −𝜏𝑖
+only if deemed benign; otherwise, no update is applied.
+• Variant III: The server does not discard malicious updates but
+continues estimating updates from the other 𝑛 − 1 clients. It then
+integrates both received and estimated updates using Eq. (5).
+• Variant IV: Server disregards all received updates while still
+estimating updates from the remaining 𝑛 − 1 clients. It then
+combines these estimated updates by Eq. (6).
+Table 7 compares the performance of SecureAFL and its variants
+on the Fashion-MNIST dataset. The results emphasize the critical role of filtering malicious updates, incorporating estimated updates, and utilizing a robust aggregation strategy like Median. These
+components collectively enhance the effectiveness of SecureAFL,
+demonstrating their superiority over alternative configurations.
+Empirical validation of bounded estimation error: To empirically validate the bounded estimation error in Assumption 6,
+∥ 𝒈ˆ 𝑡 −𝒈𝑡 ∥
+we measure the relative estimation error ∥𝒈𝑡 ∥ 2 on the Fashion2
+MNIST dataset throughout training, where 𝒈ˆ 𝑡 denotes the estimated
+update and 𝒈𝑡 denotes the corresponding ground-truth update at
+round 𝑡. For each round interval, we compute the error at every
+round and report the average over the interval. As shown in Table 8, the relative error decreases steadily as training progresses
+and remains bounded, which empirically supports Assumption 6
+underlying our theoretical analysis.
+Comparison with AsyncDefender [6]: We further compare SecureAFL with AsyncDefender [6]. Table 11 in the Appendix reports
+the results of AsyncDefender under various attacks across five
+datasets. The symbol “–” for the Udacity dataset indicates that
+these attacks are not applicable, as Udacity is a regression task.
+Based on Tables 4, 5, and 11, SecureAFL consistently outperforms
+AsyncDefender across all evaluated settings.
+
+ASIA CCS ’26, June 01–05, 2026, Bangalore, India
+
+Anjun Gao et al.
+
+Table 8: Relative estimation error across training rounds on
+the Fashion-MNIST dataset.
+Round
+Relative estimation error
+200–300
+0.81
+300–400
+0.72
+400–500
+0.68
+500–600
+0.65
+600–700
+0.61
+700–Convergence
+0.59
+Table 9: Running time (in seconds) under varying numbers
+of clients, where the CNN has 140,000 parameters.
+Method
+50 clients 100 clients 300 clients
+AsyncSGD
+0.02
+0.02
+0.04
+Zeno++
+0.02
+0.03
+0.05
+AFLGuard
+0.04
+0.06
+0.08
+SecureAFL
+0.03
+0.04
+0.06
+Table 10: Running time (in seconds) under varying CNN
+model sizes, where the number of clients is set to 50.
+Method
+AsyncSGD
+Zeno++
+AFLGuard
+SecureAFL
+
+7
+
+140,000 parameters
+0.02
+0.02
+0.04
+0.03
+
+500,000 parameters
+0.03
+0.04
+0.05
+0.04
+
+1,000,000 parameters
+0.04
+0.06
+0.08
+0.06
+
+Limitations
+
+Privacy concern of SecureAFL: SecureAFL introduces a local update estimation mechanism that reconstructs missing client updates
+using historical global models and previously received gradients.
+While this estimation is performed entirely on the server side and
+does not require access to clients’ raw data, it nevertheless raises a
+distinct privacy consideration compared to standard asynchronous
+FL. Specifically, by approximating a client’s current update from
+its past behavior, the server implicitly infers information about
+how that client’s local objective evolves over time. Although this
+inferred update is only an approximation and is never shared externally, it may increase the amount of information the server can
+deduce about an individual client relative to schemes that strictly
+aggregate received updates only.
+Importantly, this privacy concern is limited to the honest-butcurious server threat model and does not expose additional information to other clients or external adversaries. Moreover, SecureAFL
+does not require storing raw data, labels, or intermediate activations, and the estimated updates are used solely for aggregation and
+discarded afterward. If stronger privacy guarantees are required, the
+estimation step can be combined with standard privacy-enhancing
+techniques such as update clipping, noise injection, or secure aggregation to limit potential information leakage. Therefore, while SecureAFL slightly enlarges the inference capability of the server due
+to update estimation, it remains compatible with existing privacypreserving mechanisms and maintains a practical balance between
+robustness and privacy in asynchronous FL.
+Server’s storage and computational expenses: Compared with
+standard asynchronous FL, SecureAFL introduces additional but
+well-bounded server-side storage and computational costs. Let 𝑛
+
+denote the total number of clients, 𝑑 the model dimension, and 𝜖
+the L-BFGS buffer size. For storage, the server maintains a limited
+history of global model differences {Δ𝒘𝑡 −𝜖 , . . . , Δ𝒘𝑡 −1 } and clientspecific update differences {Δ𝒈𝑡𝑘−𝜖 , . . . , Δ𝒈𝑡𝑘−1 } for each client 𝑘.
+Consequently, the total storage overhead is 𝑂 (𝑛𝜖𝑑), which scales
+linearly with the number of clients and the model dimension. Since
+𝜖 is a small constant in practice (e.g., 𝜖 = 3 in our experiments), this
+overhead remains modest and does not increase with the number
+of training rounds.
+In terms of computation, at each training round, the server performs three main operations. First, the Lipschitz-based filtering
+step computes vector norms and updates the percentile threshold,
+incurring a cost of 𝑂 (𝑑) per received update. Second, the update
+estimation step applies L-BFGS-based Hessian–vector products for
+the 𝑛 − 1 non-uploading clients, resulting in a computational complexity of 𝑂 (𝑛𝜖𝑑) per round. This procedure avoids explicit Hessian
+computation and relies only on vector inner products and linear
+combinations. Third, the coordinate-wise median aggregation over
+at most 𝑛 vectors incurs a cost of 𝑂 (𝑛𝑑), which is comparable to
+other Byzantine-robust aggregation rules. Overall, the per-round
+computational complexity of SecureAFL is 𝑂 (𝑛𝜖𝑑), which is higher
+than vanilla AsyncSGD but remains practical for realistic values
+of 𝑛, 𝑑, and 𝜖, representing a reasonable trade-off for improved
+robustness in adversarial asynchronous FL settings.
+Table 9 and Table 10 report the running time (in seconds) of
+representative baselines and SecureAFL on the Fashion-MNIST
+dataset. Specifically, Table 9 fixes the CNN architecture at 140,000
+parameters while varying the number of clients, whereas Table 10
+fixes the number of clients at 50 while varying the CNN model
+size. The results show that SecureAFL incurs only modest overhead
+compared to AsyncSGD and scales gracefully with respect to both
+the number of clients and the model size. In terms of memory
+consumption, SecureAFL maintains historical buffers and performs
+second-order approximations via L-BFGS, resulting in a server-side
+memory usage of 0.456 GB, which remains well within the capacity
+of standard hardware.
+
+8
+
+Conclusion
+
+We present SecureAFL, a Byzantine-resilient framework for asynchronous FL that effectively mitigates poisoning attacks. Our SecureAFL systematically enhances model aggregation by first examining incoming local updates through a smoothness-based criterion,
+discarding updates that exhibit abrupt deviations from historical
+behavior. It then reconstructs missing client updates by exploiting
+prior model dynamics and historical update trajectories to compensate for partial participation. Finally, the server integrates both
+received and estimated updates using robust aggregation rules, such
+as the coordinate-wise median, to further limit the influence of adversarial updates. Extensive experimental results across multiple
+datasets and attack scenarios demonstrate the effectiveness and
+robustness of SecureAFL in defending against poisoning attacks
+under fully asynchronous settings.
+
+Acknowledgments
+We thank the anonymous reviewers for their comments.
+
+SecureAFL: Secure Asynchronous Federated Learning
+
+References
+[1] [n. d.]. Federated Learning: Collaborative Machine Learning without Centralized Training Data.
+https://ai.googleblog.com/2017/04/federated-learningcollaborative.html
+[2] [n. d.]. Utilization of FATE in Risk Management of Credit in Small and Micro Enterprises. https://www.fedai.org/cases/utilization-of-fate-in-risk-management-ofcredit-in-small-and-micro-\enterprises/
+[3] 2018. Udacity Dataset. Available: https://github.com/udacity/self-driving-car/
+(2018).
+[4] Martín Abadi, Ashish Agarwal, Paul Barham, Eugene Brevdo, Zhifeng Chen,
+Craig Citro, Greg S Corrado, Andy Davis, Jeffrey Dean, Matthieu Devin, et al.
+2016. Tensorflow: Large-scale machine learning on heterogeneous distributed
+systems. arXiv preprint arXiv:1603.04467 (2016).
+[5] Eugene Bagdasaryan, Andreas Veit, Yiqing Hua, Deborah Estrin, and Vitaly
+Shmatikov. 2020. How to backdoor federated learning. In AISTATS.
+[6] Yulong Bai, Ying Wang, Xiangrui Xu, Yuhang Yang, Hina Batool, Zahid Iqbal, and
+Jiuyun Xu. 2025. AsyncDefender: Dynamic trust adaptation and collaborative
+defense for Byzantine-robust asynchronous federated learning. In Computer
+Networks.
+[7] Peva Blanchard, El Mahdi El Mhamdi, Rachid Guerraoui, and Julien Stainer.
+2017. Machine learning with adversaries: Byzantine tolerant gradient descent. In
+NeurIPS.
+[8] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan,
+Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda
+Askell, et al. 2020. Language models are few-shot learners. In NeurIPS.
+[9] Richard H Byrd, Peihuang Lu, Jorge Nocedal, and Ciyou Zhu. 1995. A limited
+memory algorithm for bound constrained optimization. In SIAM Journal on
+scientific computing.
+[10] Richard H Byrd, Jorge Nocedal, and Robert B Schnabel. 1994. Representations of
+quasi-Newton matrices and their use in limited memory methods. In Mathematical Programming.
+[11] Xiaoyu Cao, Minghong Fang, Jia Liu, and Neil Zhenqiang Gong. 2021. Fltrust:
+Byzantine-robust federated learning via trust bootstrapping. In NDSS.
+[12] Xiaoyu Cao, Jinyuan Jia, and Neil Zhenqiang Gong. 2021. Provably secure
+federated learning against malicious clients. In AAAI.
+[13] Tianyi Chen, Xiao Jin, Yuejiao Sun, and Wotao Yin. 2020. Vafl: a method of
+vertical asynchronous federated learning. arXiv preprint arXiv:2007.06081 (2020).
+[14] Yujing Chen, Yue Ning, Martin Slawski, and Huzefa Rangwala. 2020. Asynchronous online federated learning for edge devices with non-iid data. In Big
+Data.
+[15] Yudong Chen, Lili Su, and Jiaming Xu. 2017. Distributed Statistical Machine
+Learning in Adversarial Settings: Byzantine Gradient Descent. In POMACS.
+[16] Bart Cox, Abele Mălan, Lydia Y Chen, and Jérémie Decouchant. 2024. Asynchronous byzantine federated learning. arXiv preprint arXiv:2406.01438 (2024).
+[17] Georgios Damaskinos, Rachid Guerraoui, Rhicheek Patra, Mahsa Taziki, et al.
+2018. Asynchronous Byzantine machine learning (the case of SGD). In ICML.
+[18] Jia Deng, Wei Dong, Richard Socher, Li-Jia Li, Kai Li, and Li Fei-Fei. 2009. Imagenet:
+A large-scale hierarchical image database. In CVPR.
+[19] Zhihao Dou, Jiaqi Wang, Wei Sun, Zhuqing Liu, and Minghong Fang. 2025.
+Toward Malicious Clients Detection in Federated Learning. In ASIACCS.
+[20] Minghong Fang, Xiaoyu Cao, Jinyuan Jia, and Neil Gong. 2020. Local model
+poisoning attacks to Byzantine-robust federated learning. In USENIX Security
+Symposium.
+[21] Minghong Fang, Jia Liu, Neil Zhenqiang Gong, and Elizabeth S Bentley. 2022.
+Aflguard: Byzantine-robust asynchronous federated learning. In ACSAC.
+[22] Minghong Fang, Zhuqing Liu, Xuecen Zhao, and Jia Liu. 2025. Byzantine-Robust
+Federated Learning over Ring-All-Reduce Distributed Computing. In Companion
+Proceedings of the ACM on Web Conference 2025.
+[23] Minghong Fang, Seyedsina Nabavirazavi, Zhuqing Liu, Wei Sun, Sundararaja Sitharama Iyengar, and Haibo Yang. 2025. Do we really need to design
+new byzantine-robust aggregation rules?. In NDSS.
+[24] Minghong Fang, Xilong Wang, and Neil Zhenqiang Gong. 2025. Provably Robust
+Federated Reinforcement Learning. In The Web Conference.
+[25] Minghong Fang, Zifan Zhang, Prashant Khanduri, Jia Liu, Songtao Lu, Yuchen
+Liu, Neil Gong, et al. 2024. Byzantine-robust decentralized federated learning. In
+CCS.
+[26] Xiuwen Fang, Mang Ye, and Xiyuan Yang. 2023. Robust heterogeneous federated
+learning under data corruption. In ICCV.
+[27] Lei Feng, Yiqi Zhao, Shaoyong Guo, Xuesong Qiu, Wenjing Li, and Peng Yu. 2021.
+BAFL: A blockchain-based asynchronous federated learning framework. In IEEE
+Transactions on Computers.
+[28] Hossein Fereidooni, Alessandro Pegoraro, Phillip Rieger, Alexandra Dmitrienko,
+and Ahmad-Reza Sadeghi. 2024. Freqfed: A frequency analysis-based approach
+for mitigating poisoning attacks in federated learning. In NDSS.
+[29] Clement Fung, Chris JM Yoon, and Ivan Beschastnikh. 2020. The limitations of
+federated learning in sybil settings. In RAID.
+
+ASIA CCS ’26, June 01–05, 2026, Bangalore, India
+
+[30] Rachid Guerraoui, Sébastien Rouault, et al. 2018. The hidden vulnerability of
+distributed learning in byzantium. In ICML.
+[31] Andrew Hard, Antonious M Girgis, Ehsan Amid, Sean Augenstein, Lara McConnaughey, Rajiv Mathews, and Rohan Anil. 2024. Learning from straggler
+clients in federated learning. arXiv preprint arXiv:2403.09086 (2024).
+[32] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. 2016. Deep residual
+learning for image recognition. In CVPR.
+[33] Dzmitry Huba, John Nguyen, Kshitiz Malik, Ruiyu Zhu, Mike Rabbat, Ashkan
+Yousefpour, Carole-Jean Wu, Hongyuan Zhan, Pavel Ustinov, Harish Srinivas,
+et al. 2022. Papaya: Practical, private, and scalable federated learning. In MLSys.
+[34] Ehsanul Kabir, Zeyu Song, Md Rafi Ur Rashid, and Shagufta Mehnaz. 2024.
+Flshield: a validation based federated learning framework to defend against
+poisoning attacks. In IEEE Symposium on Security and Privacy.
+[35] Sai Praneeth Karimireddy, Lie He, and Martin Jaggi. 2021. Learning from history
+for byzantine robust optimization. In ICML.
+[36] Sai Praneeth Karimireddy, Lie He, and Martin Jaggi. 2022. Byzantine-robust
+learning on heterogeneous datasets via bucketing. In ICLR.
+[37] A. Krizhevsky and G. Hinton. 2009. Learning multiple layers of features from
+tiny images. Handbook of Systemic Autoimmune Diseases (2009).
+[38] Kavita Kumari, Phillip Rieger, Hossein Fereidooni, Murtuza Jadliwala, and AhmadReza Sadeghi. 2023. Baybfed: Bayesian backdoor defense for federated learning.
+In IEEE Symposium on Security and Privacy.
+[39] Serge Lang. 2012. Real and functional analysis. Vol. 142. Springer Science &
+Business Media.
+[40] Haoyang Li, Qingqing Ye, Haibo Hu, Jin Li, Leixia Wang, Chengfang Fang, and
+Jie Shi. 2023. 3dfed: Adaptive and extensible framework for covert backdoor
+attack in federated learning. In IEEE Symposium on Security and Privacy.
+[41] Liping Li, Wei Xu, Tianyi Chen, Georgios B Giannakis, and Qing Ling. 2019. RSA:
+Byzantine-robust stochastic aggregation methods for distributed learning from
+heterogeneous datasets. In AAAI.
+[42] Songze Li and Yanbo Dai. 2024. BackdoorIndicator: Leveraging OOD Data for
+Proactive Backdoor Detection in Federated Learning. In USENIX Security Symposium.
+[43] Ji Liu, Juncheng Jia, Tianshi Che, Chao Huo, Jiaxiang Ren, Yang Zhou, Huaiyu
+Dai, and Dejing Dou. 2024. Fedasmu: Efficient asynchronous federated learning
+with dynamic staleness-aware model update. In AAAI.
+[44] H Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, et al. 2017.
+Communication-efficient learning of deep networks from decentralized data. In
+AISTATS.
+[45] El Mahdi El Mhamdi, Rachid Guerraoui, and Sébastien Rouault. 2018. The hidden
+vulnerability of distributed learning in byzantium. In ICML.
+[46] Yinbin Miao, Ziteng Liu, Xinghua Li, Meng Li, Hongwei Li, Kim-Kwang Raymond
+Choo, and Robert H Deng. 2023. Robust asynchronous federated learning with
+time-weighted and stale model aggregation. In IEEE Transactions on Dependable
+and Secure Computing.
+[47] Wenjin Mo, Zhiyuan Li, Minghong Fang, and Mingwei Fang. 2025. Find a Scapegoat: Poisoning Membership Inference Attack and Defense to Federated Learning.
+In ICCV.
+[48] Hamid Mozaffari, Virat Shejwalkar, and Amir Houmansadr. 2023. Every vote
+counts: { Ranking-Based } training of federated learning to resist poisoning attacks.
+In USENIX Security Symposium.
+[49] Luis Muñoz-González, Kenneth T Co, and Emil C Lupu. 2019. Byzantine-robust
+federated machine learning through adaptive model averaging. arXiv preprint
+arXiv:1909.05125 (2019).
+[50] John Nguyen, Kshitiz Malik, Hongyuan Zhan, Ashkan Yousefpour, Mike Rabbat, Mani Malek, and Dzmitry Huba. 2022. Federated learning with buffered
+asynchronous aggregation. In AISTATS.
+[51] Thien Duc Nguyen, Phillip Rieger, Roberta De Viti, Huili Chen, Björn B Brandenburg, Hossein Yalame, Helen Möllering, Hossein Fereidooni, Samuel Marchal,
+Markus Miettinen, et al. 2022. FLAME: Taming backdoors in federated learning.
+In USENIX Security Symposium.
+[52] Xudong Pan, Mi Zhang, Duocai Wu, Qifan Xiao, Shouling Ji, and Min Yang. 2020.
+Justinian’s gaavernor: Robust distributed learning with gradient aggregation
+agent. In USENIX Security Symposium.
+[53] Xiaoyi Pang, Chenxu Zhao, Zhibo Wang, Jiahui Hu, Yinggui Wang, Lei Wang,
+Tao Wei, Kui Ren, and Chun Chen. 2025. PoiSAFL: Scalable Poisoning Attack
+Framework to Byzantine-resilient Semi-asynchronous Federated Learning. In
+USENIX Security Symposium.
+[54] Jungwuk Park, Dong-Jun Han, Minseok Choi, and Jaekyun Moon. 2021. Sageflow:
+Robust federated learning against both stragglers and adversaries. In NeurIPS.
+[55] Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory
+Chanan, Trevor Killeen, Zeming Lin, Natalia Gimelshein, Luca Antiga, et al. 2019.
+Pytorch: An imperative style, high-performance deep learning library. In NeurIPS.
+[56] Matthias Paulik, Matt Seigel, Henry Mason, Dominic Telaar, Joris Kluivers, Rogier
+van Dalen, Chi Wai Lau, Luke Carlson, Filip Granqvist, Chris Vandevelde, et al.
+2021. Federated evaluation and tuning for on-device personalization: System
+design & applications. arXiv preprint arXiv:2102.08503 (2021).
+
+ASIA CCS ’26, June 01–05, 2026, Bangalore, India
+
+Anjun Gao et al.
+
+[57] Krishna Pillutla, Sham M Kakade, and Zaid Harchaoui. 2022. Robust aggregation
+for federated learning. IEEE Transactions on Signal Processing (2022).
+[58] Virat Shejwalkar and Amir Houmansadr. 2021. Manipulating the Byzantine:
+Optimizing Model Poisoning Attacks and Defenses for Federated Learning. In
+NDSS.
+[59] Ziteng Sun, Peter Kairouz, Ananda Theertha Suresh, and H Brendan McMahan.
+2019. Can you really backdoor federated learning? arXiv preprint arXiv:1911.07963
+(2019).
+[60] Rashish Tandon, Qi Lei, Alexandros G Dimakis, and Nikos Karampatziakis. 2017.
+Gradient coding: Avoiding stragglers in distributed learning. In ICML.
+[61] Vale Tolpegin, Stacey Truex, Mehmet Emre Gursoy, and Ling Liu. 2020. Data
+poisoning attacks against federated learning systems. In ESORICS.
+[62] Marten van Dijk, Nhuong V Nguyen, Toan N Nguyen, Lam M Nguyen, Quoc TranDinh, and Phuong Ha Nguyen. 2020. Asynchronous Federated Learning with
+Reduced Number of Rounds and with Differential Privacy from Less Aggregated
+Gaussian Noise. arXiv preprint arXiv:2007.09208 (2020).
+[63] Ning Wang, Yang Xiao, Yimin Chen, Yang Hu, Wenjing Lou, and Y Thomas Hou.
+2022. FLARE: defending federated learning against model poisoning attacks via
+latent space representations. In ASIACCS.
+[64] Wenbin Wang, Qiwen Ma, Zifan Zhang, Yuchen Liu, Zhuqing Liu, and Minghong
+Fang. 2025. Poisoning attacks and defenses to federated unlearning. In Companion
+Proceedings of the ACM on Web Conference 2025.
+[65] Yongkang Wang, Dihua Zhai, Yufeng Zhan, and Yuanqing Xia. 2022. Rflbat:
+A robust federated learning algorithm against backdoor attack. arXiv preprint
+arXiv:2201.03772 (2022).
+[66] Zhongyu Wang, Zhaoyang Zhang, Yuqing Tian, Qianqian Yang, Hangguan Shan,
+Wei Wang, and Tony QS Quek. 2022. Asynchronous federated learning over wireless communication networks. In IEEE Transactions on Wireless Communications.
+[67] Han Xiao, Kashif Rasul, and Roland Vollgraf. 2017.
+Fashion-MNIST:
+a Novel Image Dataset for Benchmarking Machine Learning Algorithms.
+arXiv:cs.LG/1708.07747 [cs.LG]
+[68] Chulin Xie, Keli Huang, Pin-Yu Chen, and Bo Li. 2019. Dba: Distributed backdoor
+attacks against federated learning. In ICLR.
+[69] Cong Xie, Sanmi Koyejo, and Indranil Gupta. 2019. Asynchronous federated
+optimization. arXiv preprint arXiv:1903.03934 (2019).
+[70] Cong Xie, Sanmi Koyejo, and Indranil Gupta. 2019. Zeno: Distributed stochastic
+gradient descent with suspicion-based fault-tolerance. In ICML.
+[71] Cong Xie, Sanmi Koyejo, and Indranil Gupta. 2020. Zeno++: Robust fully asynchronous SGD. In ICML.
+[72] Yueqi Xie, Minghong Fang, and Neil Zhenqiang Gong. 2025. Model Poisoning
+Attacks to Federated Learning via Multi-Round Consistency. In CVPR.
+[73] Chenhao Xu, Youyang Qu, Yong Xiang, and Longxiang Gao. 2023. Asynchronous
+federated learning on heterogeneous devices: A survey. In Computer Science
+Review.
+[74] Jian Xu, Shao-Lun Huang, Linqi Song, and Tian Lan. 2022. Byzantine-robust
+federated learning through collaborative malicious gradient filtering. In ICDCS.
+[75] Yichang Xu, Ming Yin, Minghong Fang, and Neil Zhenqiang Gong. 2024. Robust
+Federated Learning Mitigates Client-side Training Data Distribution Inference
+Attacks. In The Web Conference.
+[76] Yi-Rui Yang and Wu-Jun Li. 2021. BASGD: Buffered Asynchronous SGD for
+Byzantine Learning. In ICML.
+[77] Dong Yin, Yudong Chen, Ramchandran Kannan, and Peter Bartlett. 2018.
+Byzantine-robust distributed learning: Towards optimal statistical rates. In ICML.
+[78] Ming Yin, Yichang Xu, Minghong Fang, and Neil Zhenqiang Gong. 2024. Poisoning federated recommender systems with fake users. In The Web Conference.
+[79] Zaixi Zhang, Xiaoyu Cao, Jinyuan Jia, and Neil Zhenqiang Gong. 2022. FLDetector:
+Defending federated learning against model poisoning attacks via detecting
+malicious clients. In KDD.
+[80] Zifan Zhang, Minghong Fang, Jiayuan Huang, and Yuchen Liu. 2024. Poisoning
+Attacks on Federated Learning-based Wireless Traffic Prediction. In IFIP/IEEE
+Networking Conference.
+[81] Zhengming Zhang, Ashwinee Panda, Linyue Song, Yaoqing Yang, Michael Mahoney, Prateek Mittal, Ramchandran Kannan, and Joseph Gonzalez. 2022. Neurotoxin: Durable backdoors in federated learning. In ICML.
+[82] Shuxin Zheng, Qi Meng, Taifeng Wang, Wei Chen, Nenghai Yu, Zhi-Ming Ma,
+and Tie-Yan Liu. 2017. Asynchronous stochastic gradient descent with delay
+compensation. In ICML.
+
+A
+
+Important Lemmas
+
+We first derive a tracking error model of the form
+
+
+2
+𝒈𝑡 = ∇𝐹 H (𝒘 𝑡 ) + 𝜹 𝑡 , E ∥𝜹 𝑡 ∥ 2 ≤ 𝐸 track
+.
+
+Lemma 1. Recall that the server model is updated as 𝒘 𝑠+1 = 𝒘 𝑠 −
+𝜂𝒈𝑠 , where 𝒈𝑠 denotes the aggregated update applied by the server at
+round 𝑠. Under Assumptions 1 and 4, for any benign client 𝑗 ∈ H ,
+𝑡∑︁
+−1
+
+∥∇𝑓 𝑗 (𝒘 𝑡 −𝜏𝑖 ) − ∇𝑓 𝑗 (𝒘 𝑡 )∥ ≤ 𝐿∥𝒘 𝑡 −𝜏𝑖 − 𝒘 𝑡 ∥ ≤ 𝐿𝜂
+
+∥𝒈𝑠 ∥.
+
+𝑠=𝑡 −𝜏max
+
+(21)
+Consequently, using Assumption 7 and Jensen’s inequality,
+
+
+E ∥∇𝑓 𝑗 (𝒘 𝑡 −𝜏𝑖 ) − ∇𝑓 𝑗 (𝒘 𝑡 )∥ 2 ≤ 𝐿 2𝜂 2𝜏max
+
+𝑡∑︁
+−1
+
+E∥𝒈𝑠 ∥ 2
+(22)
+
+𝑠=𝑡 −𝜏max
+2
+
+2
+≤ 𝐿 2𝜂 2𝜏max
+𝐺 .
+
+Proof. The first inequality follows from 𝐿-smoothness. For the
+second, use telescoping:
+𝒘 𝑡 − 𝒘 𝑡 −𝜏𝑖 =
+
+𝑡 −1
+∑︁
+
+(𝒘 𝑠+1 − 𝒘 𝑠 ) = −𝜂
+
+𝑠=𝑡 −𝜏𝑖
+
+𝑡 −1
+∑︁
+
+𝒈𝑠 ,
+
+(23)
+
+∥𝒈𝑠 ∥.
+
+(24)
+
+𝑠=𝑡 −𝜏𝑖
+
+hence
+𝑡 −1
+∑︁
+
+∥𝒘 𝑡 − 𝒘 𝑡 −𝜏𝑖 ∥ ≤ 𝜂
+
+∥𝒈𝑠 ∥ ≤ 𝜂
+
+𝑠=𝑡 −𝜏𝑖
+
+𝑡 −1
+∑︁
+𝑠=𝑡 −𝜏max
+
+Í
+Í
+Squaring and using ( 𝑘𝑖=1 𝑎𝑖 ) 2 ≤ 𝑘 𝑘𝑖=1 𝑎𝑖2 yields the first inequality
+in Eq. (22). The last inequality uses Eq. (14).
+□
+At round 𝑡, define for each benign client 𝑗 ∈ H the contemporaneous gradient
+
+𝒖𝑡𝑗 =
+
+(
+𝒈𝑖𝑡 −𝜏𝑖 ,
+𝒈ˆ 𝑡𝑗 ,
+
+𝒉𝑡𝑗 = ∇𝑓 𝑗 (𝒘 𝑡 ).
+
+(25)
+
+if 𝑗 = 𝑖 and the filter accepts,
+if 𝑗 ∈ S.
+
+(26)
+
+Lemma 2. Under Assumptions 5, 6, and Lemma 1, for any round 𝑡,
+
+
+E ∥𝒖𝑡𝑗 − 𝒉𝑡𝑗 ∥ 2 | F𝑡
+( 2
+2 𝐺 2 , if 𝑗 = 𝑖 ∈ H and accepted,
+2𝜎 + 2𝐿 2𝜂 2𝜏max
+(27)
+≤
+2 ,
+𝜀 est
+if 𝑗 ∈ H ∩ S.
+Proof. If 𝑗 ∈ H ∩ S, then 𝒖𝑡𝑗 = 𝒈ˆ 𝑡𝑗 and Eq. (27) follows from
+Assumption 6. If 𝑗 = 𝑖 ∈ H and accepted, then
+
+(28)
+𝒖𝑡𝑗 − 𝒉𝑡𝑗 = ∇𝑓 𝑗 (𝒘 𝑡 −𝜏𝑖 ) − ∇𝑓 𝑗 (𝒘 𝑡 ) + 𝝃𝑖,𝑡 .
+Using ∥𝑎 + 𝑏 ∥ 2 ≤ 2∥𝑎∥ 2 + 2∥𝑏 ∥ 2 taking conditional expectation,
+and applying Lemma 1 and Assumption 5,
+
+
+
+
+E ∥𝒖𝑡𝑗 − 𝒉𝑡𝑗 ∥ 2 | F𝑡 ≤2E ∥∇𝑓 𝑗 (𝒘 𝑡 −𝜏𝑖 ) − ∇𝑓 𝑗 (𝒘 𝑡 )∥ 2 | F𝑡
+(29)
+
+
++ 2E ∥𝝃𝑖,𝑡 ∥ 2 | F𝑡 .
+□
+Lemma 3 (Median aggregation as a bounded tracking error). Suppose Assumptions 3, 7, and 8 hold. Let
+
+(20)
+
+This is obtained by combining staleness, estimation error, heterogeneity, and median robustness under Byzantine contamination.
+
+𝒈𝑡 = Median(V𝑡 ).
+
+(30)
+
+For every client 𝑗 ∈ [𝑛], the possibly estimated vector that is actually
+fed into the median at round 𝑡 as
+𝒖𝑡𝑗 ∈ V𝑡 ,
+
+V𝑡 = {𝒖𝑡𝑗 } 𝑗 ∈ [𝑛] ,
+
+(31)
+
+SecureAFL: Secure Asynchronous Federated Learning
+
+AsyncSGD
+
+Sageflow
+
+Zeno++
+
+AFLGuard
+
+0.8
+
+0.8
+
+0.8
+
+0.8
+
+0.8
+
+0.6
+
+0.6
+
+0.6
+
+0.6
+
+0.6
+
+0.4
+
+0.4
+0.2
+
+50
+
+0.0
+
+100
+150
+200
+300
+Total number of clients
+
+(a) Labelflip
+
+1.0
+
+0.4
+0.2
+
+50
+
+0.0
+
+100
+150
+200
+300
+Total number of clients
+
+(b) Signflip
+
+1.0
+
+ASR
+
+1.0
+
+TER
+
+1.0
+
+TER
+
+1.0
+
+0.0
+
+0.4
+0.2
+
+50
+
+0.0
+
+100
+150
+200
+300
+Total number of clients
+
+(c) Gaussian
+
+1.0
+
+0.2
+50
+
+0.0
+
+100
+150
+200
+300
+Total number of clients
+
+(d) Scaling
+
+1.0
+
+0.6
+
+0.6
+
+0.6
+
+0.6
+
+0.6
+
+0.2
+0.0
+
+0.2
+50
+
+0.0
+
+100
+150
+200
+300
+Total number of clients
+
+(f) DBA
+
+1.0
+
+0.4
+0.2
+
+50
+
+0.0
+
+100
+150
+200
+300
+Total number of clients
+
+(g) DBA
+
+1.0
+
+TER
+
+0.8
+
+ASR
+
+0.8
+
+TER
+
+0.8
+
+0.4
+
+0.4
+0.2
+
+50
+
+0.0
+
+100
+150
+200
+300
+Total number of clients
+
+(h) PGD
+
+1.0
+
+0.0
+
+100
+150
+200
+300
+Total number of clients
+
+(i) PGD
+
+1.0
+
+0.6
+
+0.6
+
+0.6
+
+0.2
+0.0
+
+0.2
+50
+
+100
+150
+200
+300
+Total number of clients
+
+0.0
+
+0.2
+50
+
+(k) Neurotoxin
+
+100
+150
+200
+300
+Total number of clients
+
+0.0
+
+TER
+
+0.6
+
+TER
+
+0.6
+
+ASR
+
+0.8
+
+TER
+
+0.8
+0.4
+0.2
+50
+
+100
+150
+200
+300
+Total number of clients
+
+(l) 3DFed
+
+(m) 3DFed
+
+0.0
+
+50
+
+100
+150
+200
+300
+Total number of clients
+
+(j) Neurotoxin
+
+1.0
+
+0.8
+0.4
+
+(e) Scaling
+
+0.2
+50
+
+0.8
+0.4
+
+100
+150
+200
+300
+Total number of clients
+
+0.4
+
+0.8
+0.4
+
+50
+
+1.0
+
+0.8
+
+0.4
+
+SecureAFL
+
+0.4
+
+0.8
+ASR
+
+TER
+
+BASGD
+
+1.0
+
+0.2
+
+ASR
+
+Kardam
+
+1.0
+
+TER
+
+TER
+
+AsyncSGD w/o attack
+
+ASIA CCS ’26, June 01–05, 2026, Bangalore, India
+
+0.4
+0.2
+
+50
+
+100
+150
+200
+300
+Total number of clients
+
+0.0
+
+(n) Min-Max
+
+50
+
+100
+150
+200
+300
+Total number of clients
+
+(o) Adaptive
+
+Figure 4: Impact of total number of clients on Fashion-MNIST dataset.
+Table 11: Performance of AsyncDefender across different datasets and attack types.
+Dataset
+No attack Labelflip Signflip Gaussian Scaling
+DBA
+PGD
+Neurotoxin 3DFed Min-Max Adaptive
+Fashion-MNIST
+0.24
+0.25
+0.33
+0.31
+0.38/0.44 0.34/0.43 0.33/0.29 0.32/0.27 0.34/0.31
+0.39
+0.43
+CIFAR-10
+0.26
+0.40
+0.42
+0.49
+0.58/0.37 0.53/0.42 0.55/0.44 0.52/0.40 0.57/0.43
+0.55
+0.66
+CIFAR-100
+0.50
+0.58
+0.57
+0.66
+0.73/0.53 0.74/0.55 0.71/0.67 0.73/0.44 0.72/0.57
+0.93
+0.89
+Tiny-ImageNet
+0.63
+0.71
+0.75
+0.71
+0.70/0.15 0.72/0.18 0.69/0.12 0.70/0.15 0.71/0.15
+0.73
+0.72
+Udacity
+0.18
+–
+0.41
+0.32
+–
+–
+–
+–
+–
+0.29
+0.33
+
+so that at most 𝑏 elements of V𝑡 are Byzantine and the remaining
+correspond to benign clients in H . Let
+1 ∑︁
+∇𝑓 𝑗 (𝒘 𝑡 ), 𝒉𝑡𝑗 = ∇𝑓 𝑗 (𝒘 𝑡 ).
+(32)
+𝒉¯𝑡 = ∇𝐹 H (𝒘 𝑡 ) =
+𝑚
+𝑗 ∈H
+
+Assume additionally the following median second-moment robustness
+property holds for the coordinate-wise median: there exists a constant
+𝐶 med > 0 (depending only on the Byzantine fraction bound) such that,
+for all 𝑡,
+
+ 𝐶 med ∑︁  𝑡
+
+E ∥𝒖 𝑗 − 𝒉¯𝑡 ∥ 2 | F𝑡 .
+E ∥Median(V𝑡 ) − 𝒉¯𝑡 ∥ 2 | F𝑡 ≤
+𝑚
+
+For each benign client 𝑗 ∈ H , add and subtract 𝒉𝑡𝑗 and use
+∥𝑎 + 𝑏 ∥ 2 ≤ 2∥𝑎∥ 2 + 2∥𝑏 ∥ 2 :
+∥𝒖𝑡𝑗 − 𝒉¯𝑡 ∥ 2 = ∥𝒖𝑡𝑗 − 𝒉𝑡𝑗 + 𝒉𝑡𝑗 − 𝒉¯𝑡 ∥ 2
+(37)
+≤ 2∥𝒖𝑡𝑗 − 𝒉𝑡𝑗 ∥ 2 + 2∥𝒉𝑡𝑗 − 𝒉¯𝑡 ∥ 2 .
+Substituting Eq. (37) into Eq. (36) yields
+
+ 2𝐶 med ∑︁  𝑡
+
+E ∥𝜹 𝑡 ∥ 2 | F𝑡 ≤
+E ∥𝒖 𝑗 − 𝒉𝑡𝑗 ∥ 2 | F𝑡
+𝑚
+𝑗 ∈H
+2𝐶 med ∑︁ 𝑡 ¯𝑡 2
+∥𝒉 𝑗 − 𝒉 ∥ .
++
+𝑚
+𝑗 ∈H
+
+𝑗 ∈H
+
+(33)
+Then there exists a random vector 𝜹 𝑡 such that
+
+
+2
+𝒈𝑡 = ∇𝐹 H (𝒘 𝑡 ) + 𝜹 𝑡 , E ∥𝜹 𝑡 ∥ 2 ≤ 𝐸 track
+,
+
+(34)
+
+where
+
+
+2
+2
+2
+𝐸 track
+≤ 𝐶 med 𝜁 2 + 𝜀 est
++ 𝜎 2 + 𝐿 2𝜂 2𝜏max
+𝐺2
+
+
+.
+
+(35)
+
+Proof. Fix 𝑡 and condition on F𝑡 . Let 𝒉¯𝑡 = ∇𝐹 H (𝒘 𝑡 ). Define the
+tracking error 𝜹 𝑡 = 𝒈𝑡 − 𝒉¯𝑡 , so that 𝒈𝑡 = 𝒉¯𝑡 + 𝜹 𝑡 . By the assumed
+median second-moment robustness property Eq. (33),
+
+
+
+
+E ∥𝜹 𝑡 ∥ 2 | F𝑡 = E ∥𝒈𝑡 − 𝒉¯𝑡 ∥ 2 | F𝑡
+
+𝐶 med ∑︁  𝑡 ¯𝑡 2
+(36)
+≤
+E ∥𝒖 𝑗 − 𝒉 ∥ | F𝑡 .
+𝑚
+𝑗 ∈H
+
+(38)
+
+By Assumption 8, the second term satisfies
+1 ∑︁ 𝑡 ¯𝑡 2
+∥𝒉 𝑗 − 𝒉 ∥ ≤ 𝜁 2 .
+𝑚
+
+(39)
+
+𝑗 ∈H
+
+For the first term, Lemma 2 gives, for each benign 𝑗 at round 𝑡,
+
+
+2
+2
+E ∥𝒖𝑡𝑗 − 𝒉𝑡𝑗 ∥ 2 | F𝑡 ≤ 𝜀 est
+or 2𝜎 2 + 2𝐿 2𝜂 2𝜏max
+𝐺 2,
+(40)
+depending on whether 𝒖𝑡𝑗 is an estimator output or an accepted
+stale upload. Therefore, in all cases,
+
+1 ∑︁  𝑡
+2
+2
+E ∥𝒖 𝑗 − 𝒉𝑡𝑗 ∥ 2 | F𝑡 ≤ 𝜀 est
++ 2𝜎 2 + 2𝐿 2𝜂 2𝜏max
+𝐺2.
+(41)
+𝑚
+𝑗 ∈H
+
+Combining Eq. (38), Eq. (39), and Eq. (41) and absorbing constant
+factors into 𝐶 med yields
+
+
+
+
+2
+2
+E ∥𝜹 𝑡 ∥ 2 | F𝑡 ≤ 𝐶 med 𝜁 2 + 𝜀 est
++ 𝜎 2 + 𝐿 2𝜂 2𝜏max
+𝐺 2 . (42)
+Taking total expectation over F𝑡 proves Eq. (34)–(35).
+
+□
+
+ASIA CCS ’26, June 01–05, 2026, Bangalore, India
+
+B
+
+Anjun Gao et al.
+
+Proofs for Theorem 1
+
+Proof. Now, with all assumptions and the important lemmas
+we have mentioned above. We now illustrate the detailed proof for
+theorem 1. First, By 𝐿-smoothness of 𝐹 H (Assumption 1), for the
+update 𝒘 𝑡 +1 = 𝒘 𝑡 − 𝜂𝒈𝑡 , we have,
+𝐿𝜂 2 𝑡 2
+∥𝒈 ∥ . (43)
+2
+𝑡
+𝑡
+𝑡
+𝑡
+2
+2
+Then, by Lemma 3, 𝒈 = ∇𝐹 H (𝒘 ) + 𝜹 with E∥𝜹 ∥ ≤ 𝐸 track
+. We
+get,
+𝐹 H (𝒘 𝑡 +1 ) ≤ 𝐹 H (𝒘 𝑡 ) − 𝜂⟨∇𝐹 H (𝒘 𝑡 ), 𝒈𝑡 ⟩ +
+
+−⟨∇𝐹 H (𝒘 𝑡 ), 𝒈𝑡 ⟩ = −∥∇𝐹 H (𝒘 𝑡 )∥ 2 − ⟨∇𝐹 H (𝒘 𝑡 ), 𝜹 𝑡 ⟩.
+By Cauchy–Schwarz and Young’s inequality, ⟨𝑎, 𝑏⟩ ≤
+1
+2
+2 ∥𝑏 ∥ , hence
+
+(44)
+
+1
+2
+2 ∥𝑎∥ +
+
+1
+1
+−⟨∇𝐹 H (𝒘 𝑡 ), 𝒈𝑡 ⟩ ≤ − ∥∇𝐹 H (𝒘 𝑡 )∥ 2 + ∥𝜹 𝑡 ∥ 2 .
+2
+2
+Therefore, we have
+∥𝒈𝑡 ∥ 2 = ∥∇𝐹 H (𝒘 𝑡 ) + 𝜹 𝑡 ∥ 2 ≤ 2∥∇𝐹 H (𝒘 𝑡 )∥ 2 + 2∥𝜹 𝑡 ∥ 2 .
+
+(45)
+
+(46)
+
+Substitute this and Eq. (45) into Eq. (43):
+
+
+𝐹 H (𝒘 𝑡 +1 ) ≤𝐹 H (𝒘 𝑡 ) + 𝜂 − 21 ∥∇𝐹 H (𝒘 𝑡 )∥ 2 + 12 ∥𝜹 𝑡 ∥ 2
+
+𝐿𝜂 2 
+2∥∇𝐹 H (𝒘 𝑡 )∥ 2 + 2∥𝜹 𝑡 ∥ 2
++
+2
+
+
+
+
+=𝐹 H (𝒘 𝑡 ) − 𝜂 21 − 𝐿𝜂 ∥∇𝐹 H (𝒘 𝑡 )∥ 2 + 𝜂 21 + 𝐿𝜂 ∥𝜹 𝑡 ∥ 2 .
+(47)
+1
+Under 𝜂 ≤ 4𝐿
+, we have 12 − 𝐿𝜂 ≥ 14 and 21 + 𝐿𝜂 ≤ 1, hence
+𝜂
+𝐹 H (𝒘 𝑡 +1 ) ≤ 𝐹 H (𝒘 𝑡 ) − ∥∇𝐹 H (𝒘 𝑡 )∥ 2 + 𝜂 ∥𝜹 𝑡 ∥ 2 .
+(48)
+4
+2
+Take expectations and apply E∥𝜹 𝑡 ∥ 2 ≤ 𝐸 track
+:
+𝜂
+𝑡 +1
+𝑡
+2
+E𝐹 H (𝒘 ) ≤ E𝐹 H (𝒘 ) − E∥∇𝐹 H (𝒘 𝑡 )∥ 2 + 𝜂𝐸 track
+. (49)
+4
+Rearrange, sum 𝑡 = 0 to 𝑇 − 1, and use 𝐹 H (𝒘𝑇 ) ≥ 𝐹 H ★:
+𝑇 −1
+
+𝜂 ∑︁
+2
+E∥∇𝐹 H (𝒘 𝑡 )∥ 2 ≤ 𝐹 H (𝒘 0 ) − 𝐹 H ★ + 𝑇𝜂𝐸 track
+.
+4 𝑡 =0
+Divide both sides by 𝜂𝑇 /4 to obtain Eq. (17).
+
+C
+
+(50)
+□
+
+Details of Datasets
+
+Fashion-MNIST [67]: Fashion-MNIST, derived from Zalando’s
+article images, comprises 70,000 grayscale images with a resolution
+of 28×28 pixels, categorized into 10 distinct classes. The dataset is
+divided into 60,000 images for training and 10,000 for testing.
+CIFAR-10 [37]: CIFAR-10 consists of 60,000 colored images, each
+with a resolution of 32×32 pixels, categorized into 10 distinct classes.
+The dataset is structured into 50,000 images for training and 10,000
+for testing.
+CIFAR-100 [37]: CIFAR-100 follows the same format as CIFAR-10
+but features a more fine-grained classification, comprising 60,000
+color images of 32×32 pixels. These images are distributed across
+100 distinct classes, which are further organized into 20 broader
+categories. The dataset includes 50,000 images for training and
+10,000 for testing.
+
+Tiny-ImageNet [18]: Tiny-ImageNet is a compact variant of the
+ImageNet dataset tailored for large-scale image recognition. It comprises 110,000 images spanning 200 classes, with 100,000 designated
+for training and 10,000 set aside for testing.
+Udacity [3]: The Udacity dataset is a dataset for regression tasks. It
+supports autonomous driving research by enabling the prediction of
+a vehicle’s steering angle within a simulated environment provided
+by Udacity. It comprises images recorded from the onboard camera
+during human-driven demonstrations. Leveraging this data, a model
+is trained to infer steering angles, with its performance ultimately
+assessed on an unseen test track.
+
+D
+
+Details of Poisoning Attacks
+
+Label flipping (Labelflip) attack [61]: The label flipping attack
+alters the training labels of malicious clients by transforming each
+label 𝑦 into 𝑧 − 1 −𝑦, where 𝑧 represents the total number of classes.
+Signflip attack [20]: The Signflip attack disrupts model updates
+by having malicious clients invert the sign of every element in their
+update vector. This is accomplished by multiplying the entire vector
+by -1 before submission.
+Gaussian attack [7]: The Gaussian attack involves malicious
+clients fabricating model updates by sampling from a Gaussian
+distribution with a mean of zero and a standard deviation of 200.
+Scaling attack [5]: In a Scaling attack, the attacker embeds distinct
+trigger patterns into a portion of the training data belonging to
+malicious clients, ensuring these triggers correspond to a predefined
+target label. Additionally, malicious clients amplify their local model
+updates before transmitting them to the server.
+DBA attack [68]: The DBA attack takes advantage of the decentralized structure of FL by fragmenting a global trigger pattern
+into unique local patterns. These patterns are then systematically
+injected into the training data of malicious clients.
+Projected gradient descent (PGD) attack [59]: The attacker can
+employ projected gradient descent to train the backdoor model,
+ensuring that in each training round, the model is updated and then
+constrained within an ℓ2 ball centered around the previous round’s
+model.
+Neurotoxin attack [81]: The Neurotoxin attack strengthens backdoor persistence in FL models by targeting parameters that change
+minimally during training, ensuring the backdoor remains effective
+despite continual updates.
+3DFed attack [40]: 3DFed attack is a stealthy, multi-layered framework for backdoor attacks in black-box FL systems. It employs
+constrained-loss training, noise masking, and a decoy model to
+evade detection.
+Min-Max attack [58]: Min-Max is an untargeted attack independent of aggregation rules, where the attacker stealthily manipulates
+updates from malicious clients.
+Adaptive attack [58]: In the Adaptive attack, the attacker, aware
+of the server’s SecureAFL defense, manipulates malicious client updates to maximize deviation from the pre-attack aggregated model.
+
+SecureAFL: Secure Asynchronous Federated Learning
+
+E
+
+Details of Compared Methods
+
+AsyncSGD [82]: It updates the global model immediately whenever a client submits a model update to the server.
+Kardam [17]: Kardam considers an update as malicious if it exhibits a substantial deviation from past updates.
+BASGD [76]: BASGD organizes client updates into buffers based
+on a mapping table. Once filled, the server averages each buffer,
+computes the median of these averages, and updates the global
+model accordingly.
+Sageflow [54]: Sageflow uses a trusted dataset to assess the quality of client updates. It mitigates the impact of stragglers through
+
+ASIA CCS ’26, June 01–05, 2026, Bangalore, India
+
+staleness-aware grouping and enhances robustness against adversarial attacks using entropy-based filtering and loss-weighted averaging.
+Zeno++ [71]: Zeno++ verifies client updates using a trusted dataset.
+The server computes its own update and assesses its alignment with
+the client’s update via cosine similarity. If the similarity is positive,
+the client’s update is rescaled before being applied to the global
+model.
+AFLGuard [21]: AFLGuard also relies on a trusted dataset to generate a reference update. A received model is deemed benign if it
+aligns positively with this reference.
+
+

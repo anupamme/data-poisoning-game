@@ -1,0 +1,1779 @@
+Robust Reputation-Driven Crowdsourced
+Federated Learning
+Mouhamed Amine Bouchiha1[0000−0001−6142−6855] and Gregory
+Blanc1[0000−0001−8150−6617]
+
+arXiv:2608.08574v2 [cs.LG] 11 Aug 2026
+
+SAMOVAR, Télécom SudParis, Institut Polytechnique de Paris
+mbouchiha@telecom-sudparis.eu, gregory.blanc@telecom-sudparis.eu
+
+Abstract. Crowdsourced Federated Learning (CrowdFL) extends traditional federated learning by enabling open and heterogeneous participation through a crowdsourcing paradigm. In this setting, reputationdriven incentive mechanisms are commonly employed to guide worker
+selection and enhance trustworthiness. While such approaches improve
+participant reliability, existing frameworks largely overlook the quantification of their robustness against stealthy adversaries, particularly
+those capable of evading standard detection mechanisms. To fill this
+gap, this paper proposes R2CFL, a robust reputation-driven CrowdFL
+framework. R2CFL introduces a robust reputation model coupled with
+a nearest neighbor mixing (R2-NNM) defense mechanism that links reputation evolution with the filtering of updates during aggregation. The
+proposed mechanism prevents stealthy attackers from gradually accumulating trust and influencing future tasks. Experimental results demonstrate that R2-NNM matches or surpasses state-of-the-art Byzantinerobust and backdoor defense mechanisms against adaptive attackers.
+Furthermore, when integrated with existing detect-and-filter defenses,
+the proposed reputation model faithfully captures the statistical robustness of the underlying defense by producing reputation scores that closely
+reflect its true positive and false positive characteristics.
+Keywords: Federated Learning · Crowdsourcing · Reputation · Byzantine Attacks · Backdoor Attacks.
+
+1
+
+Introduction
+
+Federated learning (FL) [20] enables distributed devices to collaboratively train
+machine learning models while keeping training data local to improve privacy.
+Its applicability has expanded to large-scale and dynamic environments where
+centralized data collection is impractical [21]. Crowdsourced Federated Learning (CrowdFL) extends FL by allowing open and heterogeneous participants to
+contribute to the training process in a flexible and scalable manner [10]. In such
+settings, participants (workers) may join or leave dynamically, and their reliability and data quality can vary significantly. To address this, reputation-driven
+incentive mechanisms are commonly employed to guide participant selection, encourage honest behavior, and improve overall system performance [11,14,15,28].
+
+2
+
+M. Bouchiha et al.
+
+Despite these advances, CrowdFL systems remain highly vulnerable to adversarial behavior. In particular, stealthy attackers [3,23,25,30,31] can craft malicious
+updates that closely resemble benign ones, allowing them to evade standard
+detection mechanisms such as robust aggregation [5] or anomaly filtering [22].
+Over time, such adversaries can gradually accumulate reputation and gain influence in future training rounds, ultimately degrading model performance or
+embedding targeted backdoors. Existing works primarily focus on improving detection [13, 22, 24] or incentive design [9–11, 14, 15, 28], but largely overlook the
+fundamental question of how to quantify and control the robustness of reputation mechanisms under adaptive and evasive adversaries. Furthermore, recent
+reputation models (e.g., AutoDFL [9], SSMTD [18]) are often decoupled from
+the actual robustness of the aggregation process. As a result, they may assign
+high trust scores to participants whose malicious behavior remains undetected,
+leading to a mismatch between perceived and actual trustworthiness. This gap
+becomes critical in crowdsourcing environments, where reputation directly influences participant selection and long-term system security and stability.
+To address these limitations, we propose R2CFL, a robust reputation-driven
+CrowdFL framework. R2CFL introduces a novel reputation model that is tightly
+coupled with a detect-and-filter aggregation strategy, namely robust nearest
+neighbor mixing (R2-NNM). The key idea is to link reputation evolution to the
+verified statistical behavior of participant updates, ensuring that trust accumulation reflects the true robustness of the underlying defense. By doing so, R2CFL
+prevents stealthy adversaries from gradually increasing their influence while preserving the effectiveness of filtering mechanism. Extensive experiments on a
+proof-of-concept demonstrate that R2CFL achieves strong robustness against
+adaptive Byzantine and backdoor attacks. The proposed R2-NNM mechanism
+matches or outperforms existing defenses, while the reputation model accurately
+captures their true positive and false positive rates (TPR/FPR), providing a reliable measure of participant trustworthiness in dynamic CrowdFL environments.
+
+2
+
+Related Work
+
+Existing CrowdFL frameworks aim to improve trust, incentives, and scalability,
+yet they provide limited guarantees against adversarial behavior. A substantial body of work integrates reputation and incentive mechanisms to encourage
+honest participation. Smart contract-based frameworks such as FedCFB [8] assess client contributions to mitigate poisoning and free-riding, while TWFL [29]
+leverages homomorphic encryption to secure gradient exchange. Incentive-driven
+systems, including BeSFL [28], FGFL [11] adopts accuracy-based rewards, auditing mechanisms, and reputation-aware participant selection. PoIS [15] uses
+feature attribution techniques to identify high-quality contributors. Similarly,
+SSMTD [18] relies on decentralized oracles to compute reputation scores, but primarily focuses on consistency rather than adversarial robustness. More recently,
+DARTIC [6] introduced a privacy-preserving reputation framework for decentralized crowdsourcing. In its CrowdFL instantiation, worker contributions are as-
+
+Robust Reputation-Driven Crowdsourced Federated Learning
+
+3
+
+sessed using HDBSCAN clustering, following the same principle as FLAME [22],
+to identify anomalous updates.
+While these approaches improve participant selection and discourage dishonest
+behavior, they largely rely on heuristic assessments of client quality rather than
+providing verifiable guarantees on the correctness of the submitted updates. Consequently, aggregation and validation remain dependent on probabilistic or subjective evaluation models. A complementary line of research investigates cryptographic mechanisms to make the FL process itself verifiable, rather than relying
+solely on reputation or economic incentives. SettleFL [19] introduces an efficient reward settlement mechanism through two variants: optimistic execution
+(i.e., commit-and-challenge) and SNARK-based validity proofs (i.e., commitwith-proof ). However, it still assumes that client contributions have been evaluated correctly. VerifBFL [4] extends this direction by introducing a recursive
+zero-knowledge proof framework for both training correctness (i.e., proof of accuracy) and aggregation integrity. Nevertheless, its proof of accuracy remains
+vulnerable to stealthy local data manipulation, such as backdoor injection.
+Gap. Despite these advances, existing approaches rely on coarse-grained or static
+contribution metrics and loosely integrate reputation with robust statistical validation. Consequently, they remain vulnerable to adaptive, stealthy attacks that
+evade detection while gradually accumulating trust. To the best of our knowledge, no existing CrowdFL framework explicitly quantifies the robustness or fairness of its reputation mechanism, nor evaluates whether reputation accurately
+reflects the effectiveness of the underlying defense under stealthy conditions.
+
+3
+
+Proposed R2CFL
+
+In this section, we present R2CFL, a robust reputation-driven CrowdFL framework designed to operate in the presence of adversarial workers. R2CFL addresses two fundamental limitations of existing CrowdFL systems: (i) vulnerability to adaptive and stealthy model manipulation and (ii) insufficient automation
+of evaluation and incentive management.
+3.1
+
+System Model
+
+R2CFL system follows a generic crowdsourced FL paradigm that can operate in
+both centralized and decentralized settings. In the centralized setting, a parameter
+server orchestrates tasks, coordinates training, performs evaluation, and aggregates model updates. In the decentralized setting, R2CFL can be instantiated as a
+blockchained FL system (BFL) [16] or a decentralized application (DApp) [4, 9],
+where coordination is enforced through smart contracts, and evaluation and aggregation are delegated to a decentralized oracle network. To improve scalability,
+the blockchain deployment adopts a Layer-2 (L2) zk-rollup architecture, in which
+transactions are executed and batched off-chain before cryptographic proofs are
+submitted to the underlying Layer-1 (L1) blockchain for verification and finalization, as illustrated in Figure 1. In this case, the blockchain and oracle layers
+are assumed to be secure and verifiable. The system involves four main actors:
+
+4
+
+M. Bouchiha et al.
+Off-chain Storage
+(IPFS)
+Task Details, Model Updates, Evaluation Reports
+1
+Publisher
+Define & Publish
+
+Workers
+Subscribe & Train
+
+Oracles
+Evaluate & Aggregate
+
+Updates TXs
+Task TXs
+
+Eval TXs
+2
+
+L2 zk-Rollup
+(Rollup Operator)
+• Collects transactions (tasks, updates, evaluations)
+• Verifies and executes transactions
+• Commit to transaction batches & generates zk-proof
+3
+
+Batches + zk-proofs
+
+L1 Blockchain
+Verifies zk-proof
+Stores state root & hashes (auditability)
+
+Fig. 1: Overview of an L2-scalable deployment of R2CFL. (1) Task publishers, workers,
+and oracles store large data objects, such as task details and model updates, offchain via IPFS, whose content is referenced by cryptographic content hashes. (2) They
+submit the corresponding smart contract TXs to an L2 zk-rollup, where the rollup
+operator processes and executes them. (3) The L2 batches these TXs and generates a
+zk-proof attesting to the correctness of the resulting state transition, which is verified
+by the L1 blockchain. The L1 stores the corresponding state root for auditability and
+finalizes the committed state.
+
+– Publishers (Requesters) define FL tasks, including the model architecture,
+training objectives, and reward policies.
+– Workers (Clients) locally train models on private data and submit updates
+to the system.
+– Evaluators (Aggregators) perform two core functions: (i) evaluation, where
+submitted updates are assessed using robust detect-and-filter mechanisms, and
+(ii) aggregation, where validated updates are combined into a global model
+using robust aggregation rules. These roles are executed by the central server
+in centralized settings, or by decentralized oracles in decentralized settings.
+– Validators (only in the decentralized setting) maintain the blockchain, verify
+transactions, and execute smart contract functions under a secure consensus
+protocol.
+
+Robust Reputation-Driven Crowdsourced Federated Learning
+
+3.2
+
+5
+
+Threat Model
+
+Adversarial assumptions. R2CFL operates in an open and potentially adversarial environment. Participants—including task publishers and workers—may
+behave strategically, deviate from the protocol, or collude to maximize utility.
+In the centralized setting, the server is assumed to be honest-but-curious [27].
+In the decentralized setting, the underlying blockchain and oracle protocols are
+assumed to be secure [9], while application-layer participants (i.e., task publishers
+and workers) remain untrusted. Under these assumptions, R2CFL considers the
+following threats:
+– Poisoning. Adversarial workers may manipulate their local training data or
+updates to degrade model performance (untargeted attacks) or embed hidden
+malicious behaviors (targeted/backdoor attacks). These attacks can be adaptive and stealthy [25, 30, 31].
+– Free-riding. Workers may submit arbitrary, stale, or low-effort updates, or
+skip training while still attempting to receive rewards, thereby degrading convergence and fairness.
+R2CFL mitigates these threats through robust reputation-driven detect-andfilter aggregation and verifiable coordination mechanisms. These mechanisms
+aim to ensure robustness, accountability, and fairness across both deployments.
+Since model evaluation and aggregation are performed either by an honest server
+or by a secure oracle network with verifiable execution, collusion between workers and task publishers is inherently mitigated. However, collusion involving the
+aggregation entities could undermine the integrity of the evaluation and aggregation procedures. Such scenarios require compromising the underlying infrastructure and are therefore considered outside the scope of this work.
+3.3
+
+R2CFL Workflow
+
+The R2CFL system depicted in Figure 1 follows the CrowdFL design presented
+in AutoDFL [9] and operates through six global phases. First, a task publisher
+defines the learning objective, model, validation data, reward policy, and constraints, then publishes metadata on-chain while storing the full content on an
+off-chain storage system (e.g., IPFS) and locking rewards in a smart contract escrow. Second, workers subscribe to the task and are selected based on on-chain
+reputation and eligibility, potentially requiring collateral to deter malicious behavior. Third, selected workers perform local training on private data, optionally
+using differential privacy, and upload model updates to IPFS while only storing hashes on-chain to reduce blockchain overhead. Fourth, an oracle network
+retrieves updates and applies a robust filtering and aggregation mechanism to
+detect and exclude low-quality, free-riding, or poisoned contributions, with results anchored on-chain. Fifth, the aggregated global model is stored on IPFS
+and its hash is recorded on-chain for integrity, enabling workers to access it for
+subsequent rounds. Finally, after task completion, the oracle network updates
+worker reputations on-chain based on validated contributions, tightly coupling
+reputation evolution with the robustness of the filtering process.
+
+6
+
+M. Bouchiha et al.
+
+3.4
+
+R2-NNM Filtering
+
+Classical reputation mechanisms in federated learning rely on performance signals (e.g., validation accuracy [9]), probabilistic interaction outcomes (e.g., subjective logic and Shapley values [2]), or trust inference (e.g., based on Markov
+processes and truth discovery [18]). While convenient, these mechanisms become unreliable in stealthy adversarial settings, where the underlying signals can
+be manipulated through sophisticated attacks such as backdoor attacks [30, 31]
+and strategic model poisoning [25]. To address these limitations, we propose a
+reputation-driven robust geometric filtering mechanism, denoted as R2-NNM
+(Robust Reputation-Aware Nearest Neighbor Mixing). Instead of evaluating contributions through external metrics, filtering is inferred directly from the structural consistency of model updates within the population.
+At each FL round t, the aggregator collects a set of local updates
+Θt = {θ1t , . . . , θnt }.
+Each update is first embedded into a vector space and processed through a
+two-stage robust pipeline:
+(1) Robust Reputation-Aware Nearest Neighbor Mixing. Each update is locally
+smoothed using its k nearest neighbors:
+X
+θ̃it =
+wij θjt ,
+(1)
+j∈Nk (i)∪{i}
+
+where Nk (i) denotes the set of nearest neighbors of client i, and the weights wij
+are derived from current local reputation scores:
+
+wij = (1 − γt ) ·
+
+Ltrep,j
+1
++ γt · P
+,
+t
+|Nk (i) ∪ {i}|
+l∈Nk (i)∪{i} Lrep,l
+
+j ∈ Nk (i) ∪ {i}. (2)
+
+This step acts as a geometric denoising operator designed to reduce the influence
+of isolated or adversarial updates while preserving local consensus structures.
+The local reputation scores Lrep are initialized uniformly to a neutral value
+(e.g., 0.5) for all participants and are updated at the end of each round, with a
+progressive activation mechanism (as detailed in Sect. 3.5). The mixing weights
+are modulated by a time-dependent factor γt , defined as
+γt = κ ·
+
+t
+,
+Twarm
+
+(3)
+
+which ensures a gradual transition from uniform to reputation-aware aggregation. Consequently, during the initial rounds, the influence of reputation is inactive, and the aggregation reduces to uniform weighting over the neighborhood:
+wij =
+
+1
+.
+|Nk (i) ∪ {i}|
+
+(4)
+
+Robust Reputation-Driven Crowdsourced Federated Learning
+
+7
+
+After the warm-up period (i.e., t > Twarm ), the weights become increasingly
+influenced by the current Lrep scores, yielding a reputation-aware mixing similar
+in spirit to NNM [1], but with a controlled and gradual activation of reputation
+information.
+(2) Robust Multi-Krum Selection. After mixing, a robust selection is applied:
+t
+Ctrusted
+= MultiKrum({θ̃it }),
+
+(5)
+
+which selects the subset of updates minimizing pairwise distances. This step
+provides guarantees against Byzantine behaviors under bounded adversarial assumptions [1].
+Unlike classical defenses (e.g., FLAME or DeepSight), R2-NNM introduces a
+closed-loop interaction between reputation and robustness: reputation influences
+filtering, and filtering in turn shapes reputation. Consequently, participants that
+are consistently rejected by the robust filtering stage experience a progressive
+loss of influence, while consistently accepted participants accumulate trust. This
+feedback mechanism makes it significantly more difficult for adversaries to progressively infiltrate the system through repeated unsuccessful attempts.
+3.5
+
+Data-Free Reputation
+
+We propose a data-free reputation model that relies exclusively on the robust
+geometric filtering mechanism, R2-NNM. The key idea is: trust is not measured by performance, but by agreement with robust consensus under adversarial conditions. This shift removes the need for unverifiable assumptions while
+strengthening robustness against adaptive adversaries.
+(1) Robust Local Reputation (Data-Free). We define reputation purely based on
+filter acceptance and geometric consistency. This eliminates any dependency on
+external validation datasets [9]. Each client is assigned a binary indicator:
+(
+t
+1 if ci ∈ Ctrusted
+t
+(6)
+Reliablei =
+0 otherwise
+t
+where Ctrusted
+denotes the set of accepted clients at round t. To refine the binary
+selection signal induced by acceptance rule, we define a soft reliability score.
+Instead of relying on raw update distances [9] or cosine similarity to a reference
+model [18], we leverage pairwise distances between client updates and compute a
+robust normalized deviation based on the median and median absolute deviation
+(MAD):
+
+sti − median(st )
+.
+MAD(st ) + ϵ
+We then define a soft trust signal using a sigmoid transformation:
+
+
+scaledti
+,
+Ĉit = σ −
+τ
+scaledti =
+
+(7)
+
+(8)
+
+8
+
+M. Bouchiha et al.
+
+where τ is a temperature parameter controlling the sensitivity of the transformation, and σ(·) denotes the sigmoid function. A lower value of scaledti therefore
+yields a higher Ĉit , assigning greater soft trust to clients whose scores are closer to
+or below the median. To prevent over-penalization of rejected clients while preserving separation between selected and non-selected participants, we combine
+both signals as:
+Cit = α · Ĉit + (1 − α) · Reliableti ,
+(9)
+where α ∈ [0, 1] controls the relative influence of Ĉit and Reliableti . The robust
+local reputation is then updated using an exponential moving average (EMA)
+with warm-up stabilization:
+t
+Ltrep,i = βt Lt−1
+rep,i + (1 − βt ) Ci ,
+
+βt = 0.95 · (1 − γt ).
+
+(10)
+
+We set the base momentum coefficient to β0 = 0.95 to prioritize historical consistency over short-term fluctuations. This choice reduces variance amplification
+in stochastic and non-IID settings while preserving responsiveness to long-term
+behavioral drift. This formulation ensures that: (i) updates consistently rejected
+by the robust filter contribute near zero reputation. (ii) consistent updates accumulate reputation proportionally to their agreement with the consensus. (iii) no
+external supervision (i.e., data) is required. From a stochastic perspective, reputation becomes an empirical estimate of the probability of being consistently
+selected by a robust aggregation rule.
+(2) Task-Level Reputation Update. Global reputation is updated at the end of
+each task based on the consistency of each participant’s contribution with respect
+to the aggregated outcome. The update rule follows an asymmetric EMA:
+
+ωi ψ Rit + (1 − ωi ψ) Lrep,i , if Lrep,i ≥ Rmin ,
+Rit+1 =
+(11)
+ω ξ Rt + (1 − ω ξ) L
+otherwise,
+i
+i
+rep,i ,
+i
+N
+
+1 X t
+R ,
+Rmin =
+N j=1 j
+
+(12)
+
+where Lrep denotes the reputation signal derived from robust aggregation, Rmin
+is a minimum acceptance threshold, and ψ > ξ control the asymmetric impact
+of positive and negative feedback [7]. The adaptive weighting factor ωi ∈ (0, 1)
+depends on the overall task participation:
+
+
+λTi
+ωi = tanh
+,
+(13)
+2
+The participation factor ωi increases monotonically with the number of completed tasks Ti with λ controlling the scale of sensitivity to participation.
+The mechanism creates a reputation process that is adaptive, participationaware, and asymmetric, allowing trust to be accumulated gradually while enabling rapid correction when participants deviate from the collective consensus.
+
+Robust Reputation-Driven Crowdsourced Federated Learning
+
+4
+
+9
+
+Experimental Evaluation
+
+To evaluate the R2CFL framework, we developed a proof of concept. The
+code with all the technical details are available on GitHub1 . All experiments are
+conducted on two identical NVIDIA L40S GPUs to ensure consistent conditions.
+4.1
+
+Experimental Setup
+
+Datasets and models. We evaluate performance across three widely used benchmark datasets, namely FashionMNIST [26], GTSRB [12], and CIFAR-10 [17], using
+adapted neural network architectures tailored to each task. For FashionMNIST
+(28×28 grayscale images), we employ a lightweight convolutional neural network (Fashion_CNN) consisting of two convolutional blocks followed by two
+fully connected layers. For CIFAR-10 (32×32 RGB images), we adopt a standard
+ResNet18 architecture. For GTSRB (color traffic sign images), we use a CNN
+model optimized for the dataset’s characteristics.
+CrowdFL configuration. Across all datasets, workers use an SGD optimizer, a
+learning rate of 0.01, momentum of 0.9, a batch size of 32, and one local epoch
+(i.e., vanilla FL) per communication round. We run 200 communication rounds
+for CIFAR-10, and 100 rounds for GTSRB and FashionMNIST. Unless otherwise
+specified, the total number of workers is 20, 6 of which are malicious. We simulate
+data heterogeneity of workers by sampling from the original dataset using a
+Dirichlet distribution of parameter αD = 0.5.
+Attack configurations. We evaluate several representative poisoning and backdoor attacks to ensure a comprehensive comparison, including optimized model
+poisoning (OMP) [25], Neurotoxin [31], and A3FL [30]. OMP performs adversarial update manipulation by aligning the update with a worst-case direction
+under a stealth constraint. Neurotoxin suppresses gradients of high-importance
+parameters identified via gradient magnitude analysis, while A3FL jointly optimizes input-space triggers and performs poisoned training with label flipping on
+a subset of local data. A3FL and Neurotoxin are activated within a configurable
+window (t ∈ [60 − 80], see Sect. 4.4 for a sensitivity analysis), whereas OMP
+remains active throughout the training process to achieve stronger poisoning.
+Baselines. We consider state-of-the-art reputation models (SSMTD [18], AutoDFL [9]), as well as robust FL defenses (M-Krum [5], FLAME [22], DeepSight [24], NNM [1]) baselines to evaluate the effectiveness of our method.
+SSMTD [18] computes a client reputation score based on cosine similarity between updates and a global reference model, combined with a hidden Markov
+model (HMM) that capture temporal behavior. Specifically, each client update
+is evaluated using a convex combination of instantaneous similarity and an exponentially smoothed trust estimate. The resulting scores are aggregated across
+clients, and a robust decision rule based on the median is used to filter updates.
+AutoDFL [9] evaluates each client update by directly measuring its impact on
+model performance. The score is defined as the improvement in accuracy and
+1
+
+https://github.com/mohaminemed/R2CFL
+
+10
+
+M. Bouchiha et al.
+
+reduction in loss relative to the baseline model. Clients are then ranked according
+to these utility scores, and the top-m updates are selected for aggregation, where
+k is defined as a fixed fraction of participating workers (for n = 20, m = 13).
+DeepSight [24] is a clustering-based defense that analyzes client updates through
+multiple complementary feature spaces, including NEUP (last-layer perturbation evidence), DDif (decision differences under synthetic noise), and cosinedirectional similarity. Each feature space is independently clustered using HDBSCAN, and a consensus-based agreement across clustering views is used to identify low-trust clusters as potentially malicious. Benign updates are further refined
+using median clipping before aggregation.
+FLAME [22] is a clustering-based defense that operates on flattened last-layer
+model weights using cosine similarity and HDBSCAN to separate benign and
+malicious updates. The largest cluster is assumed to correspond to benign clients,
+while smaller clusters are discarded as potential attacks. To improve robustness,
+FLAME applies norm clipping followed by adaptive Gaussian noise injection
+proportional to the median update norm.
+Multi-Krum (M-Krum) [5] is a robust aggregation rule that selects updates
+based on pairwise Euclidean distances. For each client update, a score is computed as the sum of distances to its (n − f − 2) nearest neighbors, where f is the
+assumed number of Byzantine clients. The m updates with the lowest scores are
+selected and aggregated using FedAvg. For n = 20, we set m = 13 to minimize
+false positives, and we stress-test this choice by decreasing m, which increases
+filtering aggressiveness (see trade-off analysis in Sect. 4.4).
+NNM [1] a nearest-neighbor mixing strategy, where each client update is refined
+by averaging it with its k nearest neighbors in parameter space. This method
+acts as a local smoothing operator over model updates to reduce variance before
+applying a robust aggregation rule (i.e., M-Krum, for n = 20, m = 13).
+4.2
+
+Convergence & Detection Performance
+
+Metrics. We evaluate the convergence & detection performance using:
+– Main-task metrics (ACC/LOSS): We report the average main task accuracy
+(ACC) and loss (LOSS) on clean test data [30].
+– Attack success rate (ASR): We report the ASR dynamics, defined as the proportion of poisoned test samples that are misclassified into the target label [30].
+– True Positive Rate (TPR): The proportion of malicious clients correctly identified by the detection mechanism.
+– False Positive Rate (FPR): The proportion of benign clients incorrectly classified as malicious by the detection mechanism.
+The results in Figure 2 and Table 1 are reported across multiple attack scenarios
+(Neurotoxin [31], A3FL [30], and OMP [25]) and data distributions (IID and
+non-IID). An ideal defense achieves a high TPR while maintaining a low FPR.
+NNM and the proposed R2-NNM, consistently achieve the best trade-off between
+TPR and FPR across all settings. In particular, they maintain high detection
+
+Robust Reputation-Driven Crowdsourced Federated Learning
+
+0.4
+0.2
+20
+40
+60
+80
+NEUROTOXIN - NONIID
+
+0.8
+0.6
+0.4
+0.2
+0.0 0
+
+100
+
+20
+
+40
+
+60
+
+80
+
+Rounds
+
+AutoDFL
+
+0.6
+0.4
+0.2
+0.0 0
+
+20
+
+40
+60
+A3FL - NONIID
+
+80
+
+100
+
+0.6
+0.4
+0.2
+20
+
+40
+
+60
+
+80
+
+Rounds
+
+100
+
+R2-NNM
+
+OMP - IID
+
+0.8
+0.6
+0.4
+0.2
+0.0 0
+
+20
+
+40
+60
+OMP - NONIID
+
+80
+
+100
+
+20
+
+40
+
+80
+
+100
+
+1.0
+
+0.8
+
+0.0 0
+
+SSMTD
+
+1.0
+
+0.8
+
+1.0
+
+100
+
+NNM
+
+A3FL - IID
+
+ACC ━━━ / LOSS ----
+
+ACC ━━━ / ASR ----
+
+0.6
+
+1.0
+
+DEEPSIGHT
+
+1.0
+
+ACC ━━━ / ASR ----
+
+ACC ━━━ / ASR ----
+
+FLAME
+
+0.8
+
+0.0 0
+
+ACC ━━━ / ASR ----
+
+M-Krum
+NEUROTOXIN - IID
+
+ACC ━━━ / LOSS ----
+
+FedAvg
+1.0
+
+11
+
+0.8
+0.6
+0.4
+0.2
+0.0 0
+
+60
+
+Rounds
+
+(a) FashionMNIST
+
+0.6
+0.4
+0.2
+1.0
+
+20
+40
+60
+80
+NEUROTOXIN - NONIID
+
+0.8
+0.6
+0.4
+0.2
+0.0 0
+
+100
+
+20
+
+40
+
+60
+
+80
+
+Rounds
+
+0.6
+0.4
+0.2
+0.0 0
+
+20
+
+40
+60
+A3FL - NONIID
+
+80
+
+0.6
+0.4
+0.2
+20
+
+40
+
+SSMTD
+
+100
+
+60
+
+80
+
+Rounds
+
+100
+
+R2-NNM
+
+OMP - IID
+
+0.8
+0.6
+0.4
+0.2
+0.0 0
+
+20
+
+40
+60
+OMP - NONIID
+
+80
+
+100
+
+20
+
+40
+
+80
+
+100
+
+1.0
+
+0.8
+
+0.0 0
+
+AutoDFL
+1.0
+
+0.8
+
+1.0
+
+100
+
+NNM
+
+A3FL - IID
+
+ACC ━━━ / LOSS ----
+
+ACC ━━━ / ASR ----
+
+0.8
+
+0.0 0
+
+DEEPSIGHT
+
+1.0
+
+ACC ━━━ / ASR ----
+
+ACC ━━━ / ASR ----
+
+FLAME
+
+NEUROTOXIN - IID
+
+1.0
+
+ACC ━━━ / ASR ----
+
+M-Krum
+
+ACC ━━━ / LOSS ----
+
+FedAvg
+
+0.8
+0.6
+0.4
+0.2
+0.0 0
+
+60
+
+Rounds
+
+(b) GTSRB
+
+0.2
+50
+100
+150
+NEUROTOXIN - NONIID
+
+0.8
+0.6
+0.4
+0.2
+0.0 0
+
+200
+
+50
+
+100
+
+Rounds
+
+150
+
+0.6
+0.4
+0.2
+0.0 0
+
+50
+
+100
+150
+A3FL - NONIID
+
+0.8
+0.6
+0.4
+0.2
+0.0 0
+
+AutoDFL
+
+50
+
+100
+
+Rounds
+
+SSMTD
+
+200
+
+150
+
+0.8
+0.6
+0.4
+0.2
+0.0 0
+
+50
+
+1.0
+
+200
+
+R2-NNM
+
+OMP - IID
+
+1.0
+
+0.8
+
+1.0
+
+200
+
+NNM
+
+A3FL - IID
+
+ACC ━━━ / LOSS ----
+
+0.4
+
+DEEPSIGHT
+
+1.0
+
+ACC ━━━ / ASR ----
+
+0.6
+
+1.0
+
+ACC ━━━ / ASR ----
+
+NEUROTOXIN - IID
+
+0.8
+
+0.0 0
+
+FLAME
+
+ACC ━━━ / ASR ----
+
+ACC ━━━ / ASR ----
+
+1.0
+
+M-Krum
+
+ACC ━━━ / LOSS ----
+
+FedAvg
+
+100
+150
+OMP - NONIID
+
+200
+
+0.8
+0.6
+0.4
+0.2
+0.0 0
+
+50
+
+100
+
+Rounds
+
+150
+
+200
+
+(c) CIFAR-10
+Fig. 2: Convergence (ACC/LOSS) & robustness (ASR) performance under attacks.
+
+12
+
+M. Bouchiha et al.
+
+Table 1: Detection (TPR/FPR) performance under attacks. Bold = best on
+both or FPR, brown = 2nd best (TPR higher is better, FPR lower is better;
+DeepSight excluded from ranking as it detects nothing).
+Neurotoxin
+IID
+Defense
+
+TPR
+
+FPR
+
+A3FL
+
+Non-IID
+TPR
+
+FPR
+
+IID
+TPR
+
+FPR
+
+OMP
+Non-IID
+
+TPR
+
+FPR
+
+IID
+TPR
+
+FPR
+
+Non-IID
+TPR
+
+FPR
+
+FashionMNIST
+M-Krum
+0.960 0.256 0.960 0.256
+FLAME
+0.976 0.410 0.976 0.413
+DeepSight 0.000 0.000 0.000 0.000
+NNM
+0.970 0.255 0.963 0.255
+AutoDFL
+0.857 0.263 0.492 0.287
+SSMTD
+0.976 0.468 0.968 0.469
+R2-NNM 0.976 0.255 0.968 0.255
+
+0.963 0.256 0.960 0.256
+0.968 0.410 0.963 0.414
+0.000 0.000 0.000 0.000
+0.968 0.255 0.960 0.256
+0.921 0.258 0.492 0.287
+0.969 0.468 0.968 0.469
+0.968 0.255 0.962 0.255
+
+M-Krum
+0.960 0.256 0.960 0.256
+FLAME
+0.984 0.382 0.968 0.381
+DeepSight 0.000 0.000 0.000 0.000
+NNM
+0.960 0.235 0.960 0.235
+AutoDFL
+0.183 0.308 0.389 0.294
+SSMTD
+0.984 0.467 0.968 0.469
+R2-NNM 0.960 0.229 0.960 0.229
+
+0.960 0.256 0.960 0.255
+0.968 0.387 0.968 0.380
+0.000 0.000 0.000 0.000
+0.960 0.235 0.952 0.236
+0.492 0.287 0.532 0.284
+0.976 0.468 0.968 0.469
+0.960 0.229 0.960 0.229
+
+M-Krum
+0.993 0.253 0.990 0.253
+FLAME
+0.987 0.400 0.990 0.403
+DeepSight 0.000 0.000 0.000 0.000
+NNM
+0.993 0.243 0.987 0.243
+AutoDFL
+0.931 0.248 0.542 0.280
+SSMTD
+0.990 0.459 0.987 0.460
+R2-NNM 0.993 0.243 0.990 0.243
+
+0.987 0.253 0.984 0.253
+0.990 0.399 0.987 0.403
+0.000 0.000 0.000 0.000
+0.990 0.243 0.984 0.243
+0.977 0.244 0.533 0.281
+0.984 0.460 0.987 0.460
+0.989 0.222 0.984 0.243
+
+0.995 0.144 0.992 0.146
+0.995 0.206 0.995 0.216
+0.000 0.000 0.000 0.000
+0.993 0.003 0.993 0.003
+0.993 0.003 0.993 0.003
+0.995 0.288 0.993 0.289
+0.995 0.002 0.992 0.004
+
+GTSRB
+0.995 0.073 0.993 0.003
+0.995 0.164 0.993 0.154
+0.000 0.000 0.000 0.000
+0.995 0.002 0.992 0.001
+0.852 0.064 0.940 0.026
+0.997 0.287 0.997 0.287
+0.995 0.002 0.990 0.001
+
+CIFAR-10
+0.998 0.144 0.998 0.144
+0.998 0.214 0.998 0.214
+0.000 0.000 0.000 0.000
+0.998 0.001 0.997 0.001
+0.998 0.001 0.995 0.002
+0.998 0.286 0.998 0.286
+0.998 0.001 0.998 0.001
+
+rates (TPR ≈ 0.95–0.99) while keeping false positives relatively low. Notably, R2NNM closely matches the performance of NNM in all scenarios, demonstrating
+that integrating reputation does not degrade detection capability while enabling
+trust-aware aggregation. M-Krum achieves comparable performance (ASR <
+0.10) and near-perfect detection in simple settings like OMP (TPR ≈ 0.99),
+with slight degradation under more challenging cases like A3FL on GTSRB (FPR
+≈ 0.26). FLAME attains high TPR (up to 0.99) but at the cost of a high FPR
+(up to 0.38) due to aggressive filtering that impacts benign clients. In contrast,
+AutoDFL is unstable across attacks, with good performance under OMP but
+poor detection under backdoor attacks (TPR down to 0.18 under Neurotoxin
+and A3FL with ASR ≈ 1.00). SSMTD convergence is impacted under Non-IID
+due to strong median filtering. Finally, DeepSight consistently yields (TPR =
+0, FPR = 0), indicating failure to detect malicious clients.
+The transition from IID to non-IID data has minimal impact on NNM-based
+methods. Both NNM and R2-NNM maintain nearly identical TPR and FPR
+values across distributions. This demonstrates strong robustness to data heterogeneity, which is critical in realistic scenarios. Note that the differences in the
+convergence under A3FL and Neurotoxin are negligible since the attacks does
+
+Robust Reputation-Driven Crowdsourced Federated Learning
+
+13
+
+Table 2: Final Ltrep,i scores at round 100 under A3FL (the worst-case scenario).
+Best ∆ is highlighted in bold, and second-best ∆ is highlighted in brown.
+Non-IID
+R̄M
+∆
+∆
+R̄B
+FashionMNIST
+M-Krum 0.797 ± 0.049 0.079 ± 0.016
+0.718
+0.796 ± 0.048 0.092 ± 0.023 0.704
+FLAME 0.688 ± 0.058 0.087 ± 0.020
+0.601
+0.684 ± 0.055 0.081 ± 0.019 0.603
+DeepSight 0.973 ± 0.000 0.759 ± 0.003
+0.214
+0.973 ± 0.000 0.760 ± 0.002 0.214
+NNM
+0.813 ± 0.048 0.091 ± 0.021
+0.721
+0.805 ± 0.051 0.089 ± 0.020 0.716
+AutoDFL 0.792 ± 0.050 0.120 ± 0.034
+0.672
+0.773 ± 0.050 0.419 ± 0.057 0.354
+SSMTD
+0.644 ± 0.056 0.079 ± 0.016
+0.565
+0.650 ± 0.055 0.085 ± 0.016 0.566
+R2-NNM 0.822 ± 0.048 0.085 ± 0.019
+0.737
+0.818 ± 0.047 0.096 ± 0.025 0.722
+GTSRB
+M-Krum 0.794 ± 0.050 0.084 ± 0.019
+0.711
+0.796 ± 0.049 0.085 ± 0.020 0.711
+FLAME 0.708 ± 0.054 0.085 ± 0.019
+0.623
+0.708 ± 0.054 0.084 ± 0.018 0.624
+DeepSight 0.973 ± 0.001 0.760 ± 0.002
+0.213
+0.973 ± 0.000 0.759 ± 0.003 0.214
+NNM
+0.795 ± 0.048 0.083 ± 0.022
+0.712
+0.809 ± 0.049 0.096 ± 0.025 0.713
+AutoDFL 0.773 ± 0.051 0.414 ± 0.061
+0.359
+0.774 ± 0.049 0.392 ± 0.055 0.382
+SSMTD
+0.647 ± 0.055 0.082 ± 0.019
+0.565
+0.647 ± 0.059 0.085 ± 0.020 0.562
+R2-NNM 0.794 ± 0.050 0.082 ± 0.023
+0.712
+0.813 ± 0.045 0.090 ± 0.023 0.723
+CIFAR-10
+M-Krum 0.804 ± 0.048 0.074 ± 0.014
+0.730
+0.803 ± 0.049 0.076 ± 0.014 0.727
+FLAME 0.693 ± 0.056 0.071 ± 0.012
+0.622
+0.692 ± 0.058 0.072 ± 0.013 0.620
+DeepSight 0.973 ± 0.000 0.760 ± 0.002
+0.214
+0.973 ± 0.000 0.760 ± 0.002 0.214
+NNM
+0.803 ± 0.047 0.071 ± 0.012
+0.733
+0.805 ± 0.048 0.076 ± 0.015 0.730
+AutoDFL 0.804 ± 0.049 0.080 ± 0.018
+0.724
+0.778 ± 0.052 0.387 ± 0.055 0.390
+SSMTD
+0.654 ± 0.055 0.075 ± 0.014
+0.579
+0.651 ± 0.055 0.072 ± 0.011 0.580
+R2-NNM 0.810 ± 0.040 0.076 ± 0.015
+0.735
+0.806 ± 0.048 0.075 ± 0.015 0.731
+Method
+
+R̄B
+
+IID
+R̄M
+
+not impact the main task. Additionally, the impact of strong filtering on convergence (as observed with the median in SSMTD) is evident only under the
+Non-IID setting. This indicates that even when robustness and convergence are
+preserved—as reported in most studies—fairness toward discarded clients can
+be significantly affected.
+4.3
+
+Reputation Effectiveness and Fairness
+
+For each trainer i, we simulate the robust local evaluation (Eq. (10)) over multiple FL rounds. The stochastic reliability indicator Reliableti is sampled using
+the defense-specific TPR and FPR:
+P[Reliableti = 1 | i ∈ B] = 1− FPR,
+
+P[Reliableti = 1 | i ∈ M] = 1− TPR.
+
+(14)
+
+This models the probability that a benign or malicious trainer is considered
+trustworthy by the defense.
+Reputation Dynamics. We then evaluate the local reputation by reporting these
+updates over sequential rounds, we track: (i) Malicious reputation decay: For
+trainers i ∈ M, the expected reputation decreases monotonically and converges
+toward zero.(ii) Benign reputation stability: For trainers i ∈ B, fluctuations are
+bounded by the FPR.
+
+14
+
+M. Bouchiha et al.
+
+Metrics. We compute the final-round average reputation for each class:
+R̄B =
+
+1 X T
+Ri ,
+|B|
+i∈B
+
+R̄M =
+
+1 X T
+Ri ,
+|M|
+
+(15)
+
+i∈M
+
+where T denotes the final round (here T = 50). By comparing R̄B and R̄M
+across defenses and data distributions, we directly measure:
+– Effectiveness: The separation ∆ = R̄B − R̄M quantifies how strongly malicious
+trainers are penalized relative to benign ones.
+– Fairness: The stability of R̄B across IID and Non-IID settings, together with
+its variance, reflects whether honest trainers maintain high and stable reputation despite statistical heterogeneity.
+The results in Table 2 shows clear differences among defenses under stealthy
+attackers. M-Krum achieves strong and stable separation (∆ ≈ 0.68), with malicious reputations near zero. NNM and R2-NNM perform similarly or better
+(∆ ≥ 0.70), highlighting improved robustness and fairness through relaxed aggregation. FLAME maintains good separation (∆ ≈ 0.61) due to mild false
+positives, while SSMTD shows moderate separation (∆ ≈ 0.57) due to its
+less discriminative median-based filtering. AutoDFL degrades under non-IID,
+allowing high malicious reputation (up to ≈ 0.85), reflecting poor separation
+under stealthy backdoor attacks. DeepSight fails entirely, with no separation
+(∆ ≈ 0.21). Overall, these trends align with TPR/FPR behavior: strong defenses ensure fast malicious decay and stable benign retention, whereas weaker
+ones reduce or lose discrimination, confirming the consistency of the reputation
+dynamics with theoretical expectations.
+4.4
+
+Ablation Study
+
+We study the impact of key system parameters, including the mixing parameter
+k (Eq.(1)), the total number of workers n, the number of malicious workers f ,
+and the attack schedule. Appendices A–C further analyze time overhead, the
+effects of α (Eq.(9)), and the warm-up phase (Eq.(3)).
+Impact of the mixing parameter k. Figure 3 (top sub-figures) sweeps k ∈ [3 − 12]
+for R2-NNM and NNM. As k increases both methods exhibit a clear improvement in fairness, with FPR decreasing significantly (0.28 → 0.12). This regime
+reflects the benefit of stronger mixing, which reduces update variance, improves
+convergence stability, and enhances separation between benign and malicious
+contributions. Slight variations in TPR (∆TPR ≤ 0.02) are observed within
+the acceptable mixing range (k ≤ 10), indicating that moderate mixing has
+only a limited impact on detection performance. Beyond this range, however,
+TPR degrades (down to 0.94) despite a further reduction in FPR (< 0.12). This
+behavior suggests an over-smoothing effect, where excessive mixing increases
+conservativeness at the expense of detection sensitivity.
+
+Robust Reputation-Driven Crowdsourced Federated Learning
+
+— vary k (n = 20)
+
+ACC / ASR vs Round
+
+R2-NNM k=3
+R2-NNM k=5
+R2-NNM k=8
+R2-NNM k=10
+R2-NNM k=12
+
+0.2
+
+0.960
+
+TPR
+
+ACC ━━━ / ASR ----
+
+NNM k=3
+NNM k=5
+NNM k=8
+NNM k=10
+NNM k=12
+
+0.4
+
+0
+
+20
+
+40
+
+Round
+
+ACC / ASR vs Round
+
+60
+
+80
+
+R5
+N5
+R10N10
+
+N8
+
+0.950
+
+100
+
+R12
+N12
+
+0.125
+
+— vary n (k = 5)
+
+0.150
+
+0.175
+
+0.200
+
+0.225
+
+FPR
+
+TPR vs FPR
+
+0.98
+
+0.250
+
+0.275
+
+— vary n (k = 5)
+M100
+R20
+N20
+
+0.96
+
+0.8
+
+0.300
+M50
+
+M20
+
+M30
+
+0.94
+
+0.6
+
+M-Krum n=20
+M-Krum n=30
+M-Krum n=50
+M-Krum n=100
+
+0.4
+
+NNM n=20
+NNM n=30
+NNM n=50
+NNM n=100
+
+R2-NNM n=20
+R2-NNM n=30
+R2-NNM n=50
+R2-NNM n=100
+
+TPR
+
+ACC ━━━ / ASR ----
+
+M-Krum
+
+R8
+
+0.955
+
+0.945
+
+0.92
+
+R30
+
+0.90
+
+N30
+
+0.88
+
+0.2
+0.0
+
+R3N3
+
+0.965
+
+0.6
+
+0.0
+
+— vary k (n = 20)
+
+TPR vs FPR
+
+0.8
+
+15
+
+0
+
+20
+
+40
+
+Round
+
+60
+
+80
+
+100
+
+0.86
+
+N100
+
+0.84
+
+R100
+
+0.20
+
+R50
+N50
+
+0.22
+
+0.24
+
+FPR
+
+0.26
+
+0.28
+
+0.30
+
+Fig. 3: Impact of the mixing parameter k (top) and the number of workers n (bottom).
+
+Impact of the total number of workers n. To evaluate scalability, we fix k = 5
+and increase the number of participants from 20 to 100. We see in Figure 3
+(bottom sub-figures), as the federation grows, both NNM and R2-NNM experience a gradual decrease in accuracy (from ≈ 87.5% to ≈ 83%) and a slight
+increase in ASR, reflecting the increased diversity of benign updates. Nevertheless, the FPR remains relatively stable (0.22–0.26), indicating that the detector
+maintains its fairness as the system scales. The main impact of increasing n
+is on the TPR, which decreases from 0.97 to 0.85 for NNM and from 0.96 to
+0.86 for R2-NNM. This behavior is expected, as larger federations reduce the
+statistical separability between benign and malicious updates. Importantly, the
+proposed reputation mechanism closely follows the underlying NNM detector
+without artificially improving or degrading its TPR/FPR trade-off.
+Impact of the number of malicious clients f . Table 3 sweeps the number of
+malicious clients f ∈ {0, 3, 6} for R2-NNM and M-Krum. At f = 0 there is no
+attack, so ASR is trivially 0 and TPR is trivially 1 for both defenses.
+For m = 10, R2-NNM maintains high robustness, with FPR decreasing from
+0.26 to 0.23 as f increases from 0 to 6. M-Krum shows a higher sensitivity to
+malicious presence in terms of false positives, with FPR remaining relatively
+high (0.50 → 0.47), although TPR remains stable around 0.97. This indicates
+that R2-NNM’s smoothed selection induces less conservative behavior, especially
+outside the attack window. For m = 13, both methods benefit from the larger
+selection pool, resulting in overall lower FPR values. R2-NNM achieves a reduction from 0.19 to 0.16, while maintaining TPR around 0.96–1.0. Similarly,
+M-Krum improves its FPR from 0.35 to 0.30, while preserving competitive TPR
+values. Overall, reducing the selection count m increases false positives for both
+
+16
+
+M. Bouchiha et al.
+
+Table 3: Impact of f (A3FL,
+FashionMNIST, non-IID).
+Table 4: Impact of attack-start schedDefense m f ACC ASR TPR FPR
+ule (A3FL, FashionMNIST, non-IID).
+M-Krum
+
+R2-NNM
+
+0 0.894 0.000 1.000 0.350
+13 3 0.896 0.098 0.968 0.330
+6 0.897 0.096 0.962 0.308
+0 0.894 0.000 1.000 0.500
+10 3 0.894 0.097 0.968 0.485
+6 0.898 0.095 0.976 0.468
+0 0.898 0.000 1.000 0.192
+13 3 0.898 0.097 0.968 0.178
+6 0.899 0.097 0.962 0.165
+0 0.898 0.000 1.000 0.269
+10 3 0.898 0.098 0.972 0.253
+6 0.899 0.097 0.972 0.234
+
+Defense
+
+Schedule ACC ASR TPR FPR
+
+M-Krum
+
+round 0 0.895 0.098 0.99 0.07
+round 30 0.897 0.097 0.99 0.18
+round 60 0.900 0.097 0.98 0.26
+
+NNM
+
+round 0 0.893 0.098 0.99 0.00
+round 30 0.899 0.097 0.99 0.07
+round 60 0.900 0.096 0.98 0.13
+
+round 0 0.898 0.097 0.99 0.00
+R2-NNM round 30 0.900 0.096 0.99 0.07
+round 60 0.900 0.096 0.98 0.13
+
+defenses, but the effect is roughly 1.5–2× larger for M-Krum than for R2-NNM
+at every tested f , widening R2-NNM’s detection-precision advantage as fewer
+updates are selected per round. Thus, R2-NNM’s reputation mechanism is particularly valuable in low-m regimes, where purely distance-based selection has
+the least information to work with.
+Impact of attack schedule. Table 4 reports the effect of delaying the onset of the
+A3FL backdoor attack (round 0, 30, and 60) on both convergence and detection quality for M-Krum, NNM, and our R2-NNM. Two trends emerge. First,
+delaying the attack has a negligible effect on convergence: ACC stays within
+a narrow band (0.893–0.900) and the ASR remains low (0.096–0.098) across all
+schedules and defenses, indicating that none of the three mechanisms is meaningfully destabilized by a later attack onset. This is expected, as all three methods
+retain a Krum selection step that continues to bound the malicious clients’ influence on the aggregate. Second, and more informative, is the effect on detection.
+TPR is uniformly high (0.98–0.99) regardless of schedule, so malicious clients
+are essentially never missed. The interesting variation is in FPR, which increases
+monotonically with a later attack start for every defense — a later onset gives
+the attacker more rounds to blend into the benign update distribution before
+it is flagged, so legitimate clients are increasingly misclassified as adversarial.
+However, the magnitude of this degradation differs sharply between methods.
+M-Krum’s FPR nearly quadruples, from 0.07 at round 0 to 0.26 at round 60.
+NNM and R2-NNM are far more robust to this effect, with FPR rising only
+from 0.00 to 0.13 over the same range — roughly half the degradation observed
+for M-Krum. Comparing NNM and R2-NNM directly, the two share an essentially identical FPR trajectory (0.00 → 0.07 → 0.13), indicating R2-NNM does
+not sacrifice detection precision relative to plain NNM. Where R2-NNM distinguishes itself is in attack suppression: it achieves the lowest ASR of the three
+defenses at every schedule, with the gap widening slightly as the attack is delayed. This suggests that accumulating client reputation over rounds provides an
+
+Robust Reputation-Driven Crowdsourced Federated Learning
+
+17
+
+additional signal that continues to suppress the backdoor’s effectiveness. Overall, these results indicate that R2-NNM improves robustness to attack-timing
+strategies without trading off detection accuracy.
+
+5
+
+Conclusion
+
+In this paper, we presented R2CFL, a robust reputation-driven framework for
+Crowdsourced Federated Learning (CrowdFL) designed to address the limitations of existing reputation-based approaches under stealthy and adaptive adversaries. While prior work has primarily focused on improving participant selection
+through reputation mechanisms, it often fails to explicitly quantify or enforce
+robustness against attackers capable of evading standard detection strategies.
+To address this limitation, R2CFL tightly integrates a reputation model with
+a nearest-neighbor mixing defense (R2-NNM), ensuring that reputation evolution is directly coupled with robust update filtering during aggregation. This
+design prevents stealthy attackers from progressively gaining trust and influencing future learning tasks. More generally, the framework establishes a principled
+link between defense outcomes and reputation dynamics, allowing reputation
+scores to faithfully reflect the statistical behavior of the underlying aggregation
+method. We note the current design does not adapt to round-varying adversarial pressure, potentially resulting in a suboptimal robustness–fairness trade-off
+under heterogeneous or non-stationary attacks. We view learning these hyperparameters online, e.g., via a reinforcement-learning controller, as a promising
+direction for future work.
+Acknowledgments. This research is supported by the CKRISP project (ANR-23IAS4-0001).
+
+References
+1. Allouah, Y., Farhadkhani, S., Guerraoui, R., Gupta, N., et al.: Fixing by mixing: A
+recipe for optimal byzantine ml under heterogeneity. In: International Conference
+on Artificial Intelligence and Statistics. pp. 1232–1300. PMLR (2023)
+2. An, J., Tang, S., Sun, X., Gui, X., He, X., Wang, F.: Freb: Participant selection in
+federated learning with reputation evaluation and blockchain. IEEE Transactions
+on Services Computing 17(6), 3685–3698 (2024)
+3. Bagdasaryan, E., Veit, A., Hua, Y., Estrin, D., Shmatikov, V.: How to backdoor
+federated learning. In: Proceedings of the 23rd International Conference on Artificial Intelligence and Statistics. pp. 2938–2948 (2020)
+4. Bellachia, A.A., Bouchiha, M.A., Ghamri-Doudane, Y., Rabah, M.: Verifbfl: Leveraging zk-snarks for a verifiable blockchained federated learning. In: IEEE Network
+Operations and Management Symposium (NOMS). pp. 01–09. IEEE (2025)
+5. Blanchard, P., El Mhamdi, E.M., Guerraoui, R., Stainer, J.: Machine learning with
+adversaries: Byzantine tolerant gradient descent. Advances in neural information
+processing systems 30 (2017)
+6. Bouchiha, M.A., Rabah, M., Champagnat, R., Korba, A.A., Ghamri-Doudane, Y.:
+DARTIC: Decentralized anonymous reputation at scale for trustworthy crowdsourcing. IEEE Transactions on Services Computing pp. 1–16 (2026)
+
+18
+
+M. Bouchiha et al.
+
+7. Bouchiha, M.A., Telnoff, Q., Bakkali, S., Champagnat, R., Rabah, M., Coustaty,
+M., Ghamri-Doudane, Y.: Llmchain: Blockchain-based reputation system for sharing and evaluating large language models. arXiv preprint arXiv:2404.13236 (2024)
+8. Chen, L., Zhao, D., Tao, L., Wang, K., Qiao, S., Zeng, X., Tan, C.W.: A credible
+and fair federated learning framework based on blockchain. IEEE Transactions on
+Artificial Intelligence pp. 1–15 (2024)
+9. Dif, M.M., Bouchiha, M.A., Rabah, M., Ghamri-Doudane, Y.: Autodfl: A scalable and automated reputation-aware decentralized federated learning. In: IEEE
+Network Operations and Management Symposium (NOMS). pp. 1–9. IEEE (2025)
+10. Feng, D., Helena, C., Lim, W.Y.B., Ng, J.S., et al.: Crowdfl: A marketplace for
+crowdsourced federated learning. In: Proceedings of the AAAI conference on artificial intelligence. vol. 36, pp. 13164–13166 (2022)
+11. Gao, L., Li, L., Chen, Y., Xu, C., Xu, M.: FGFL: A blockchain-based fair incentive
+governor for Federated Learning. Journal of Parallel and Distributed Computing
+163, 283–299 (2022)
+12. Houben, S., Stallkamp, J., Salmen, J., Schlipsing, M., Igel, C.: Detection of traffic
+signs in real-world images: The German Traffic Sign Detection Benchmark. In:
+International Joint Conference on Neural Networks. No. 1288 (2013)
+13. Huang, S., Li, Y., Chen, C., Shi, L., Gao, Y.: Multi-metrics adaptively identifies
+backdoors in federated learning. In: Proceedings of the IEEE/CVF International
+Conference on Computer Vision. pp. 4652–4662 (2023)
+14. Kang, J., Xiong, Z., Niyato, D., Xie, S., Zhang, J.: Incentive mechanism for reliable
+federated learning: A joint optimization approach to combining reputation and
+contract theory. IEEE Internet of Things Journal 6(6), 10700–10714 (2019)
+15. Kasyap, H., Manna, A., Tripathy, S.: An Efficient Blockchain Assisted Reputation Aware Decentralized Federated Learning Framework. IEEE Transactions on
+Network and Service Management 20, 2771–2782 (2023)
+16. Kim, H., Park, J., Bennis, M., Kim, S.L.: Blockchained on-device federated learning. IEEE Communications Letters 24(6), 1279–1283 (2019)
+17. Krizhevsky, A., Hinton, G., et al.: Learning multiple layers of features from tiny
+images (2009)
+18. Li, P., Grenn, M.: Robust federated learning through decentralized adaptive oracle
+consensus. Discover Computing 29(1), 111 (2026)
+19. Liang, S., Hua, Y., Jiang, L., Yan, P., Song, T., Yao, B., Guan, H.: Settlefl: Trustless
+and scalable reward settlement protocol for federated learning on permissionless
+blockchains (extended version). arXiv preprint arXiv:2602.23167 (2026)
+20. McMahan, B., Moore, E., Ramage, D., Hampson, S., y Arcas, B.A.:
+Communication-efficient learning of deep networks from decentralized data. In:
+Artificial intelligence and statistics. pp. 1273–1282. Pmlr (2017)
+21. Nguyen, D.C., Ding, M., Pathirana, P.N., Seneviratne, A., Li, J., Poor, H.V.: Federated learning for internet of things: A comprehensive survey. IEEE Communications Surveys & Tutorials 23, 1622–1658 (2021)
+22. Nguyen, T.D., Rieger, P., Chen, H., Yalame, H., Möllering, H., et al.: FLAME:
+Taming backdoors in federated learning. In: 31st USENIX Security Symposium
+(USENIX Security). pp. 1415–1432 (2022)
+23. Nguyen, T.D., Nguyen, T.A., Tran, A., Doan, K.D., Wong, K.S.: Iba: Towards irreversible backdoor attacks in federated learning. In: Advances in Neural Information
+Processing Systems. vol. 36, pp. 66364–66376. Curran Associates, Inc. (2023)
+24. Rieger, P., Nguyen, T.D., Miettinen, M., Sadeghi, A.R.: Deepsight: Mitigating
+backdoor attacks in federated learning through deep model inspection. arXiv
+preprint arXiv:2201.00763 (2022)
+
+Robust Reputation-Driven Crowdsourced Federated Learning
+
+19
+
+25. Shejwalkar, V., Houmansadr, A.: Manipulating the byzantine: Optimizing model
+poisoning attacks and defenses for federated learning. In: Ndss (2021)
+26. Xiao, H., Rasul, K., Vollgraf, R.: Fashion-mnist: a novel image dataset for benchmarking machine learning algorithms. arXiv preprint arXiv:1708.07747 (2017)
+27. Xu, G., Li, H., Liu, S., Yang, K., Lin, X.: Verifynet: Secure and verifiable federated
+learning. IEEE Trans. on Information Forensics and Security 15, 911–926 (2019)
+28. Xu, Y., Lu, Z., Gai, K., Duan, Q., Lin, J., Wu, J., Choo, K.K.R.: BESIFL:
+Blockchain-empowered secure and incentive federated learning paradigm in IoT.
+IEEE Internet of Things Journal 10, 6561–6573 (2021)
+29. Yuan, Z., Tian, Y., Zhou, Z., Li, T., Wang, S., Xiong, J.: Trustworthy federated
+learning against malicious attacks in web 3.0. IEEE Transactions on Network Science and Engineering 11, 3969–3982 (2024)
+30. Zhang, H., Jia, J., Chen, J., Lin, L., Wu, D.: A3fl: Adversarially adaptive backdoor attacks to federated learning. In: Advances in Neural Information Processing
+Systems. vol. 36, pp. 61213–61233. Curran Associates, Inc. (2023)
+31. Zhang, Z., Panda, A., Song, L., Yang, Y., Mahoney, M., et al.: Neurotoxin: Durable
+backdoors in federated learning. In: Proceedings of the 39th International Conference on Machine Learning (ICML). pp. 26429–26446. PMLR (2022)
+
+Appendices
+A. Time overhead. Since aggregation is performed off-chain in both centralized
+
+and decentralized settings, we report only the off-chain overhead. We evaluate the scalability of different robust aggregation methods by measuring the average aggregation
+time (in seconds) as the number of clients increases from 20 to 200 on FashionMNIST.
+Table 5 reports mean ± standard deviation over multiple runs. We observe significant differences in computational efficiency across methods. Lightweight defenses such
+as FLAME and R2-NNM consistently achieve low aggregation times, while methods
+such as AutoDFL exhibits substantially higher computational overhead. This increase
+is mainly due to their inference-time evaluation of client updates, where each update is
+explicitly scored, introducing non-negligible per-client overhead. Compared to NNM,
+R2-NNM benefits from a fully vectorized implementation of distance computation and
+neighborhood aggregation, avoiding Python-level loops and redundant per-client evaluations. In particular, R2-NNM we leverage batched pairwise distance computation
+and indexed tensor gathering to improve efficiency compared to NNM. Similarly, MKrum is implemented in a vectorized scoring fashion over flattened updates to reduce
+the overhead associated with pairwise selection. These implementation differences explain the observed gap, where inference-heavy (e.g., AutoDFL) scales poorly, while
+vectorized robust aggregation methods maintain strong scalability.
+
+B. Impact of α on the final Lrep gap. Table 6 sweeps α (Eq. (9)) over [0, 1] and
+
+reports the final separation gap ∆ between benign and malicious clients under IID and
+non-IID partitions. Overall, ∆ remains relatively stable across the considered values of
+α. For GTSRB, the IID gap increases from 0.705 at α = 0 to 0.712 at α = 1, whereas the
+non-IID gap decreases from 0.724 to 0.711. This behavior is consistent with the intuition
+that, under non-IID data, relying solely on update distances can be less reliable, as
+benign clients may naturally exhibit greater dispersion due to heterogeneous local
+data distributions. Incorporating the complementary contribution component therefore
+
+20
+
+M. Bouchiha et al.
+
+Table 5: Aggregation time (seconds) under different numbers of clients. Values
+are reported as mean ± standard deviation over multiple runs. The best results
+are shown in bold, while the second-best results are highlighted in brown.
+Defense
+20
+50
+100
+200
+M-Krum
+0.232 ± 0.154 0.592 ± 0.267 2.621 ± 0.867 8.596 ± 2.902
+FLAME
+0.060 ± 0.026 0.109 ± 0.032 0.201 ± 0.030 0.347 ± 0.040
+DeepSight
+0.615 ± 0.198 1.004 ± 0.029 2.038 ± 0.289 4.388 ± 0.635
+NNM+Krum 0.376 ± 0.238 1.228 ± 0.214 6.252 ± 0.628 13.758 ± 1.180
+AutoDFL
+17.483 ± 0.158 51.174 ± 0.567 82.781 ± 0.686 97.000 ± 0.687
+SSMTD
+0.101 ± 0.138 0.349 ± 0.299 0.377 ± 0.181 0.627 ± 0.488
+R2-NNM
+0.328 ± 0.163 0.632 ± 0.036 1.198 ± 0.158 2.259 ± 0.163
+
+Table 7: Impact of the warm-up length
+Table 6: Impact of α on the final sep- Twarm and κ (A3FL, GTSRB, non-IID).
+aration gap ∆. The shaded rows inTwarm κ ACC ASR TPR FPR
+dicate the recommended operating
+0.25 0.920 0.041 0.96 0.29
+range α ∈ [0.25, 0.75].
+GTSRB
+α
+
+FashionMNIST
+
+5
+
+IID Non-IID IID Non-IID
+
+0.00 0.705
+0.25 0.709
+0.50 0.709
+0.75 0.711
+1.00 0.712
+
+0.724
+0.723
+0.718
+0.715
+0.711
+
+0.710
+0.713
+0.711
+0.715
+0.712
+
+0.723
+0.723
+0.719
+0.716
+0.711
+
+0.50 0.922 0.042 0.96 0.29
+1.00 0.917 0.044 0.91 0.29
+
+25
+
+0.25 0.919 0.041 0.96 0.24
+0.50 0.917 0.041 0.97 0.23
+1.00 0.917 0.043 0.92 0.25
+
+50
+
+0.25 0.919 0.041 0.96 0.26
+0.50 0.918 0.042 0.97 0.23
+1.00 0.918 0.045 0.92 0.25
+
+helps mitigate the effect of statistical heterogeneity on separation. A similar trend is
+observed on FashionMNIST, where the IID gap remains within 0.710–0.715 and the
+non-IID gap within 0.711–0.723. The discrepancy between IID and non-IID settings
+remains small across all α values, with the largest difference observed at α = 0 (≈ 0.021)
+for GTSRB. This indicates that the proposed mixing strategy is relatively robust to
+data heterogeneity. We therefore consider α ∈ [0.25, 0.75] as a suitable operating range.
+Values in this interval provide a favorable balance between separation performance and
+robustness to data heterogeneity.
+
+C. Impact of the warm-up phase Twarm and κ. Table 7 investigates the
+influence of the warm-up duration Twarm (Eq.(3)) ∈ {5, 25, 50} and the reputation
+scaling factor κ ∈ {0.25, 0.5, 1.0} on both learning performance (ACC and ASR) and
+detection effectiveness (TPR and FPR). The results show that a moderate reputation
+influence combined with a sufficiently long warm-up period provides the best trade-off
+between robustness and stability. Among the evaluated settings, (Twarm = 25, κ =
+0.5) emerges as the most effective configuration, achieving the highest TPR while
+maintaining one of the lowest FPR values and preserving strong learning performance.
+
+

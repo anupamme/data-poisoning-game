@@ -1,0 +1,4762 @@
+BROADCAST: R EDUCING B OTH S TOCHASTIC AND
+C OMPRESSION N OISE TO ROBUSTIFY
+C OMMUNICATION -E FFICIENT F EDERATED L EARNING
+
+arXiv:2104.06685v2 [cs.LG] 11 Apr 2022
+
+A P REPRINT
+Heng Zhu1,2
+zh2013@mail.ustc.edu.cn
+
+Qing Ling1
+lingqing556@mail.sysu.edu.cn
+
+1
+
+2
+
+Sun Yat-sen University
+University of Science and Technology of China
+
+A BSTRACT
+Communication between workers and the master node to collect local stochastic gradients is a key
+bottleneck in a large-scale federated learning system. Various recent works have proposed to compress the local stochastic gradients to mitigate the communication overhead. However, robustness to
+malicious attacks is rarely considered in such a setting. In this work, we investigate the problem of
+Byzantine-robust compressed federated learning, where the attacks from Byzantine workers can be
+arbitrarily malicious. We theoretically point out that different to the attacks-free compressed stochastic gradient descent (SGD), its vanilla combination with geometric median-based robust aggregation
+seriously suffers from the compression noise in the presence of Byzantine attacks. In light of this
+observation, we propose to reduce the compression noise with gradient difference compression so
+as to improve the Byzantine-robustness. We also observe the impact of the intrinsic stochastic noise
+caused by selecting random samples, and adopt the stochastic average gradient algorithm (SAGA)
+to gradually eliminate the inner variations of regular workers. We theoretically prove that the proposed algorithm reaches a neighborhood of the optimal solution at a linear convergence rate, and the
+asymptotic learning error is in the same order as that of the state-of-the-art uncompressed method.
+Finally, numerical experiments demonstrate the effectiveness of the proposed method.
+
+1 Introduction
+With the rapid development of intelligent devices, federated learning has been proposed as an effective approach to
+fusing local data of distributed devices without jeopardizing data privacy. In a federated learning system, local data are
+kept at the distributed devices (also termed as workers). At each iteration, the workers send local stochastic gradients
+to a master node, while the master node aggregates the local stochastic gradients to update the trained model [1, 2, 3, 4].
+Beyond data privacy, communication efficiency and robustness to various adversarial attacks are also major concerns
+of federated learning.
+Information exchange between the workers and the master node, especially transmitting the local stochastic gradients
+from the workers to the master node, is a bottleneck of a federated learning system. In particular, when the trained
+model is high-dimensional, the local stochastic gradients are high-dimensional too and the communication burden
+is remarkable. To improve the communication efficiency, several popular strategies have been proposed. One such
+strategy is to reduce the communication frequency by performing multiple rounds of local updates before one round
+of transmissions [5, 6, 7]. Another orthogonal strategy is to reduce the sizes of transmitted messages by compression.
+Typical compression methods include quantization that uses limited bits to represent real vectors [8, 9, 10], and sparsification that enforces sparsity of transmitted vectors [11, 12, 13]. In this work we focus on compression. At each
+
+A PREPRINT
+
+iteration, the workers compress the local stochastic gradients and send to the master node. Then, the master node
+aggregates the received compressed local stochastic gradients to obtain a new direction.
+In a federated learning system, however, the process of transmitting the compressed local stochastic gradients is
+vulnerable to adversarial attacks [3, 14, 15, 16, 17]. Not all the workers are guaranteed to be reliable and send the true
+compressed local stochastic gradients. On the contrary, some of them may send faulty messages to bias the aggregation
+and lead the optimization process to a wrong direction. To characterize the attacks, we consider the Byzantine attacks
+model where the number and identities of Byzantine workers are unknown to the master node. The Byzantine workers
+are assumed to be omniscient, can collude with each other, and may send arbitrary malicious messages [18]. To defend
+against Byzantine attacks, several robust aggregation rules have been proposed to replace the mean aggregation rule in
+the popular distributed stochastic gradient descent (SGD) algorithm [19, 20, 21]. These approaches are provably able
+to alleviate the influence of the malicious messages sent by the Byzantine workers on the optimization process.
+In this paper, we investigate the problem of Byzantine-robust federated learning with compression, simultaneously
+considering Byzantine-robustness and communication efficiency. For Byzantine-robust aggregation rules, the noise
+introduced by compressing the local stochastic gradients significantly weakens their ability to defend against Byzantine
+attacks. To theoretically justify this claim, we compare the attacks-free compressed stochastic gradient descent (SGD)
+and its vanilla combination with geometric median-based robust aggregation under Byzantine attacks. We show that
+even with unbiased compressors, the Byzantine-robust compressed SGD still suffers from the compression noise.
+This observation illustrates the necessity of reducing the compression noise in the presence of Byzantine attacks. In
+addition, the stochastic noise caused by selecting random samples to compute the local stochastic gradients also brings
+difficulties to handling Byzantine attacks [22, 23, 24]. To address these issues, we propose a novel algorithm, termed
+as BROADCAST (Byzantine-RObust Aggregation with gradient Difference Compression And STochastic variance
+reduction), to reduce both compression and stochastic noise. To be specific, we apply gradient difference compression
+[25, 26] to reduce the compression noise, and adopt the stochastic average gradient algorithm (SAGA) [27] to gradually
+eliminate the inner variations of regular workers. Our contributions are summarized as follows:
+• Our work is among the first attempts to jointly consider Byzantine-robust aggregation and compression in
+federated learning. Compared with gradient norm thresholding [28] that removes a predefined fraction of
+compressed messages, our proposed algorithm does not need any prior knowledge about the fraction of
+Byzantine workers as long as it is smaller than 21 .
+• We theoretically point out that compared with attacks-free compressed SGD, the Byzantine-robust compressed SGD seriously suffers from the compression noise under Byzantine attacks, emphasizing the necessity of reducing compression noise to enhance Byzantine-robustness.
+• We prove that the proposed algorithm reaches a neighborhood of the optimal solution at a linear convergence
+rate, and the asymptotic learning error is in the same order as that of the state-of-the-art uncompressed method
+[22].
+1.1 Related Works
+To achieve compression, we can quantize each coordinate of a transmitted vector into few bits [8, 9, 10], or obtain a
+sparser vector by letting some elements be zero [11, 12, 13]. These compressors, either unbiased or biased, introduce
+compression noise that affects convergence of underlying algorithms. Error feedback has been applied to reduce
+the effect of compression noise and ensure convergence, even with biased compressors [11, 29, 30, 31]. However,
+the analysis relies on the assumption of bounded stochastic gradients. Free of this assumption, gradient difference
+compression is also provably able to reduce the compression noise, requiring the use of unbiased compressors [25, 26,
+32, 33]. Nevertheless, the influence of gradient difference compression on the Byzantine-robustness has not yet been
+investigated. Our application and analysis of gradient difference compression in Byzantine-robust federated learning
+are novel.
+Most of the existing Byzantine-robust federated learning methods aim to modify the distributed SGD with robust
+aggregation rules, such as geometric median [19], coordinate-wise median [20], coordinate-wise trimmed mean [20],
+Krum [21], Bulyan [14], etc. When the workers have non-independent and identical distribution (non-i.i.d.) data, [34]
+proposes a robust stochastic aggregation algorithm that forces the regular workers to reach a common solution, and
+[35] proposes a resampling strategy to reduce the heterogeneity of data distributions at different workers. Byzantinerobustness and privacy preservation are jointly considered in [36, 37].
+Variance reduction techniques have been widely used to reduce stochastic noise to accelerate convergence of stochastic
+algorithms [27, 38, 39, 40]. In [26, 32], the combination of variance reduction and gradient difference compression
+is investigated. Variance reduction is also important to Byzantine-robustness. It is proved in [22] that the use of
+SAGA can fully eliminate the inner variation and improve the ability of tolerating Byzantine attacks. In [23], the
+2
+
+A PREPRINT
+
+stochastic variance reduced gradient (SVRG) method is combined with robust aggregation to solve distributed nonconvex problems. SGD with momentum is considered in [24], also indicating that variance reduction could effectively
+enhance the performance of defending Byzantine attacks.
+For existing Byzantine-robust methods with compression, [41] shows that SignSGD is able to handle a certain class
+of Byzantine attacks. However, we will show in the numerical experiments that it fails upon several common Byzantine attacks. In [28], gradient norm thresholding is used to remove potential malicious messages with compression,
+where error feedback is applied to reduce the learning error and Gaussian attacks are tested. However, gradient norm
+thresholding needs to know the fraction of Byzantine workers, or at least a proper estimate, so as to set the fraction
+of removals. In contrast, our proposed algorithm does not need any prior knowledge about the number of Byzantine
+workers as long as it is smaller than 12 . In addition, gradient norm thresholding can be viewed as a modified mean
+aggregation rule. Analyzing its error feedback extension is rather straightforward, and relies on the assumption of
+bounded stochastic gradients. Our analysis considers the combination of geometric median and gradient difference
+compression, and is hence more challenging. Further, we do not require the assumption of bounded stochastic gradients. We only assume strong convexity, Lipschitz continuous gradients, and bounded variance, which are common in
+the analysis of first-order stochastic methods.
+Orthogonal to compression, another way to improve communication efficiency is to reduce communication frequency
+in a predefined or adaptive manner, such as in local SGD [5, 6] or lazily aggregated gradient [7], respectively. The
+work of [42] combines robust stochastic aggregation [34] with lazily aggregated gradient [7] to achieve Byzantinerobustness and communication efficiency, which is different to our approach.
+
+2 Problem Formulation
+Consider a distributed federated learning system with one master node and W workers in a set W. Among these
+workers, R of them are regular and constitute a set R, while the rest B of them are Byzantine and constitute a set
+B. Note that the identities of regular and Byzantine workers are unknown. The Byzantine workers are assumed to be
+omniscient and can collude with each other to send arbitrary malicious messages to the master node. The problem of
+interest is to find an optimal solution to the finite-sum optimization problem
+1 X
+x∗ = arg min f (x) :=
+fω (x),
+(1)
+x
+R
+ω∈R
+
+with
+
+J
+
+1X
+fω (x) :=
+fω,j (x).
+J j=1
+
+(2)
+
+Here x ∈ Rp represents the model parameter to be optimized, fω,j (x) is the cost function associated with sample j
+at regular worker ω, and fω (x) is the local cost function of regular worker ω averaging on J samples. Our goal is to
+solve (1) in the presence of arbitrary malicious messages sent by Byzantine workers, while guarantee communication
+efficiency.
+2.1 Byzantine-Robust SGD
+Without considering communication efficiency and when all the workers are regular, a standard approach to solving
+(1) is the distributed SGD. At iteration t, the master node broadcasts the model parameter xt to all the workers. Each
+worker ω randomly selects a sample with index itω to compute a local stochastic gradient ∇fω,itω (xt ), and sends it to
+the master node. The master node averages the received stochastic gradients and updates the model parameter as
+1 X
+xt+1 = xt − γ ·
+∇fω,itω (xt ),
+(3)
+W
+ω∈W
+
+where γ is the step size.
+
+However, the Byzantine workers can send arbitrary malicious messages to bias the optimization process. That is to
+say, the message sent by worker ω at iteration t can be defined as
+
+∇fω,itω (xt ), ω ∈ R,
+t
+vω =
+(4)
+∗,
+ω ∈ B,
+
+where ∗ represents an arbitrary p × 1 vector. The distributed SGD is vulnerable to such Byzantine attacks. Even there
+is only one Byzantine worker, the malicious messages can lead the average operation in (3) to yield zero or infinite
+[18].
+3
+
+A PREPRINT
+
+To address the issue, many robust aggregation rules have been proposed, such as geometric median, coordinate-wise
+median, coordinate-wise trimmed mean, Krum, and Bulyan, to replace the mean aggregation rule in (3) [14, 19, 20, 21].
+In this paper, we focus on geometric median, but the idea can be also extended to other robust aggregation rules. After
+receiving the messages from all the workers, the master node calculates the geometric median as
+X
+geomed{vωt } := arg min
+v − vωt .
+(5)
+v
+
+ω∈W
+
+ω∈W
+
+Then, the update of model parameter has the form of
+xt+1 = xt − γ · geomed{vωt },
+
+(6)
+
+ω∈W
+
+which is termed as Byzantine-robust SGD. When less than half of the workers are Byzantine (B < W
+2 ), the geometric
+median rule enables robustness to arbitrary malicious messages [19].
+Computing the exact geometric median is time-consuming, especially in the high-dimensional case [43]. Thus, we
+often resort to an ǫ-approximate geometric median that satisfies
+X
+
+ω∈W
+
+geomed{vωt } − vωt ≤ inf
+v
+
+ω∈W
+
+X
+
+ω∈W
+
+v − vωt + ǫ.
+
+(7)
+
+2.2 Compressors
+To reduce the communication burden of the federated learning system, one can compress the local stochastic gradients
+sent by the workers to the master node. Commonly used compressors are either biased or unbiased. In this paper,
+we focus on unbiased compressors [8, 12, 26]. Application and analysis of general, possibly biased compressors are
+discussed in the Appendix E.
+Definition 1 (Unbiased compressor). A randomized operator Q: Rp → Rp is an unbiased compressor if it satisfies
+EQ [Q(x)] =x,
+2
+
+2
+
+EQ kQ(x) − xk ≤δ kxk ,
+
+∀x ∈ Rp ,
+
+(8)
+
+where δ is a non-negative constant.
+Typical unbiased compressors include:
+b−r
+• Randomized quantization [8]: For any real number r ∈ [a, b], there is a probability b−a
+to quantize r into a,
+r−a
+and b−a to quantize r into b.
+
+• Rand-k sparsification [12]: For any x ∈ Rp , randomly select k elements of x to be scaled by kp , and let the
+other elements to be zero.
+Loosely speaking, δ can be viewed as the compression ratio. When δ approaches zero, there is little compression.
+2.3 Assumptions
+We make the following assumptions in the analysis.
+Assumption 1 (Strong convexity and Lipschitz continuous gradients). The cost function f is µ-strong convex and has
+L-Lipschitz continuous gradients, which means for any x, y ∈ Rp , it holds that
+µ
+f (x) ≥ f (y) + h∇f (y), x − yi + kx − yk ,
+(9)
+2
+and
+k∇f (x) − ∇f (y)k ≤ L kx − yk .
+p
+
+(10)
+
+Assumption 2 (Bounded outer variation). For any x ∈ R , the variation of the local gradients at the regular workers
+with respect to the global gradient is upper-bounded by
+1 X
+2
+k∇fω (x) − ∇f (x)k ≤ σ 2 .
+(11)
+R
+ω∈R
+
+4
+
+A PREPRINT
+
+Assumption 3 (Bounded inner variation). For every regular worker ω ∈ R and any x ∈ Rp , the variation of its
+stochastic gradient with respect to its local gradient is upper-bounded by
+2
+
+Eitω ∇fω,itω (x) − ∇fω (x) ≤ ζ 2 , ∀ω ∈ R.
+(12)
+p
+Assumption 4 (Bounded stochastic gradients). For every regular worker ω ∈ R and any x ∈ R , its stochastic
+gradient is upper-bounded by
+2
+Eitω ∇fω,itω (x) ≤ G2 , ∀ω ∈ R.
+(13)
+Assumption 1 is standard in convex analysis. Assumptions 2 and 3 bound the outer variation that describes the sample
+heterogeneity among the regular workers, and the inner variation that describes the sample heterogeneity on every
+regular worker, respectively [44]. Assumption 4 is often used to bound the compression noise [11, 30, 31]. Note
+that the Byzantine-robust compressed SGD and SAGA, which are discussed in the ensuing sections, both need this
+assumption. In contrast, our proposed method does not need this assumption.
+
+3 Compression and Stochastic Noise in Byzantine-Robust Compressed SGD
+In this section, we begin with analyzing the attacks-free compressed SGD and its naive combination with the geometric
+median-based robust aggregation rule. We theoretically point out that the latter seriously suffers from the compression
+noise in the presence of Byzantine attacks, emphasizing the necessity of reducing compression noise to enhance
+Byzantine-robustness. We also show the impact of stochastic noise caused by selecting random samples.
+3.1 Attacks-Free Compressed SGD
+We consider the attacks-free compressed SGD, and show that the compression noise does not affect the asymptotic
+learning error. Now all workers ω ∈ W are regular, such that W = R. The compressed SGD is described as follows.
+At iteration t, the master node broadcasts the model parameter xt to all the workers. Then each worker ω ∈ W
+randomly selects a sample with index itω to compute a local stochastic gradient ∇fω,itω (xt ). After that, each worker
+ω ∈ W sends the compressed message Q(∇fω,itω (xt )) to the master node. Upon receiving the compressed messages,
+the master node updates the model parameter as
+1 X
+xt+1 = xt − γ ·
+Q(∇fω,itω (xt )).
+(14)
+W
+ω∈W
+
+Below we give the convergence analysis of the attacks-free compressed SGD, and the proof is left to Appendix D.
+Theorem 1 (Convergence of attacks-free compressed SGD). Consider the attacks-free compressed SGD update (14)
+using an unbiased compressor. Under Assumptions 1, 2, and 3, if the step size γ satisfies
+2
+γ≤
+,
+(15)
+(µ + L)(1 + δ)
+then it holds that
+
+t
+2γµL
+t
+∗ 2
+E x −x
+≤ 1−
+∆1 + ∆2 ,
+(16)
+µ+L
+where
+γ(µ + L)(1 + δ)(ζ 2 + σ 2 )
+2
+,
+(17)
+∆1 := x0 − x∗ −
+2µL
+1 2
+∆2 :=
+(σ + ζ 2 ).
+(18)
+µL
+Observe that the asymptotic learning error ∆2 is determined by the outer variation σ 2 and the inner variation ζ 2 , but
+irrelevant with G2 , the bound of stochastic gradients. In Theorem 1, we use a constant step size for the sake of fair
+comparison with other algorithms analyzed in this paper. If a diminishing step size is applied, the asymptotic learning
+error can be eliminated.
+By the use of an unbiased compressor, the asymptotic learning error is not influenced by compression and Assumption
+4 is not needed in Theorem 1. However, the bound of step size (15) is affected: A larger compression ratio δ means
+that we need to use a smaller step size γ to guarantee convergence. With particular note, using biased compressors,
+compressed stochastic algorithms may even diverge [30]. We call the impact of compression ratio on the algorithms
+as compression noise, caused by using compressed local stochastic gradients. The impact of outer variation σ 2 and
+inner variation ζ 2 on the algorithms is termed as stochastic noise, caused by randomly selecting samples.
+5
+
+A PREPRINT
+
+3.2 Byzantine-Robust Compressed SGD
+For Byzantine-robust and communication-efficient federated learning, we first consider a vanilla approach that combines the distributed SGD with geometric median aggregation and stochastic gradient compression. We then theoretically point out that compression and stochastic noise significantly weakens its ability to tolerate Byzantine attacks.
+The Byzantine-robust compressed SGD is similar to the attacks-free compressed SGD, except that the aggregation
+rule at the master node is changed from mean to geometric median. At iteration t, the master node broadcasts the
+model parameter xt to all the workers. Then each regular worker ω ∈ R randomly selects a sample with index itω
+to compute a local stochastic gradient ∇fω,itω (xt ). Each Byzantine worker ω ∈ B generates an arbitrary malicious
+p × 1 vector ∗ instead. We use vωt given by (4) to denote the vector held by each worker ω ∈ W. Different from the
+Byzantine-robust SGD, now each worker ω ∈ W sends the compressed message Q(vωt ) to the master node. Upon
+receiving the compressed messages, the master node updates the model parameter as
+xt+1 = xt − γ · geomed{Q(vωt )}.
+
+(19)
+
+ω∈W
+
+Here we suppose the Byzantine workers obey the compression rule too. Otherwise, their identities are easy to recognize.
+3.3 Impact of Compression and Stochastic Noise
+For the attacks-free case, directly compressing the stochastic gradients introduces compression noise. For unbiased
+compressors, it leads to a smaller step size and hence slower convergence as we have shown in Theorem 1. For
+biased compressors, compression noise may even make the compressed stochastic algorithms divergent [30]. Due to
+the randomness introduced in selecting local samples, the stochastic gradients computed in regular workers contain
+stochastic noise, which may slow down the convergence of stochastic algorithms [38].
+In the presence of Byzantine attacks, compression and stochastic noise not only affects convergence, but also significantly influences the effectiveness of robust aggregation rules to defend attacks. The reason is intuitive: Since even
+the compressed messages sent from the regular workers are noisy, it is difficult to recognize the malicious ones among
+them. Thus, when the variance of the compressed messages is large, the gap between the average of true stochastic
+gradients (which is what we want) and the robustly aggregated vector (which is what we have) could be large, too.
+To justify this intuitive idea and demonstrate the effect of compression and stochastic noise on robust aggregation, we
+give the following property of geometric median; the proof is delegated to Appendix A.
+Lemma 1 (Geometric median of compressed vectors). Let {zω , ω ∈ W} be a subset of random vectors distributed in
+a normed vector space and Q(·) is an unbiased compressor satisfying Definition 1. It holds when B < W
+2 that
+2
+
+E kgeomed{Q(zω )} − z̄k
+2Cα2 X
+2C 2 X
+2
+2
+E kzω − Ezω k +
+kEzω − z̄k
+≤ α
+R
+R
++
+1
+where z̄ := R
+
+P
+
+ω∈R
+
+ω∈R
+2Cα2 δ X
+
+R
+
+ω∈R
+
+(20)
+
+ω∈R
+
+2
+
+2
+
+E kzω k +
+
+2ǫ
+,
+(W − 2B)2
+
+B
+2−2α
+Ezω , α := W
+, and Cα := 1−2α
+.
+
+Let zω represent vωt at iteration t. Lemma 1 characterizes the mean-square error of the geometric median relative to
+the average of true stochastic gradients. The mean-square error is bounded by four terms. The first refers to the sum of
+inner variations, and the second refers to the outer variation. The two terms represent the stochastic noise inside each
+regular worker and across all the regular workers, respectively. The third is proportional to the compression-related
+parameter δ, and becomes large when the compression ratio δ is high. The last is from the inexact ǫ-approximate
+geometric median. Lemma 1 asserts that the compression and stochastic noise enlarges the gap between the geometric
+median and the average of true stochastic gradients. For other robust aggregation rules such as Krum and coordinatewise median, similar results are also attainable. The compression and stochastic noise remains affecting the quality of
+robust aggregation.
+Since geometric median aggregation of the compressed messages Q(vωt ) yields unsatisfactory output as indicated by
+Lemma 1, the Byzantine-robust compressed SGD in (19) performs poorly too. Below we analyze its convergence; the
+proof is delegated to Appendix A. It converges to a neighborhood of the optimal solution, and the asymptotic learning
+error is subject to the compression and stochastic noise.
+6
+
+A PREPRINT
+
+Theorem 2 (Convergence of Byzantine-robust compressed SGD). Consider the Byzantine-robust compressed SGD
+update (19) with ǫ-approximate geometric median aggregation and using an unbiased compressor. Under Assumptions
+1, 2, 3, and 4, if the number of Byzantine workers satisfies B < W
+2 and the step size γ satisfies
+γ≤
+then it holds that
+
+E xt − x∗
+
+where
+
+2
+
+µ
+,
+2L2
+t
+
+≤ (1 − γµ) ∆1 + ∆2 ,
+
+∆1 := x0 − x∗
+∆2 :=
+
+(21)
+
+2
+
+(22)
+
+− ∆2 ,
+
+(23)
+!
+
+2
+2ǫ2
+2 2
+2 2
+2
+2
+2C
+σ
++
+2C
+ζ
++
+2C
+δG
++
+,
+α
+α
+α
+µ2
+(W − 2B)2
+
+(24)
+
+B
+, and Cα := 2−2α
+α := W
+1−2α .
+
+Observe that the asymptotic learning error ∆2 is linear with the inner variation ζ 2 , the outer variation σ 2 and the
+compression ratio δ. It is the gap introduced by the geometric median, as shown in Lemma 1, that determines the
+asymptotic learning error. Note that in the analysis of Byzantine-robust compressed SGD, we need Assumption 4 to
+bound the compression error. This is different to the analysis of attacks-free compressed SGD in Theorem 1 where
+Assumption 4 is not required.
+Comparing in Theorems 1 and 2, we find that under Byzantine attacks, the asymptotic learning error is linear with Cα2 ,
+which is determined by the maximum number of Byzantine workers. In addition, the term of δG2 appears, showing
+the larger impact of compression noise in the presence of Byzantine attacks. Technically speaking, this is due to
+the introduction of the biased robust aggregation to defend against Byzantine attacks. Unlike the unbiased and nonrobust mean aggregation, robust aggregation rules are often biased so as to handle the outliers caused by Byzantine
+attacks. This feature in turn amplifies the impact of compression noise on the asymptotic learning error. Therefore,
+it is necessary to reduce the compression noise for Byzantine robust compressed federated learning. The stochastic
+noise, characterized by the inner variation ζ 2 and the outer variation σ 2 , also affects the asymptotic learning error.
+Motivated by the analysis of this vanilla approach, we propose to reduce both compression and stochastic noise so as
+to reach a better neighborhood of the optimal solution.
+
+4 Reducing Stochastic Noise
+We start from reducing the impact of stochastic noise. In recent years, variance reduction techniques have been widely
+used to accelerate convergence of stochastic algorithms [38, 27]. Motivated by the theoretical findings in Theorem 2,
+we combine the distributed SAGA, a popular variance reduction approach, to enhance the Byzantine-robustness. We
+stress that other variance reduction techniques, such as SVRG [23] and momentum [24], could be also applicable.
+In the distributed SAGA, each worker stores the most recent stochastic gradient for all of its local data samples. When
+worker ω randomly selects a sample with index itω at iteration t, the corrected stochastic gradient is
+∇f
+
+ω,itω
+
+t
+
+(x ) − ∇f
+
+ω,itω
+
+where
+φt+1
+ω,j =
+
+1
+(φtω,itω ) +
+
+
+
+J
+X
+
+J j=1
+
+∇fω,j (φtω,j ),
+
+φtω,j , j 6= itω ,
+xt , j = itω .
+
+(25)
+
+(26)
+
+That is to say, worker ω corrects the stochastic gradient by first subtracting the previously stored stochastic gradient of
+sample itω , and then adding the average of all the stored stochastic gradients of J samples.
+At the presence of Byzantine workers, the vector calculated at ω can be represented as
+
+∇fω,itω (xt ) − ∇fω,itω (φtω,it )
+
+ω
+
+
+J
+P
+t
+1
+t
+gω =
++J
+∇fω,j (φω,j ), ω ∈ R,
+
+j=1
+
+
+∗,
+ω ∈ B,
+7
+
+(27)
+
+A PREPRINT
+
+where ∗ represents an arbitrary p × 1 vector. Every worker ω ∈ W compresses gωt and sends Q(gωt ) to the master node.
+Then the master node performs geometric median aggregation to update the model parameter, as
+xt+1 = xt − γ · geomed{Q(gωt )}.
+
+(28)
+
+ω∈W
+
+We term it as Byzantine-robust compressed SAGA, whose convergence is stated as follows and the proof is delegated
+to Appendix B.
+Theorem 3 (Convergence of Byzantine-robust compressed SAGA). Consider the Byzantine-robust compressed SAGA
+update (28) with ǫ-approximate geometric median aggregation and using an unbiased compressor. Under Assumptions
+1, 2, and 4, if the number of Byzantine workers satisfies B < W
+2 and the step size γ satisfies
+µ
+γ≤ √
+,
+4 5J 2 L2 Cα
+
+(29)
+
+then it holds that
+E xt − x∗
+where
+
+2
+
+
+γµ t
+∆1 + ∆2 ,
+≤ 1−
+2
+
+∆1 := x0 − x∗
+5
+∆2 := 2
+µ
+
+
+
+2
+
+(30)
+
+− ∆2 ,
+
+2Cα2 σ 2 + 2Cα2 δG2 +
+
+2ǫ2
+(W − 2B)2
+
+(31)
+
+
+.
+
+(32)
+
+Compared with the asymptotic learning error of Byzantine-robust compressed SGD in (24), in (32) the inner variation
+is fully eliminated due to the use of variance reduction.
+t
+Remark 1. [22] proposes the Byzantine-robust SAGA without compression, i.e.,
+ each worker ω2directly
+ sends gω in
+2ǫ
+5
+2 2
+(27) to the master node. Therein, the asymptotic learning error is ∆2 = µ2 2Cα σ + (W −2B)2 . One can see
+that compression is a double-edged sword: It leads to better communication efficiency, but brings higher asymptotic
+learning error.
+
+5 BROADCAST: Reducing Both Compression & Stochastic Noise
+As mentioned in Section 4, directly compressing the corrected stochastic gradients still introduces remarkable compression noise, leading to unsatisfactory Byzantine-robustness. Therefore, we propose to compress the differences
+between the corrected stochastic gradients and auxiliary vectors to reduce the compression noise. The proposed algorithm, named as BROADCAST (Byzantine-RObust Aggregation with gradient Difference Compression And STochastic variance reduction), jointly reduces the compression and stochastic noise.
+5.1 Gradient Difference Compression
+In gradient difference compression, each worker ω and the master node maintain the same vector hω ∈ Rp , which
+is initialized by the same value and updated following the same rule. At iteration t, each worker ω compresses the
+difference gωt − htω and sends to the master node. After receiving the compressed difference Q(gωt − htω ), the master
+node approximates the corrected stochastic gradient as
+ĝωt = htω + Q(gωt − htω ).
+
+(33)
+
+Upon collecting all approximations ĝωt , the master node updates the model parameter as
+xt+1 = xt − γ · geomed{ĝωt }.
+
+(34)
+
+ω∈W
+
+With the compressed difference, each worker ω and the master node both update hω as
+ht+1
+= htω + βQ(gωt − htω ),
+ω
+
+(35)
+
+where β is a hyperparameter. Compared to directly compressing the corrected stochastic gradients, compressing the
+differences gradually eliminates the compression noise, as we shall see in the theoretical analysis.
+8
+
+A PREPRINT
+
+Algorithm 1 BROADCAST
+Input: Step size γ, hyperparameter β
+Initialize: Initialize x0 for master node and all workers. Initialize h0ω for master node and each worker ω. Initialize
+{∇fω,j (φ0ω,j ) = ∇fω,j (x0 ), j = 1, . . . , J} for each regular worker ω
+1: for t = 0, 1, . . . do
+2:
+Master node:
+3:
+Broadcast xt to all workers
+4:
+Receive Q(utω ) from all workers
+5:
+Obtain approximations ĝωt = htω + Q(utω )
+6:
+Update xt+1 = xt − γ · geomedω∈W {ĝωt }
+7:
+Update ht+1
+= htω + βQ(utω )
+ω
+8:
+Worker ω:
+9:
+if ω ∈ R then
+PJ
+10:
+Compute ḡωt = J1 j=1 ∇fω,j (φtω,j )
+11:
+Randomly sample itω from {1, . . . , J}
+12:
+Obtain gωt = ∇fω,itω (xt ) − ∇fω,itω (φtω,it ) + ḡωt
+ω
+13:
+Store ∇fω,itω (φtω,it ) = ∇fω,itω (xt )
+ω
+14:
+Compress Q(utω ) = Q(gωt − htω )
+15:
+Update ht+1
+= htω + βQ(utω )
+ω
+16:
+Send Q(utω ) to master node
+17:
+else if ω ∈ B then
+18:
+Generate arbitrary malicious vector gωt = ∗
+19:
+Send Q(utω ) = Q(gωt ) to master node
+20:
+end if
+21: end for
+
+5.2 BROADCAST Algorithm Outline
+BROADCAST is described in Algorithm 1. In each regular worker ω, a stochastic gradient table is kept to store the
+most recent stochastic gradient for every local sample, and an auxiliary vector htω is used to calculate the difference
+of gradients. Each Byzantine worker ω may maintain its stochastic gradient table and htω for the sake of generating
+malicious vectors, or not do so but generate malicious vectors in other ways. The master node also maintains htω
+for each worker ω, with the same initialization. At iteration t, the master node broadcasts xt to all the workers.
+Each regular worker ω randomly selects a sample and obtains the corrected stochastic gradient gωt as (27). Next, the
+difference between gωt and htω is compressed and sent to the master node. Each regular worker ω then updates ht+1
+ω
+by adding a scaled compressed difference. The Byzantine workers can generate arbitrary messages but also send the
+compressed results to cheat the master node. After collecting the compressed differences from all the workers, the
+master node approximates the corrected stochastic gradients by adding the compressed differences to the stored htω .
+Then the master node calculates the geometric median and updates x as (34). The stored ht+1
+in master node is
+ω
+updated in the same way as at each worker ω.
+5.3 Theoretical Analysis
+Here we establish the convergence of BROADCAST. Note that the technical challenge lies in how to analyze gradient different compression in the biased robust aggregation. We do not have the property that the aggregation of
+approximated gradient {ĝωt }ω∈W is still unbiased in the previous work.
+
+Theorem 4 (Convergence of BROADCAST). Consider Algorithm 1 with ǫ-approximate geometric median aggregation and using an unbiased compressor. Under Assumptions 1 and 2, if the number of Byzantine workers satisfies
+µ2
+2
+B< W
+2 and δCα ≤ 56L2 , the hyperparameter satisfies β(1 + δ) ≤ 1, and the step size γ satisfies
+βµ
+γ≤ √ √
+,
+4 35 1 + 5δ · J 2 L2 Cα
+
+(36)
+
+then it holds that
+E xt − x∗
+
+2
+
+
+γµ t
+∆1 + ∆2 ,
+≤ 1−
+2
+9
+
+(37)
+
+A PREPRINT
+
+where
+2
+
+∆1 := x0 − x∗ − ∆2 ,
+
+
+70
+2ǫ2
+2 2
+∆2 :=
+2(1 + 6δ)Cα σ +
+.
+17µ2
+(W − 2B)2
+
+(38)
+(39)
+
+The proof of this theorem is in Appendix A. The asymptotic learning error ∆2 of BROADCAST is no longer dependent
+on the inner variation and compression noise. The major source of the learning error comes from the outer variation,
+as well as the computation error in calculating the geometric median. In contrast, the inner variation and compression
+noise terms both appear in the learning error of the Byzantine-robust compressed SGD, and the compression noise
+term appears in that of the Byzantine-robust compressed SAGA. Compared to the Byzantine-robust SAGA without
+compression, the magnitude of learning error is same. If δ is 0, meaning that no compression is applied, the learning
+error in BROADCAST is in the same order as that of the Byzantine-robust SAGA without compression. The constant
+is slightly improved due to proof techniques. Thus, BROADCAST achieves gradient compression for free and achieves
+the same Byzantine-robustness as its uncompressed counterpart.
+
+10−4
+0
+
+2
+4
+6
+8
+iteration k / 4000
+
+SGD
+Byzantine-robust SGD
+
+0
+
+2
+4
+6
+8
+iteration k / 4000
+
+100
+10−1
+
+10
+
+Byzantine-robust compressed SGD
+Byzantine-robust SGD with GDC
+
+optima it* gap (zero-gradient attack)
+102
+( k ) − f( x * )
+
+10−2
+10−3
+
+10
+
+101
+
+k
+
+k
+
+10−3
+
+10−1
+
+( ) − f( x * )
+
+10−2
+
+optima it* gap (sign-flipping attack)
+102
+
+f x
+
+( ) − f( x * )
+
+10−1
+
+optima it* gap (Ga(ssian attack)
+
+f x
+
+optima it* gap ()itho(t attack)
+
+f x
+
+f x
+
+k
+
+( ) − f( x * )
+
+100
+
+0
+
+2
+4
+6
+8
+iteration k / 4000
+
+101
+100
+
+10
+
+SAGA
+Byzantine-robust SAGA
+
+0
+
+2
+4
+6
+8
+iteration k / 4000
+
+10
+
+Byzantine-robust compressed SAGA
+BROADCAST
+
+(a) COVTYPE Dataset
+
+0
+
+2
+4
+6
+8
+iteration k / 4000
+
+( ) − f(x * )
+
+10−1
+
+10
+
+0
+
+SGD
+Byzantine-robust SGD
+
+102
+101
+
+k
+
+k
+
+10−3
+
+f x
+
+( ) − f(x * )
+
+10−2
+
+f x
+
+k
+
+( ) − f(x * )
+f x
+
+100
+
+10−1
+
+10−4
+
+optima it* gap (sign-flipping attack)
+
+2
+4
+6
+8
+iteration k / 4000
+
+100
+
+10
+
+102
+101
+100
+
+0
+
+Byzantine-robust compressed SGD
+Byzantine-robust SGD with GDC
+
+optima it* gap (zero-gradient attack)
+
+( k) − f(x * )
+
+optima it* gap (Ga(ssian attack)
+
+f x
+
+optima it* gap ()itho(t attack)
+100
+
+2
+4
+6
+8
+iteration k / 4000
+
+10
+
+SAGA
+Byzantine-robust SAGA
+
+0
+
+2
+4
+6
+8
+iteration k / 4000
+
+10
+
+Byzantine-robust compressed SAGA
+BROADCAST
+
+(b) Mushrooms Dataset
+
+Figure 1: Effect of reducing stochastic and compression noise for logistic regression.
+
+opti alit) gap (Gaussian attack)
+
+opti alit) gap (sign-flipping attack)
+
+100
+
+10−4
+0
+
+2
+4
+6
+8
+iteration k / 4000
+
+10
+
+SGD
+
+( k ) − f( x * )
+
+10−2
+10−3
+
+102
+
+101
+
+k
+
+10−3
+
+( ) − f( x * )
+
+k
+
+10−2
+
+10−1
+
+f x
+
+( ) − f( x * )
+
+10−1
+
+optimalit) gap (zero-gradient attack)
+
+102
+
+0
+
+2
+4
+6
+8
+iteration k / 4000
+SignSGD
+
+100
+10−1
+
+10
+
+f x
+
+opti alit) gap ((ithout attack)
+
+f x
+
+f x
+
+k
+
+( ) − f( x * )
+
+100
+
+0
+
+2
+4
+6
+8
+iteration k / 4000
+
+gradient norm thresholding SGD
+
+10
+
+101
+100
+10−1
+
+0
+
+2
+4
+6
+8
+iteration k / 4000
+
+BROADCAST
+
+Figure 2: Comparison between proposed algorithm and existing methods for logistic regression.
+
+10
+
+10
+
+A PREPRINT
+
+10−4
+0
+
+2
+4
+6
+8
+iteration k / 4000
+
+10−3
+
+10
+
+0
+
+mean
+
+2
+4
+6
+8
+iteration k / 4000
+
+100
+
+Krum
+
+10−1
+10−2
+
+10
+
+optima it* gap (zero-gradient attack)
+
+( k ) − f( x * )
+
+10−2
+
+101
+
+k
+
+k
+
+10−3
+
+10−1
+
+( ) − f( x * )
+
+10−2
+
+optima it* gap (sign-flipping attack)
+102
+
+f x
+
+( ) − f( x * )
+
+10−1
+
+optima it* gap (Ga(ssian attack)
+
+10−1
+
+f x
+
+optima it* gap ()itho(t attack)
+
+f x
+
+f x
+
+k
+
+( ) − f( x * )
+
+100
+
+0
+
+2
+4
+6
+8
+iteration k / 4000
+
+coordinate-wise median
+
+10
+
+10−2
+
+0
+
+2
+4
+6
+8
+iteration k / 4000
+
+10
+
+BROADCAST
+
+(a) COVTYPE Dataset
+
+0
+
+2
+4
+6
+8
+iteration k / 4000
+
+( ) − f( x * )
+
+10−1
+
+10
+
+0
+mean
+
+101
+
+k
+
+k
+
+10−3
+
+f x
+
+( ) − f( x * )
+
+10−2
+10−4
+
+optima it* gap (sign-flipping attack)
+102
+
+100
+
+10−1
+
+f x
+
+f x
+
+k
+
+( ) − f( x * )
+
+100
+
+2
+4
+6
+8
+iteration k / 4000
+Krum
+
+100
+
+10
+
+0
+
+coordinate-wise median
+
+optima it* gap (zero-gradient attack)
+
+( k ) − f( x * )
+
+optima it* gap (Ga(ssian attack)
+
+100
+
+f x
+
+optima it* gap ()itho(t attack)
+
+2
+4
+6
+8
+iteration k / 4000
+
+10
+
+0
+
+2
+4
+6
+8
+iteration k / 4000
+
+10
+
+BROADCAST
+
+(b) Mushrooms Dataset
+
+Figure 3: Comparison between different robust aggregation rules for logistic regression.
+
+6 Numerical Experiments
+We present numerical experiments to illustrate the effectiveness of BROADCAST and compare it with existing
+Byzantine-robust distributed learning algorithms. To validate our theoretical analysis, we consider a strongly convex
+logistic regression problem on the COVTYPE and Mushroom datasets1 . We also consider a neural network training
+task on the MNIST dataset2 to demonstrate the performance of BROADCAST when the cost function is non-convex.
+The source code is available at https://github.com/oyhah/BROADCAST.
+6.1 Logistic Regression
+In the logistic regression problem, for sample j at each regular worker ω, the sample cost function is
+ξ
+2
+fω,j (x) = ln(1 + exp (−bω,j haω,j , xi)) + kxk ,
+(40)
+2
+where aω,j ∈ Rp is the feature vector, bω,j ∈ {−1, 1} is the label, and ξ = 0.01 is the regularization parameter. We
+use two datasets: the COVTYPE dataset with 581012 samples and p = 54 dimensions, as well as the Mushrooms
+dataset with 8124 samples and p = 112 dimensions.
+We launch R = 50 regular workers and B = 20 Byzantine workers. The samples are evenly and randomly allocated
+to the regular workers. The Byzantine attacks tested here are Gaussian, sign-flipping and zero-gradient. For Gaussian
+attacks, each Byzantine
+worker ω obtains gωt (or vωt , which we will not distinguish below) from a Gaussian distribution
+P
+with mean R1 ω∈R gωt and variance 30. For sign-flipping attacks, each Byzantine worker ω obtains gωt as gωt =
+P
+u · R1 ω∈R gωt , where the magnitude is set to u = −3. For zero-gradient attacks, each Byzantine worker ω obtains
+P
+gωt as gωt = − B1 ω∈R gωt so that aggregation at the master node reaches a zero vector in the uncompressed situation.
+Then Byzantine worker ω compresses gωt and sends to the master node. For the compressed methods, the compressor is
+unbiased rand-k sparsification at the regular agents, and k/p is 0.1. At the Byzantine agents we instead use biased topk sparsification to guarantee the attacks are strong enough. The hyperparameter β in gradient difference compression
+is 0.1 by default, γ is 0.01, and ǫ is 10−5 .
+First, we show the positive effect of reducing compression and stochastic noise to Byzantine-robustness. Fig. 1 depicts
+the optimality gap f (xt ) − f (x∗ ) of SGD, Byzantine-robust SGD, Byzantine-robust compressed SGD, Byzantine1
+2
+
+https://www.csie.ntu.edu.tw/%7ecjlin/libsvmtools/datasets
+http://yann.lecun.com/exdb/mnist
+
+11
+
+A PREPRINT
+
+10−4
+0
+
+2
+4
+6
+8
+iteration / 4000
+
+0
+
+2
+4
+6
+8
+i(era(ion / 4000
+
+100
+
+BROADCAST β =0.1
+
+SGD
+
+10−1
+
+10
+
+op(imali(y gap (zero-gradient attack)
+6 − 10−1
+
+( k ) − f( x * )
+
+10−2
+10−3
+
+10
+
+101
+
+k
+
+10−3
+
+10−1
+
+( ) − f( x * )
+
+k
+
+10−2
+
+op(imali(y gap (sign-flipping attack)
+102
+
+f x
+
+( ) − f( x * )
+
+10−1
+
+op(imali(y gap (Ga)ssian a((ac )
+
+f x
+
+op(imali(y gap (*i(ho)( a((ac )
+
+f x
+
+f x
+
+k
+
+( ) − f( x * )
+
+100
+
+0
+
+2
+4
+6
+8
+i(era(ion / 4000
+
+BROADCAST β =0.01
+
+4 − 10−1
+3 − 10−1
+2 × 10−1
+
+10
+
+0
+
+2
+4
+6
+8
+iteration k / 4000
+
+10
+
+BROADCAST β =0.001
+
+(a) COVTYPE Dataset
+
+0
+
+2
+4
+6
+8
+iteration / 4000
+
+( ) − f( x * )
+
+10−1
+
+0
+
+10
+
+SGD
+
+101
+
+k
+
+k
+
+10−3
+
+f x
+
+( ) − f( x * )
+
+10−2
+
+10−4
+
+op(imali(y gap (sign-flipping attack)
+102
+
+100
+
+10−1
+
+f x
+
+f x
+
+k
+
+( ) − f( x * )
+
+100
+
+2
+4
+6
+8
+i(era(ion / 4000
+BROADCAST β =0.1
+
+10
+
+op(imali(y gap (zero-gradient attack)
+
+( k ) − f( x * )
+
+op(imali(y gap (Ga)ssian a((ac )
+
+100
+
+f x
+
+op(imali(y gap (*i(ho)( a((ac )
+
+100
+0
+
+2
+4
+6
+8
+i(era(ion / 4000
+
+BROADCAST β =0.01
+
+10
+
+0
+
+2
+4
+6
+8
+iteration k / 4000
+
+10
+
+BROADCAST β =0.001
+
+(b) Mushrooms Dataset
+
+Figure 4: Effect of different β in BROADCAST for logistic regression.
+
+robust compressed SGD with gradient difference compression (GDC), SAGA, Byzantine-robust SAGA, Byzantinerobust compressed SAGA, and BROADCAST on the two datasets. Observe that SGD and SAGA are unable to
+tolerate any Byzantine attacks. The Byzantine-robust SAGA significantly outperforms the Byzantine-robust SGD,
+implying the importance of reducing stochastic noise. With compression, the Byzantine-robust compressed SGD and
+SAGA are worse than their uncompressed counterparts when facing Gaussian attacks and have large learning errors
+when facing sign-flipping and zero-gradient attacks. This is due to the accumulation of compression noise, such that
+the learning errors are dominated by the term 2Cα2 δG2 in (24) and (32), where G is the bound of stochastic gradients
+and can be large. Our proposed BROADCAST can defend all the three types of Byzantine attacks as the Byzantinerobust SAGA without compression, and slightly outperforms the latter since the Byzantine workers must obey the
+top-k sparsification rule. Our proposed BROADCAST is also superior to the Byzantine-robust compressed SGD with
+gradient difference compression, thanks to the reduction of stochastic noise.
+Second, Fig. 2 compares BROADCAST and the existing Byzantine-robust methods with compression on COVTYPE.
+SignSGD [41] transmits the signs of stochastic gradients. The gradient norm thresholding SGD [28] compresses
+the stochastic gradients and removes a fraction of them with the largest norms before mean aggregation. We let
+the fraction be 0.3, which is slightly larger than the exact fraction of Byzantine workers. With the accumulation of
+compression noise, SignSGD almost fails to defend all attacks and even cannot converge without attacks. For Gaussian
+attacks, the gradient norm thresholding SGD behaves well because all the malicious messages are removed. But it is
+unable to remove all the malicious messages under sign-flipping and zero-gradient attacks. In contrast, the proposed
+BROADCAST performs well in defending various Byzantine attacks.
+Third, Fig. 3 compares different robust aggregation rules, all equipped with gradient difference compression and
+SAGA as in BROADCAST. When there are no attacks, geometric median outperforms Krum and coordinate-wise
+median. For COVTYPE, under Gaussian attacks, geometric median is the best, while under sign-flipping and zerogradient attacks, geometric median and Krum perform similarly. For Mushrooms, coordinate-wise median is slightly
+better under sign-flipping and zero-gradient attacks.
+Last, we investigate the effect of hyperparameter β in gradient difference compression for the proposed BROADCAST.
+As shown in Fig. 4, β is chosen as 0.1, 0.01 and 0.001, respectively. According to Theorem 4, when β is smaller,
+the step size γ should be smaller. Thus we choose γ as 0.01 when β is 0.1 and 0.01, and as 0.005 when β is 0.001.
+Observe that for different β, BROADCAST converges to almost the same point and the value of β does not influence
+the performance of BROADCAST in the presence of Byzantine attacks.
+12
+
+A PREPRINT
+
+Accuracy (Gaussian attack)
+
+0.5
+0.3
+0.1
+0
+
+2
+4
+6
+8
+iteration k / 1000
+
+10
+
+0.7
+0.5
+0.3
+0.1
+0
+
+SGD
+
+2
+4
+6
+8
+iteration k / 1000
+
+SignSGD
+
+10
+
+0.9
+
+Classification Accuracy
+
+0.7
+
+Accuracy (zero-gradient attack)
+
+Accuracy (sign-flipping attack)
+
+0.9
+
+Classification Accuracy
+
+Classification Accuracy
+
+Classification Accuracy
+
+Accuracy (without attack)
+0.9
+
+0.7
+0.5
+0.3
+0.1
+0
+
+2
+4
+6
+8
+iteration k / 1000
+
+gradient norm thresholding SGD
+
+10
+
+0.9
+0.7
+0.5
+0.3
+0.1
+0
+
+2
+4
+6
+8
+iteration k / 1000
+
+10
+
+BROADCAST
+
+Figure 5: Comparison between proposed algorithm and existing methods for neural network training.
+
+6.2 Neural Network Training
+In this experiment, we train a two-layer neural network, each layer containing 50 neurons with tanh activation, for
+image classification on the MNIST dataset. MNIST is a handwritten digit dataset, containing 60000 training samples
+and 10000 testing samples, each with 784 dimensions. Here we launch R = 180 regular workers and B = 20
+Byzantine workers. We apply the BROADCAST algorithm to train the neural network, and compare it with SGD,
+SignSGD and the gradient norm thresholding SGD. The cost function is cross entropy and the batch size is 5. The
+compressor is rand-k with k/p = 0.1. At the Byzantine agents we instead use biased top-k sparsification to guarantee
+the attacks are strong enough. The hyperparameter β in gradient difference compression is 0.1, γ is 0.1, and ǫ is 10−5 .
+Since the fraction of Byzantine workers is 10%, we reduce the fraction of removed workers in the gradient norm
+thresholding SGD as 15% for fair comparison. The tested attacks include Gaussian, sign-flipping and zero-gradient,
+whose settings are the same as those in the logistic regression experiments.
+Fig. 5 demonstrates the classification accuracy on the testing samples. Observe that our proposed BROADCAST
+algorithm reaches high accuracies under all the attacks and outperforms the existing methods. SignSGD behaves
+unstably. SGD fails under Gaussian and zero-gradient attacks, but works well under sign-flipping attacks that are not
+strong enough now. Interestingly, under such weak sign-flipping attacks, the gradient norm thresholding SGD has
+about 8% classification accuracy decline compared to BROADCAST since it is unable to remove all the malicious
+messages.
+
+7 Conclusions
+In light of the analysis that a vanilla combination of distributed compressed SGD and geometric median aggregation
+suffers from compression and stochastic noise in the presence of Byzantine attacks, we develop a novel BROADCAST algorithm to reduce the noise, and consequently, enhance Byzantine-robustness. Theoretical results show that
+BROADCAST enjoys a linear convergence rate to the neighborhood of the optimal solution and achieves gradient
+compression for free. Thanks to the successful reduction of both compression and stochastic noise, BROADCAST is
+demonstrated by numerical experiments to outperform the existing Byzantine-robust methods with compression.
+Due to the page limit, now we only analyze the geometric median-based robust aggregation rule and the SAGA-based
+variance reduction technique. Extending the current results to other robust aggregation rules and variance reduction
+techniques is natural, and will be an interesting future work. Further improving the communication efficiency by
+performing multiple rounds of local updates before one round of transmissions is also of practical importance.
+
+References
+[1] Jakub Konečnỳ, H Brendan McMahan, Felix X Yu, Peter Richtárik, Ananda Theertha Suresh, and Dave Bacon,
+“Federated learning: Strategies for improving communication efficiency,” arXiv preprint arXiv:1610.05492,
+2016.
+[2] Qiang Yang, Yang Liu, Tianjian Chen, and Yongxin Tong, “Federated machine learning: Concept and applications,” ACM Transactions on Intelligent Systems and Technology, vol. 10, no. 2, pp. 1–19, 2019.
+[3] Peter Kairouz and H Brendan McMahan, “Advances and open problems in federated learning,” Foundations and
+Trends® in Machine Learning, vol. 14, no. 1, pp. 1–210, 2021.
+13
+
+A PREPRINT
+
+[4] Lu Zhou, Kuo-Hui Yeh, Gerhard Hancke, Zhe Liu, and Chunhua Su, “Security and privacy for the industrial
+internet of things: An overview of approaches to safeguarding endpoints,” IEEE Signal Processing Magazine,
+vol. 35, no. 5, pp. 76–87, 2018.
+[5] Sebastian U Stich, “Local SGD converges fast and communicates little,” in International Conference on Learning
+Representations, 2019.
+[6] Tao Lin, Sebastian U Stich, Kumar Kshitij Patel, and Martin Jaggi, “Don’t use large mini-batches, use local
+SGD,” in International Conference on Learning Representations, 2019.
+[7] Tianyi Chen, Georgios B Giannakis, Tao Sun, and Wotao Yin, “LAG: Lazily aggregated gradient for
+communication-efficient distributed learning,” in Advances in Neural Information Processing Systems, 2018,
+pp. 5050–5060.
+[8] Dan Alistarh, Demjan Grubic, Jerry Li, Ryota Tomioka, and Milan Vojnovic, “QSGD: Communication-efficient
+SGD via gradient quantization and encoding,” in Advances in Neural Information Processing Systems, 2017, pp.
+1709–1720.
+[9] Wei Wen, Cong Xu, Feng Yan, Chunpeng Wu, Yandan Wang, Yiran Chen, and Hai Li, “Terngrad: Ternary
+gradients to reduce communication in distributed deep learning,” in Advances in Neural Information Processing
+Systems, 2017, pp. 1509–1519.
+[10] Hantian Zhang, Jerry Li, Kaan Kara, Dan Alistarh, Ji Liu, and Ce Zhang, “Zipml: Training linear models with
+end-to-end low precision, and a little bit of deep learning,” in International Conference on Machine Learning,
+2017, pp. 4035–4043.
+[11] Sebastian U Stich, Jean-Baptiste Cordonnier, and Martin Jaggi, “Sparsified SGD with memory,” in Advances in
+Neural Information Processing Systems, 2018, pp. 4447–4458.
+[12] Jianqiao Wangni, Jialei Wang, Ji Liu, and Tong Zhang, “Gradient sparsification for communication-efficient
+distributed optimization,” in Advances in Neural Information Processing Systems, 2018, pp. 1299–1309.
+[13] Jakub Konečnỳ and Peter Richtárik, “Randomized distributed mean estimation: Accuracy vs. communication,”
+Frontiers in Applied Mathematics and Statistics, vol. 4, no. 62, 2018.
+[14] El Mahdi El Mhamdi, Rachid Guerraoui, and Sébastien Rouault, “The hidden vulnerability of distributed learning
+in Byzantium,” in International Conference on Machine Learning, 2018, pp. 3521–3530.
+[15] Yuan Chen, Soummya Kar, and Jose MF Moura, “The internet of things: Secure distributed inference,” IEEE
+Signal Processing Magazine, vol. 35, no. 5, pp. 64–75, 2018.
+[16] Xinyang Cao and Lifeng Lai, “Distributed gradient descent algorithm robust to an arbitrary number of Byzantine
+attackers,” IEEE Transactions on Signal Processing, vol. 67, no. 22, pp. 5850–5864, 2019.
+[17] Xinyang Cao and Lifeng Lai, “Distributed approximate Newton’s method robust to byzantine attackers,” IEEE
+Transactions on Signal Processing, vol. 68, pp. 6011–6025, 2020.
+[18] Zhixiong Yang, Arpita Gang, and Waheed U Bajwa, “Adversary-resilient distributed and decentralized statistical
+inference and machine learning: An overview of recent advances under the Byzantine threat model,” IEEE Signal
+Processing Magazine, vol. 37, no. 3, pp. 146–159, 2020.
+[19] Yudong Chen, Lili Su, and Jiaming Xu, “Distributed statistical machine learning in adversarial settings: Byzantine gradient descent,” Proceedings of the ACM on Measurement and Analysis of Computing Systems, vol. 1, no.
+2, pp. 1–25, 2017.
+[20] Dong Yin, Yudong Chen, Ramchandran Kannan, and Peter Bartlett, “Byzantine-robust distributed learning:
+Towards optimal statistical rates,” in International Conference on Machine Learning, 2018, pp. 5650–5659.
+[21] Peva Blanchard, El Mahdi El Mhamdi, Rachid Guerraoui, and Julien Stainer, “Machine learning with adversaries:
+Byzantine tolerant gradient descent,” in Advances in Neural Information Processing Systems, 2017, pp. 119–129.
+[22] Zhaoxian Wu, Qing Ling, Tianyi Chen, and Georgios B Giannakis, “Federated variance-reduced stochastic
+gradient descent with robustness to Byzantine attacks,” IEEE Transactions on Signal Processing, vol. 68, pp.
+4583–4596, 2020.
+[23] Prashant Khanduri, Saikiran Bulusu, Pranay Sharma, and Pramod K Varshney, “Byzantine resilient non-convex
+SVRG with distributed batch gradient computations,” arXiv preprint arXiv:1912.04531, 2019.
+[24] Sai Praneeth Karimireddy, Lie He, and Martin Jaggi, “Learning from history for Byzantine robust optimization,”
+arXiv preprint arXiv:2012.10333, 2020.
+[25] Konstantin Mishchenko, Eduard Gorbunov, Martin Takáč, and Peter Richtárik, “Distributed learning with compressed gradient differences,” arXiv preprint arXiv:1901.09269, 2019.
+14
+
+A PREPRINT
+
+[26] Samuel Horváth, Dmitry Kovalev, Konstantin Mishchenko, Sebastian Stich, and Peter Richtárik, “Stochastic
+distributed learning with gradient quantization and variance reduction,” arXiv preprint arXiv:1904.05115, 2019.
+[27] Aaron Defazio, Francis Bach, and Simon Lacoste-Julien, “SAGA: A fast incremental gradient method with
+support for non-strongly convex composite objectives,” in Advances in Neural Information Processing Systems,
+2014, pp. 1646–1654.
+[28] Avishek Ghosh, Raj Kumar Maity, Swanand Kadhe, Arya Mazumdar, and Kannan Ramchandran,
+“Communication-efficient and Byzantine-robust distributed learning with error feedback,” IEEE Journal on
+Selected Areas in Information Theory, vol. 2, no. 3, pp. 942–953, 2021.
+[29] Jiaxiang Wu, Weidong Huang, Junzhou Huang, and Tong Zhang, “Error compensated quantized SGD and its
+applications to large-scale distributed optimization,” arXiv preprint arXiv:1806.08054, 2018.
+[30] Sai Praneeth Karimireddy, Quentin Rebjock, Sebastian U Stich, and Martin Jaggi, “Error feedback fixes
+SignSGD and other gradient compression schemes,” in International Conference on Machine Learning, 2019,
+pp. 3252–3261.
+[31] Hanlin Tang, Chen Yu, Xiangru Lian, Tong Zhang, and Ji Liu, “Doublesqueeze: Parallel stochastic gradient
+descent with double-pass error-compensated compression,” in International Conference on Machine Learning,
+2019, pp. 6155–6165.
+[32] Dmitry Kovalev, Anastasia Koloskova, Martin Jaggi, Peter Richtarik, and Sebastian U Stich, “A linearly convergent algorithm for decentralized optimization: Sending less bits for free,” arXiv preprint arXiv:2011.01697,
+2020.
+[33] Xiaorui Liu, Yao Li, Jiliang Tang, and Ming Yan, “A double residual compression algorithm for efficient distributed learning,” in International Conference on Artificial Intelligence and Statistics, 2020, pp. 133–143.
+[34] Liping Li, Wei Xu, Tianyi Chen, Georgios B Giannakis, and Qing Ling, “RSA: Byzantine-robust stochastic
+aggregation methods for distributed learning from heterogeneous datasets,” in AAAI Conference on Artificial
+Intelligence, 2019, pp. 1544–1551.
+[35] Lie He, Sai Praneeth Karimireddy, and Martin Jaggi, “Byzantine-robust learning on heterogeneous datasets via
+resampling,” arXiv preprint arXiv:2006.09365, 2020.
+[36] Jinhyun So, Başak Güler, and A Salman Avestimehr, “Byzantine-resilient secure federated learning,” IEEE
+Journal on Selected Areas in Communications, vol. 39, no. 7, pp. 2168–2181, 2020.
+[37] Hanieh Hashemi, Yongqin Wang, Chuan Guo, and Murali Annavaram, “Byzantine-robust and privacy-preserving
+framework for fedml,” arXiv preprint arXiv:2105.02295, 2021.
+[38] Rie Johnson and Tong Zhang, “Accelerating stochastic gradient descent using predictive variance reduction,” in
+Advances in Neural Information Processing Systems, 2013, pp. 315–323.
+[39] Shai Shalev-Shwartz and Tong Zhang, “Stochastic dual coordinate ascent methods for regularized loss minimization,” Journal of Machine Learning Research, vol. 14, pp. 567–599, 2013.
+[40] Kun Yuan, Bicheng Ying, Jiageng Liu, and Ali H Sayed, “Variance-reduced stochastic learning by networked
+agents under random reshuffling,” IEEE Transactions on Signal Processing, vol. 67, no. 2, pp. 351–366, 2018.
+[41] Jeremy Bernstein, Jiawei Zhao, Kamyar Azizzadenesheli, and Anima Anandkumar, “SignSGD with majority
+vote is communication efficient and fault tolerant,” arXiv preprint arXiv:1810.05291, 2018.
+[42] Yanjie Dong, Georgios B Giannakis, Tianyi Chen, Julian Cheng, Md Hossain, and Victor Leung, “Communication-efficient robust federated learning over heterogeneous datasets,” arXiv preprint
+arXiv:2006.09992, 2020.
+[43] Endre Weiszfeld and Frank Plastria, “On the point for which the sum of the distances to n given points is
+minimum,” Annals of Operations Research, vol. 167, no. 1, pp. 7–41, 2009.
+[44] Hanlin Tang, Xiangru Lian, Ming Yan, Ce Zhang, and Ji Liu, “D2: Decentralized training over decentralized
+data,” in International Conference on Machine Learning, 2018, pp. 4848–4856.
+
+A
+
+Analysis of Byzantine-Robust Compressed SGD
+
+Before proving Lemma 1 that analyzes the geometric median of compressed random vectors, we review the following
+lemma that analyzes the geometric median of any random vectors that are not necessarily compressed.
+15
+
+A PREPRINT
+
+Lemma 2. [22] Let {zω , ω ∈ W} be a set of random vectors distributed in a normed vector space. It holds when
+B< W
+2 that
+2
+C2 X
+E geomed{zω } ≤ α
+E kzω k2 ,
+(41)
+R
+ω∈R
+ω∈R
+
+B
+where α := W
+B< W
+2 that
+
+∗
+and Cα := 2−2α
+1−2α . Define zǫ as an ǫ-approximate geometric median of {zω , ω ∈ R}. It holds when
+
+2Cα2 X
+2ǫ2
+.
+E kzω k2 +
+R
+(W − 2B)2
+
+E kzǫ∗ k2 ≤
+
+(42)
+
+ω∈R
+
+Now we give the proof of Lemma 1.
+Proof. From Lemma 2 and the definition of ǫ-approximate geometric median in (7) we have
+E kgeomed{Q(zω )} − z̄k2
+
+(43)
+
+2
+
+=E kgeomed{Q(zω ) − z̄}k
+2ǫ2
+2C 2 X
+.
+E kQ(zω ) − z̄k2 +
+≤ α
+R
+(W − 2B)2
+ω∈R
+
+Since Q(·) is an unbiased compressor, we have
+E kQ(zω ) − z̄k
+
+2
+
+(44)
+2
+
+=E kQ(zω ) − zω + zω − z̄k
+2
+
+2
+
+=E kQ(zω ) − zω k + E kzω − z̄k
+2
+
+2
+
+≤δE kzω k + E kzω − Ezω + Ezω − z̄k
+
+=δE kzω k2 + E kzω − Ezω k2 + kEzω − z̄k2 .
+
+Here the second and the last equalities use E[Q(zω ) − zω ] = 0 in (8) and E[zω − Ezω ] = 0, respectively. The
+2
+2
+inequality comes from kQ(zω ) − zω k ≤ δE kzω k in (8). Combining (43) and (44) yields (20) and completes the
+proof.
+Next we prove Theorem 2.
+Proof. We begin by manipulating E xt+1 − x∗
+E xt+1 − x∗
+
+2
+
+as
+
+2
+
+t
+
+(45)
+∗
+
+t
+
+t+1
+
+t
+
+t
+
+2
+
+=E x − γ∇f (x ) − x + x
+− x + γ∇f (x )
+1
+1
+2
+2
+xt − γ∇f (xt ) − x∗ + E xt+1 − xt + γ∇f (xt ) ,
+≤
+1−η
+η
+2
+
+2
+
+2
+
+1
+where 0 < η < 1. The inequality comes from ka + bk ≤ 1−η
+kak + η1 kbk .
+
+Since ∇f (x∗ ) = 0, we can bound the first term at the right-hand side of (45) as
+xt − γ∇f (xt ) − x∗
+
+2
+
+(46)
+
+
+2
+= xt − γ ∇f (xt ) − ∇f (x∗ ) − x∗
+= xt − x∗
+
+2
+
+≤ xt − x∗
+
+2
+
+− 2γh∇f (xt ) − ∇f (x∗ ), xt − x∗ i
+
++ γ 2 ∇f (xt ) − ∇f (x∗ )
+
+2
+
+− 2γµ xt − x∗
+
+=(1 − 2γµ + γ 2 L2 ) xt − x∗
+16
+
+2
+2
+
+.
+
++ γ 2 L2 xt − x∗
+
+2
+
+A PREPRINT
+
+Here we use L kxt − x∗ k ≥ k∇f (xt ) − ∇f (x∗ )k as f (x) has Lipschitz continuous gradients and h∇f (xt ) −
+2
+∇f (x∗ ), xt − x∗ i ≥ µ kxt − x∗ k as f (x) is strongly convex.
+
+Substituting (46) into (45), we can obtain
+
+E xt+1 − x∗
+
+2
+
+1 − 2γµ + γ 2 L2 t
+2
+x − x∗
+1−η
+
+≤
+
+(47)
+
+1
+2
++ E xt+1 − xt + γ∇f (xt ) .
+η
+With η = γµ
+2 , if
+γ 2 L2 ≤
+
+γµ
+,
+2
+
+(48)
+
+it holds that
+1 − 2γµ + γ 2 L2
+≤ 1 − γµ.
+1−η
+
+(49)
+
+Therefore, (47) can be rewritten as
+2
+
+2
+
+E xt+1 − x∗ ≤ (1 − γµ) xt − x∗
+2
+2
++ E xt+1 − xt + γ∇f (xt ) .
+γµ
+
+(50)
+
+Let zǫ∗ be an ǫ-approximate geometric median of {Q(gωt ), ω ∈ W}. Based on Lemma 1 and Assumptions 2, 3, and 4,
+the second term at the right-hand side of (50) is
+E xt+1 − xt + γ∇f (xt )
+
+2
+
+(51)
+
+2
+=γ E zǫ∗ − ∇f (xt )
+2ǫ2
+2C 2 X
+2
+E gωt − ∇fω (xt ) +
+≤γ 2 { α
+R
+(W − 2B)2
+ω∈R
+2Cα2 X
+2Cα2 δ X
+2
++
+E
+∇fω (xt ) − ∇f (xt ) +
+R
+R
+ω∈R
+ω∈R
+
+
+2ǫ2
+.
+≤γ 2 2Cα2 ζ 2 + 2Cα2 σ 2 + 2Cα2 δG2 +
+(W − 2B)2
+2
+
+gωt
+
+2
+
+}
+
+Thus, we have
+2
+
+2
+
+E xt+1 − x∗ ≤ (1 − γµ) xt − x∗
+
+
+2ǫ2
+2γ
+2 2
+2 2
+2
+2
+2Cα ζ + 2Cα σ + 2Cα δG +
+.
++
+µ
+(W − 2B)2
+
+(52)
+
+Applying telescopic cancellation on (52) from iteration 1 to t yields
+E xt − x∗
+
+2
+
+t
+
+(53)
+
+− ∆2 ,
+
+(54)
+
+≤ (1 − γµ) ∆1 + ∆2 ,
+
+where
+∆1 := x0 − x∗
+2
+∆2 := 2
+µ
+
+2
+
+2Cα2 σ 2 + 2Cα2 ζ 2 + 2Cα2 δG2 +
+
+This completes the proof.
+17
+
+2ǫ2
+(W − 2B)2
+
+!
+
+.
+
+(55)
+
+A PREPRINT
+
+B Analysis of Byzantine-Robust Compressed SAGA
+We first review the following supporting lemma for SAGA.
+Lemma 3. [22] Under Assumption 1, if all regular workers ω ∈ W update φω,itω and gωt as (26) and (27), then the
+corrected stochastic gradient gωt satisfies
+E gωt − ∇fω (xt )
+and
+
+2
+
+J
+
+≤ L2
+
+1X t
+2
+x − φtω,j , ∀ω ∈ W,
+J j=1
+
+(56)
+
+1 X
+2
+E gωt − ∇fω (xt ) ≤ L2 S t ,
+R
+
+(57)
+
+ω∈R
+
+where S t is defined as
+
+S t :=
+
+J
+1 X 1X t
+2
+x − φtω,j .
+R
+J j=1
+
+(58)
+
+ω∈R
+
+Further, S t satisfies that
+
+2
+
+ES t+1 ≤4JE xt+1 − xt + γ∇f (xt )
+
+
+1
+2
++ 4Jγ 2 L2 xt − x∗ + 1 − 2 S t .
+J
+
+(59)
+
+To handle the bias introduced by geometric median and the effect of compression, the following lemma describes the
+gap between the ǫ-approximate geometric median of {Q(gωt ), ω ∈ W} and ∇f (xt ).
+Lemma 4. Consider the Byzantine-robust compressed SAGA update (28) with ǫ-approximate geometric median aggregation and using an unbiased compressor. Under Assumptions 1, 2, and 4, if the number of Byzantine workers
+t
+∗
+satisfies B < W
+2 , then an ǫ-approximate geometric median of {Q(gω ), ω ∈ W}, denoted by zǫ , satisfies
+E zǫ∗ − ∇f (xt )
+
+2
+
+≤2Cα2 L2 S t + 2Cα2 σ 2 + 2Cα2 δG2 +
+
+2ǫ2
+.
+(W − 2B)2
+
+(60)
+
+Proof. From Lemma 1 and Lemma 3 it holds that
+2
+
+E zǫ∗ − ∇f (xt )
+1 X
+2ǫ2
+2
+≤2Cα2
+.
+E Q(gωt ) − ∇f (xt ) +
+R
+(W − 2B)2
+
+(61)
+
+ω∈R
+
+Since Q(·) is an unbiased compressor, for any ω ∈ R we have
+E Q(gωt ) − ∇f (xt )
+
+2
+
+(62)
+
+2
+=E Q(gωt ) − gωt + gωt − ∇f (xt )
+2
+2
+=E Q(gωt ) − gωt + E gωt − ∇f (xt )
+2
+2
+≤δE gωt + E gωt − ∇fω (xt ) + ∇fω (xt ) − ∇f (xt )
+
+=δE gωt
+
+2
+
++ E gωt − ∇fω (xt )
+
+2
+
++ ∇fω (xt ) − ∇f (xt )
+
+2
+
+.
+
+Here the second and the last equalities use E[Q(gωt )−gωt ] = 0 in (8) and E[gωt −∇fω (xt )] = 0 for ω ∈ R, respectively.
+2
+2
+The inequality comes from E kQ(gωt ) − gωt k ≤ δE kgωt k in (8). Substituting (62) into (61) yields
+2
+E zǫ∗ − ∇f (xt )
+(63)
+≤2Cα2 δ
+
+1 X
+1 X
+2
+2
+E gωt + 2Cα2
+E gωt − ∇fω (xt )
+R
+R
+
++ 2Cα2
+
+ω∈R
+
+1 X
+
+R
+
+ω∈R
+
+ω∈R
+
+∇fω (xt ) − ∇f (xt )
+
+2
+
++
+
+2ǫ2
+.
+(W − 2B)2
+
+According to Lemma 3, as well as Assumptions 2 and 4, the right-hand side of (63) can be bounded as in (60).
+18
+
+A PREPRINT
+
+Now we can prove Theorem 3.
+Proof. When the step size γ is sufficiently small such that
+γ 2 L2 ≤
+
+γµ
+,
+2
+
+(64)
+
+we can observe that (50) also holds true here.
+We construct a Lyapunov function T t as
+T t := xt − x∗
+
+t
+
+2
+
++ cS t ,
+
+(65)
+
+t
+
+where c is any positive constant and S is defined as (58). Thus, T is non-negative.
+Based on (59), it follows that
+ET t+1 = E xt+1 − x∗
+
+2
+
++ cES t+1
+
+
+1
+2
+≤(1 − γµ + 4cJγ 2 L2 ) xt − x∗ + 1 − 2 cS t
+J
+
+
+2
+2
++ 4cJ E xt+1 − xt + γ∇f (xt ) .
++
+γµ
+
+(66)
+
+Let zǫ∗ be an ǫ-approximate geometric median of {Q(gωt ), ω ∈ W} and observe the second term at the right-hand side
+of (66). We have
+E xt+1 − xt + γ∇f (xt )
+
+2
+
+= γ 2 E zǫ∗ − ∇f (xt )
+
+2
+
+.
+
+With this fact and Lemma 4, (66) can be rewritten as
+
+
+2
+ET t+1 ≤ 1 − γµ + 4cJγ 2 L2 xt − x∗
+
+
+
+
+2
+1
++ 4cJ 2Cα2 γ 2 L2 S t
++ (1 − 2 )c +
+J
+γµ
+
+
+
+2
+2ǫ2
++ γ2
+.
++ 4cJ
+2Cα2 σ 2 + 2Cα2 δG2 +
+γµ
+(W − 2B)2
+If we let
+4cJγ 2 L2 ≤
+
+γµ
+,
+2
+
+(67)
+
+(68)
+
+(69)
+
+then it holds
+
+2
+5
+2
+µ
+≤
++ 4cJ ≤
++
+.
+γµ
+γµ 2γL2
+2γµ
+Thus, the first coefficient at the right-hand side of (68) is bounded by
+γµ
+1 − γµ + 4cJγ 2 L2 ≤ 1 −
+.
+2
+If γ and c are chosen as
+
+1
+γµ
+,
+≤
+2
+2J 2
+
+and
+c=
+
+10Cα2 J 2 γL2
+5 2Cα2 J 2 γL2
+≥ ·
+,
+µ
+2 µ( J12 − γµ
+2 )
+
+then the second coefficient at the right-hand side of (68) is bounded by
+
+
+2
+1
++ 4cJ 2Cα2 γ 2 L2
+(1 − 2 )c +
+J
+γµ
+5 2Cα2 γL2
+1
+≤(1 − 2 )c + ·
+J
+2
+µ
+γµ
+≤(1 −
+)c.
+2
+19
+
+(70)
+
+(71)
+
+(72)
+
+(73)
+
+(74)
+
+A PREPRINT
+
+For the last term at the right-hand side of (68), we have
+
+
+
+2
+2ǫ2
+γ2
++ 4cJ
+2Cα2 σ 2 + 2Cα2 δG2 +
+γµ
+(W − 2B)2
+
+
+2ǫ2
+5γ
+2Cα2 σ 2 + 2Cα2 δG2 +
+≤
+.
+2µ
+(W − 2B)2
+Therefore, substituting (71), (74), and (75), we know that (68) satisfies
+
+γµ  t
+2
+ET t+1 ≤ 1 −
+x − x∗
+2
+
+γµ  t γµ
+cS +
++ 1−
+∆2 ,
+2
+2
+where
+
+5
+∆2 := 2
+µ
+
+
+
+2Cα2 σ 2 + 2Cα2 δG2 +
+
+2ǫ2
+(W − 2B)2
+
+(75)
+
+(76)
+
+
+
+.
+
+Applying telescopic cancellation on (52) from iteration 1 to t yields
+
+
+γµ t 0
+T − ∆2 + ∆2 .
+ET t ≤ 1 −
+2
+
+From the definition of Lyapunov function (65), we can obtain
+
+γµ t
+2
+∆1 + ∆2 ,
+E xt − x∗ ≤ ET t ≤ 1 −
+2
+
+(77)
+
+(78)
+
+(79)
+
+where
+
+∆1 := x0 − x∗
+
+2
+
+− ∆2 .
+
+Considering the requirements (64), (69), and (72) on the step size, we can choose γ as
+µ
+.
+γ≤ √
+4 5 · Cα J 2 L2
+
+(80)
+
+(81)
+
+This completes the proof.
+
+C
+
+Analysis of BROADCAST
+
+To handle the bias introduced by geometric median and the effect of gradient difference compression, we give the
+following lemma to describe the gap between the ǫ-approximate geometric median of {ĝωt , ω ∈ W} and ∇f (xt ).
+
+Lemma 5. Consider Algorithm 1 with ǫ-approximate geometric median aggregation and using an unbiased compresµ2
+2
+sor. Under Assumptions 1 and 2, if the number of Byzantine workers satisfies B < W
+2 and δCα ≤ 56L2 , then an
+ǫ-approximate geometric median of {ĝωt = htω + Q(gωt − htω ), ω ∈ W}, denoted by zǫ∗ , satisfies
+E zǫ∗ − ∇f (xt )
+
+2
+
+(82)
+
+≤2(1 + δ)Cα2 L2 S t + 4δCα2 H t + 2Cα2 (1 + 2δ)σ 2
+2ǫ2
+2
+,
++ 4δCα2 L2 xt − x∗ +
+(W − 2B)2
+where S t is defined as
+S t :=
+
+J
+1 X 1X t
+2
+x − φtω,j .
+R
+J j=1
+
+(83)
+
+ω∈R
+
+and H t is defined as
+
+H t :=
+
+1 X
+2
+E htω .
+R
+ω∈R
+
+20
+
+(84)
+
+A PREPRINT
+
+Proof. According to Lemma 2 in Appendix A, it holds
+2
+
+E zǫ∗ − ∇f (xt )
+1 X
+2ǫ2
+2
+≤2Cα2
+E ĝωt − ∇f (xt ) +
+R ω∈R
+(W − 2B)2
+=2Cα2
+
+(85)
+
+1 X
+2ǫ2
+2
+.
+E htω + Q(gωt − htω ) − ∇f (xt ) +
+R ω∈R
+(W − 2B)2
+
+Consider the first term at the right-hand side of (85). Since Q(·) is an unbiased compressor, for any ω ∈ R we have
+E htω + Q(gωt − htω ) − ∇f (xt )
+
+2
+
+(86)
+
+2
+=E htω − gωt + Q(gωt − htω ) + gωt − ∇f (xt )
+2
+2
+=E Q(gωt − htω ) − (gωt − htω ) + E gωt − ∇f (xt )
+2
+2
+≤δE gωt − htω + E gωt − ∇f (xt ) .
+
+Here the second equality uses E[Q(gωt − htω ) − (gωt − htω )]
+=
+0 and the inequality uses
+2
+t
+t
+t
+t
+t
+t 2
+E kQ(gω − hω ) − (gω − hω )k ≤ δE kgω − hω k , both in (8). Substituting (86) into (85) yields
+E zǫ∗ − ∇f (xt )
++ 2Cα2
+
+2
+
+≤ 2Cα2 δ
+
+1 X
+2
+E gωt − htω
+R
+
+(87)
+
+ω∈R
+
+2ǫ2
+1 X
+2
+.
+E gωt − ∇f (xt ) +
+R
+(W − 2B)2
+ω∈R
+
+Next, we proceed to bounding the first two terms at the right-hand side of (87).
+For the first term at the right-hand side of (87), which arises from gradient difference compression, it holds
+1 X
+2
+E gωt − htω
+R
+ω∈R
+1 X
+2
+E gωt − ∇fω (xt ) + ∇fω (xt ) − htω
+=
+R
+ω∈R
+1 X
+1 X
+2
+2
+E gωt − ∇fω (xt ) +
+E ∇fω (xt ) − htω
+=
+R
+R
+ω∈R
+ω∈R
+X
+1
+2
+E ∇fω (xt ) − htω .
+≤L2 S t +
+R
+
+(88)
+
+ω∈R
+
+Here the second equality comes from E[gωt − ∇fω (xt )] = 0 and the inequality uses Lemma 3 in Appendix B. Further,
+2
+2
+2
+using ∇f (x∗ ) = 0, ka + bk ≤ 2 kak + 2 kbk , and the definition of H t in (84), from (88) we have
+1 X
+2
+E gωt − htω
+R
+ω∈R
+1 X
+2
+E ∇fω (xt ) − ∇f (x∗ ) − htω
+≤L2 S t +
+R
+ω∈R
+1 X
+1 X
+2
+2
+2 t
+≤L S +
+2 ∇fω (xt ) − ∇f (x∗ ) +
+2E htω
+R
+R
+ω∈R
+ω∈R
+X
+1
+2
+2 ∇fω (xt ) − ∇f (x∗ ) .
+=L2 S t + 2H t +
+R
+ω∈R
+
+21
+
+(89)
+
+A PREPRINT
+
+Since f (xt ) has L-Lipschitz continuous gradients according to Assumption 1 and the outer variation is bounded
+according to Assumption 2, we further obtain
+1 X t
+2
+gω − htω ≤ L2 S t + 2H t
+(90)
+R
+ω∈R
+1 X
+2
+2 ∇fω (xt ) − ∇f (xt ) + ∇f (xt ) − ∇f (x∗ )
++
+R
+ω∈R
+1 X
+2
+2 t
+2 ∇fω (xt ) − ∇f (xt )
+=L S + 2H t +
+R
+ω∈R
+1 X
+2
++
+2 ∇f (xt ) − ∇f (x∗ )
+R
+ω∈R
+
+2
+
+≤L S + 2H t + 2σ 2 + 2L2 xt − x∗
+
+Here the equality uses
+
+P
+
+t
+
+2
+
+.
+
+t
+t
+ω∈R (∇fω (x ) − ∇f (x )) = 0.
+
+Using Lemma 3 and Assumption 2, the second term at the right-hand side of (87) can be upper-bounded as
+1 X
+2
+E gωt − ∇f (xt )
+R
+ω∈R
+1 X
+2
+E gωt − ∇fω (xt ) + ∇fω (xt ) − ∇f (xt )
+=
+R
+ω∈R
+1 X
+1 X
+2
+=
+E gωt − ∇fω (xt ) +
+∇fω (xt ) − ∇f (xt )
+R
+R
+2
+
+ω∈R
+t
+
+(91)
+
+ω∈R
+
+2
+
+≤L S + σ .
+P
+Here the equality also uses ω∈R (∇fω (xt ) − ∇f (xt )) = 0.
+
+Substituting (88) and (91) into (87) yields (82).
+
+Observe that oifferent to Lemma 4 for Byzantine-robust compressed SAGA, a new term H t appears in Lemma 5, and
+also in the ensuing analysis. The following lemma characterizes the evolution of H t .
+Lemma 6. Consider Algorithm 1 with ǫ-approximate geometric median aggregation and using an unbiased compressor. Under Assumptions 1 and 2, if the hyperparameter satisfies β(1 + δ) ≤ 1, then it holds that
+t
+
+EH t+1 ≤ (1 − β)H t + βL2 S t + βσ 2 + βL2 xt − x∗
+
+2
+
+,
+
+(92)
+
+where H is defined as in (84).
+Proof. By EQ kQ(x) − xk2 ≤ δ kxk2 in (8), we obtain
+1 X
+2
+EH t+1 =
+E ht+1
+ω
+R
+ω∈R
+1 X
+2
+E htω + βQ(gωt − htω )
+=
+R
+ω∈R
+1 X
+1 X
+2
+=
+E htω +
+2βEhhtω , gωt − htω i
+R
+R
+ω∈R
+ω∈R
+1 X 2
+2
+β E Q(gωt − htω )
++
+R
+ω∈R
+X
+1
+1 X
+2
+≤
+E htω +
+2βEhhtω , gωt − htω i
+R
+R
+ω∈R
+ω∈R
+1 X 2
+2
++
+β (1 + δ)E gωt − htω .
+R
+ω∈R
+
+22
+
+(93)
+
+A PREPRINT
+
+With β(1 + δ) ≤ 1, we further have
+1 X
+1 X
+2
+E htω +
+2βEhhtω , gωt − htω i
+R
+R
+ω∈R
+ω∈R
+1 X
+t
+t 2
++
+βE gω − hω
+R
+ω∈R
+1 X
+1 X
+2
+=
+E htω +
+βEhgωt − htω , gωt + htω i
+R
+R
+ω∈R
+ω∈R
+X
+1 X
+1
+1 X
+2
+2
+2
+E htω +
+βE gωt −
+βE htω
+=
+R
+R
+R
+ω∈R
+ω∈R
+ω∈R
+1 X
+1 X
+t 2
+t 2
+(1 − β)E hω +
+βE gω .
+=
+R
+R
+
+EH t+1 ≤
+
+ω∈R
+
+(94)
+
+ω∈R
+
+Then, applying Lemma 3, we have
+1 X
+1 X
+2
+2
+(1 − β)E htω +
+βE gωt
+R
+R
+ω∈R
+ω∈R
+1 X
+t 2
+(1 − β)E hω
+=
+R
+ω∈R
+1 X
+2
+βE gωt − ∇fω (xt ) + ∇fω (xt )
++
+R
+ω∈R
+X
+1
+2
+=
+(1 − β)E htω
+R
+ω∈R
+1 X
+1 X
+2
+2
+βE gωt − ∇fω (xt ) +
+β ∇fω (xt )
++
+R
+R
+ω∈R
+ω∈R
+X
+1
+2
+≤(1 − β)H t + βL2 S t + β
+∇fω (xt ) .
+R
+
+EH t+1 ≤
+
+(95)
+
+ω∈R
+
+Here the second equality uses E[gωt −∇fω (xt )] = 0 for any ω ∈ R. Since f (xt ) has L-Lipschitz continuous gradients
+according to Assumption 1 and the outer variation is bounded according to Assumption 2, we finally obtain
+EH t+1 ≤ (1 − β)H t + βL2 S t + β
+t
+
+2
+
+t
+
+1 X
+2
+∇fω (xt )
+R
+ω∈R
+
+=(1 − β)H + βL S
+1 X
+2
+∇fω (xt ) − ∇f (xt ) + ∇f (xt ) − ∇f (x∗ )
++β
+R
+ω∈R
+
+=(1 − β)H t + βL2 S t + β
+
+1 X
+∇fω (xt ) − ∇f (xt )
+R
+ω∈R
+
+1 X
+2
++β
+∇f (xt ) − ∇f (x∗ )
+R
+ω∈R
+
+≤(1 − β)H t + βL2 S t + βσ 2 + βL2 xt − x∗
+Here the first equality uses ∇f (x∗ ) = 0 and the second equality uses
+Now we can provide the proof of Theorem 4.
+23
+
+P
+
+2
+
+.
+
+t
+t
+ω∈R (∇fω (x ) − ∇f (x )) = 0.
+
+(96)
+
+A PREPRINT
+
+Proof. We begin by manipulating E xt+1 − x∗
+E xt+1 − x∗
+
+2
+
+as
+
+2
+
+(97)
+2
+
+=E xt − γ∇f (xt ) − x∗ + xt+1 − xt + γ∇f (xt )
+1
+1
+2
+2
+≤
+xt − γ∇f (xt ) − x∗ + E xt+1 − xt + γ∇f (xt ) ,
+1−η
+η
+
+1
+where 0 < η < 1. The inequality comes from ka + bk2 ≤ 1−η
+kak2 + η1 kbk2 .
+
+Since ∇f (x∗ ) = 0, we can bound the first term at the right-hand side of (97) as
+xt − γ∇f (xt ) − x∗
+
+2
+
+(98)
+
+
+2
+= xt − γ ∇f (xt ) − ∇f (x∗ ) − x∗
+= xt − x∗
+
+2
+
+≤ xt − x∗
+
+2
+
+− 2γh∇f (xt ) − ∇f (x∗ ), xt − x∗ i
+
++ γ 2 ∇f (xt ) − ∇f (x∗ )
+
+t
+
+∗
+
+2
+
+− 2γµ xt − x∗
+
+=(1 − 2γµ + γ 2 L2 ) xt − x∗
+
+2
+2
+
++ γ 2 L2 xt − x∗
+
+2
+
+.
+
+∗
+
+t
+
+Here we use L kx − x k ≥ k∇f (x ) − ∇f (x )k as f (x) has Lipschitz continuous gradients and h∇f (xt ) −
+2
+∇f (x∗ ), xt − x∗ i ≥ µ kxt − x∗ k as f (x) is strongly convex.
+Substituting (98) into (97), we can obtain
+E xt+1 − x∗
+
+2
+
+1 − 2γµ + γ 2 L2 t
+2
+x − x∗
+1−η
+
+≤
+
+(99)
+
+1
+2
++ E xt+1 − xt + γ∇f (xt ) .
+η
+With η = γµ
+2 , if
+γ 2 L2 ≤
+it holds that
+
+γµ
+,
+2
+
+(100)
+
+1 − 2γµ + γ 2 L2
+≤ 1 − γµ.
+1−η
+
+Therefore, (99) can be rewritten as
+
+2
+
+(101)
+2
+
+E xt+1 − x∗ ≤ (1 − γµ) xt − x∗
+2
+2
++ E xt+1 − xt + γ∇f (xt ) .
+γµ
+
+(102)
+
+We construct a Lyapunov function T t as
+T t := xt − x∗
+
+2
+
++ cS t + dγ 2 H t ,
+
+(103)
+
+where c and d are any positive constants, S t is defined as (83), and H t is defined as (84). Thus, T t is non-negative.
+Note that the Lyapunov function in (103) is different to the one in (65) of Lemma 4 for Byzantine-robust compressed
+SAGA, which is only parameterized by c. Below we will find proper c and d.
+Based on Lemma 3 and (92), it follows that
+ET t+1 = E xt+1 − x∗
+
+2
+
++ cES t+1 + dγ 2 EH t+1
+∗ 2
+
+≤(1 − γµ + 4cJγ 2 L2 + dβγ 2 L2 ) xt − x
+
+
+2
+2
++ 4cJ E xt+1 − xt + γ∇f (xt )
++
+γµ
+
+
+1
++ (1 − 2 )c + dβγ 2 L2 S t + d(1 − β)γ 2 H t + dβγ 2 σ 2 .
+J
+24
+
+(104)
+
+A PREPRINT
+
+Let zǫ∗ be an ǫ-approximate geometric median of {ĝωt , ω ∈ W} and observe the second term at the right-hand side of
+(104). We have
+E xt+1 − xt + γ∇f (xt )
+
+2
+
+= γ 2 E zǫ∗ − ∇f (xt )
+
+2
+
+.
+
+(105)
+
+With this fact and Lemma 5, (104) can be rewritten as
+ET t+1
+
+(106)
+
+≤{1 − γµ + 4cJγ 2 L2 +
+
+
+
+
+
+2
++ 4cJ 4δCα2 γ 2 L2
+γµ
+
+2
+
++ dβγ 2 L2 } xt − x∗ + dβγ 2 σ 2
+1
++ {(1 − 2 )c + dβγ 2 L2
+J
+
+
+2
++
++ 4cJ 2(1 + δ)Cα2 γ 2 L2 }S t
+γµ
+
+
+2
+2
++ {d(1 − β)γ +
++ 4cJ 4δCα2 γ 2 }H t
+γµ
+
+
+
+2ǫ2
+2
+2
+2
+2
+.
++ 4cJ
+2Cα (1 + 2δ)σ +
++γ
+γµ
+(W − 2B)2
+If we let
+4cJγ 2 L2 ≤
+
+γµ
+,
+17
+
+(107)
+
+then it holds
+35
+2
+µ
+2
+≤
++ 4cJ ≤
++
+.
+2
+γµ
+γµ 17γL
+17γµ
+β
+If γ and d are chosen as γµ
+2 ≤ 2 and
+
+d=
+
+35 4δCα2
+35 8δCα2
+·
+≥
+·
+,
+17 βγµ
+17 β − γµ
+2
+
+Thus, the third coefficient at the right-hand side of (106) is bounded by
+
+
+2
+2
++ 4cJ 4δCα2 γ 2
+d(1 − β)γ +
+γµ
+35
+≤d(1 − β)γ 2 +
+· 4δCα2 γ 2 L2
+17γµ
+γµ
+)dγ 2 .
+≤(1 −
+2
+
+(108)
+
+(109)
+
+(110)
+
+1
+Similarly, if γ and c are chosen as γµ
+2 ≤ 2J 2 and
+
+c=
+
+35 4(1 + 5δ)Cα2 J 2 γL2
+35 2(1 + 5δ)Cα2 J 2 γL2
+,
+≥
+17
+µ
+17
+µ( J12 − γµ
+2 )
+
+then with (109), the second coefficient at the right-hand side of (106) is bounded by
+
+
+1
+2
+(1 − 2 )c + dβγ 2 L2 +
++ 4cJ (4 − 2δ)Cα2 γ 2 L2
+J
+γµ
+2
+35 8δCα γL2 35 2(1 + δ)Cα2 γL2
+1
+·
++
+·
+≤(1 − 2 )c +
+J
+17
+µ
+17
+µ
+2
+2
+1
+35 2(1 + 5δ)Cα γL
+γµ
+=(1 − 2 )c +
+·
+≤ (1 −
+)c.
+J
+17
+µ
+2
+25
+
+(111)
+
+(112)
+
+A PREPRINT
+
+2
+
+µ
+Further, if δCα2 ≤ 56L
+2 and (107) is satisfied, then with (109), the first coefficient at the right-hand side of (106) is
+bounded
+
+
+2
+1 − γµ + 4cJγ 2 L2 +
++ 4cJ 4δCα2 γ 2 L2 + dβγ 2 L2
+γµ
+γµ 35 4δCα2 γL2 35 8δCα2 γL2
++
+·
++
+·
+≤1 − γµ +
+17
+17
+µ
+17
+µ
+γµ 35 12
+γµ
+≤1 − γµ +
++
+·
+· γµ = 1 −
+.
+(113)
+17
+17 56
+2
+
+The last term at the right-hand side of (106) is bounded by
+
+
+2
+2ǫ2
++ 4cJ
+2Cα2 (1 + 2δ)σ 2 +
++ dβγ 2 σ 2
+γµ
+(W − 2B)2
+
+
+35γ
+2ǫ2
+35γ
++
+2Cα2 (1 + 2δ)σ 2 +
+8δCα2 σ 2
+≤
+17µ
+(W − 2B)2
+17µ
+
+
+35γ
+2ǫ2
+=
+.
+2Cα2 (1 + 6δ)σ 2 +
+17µ
+(W − 2B)2
+γ2
+
+
+
+Therefore, substituting (110), (112), (113), and (114), we know that (106) satisfies
+
+
+γµ  t
+γµ  t
+2
+cS
+x − x∗ + 1 −
+ET t+1 ≤ 1 −
+2
+2
+
+γµ 
+γµ
++ 1−
+∆2 ,
+dH t +
+2
+2
+
+(114)
+
+(115)
+
+where
+
+70
+∆2 :=
+17µ
+
+
+2Cα2 (1 + 6δ)σ 2 +
+
+2ǫ2
+(W − 2B)2
+
+
+
+.
+
+Applying telescopic cancellation on (115) from iteration 1 to t yields
+
+
+
+γµ t
+2 ˜
+ET t ≤ 1 −
+∆2 + ∆2 .
+T0 −
+2
+γµ
+
+(116)
+
+(117)
+
+From the definition of Lyapunov function (103), we obtain
+E xt − x∗
+where
+
+2
+
+
+γµ t
+∆1 + ∆2 ,
+≤ ET t ≤ 1 −
+2
+
+∆1 : = x0 − x∗
+
+2
+
+− ∆2 .
+
+(118)
+
+(119)
+
+Considering all the requirements on the step size, we can choose γ as
+βµ
+γ≤ √ √
+.
+4 35 1 + 5δ · Cα J 2 L2
+
+(120)
+
+This completes the proof.
+
+D
+
+Analysis of Attacks-Free Compressed SGD
+
+The proof of Theorem 1 shares similarity with that in [25], but the latter analyzes SGD with gradient difference compression, while ours considers general unbiased compressors. The work of [8] analyzes the convergence of quantized
+SGD with unbiased quantizer in terms of function value, while our performance metric is the distance to the optimal
+solution.
+26
+
+A PREPRINT
+
+Proof. Based on the update rule (14), it holds
+E xt+1 − x∗
+
+2
+2
+
+γ X
+Q(∇fω,itω (xt ))
+W
+ω∈W
+X
+2γ
+2
+E Q(∇fω,itω (xt )), xt − x∗
+=E xt − x∗ −
+W
+=E xt − x∗ −
+
+ω∈W
+
+2
+
+γ X
+Q(∇fω,itω (xt ))
+W
+ω∈W
+2γ X
+2
+≤E xt − x∗ −
+E Q(∇fω,itω (xt )), xt − x∗
+W
++E
+
+ω∈W
+
+γ2 X
+2
+E Q(∇fω,itω (xt )) .
++
+W
+
+(121)
+
+ω∈W
+
+Since Q(·) is an unbiased compressor and Q(∇fω,itω (xt ))
+E xt+1 − x∗
+≤E xt − x∗
+
+2
+
+2
+
+−
+
+2
+
+2
+
+≤ (1 + δ) ∇fω,itω (xt ) , we can obtain
+
+2γ X
+E ∇fω,itω (xt ), xt − x∗
+W
+ω∈W
+
+γ 2 (1 + δ) X
+2
+E ∇fω,itω (xt )
++
+W
+ω∈W
+2γ X
+t
+∗ 2
+=E x − x
+−
+∇fω (xt ), xt − x∗
+W
+ω∈W
+
+2
+
++
+
+γ (1 + δ) X
+W
+
+ω∈W
+∗ 2
+
+E ∇fω,itω (xt )
+
+2
+
+− 2γ ∇f (xt ), xt − x∗
+γ 2 (1 + δ) X
+2
++
+E ∇fω,itω (xt ) ,
+W
+t
+
+=E x − x
+
+(122)
+
+ω∈W
+
+where the first equality is from the unbiasness of stochastic gradient ∇fω,itω (xt ) and the second equality is from the
+P
+1
+t
+t
+fact that W
+ω∈W ∇fω (x ) = ∇f (x ).
+
+With Assumptions 2 and 3, the last term of (122) satisfies
+1 X
+2
+E ∇fω,itω (xt )
+W
+ω∈W
+1 X
+2
+E ∇fω,itω (xt ) − ∇fω (xt ) + ∇fω (xt )
+=
+W
+ω∈W
+o
+1 X n
+2
+2
+E ∇fω,itω (xt ) − ∇fω (xt ) + ∇fω (xt )
+=
+W
+ω∈W
+1 X
+2
+2
+≤ζ +
+∇fω (xt ) − ∇f (xt ) + ∇f (xt )
+W
+ω∈W
+X
+1
+2
+2
+=ζ 2 +
+∇fω (xt ) − ∇f (xt ) + ∇f (xt )
+W
+ω∈W
+
+2
+
+2
+
+≤ζ + σ + ∇f (xt )
+
+2
+
+,
+
+(123)
+1 P
+
+where the last two equalities use E(∇fω,itω (xt )−∇fω (xt )) = 0 and W
+27
+
+t
+t
+ω∈W (∇fω (x )−∇f (x )) = 0, respectively.
+
+A PREPRINT
+
+Using the inequality
+∇f (xt ) − ∇f (x∗ ), xt − x∗ ≥
++
+
+µL
+2
+xt − x∗
+µ+L
+
+1
+2
+∇f (xt ) − ∇f (x∗ ) ,
+µ+L
+
+(124)
+
+and ∇f (x∗ ) = 0, with (123) we can rewrite (122) as
+E xt+1 − x∗
+
+≤E xt − x∗
+
+2
+
+2
+
+− 2γ ∇f (xt ) − ∇f (x∗ ), xt − x∗
+
+
+2
++ γ 2 (1 + δ) ζ 2 + σ 2 + f (xt ) − ∇f (x∗ )
+
+
+2γµL
+2
+E xt − x∗
+≤ 1−
+µ+L
+
+
+2γ
+2
+2
+f (xt ) − ∇f (x∗ )
++ γ (1 + δ) −
+µ+L
++ γ 2 (1 + δ)(ζ 2 + σ 2 ).
+
+If γ satisfies
+γ≤
+
+2
+,
+(1 + δ)(µ + L)
+
+(125)
+
+(126)
+
+we have
+E xt+1 − x∗
+
+2
+
+≤
+
+
+
+2γµL
+2
+E xt − x∗
+1−
+µ+L
+
++γ 2 (1 + δ)(ζ 2 + σ 2 ).
+
+Applying telescopic cancellation from iteration 1 to t yields
+t
+
+2γµL
+2
+∆1 + ∆′2 ,
+E xt − x∗ ≤ 1 −
+µ+L
+where
+
+∆1 = x0 − x∗
+
+2
+
+− ∆′2 ,
+
+γ(1 + δ)(µ + L)(ζ 2 + σ 2 )
+1 2
+≤
+(ζ + σ 2 ).
+2µL
+µL
+Here we use the upper bound of γ in (126).
+∆′2 =
+
+(127)
+
+(128)
+
+(129)
+(130)
+
+E Biased Compressors and Error Feedback
+Biased compressors, such as ℓ1 -sign quantization and top-k sparsification, are also widely used to improve communication efficiency of distributed algorithms. In this part, we will introduce Byzantine-robust and communication-efficient
+federated learning with biased compression, as well as error feedback, a corresponding compression noise reduction
+technique.
+We first give the definition of a general compressor, which follows [30].
+Definition 2 (General compressor). A (possibly randomized) operator Q: Rp → Rp is a general compressor if it
+satisfies
+EQ kQ(x) − xk2 ≤ (1 − κ) kxk2 , ∀x ∈ Rp .
+(131)
+where κ ∈ (0, 1].
+A general compressor can be either unbiased or biased. Typical biased compressors include:
+• ℓ1 -sign quantization: For any x ∈ Rp , Q(x) =
+
+kxk1
+kxk21
+p sign(x). Here κ is pkxk .
+
+28
+
+A PREPRINT
+
+• Top-k sparsification: For any x ∈ Rp , select k elements with the largest absolute values to be remained, and
+let the other elements to be zero. Here κ is kp .
+Like unbiased compressors that we focus on in the main text, biased compressors also introduce compression noise.
+An effective strategy to reduce compression noise for biased compressors is error feedback. The idea is to store
+the error between the compressed and original gradients and add it back to the gradient in the next iteration. It has
+been proved that error feedback can guarantee convergence of compressed stochastic algorithms and achieve gradient
+compression for free [11, 30, 31].
+E.1
+
+Byzantine-Robust Compressed SAGA with Error Feedback
+
+The error feedback framework can be also combined with variance reduction to reduce both stochastic and compression
+noise. When applying error feedback to the Byzantine-robust compressed SAGA, each regular worker ω ∈ R at
+iteration t computes the corrected local stochastic gradient gωt and updates the accumulated error et+1
+as
+ω
+utω =gωt + etω ,
+
+(132)
+
+=utω − Q(utω ),
+et+1
+ω
+
+(133)
+
+xt+1 = xt − γ · geomed{Q(utw )}.
+
+(134)
+
+where etω has been stored in the previous iteration. Each regular worker ω sends Q(utω ) to the master node. Then, the
+master node updates the model parameter as
+
+ω∈W
+
+The Byzantine-robust compressed SAGA with error feedback is described in Algorithm 2. In each regular worker
+ω, a stochastic gradient table is kept to store the most recent stochastic gradient for every local sample, and an error
+vector etω is used to record the compression error. Each Byzantine worker ω may maintain its stochastic gradient table
+and etω for the sake of generating malicious vectors, or not do so but generate malicious vectors in other ways. At
+iteration t, the master node broadcasts xt to all the workers. Each regular worker ω randomly selects a sample and
+obtains the corrected stochastic gradient gωt as (27). Next, the error vector etω is added to gωt as in (132), and the result
+is compressed and sent to the master node. Regular worker ω then updates et+1
+according to (133). The Byzantine
+ω
+workers can generate arbitrary messages but also send the compressed results to cheat the master node. After collecting
+the compressed messages from all the workers, the master node calculates the geometric median updates xt+1 as in
+(134).
+E.2
+
+Theoretical Analysis
+
+Now we analyze Byzantine-robust SAGA with error feedback. Note that we use the geometric median aggregation in
+the master node instead of the mean aggregation, such that the perturbed iterate analysis in the existing works cannot
+be applied here. This makes the convergence analysis challenging.
+We begin with reviewing a lemma that bounds the error vector etω . The bound universally holds for stochastic algorithms as long as Assumption 4 holds.
+Lemma 7. [30] Consider Algorithm 2 with ǫ-approximate geometric median aggregation and using a general compressor. Under Assumption 4, for any regular worker ω ∈ R and at any iteration t, the error vector etω is bounded as
+E etω
+
+2
+
+≤
+
+4(1 − κ) 2
+G ,
+κ2
+
+∀t ≥ 0.
+
+(135)
+
+To handle the bias introduced by geometric median, we give the following lemma to describe the gap between the
+ǫ-approximate geometric median of {Q(utω ), ω ∈ W} and ∇f (xt ).
+Lemma 8. Consider Algorithm 2 with ǫ-approximate geometric median aggregation and using a general compressor.
+Under Assumptions 1, 2, and 4, if the number of Byzantine workers satisfies B < W
+2 , then an ǫ-approximate geometric
+median of {Q(utω ), ω ∈ W}, denoted as zǫ∗ , satisfies
+E zǫ∗ − ∇f (xt )
+
+2
+
+≤ 4Cα2 L2 S t + 4Cα2 σ 2 +
+
+64Cα2 (1 − κ) 2
+2ǫ2
+G +
+.
+2
+κ
+(W − 2B)2
+
+(136)
+
+Proof. From (133), we have
+Q(utω ) = utω − et+1
+= gωt + etω − et+1
+ω
+ω .
+29
+
+(137)
+
+A PREPRINT
+
+Algorithm 2 Byzantine-Robust Compressed SAGA with Error Feedback
+Input: Step size γ
+Initialize: Initialize x0 for master node and all workers. Initialize e0ω = 0 for each worker ω. Initialize {∇fω,j (φ0ω,j ) =
+∇fω,j (x0 ), j = 1, . . . , J} for each regular worker ω
+1: for t = 0, 1, . . . do
+2:
+Master node:
+3:
+Broadcast xt to all workers
+4:
+Receive Q(utω ) from all workers
+5:
+Update xt+1 = xt − γ · geomedω∈W {Q(utm )}
+6:
+Worker ω:
+7:
+if ω ∈ R then
+PJ
+8:
+Compute ḡωt = J1 j=1 ∇fω,j (φtω,j )
+9:
+Randomly sample itω from {1, . . . , J}
+10:
+Obtain gωt = ∇fω,itω (xt ) − ∇fω,itω (φtω,it ) + ḡωt
+ω
+11:
+Store ∇fω,itω (φtω,it ) = ∇fω,itω (xt )
+ω
+12:
+Compress Q(utω ) = Q(gωt + etω )
+13:
+Update et+1
+= utω − Q(utω )
+ω
+t
+14:
+Send Q(uω ) to master node
+15:
+else if ω ∈ B then
+16:
+Generate arbitrary malicious message gωt = ∗
+17:
+Send Q(utω ) = Q(gωt ) to master node
+18:
+end if
+19: end for
+According to Lemma 2, it holds that
+2
+
+E zǫ∗ − ∇f (xt )
+2ǫ2
+1 X
+2
+E Q(utω ) − ∇f (xt ) +
+≤2Cα2
+R
+(W − 2B)2
+
+(138)
+
+ω∈R
+
+2ǫ2
+1 X
+2
+E gωt + etω − et+1
+− ∇f (xt ) +
+=2Cα2
+ω
+R
+(W − 2B)2
+ω∈R
+o
+1 Xn
+2ǫ2
+2
+2
+≤2Cα2
+2E gωt − ∇f (xt ) + 2E etω − et+1
++
+ω
+R
+(W − 2B)2
+ω∈R
+o
+1 Xn
+2ǫ2
+2
+2
+2
+≤2Cα2
+.
+2E gωt − ∇fω (xt ) + ∇fω (xt ) − ∇f (xt ) + 4E etω + 4E et+1
++
+ω
+R
+(W − 2B)2
+ω∈R
+
+Here the last two inequalities come from the fact that ka + bk2 ≤ 2 kak2 + 2 kbk2 . Applying Lemma 3, Lemma 7, and
+Assumption 2, we have
+2
+
+E zǫ∗ − ∇f (xt )
+(139)
+
+
+2
+X
+2ǫ
+1
+32(1 − κ) 2
+2
+2
+G +
+≤2Cα2
+2E gωt − ∇fω (xt ) + 2E ∇fω (xt ) − ∇f (xt ) +
+R
+κ2
+(W − 2B)2
+ω∈R
+
+2ǫ2
+64Cα2 (1 − κ) 2
+G +
+.
+≤4Cα2 L2 S t + 4Cα2 σ 2 +
+2
+κ
+(W − 2B)2
+P
+Here the first inequality uses ω∈R (∇fω (xt ) − ∇f (xt )) = 0. This completes the proof.
+
+Now we establish the convergence of the Byzantine-robust compressed SAGA with error feedback.
+Theorem 5 (Convergence of Byzantine-robust compressed SAGA with error feedback). Consider Algorithm 2 with
+ǫ-approximate geometric median aggregation and using a general compressor. Under Assumptions 1, 2, and 4, if the
+number of Byzantine workers satisfies B < W
+2 , and the step size γ satisfies
+µ
+γ≤ √
+,
+(140)
+4 10J 2 L2 Cα
+30
+
+A PREPRINT
+
+then it holds that
+E xt − x∗
+where
+
+2
+
+
+γµ t
+≤ 1−
+∆1 + ∆2 ,
+2
+
+(141)
+
+2
+
+∆1 := x0 − x∗ − ∆2 ,
+
+
+64Cα2 (1 − κ) 2
+5
+2ǫ2
+2 2
+.
+∆2 := 2 4Cα σ +
+G +
+µ
+κ2
+(W − 2B)2
+
+(142)
+(143)
+
+Proof. When the step size γ is sufficiently small such that
+γ 2 L2 ≤
+
+γµ
+,
+2
+
+(144)
+
+we can observe that (50) also holds true here.
+To prove the theorem, we construct a Lyapunov function T t as
+2
+
+T t := xt − x∗
+
++ cS t ,
+
+(145)
+
+where c is any positive constant and S t is defined as (58). Thus, T t is non-negative.
+Based on (59), it follows that
+ET t+1 = E xt+1 − x∗
+
+2
+
++ cES t+1
+
+≤(1 − γµ + 4cJγ 2 L2 ) xt − x∗
+
+2
+
++
+
+
+
+(146)
+
+
+1
+2
+2
++ 4cJ E xt+1 − xt + γ∇f (xt ) + 1 − 2 cS t .
+γµ
+J
+
+
+Let zǫ∗ be an ǫ-approximate geometric median of {Q(vωt ), ω ∈ W} and observe the second term at the right-hand side
+of (146). We have
+E xt+1 − xt + γ∇f (xt )
+
+2
+
+= γ 2 E zǫ∗ − ∇f (xt )
+
+2
+
+.
+
+With this fact and Lemma 8, (146) can be rewritten as
+
+
+2
+ET t+1 ≤ 1 − γµ + 4cJγ 2 L2 xt − x∗
+
+
+
+
+2
+1
+2 2 2
++ 4cJ 4Cα γ L S t
++ (1 − 2 )c +
+J
+γµ
+
+
+
+2
+2ǫ2
+64Cα2 (1 − κ) 2
+2
+2 2
++γ
+.
+G +
++ 4cJ
+4Cα σ +
+γµ
+κ2
+(W − 2B)2
+If we let
+4cJγ 2 L2 ≤
+then it holds
+
+γµ
+,
+2
+
+(147)
+
+(148)
+
+(149)
+
+5
+2
+µ
+2
+≤
++ 4cJ ≤
++
+.
+γµ
+γµ 2γL2
+2γµ
+
+(150)
+
+Thus, the first coefficient at the right-hand side of (148) is bounded by
+1 − γµ + 4cJγ 2 L2 ≤ 1 −
+
+γµ
+.
+2
+
+(151)
+
+Similarly, if γ and c are chosen as
+γµ
+1
+,
+≤
+2
+2J 2
+
+(152)
+
+and
+c=
+
+5 4Cα2 J 2 γL2
+20Cα2 J 2 γL2
+,
+≥ ·
+µ
+2 µ( J12 − γµ
+2 )
+31
+
+(153)
+
+A PREPRINT
+
+then the second coefficient at the right-hand side of (148) is bounded by
+
+
+1
+2
++ 4cJ 4Cα2 γ 2 L2
+(1 − 2 )c +
+J
+γµ
+1
+5 4Cα2 γL2
+≤(1 − 2 )c + ·
+J
+2
+µ
+γµ
+≤(1 −
+)c.
+2
+The last term at the right-hand side of (148) is bounded by
+
+
+
+2ǫ2
+64Cα2 (1 − κ) 2
+2
+2 2
+2
+G +
++ 4cJ
+4Cα σ +
+γ
+γµ
+κ2
+(W − 2B)2
+
+
+2
+2
+5γ
+64Cα (1 − κ) 2
+2ǫ
+≤
+4Cα2 σ 2 +
+.
+G +
+2µ
+κ2
+(W − 2B)2
+Therefore, substituting (151), (154), and (155), we know that (148) satisfies
+
+
+γµ  t
+γµ  t γµ
+2
+ET t+1 ≤ 1 −
+cS +
+x − x∗ + 1 −
+∆2 ,
+2
+2
+2
+where
+
+
+64Cα2 (1 − κ) 2
+2ǫ2
+5
+.
+G
++
+∆2 := 2 4Cα2 σ 2 +
+µ
+κ2
+(W − 2B)2
+Applying telescopic cancellation on (156) from iteration 1 to t yields
+
+
+γµ t 0
+2 ˜
+ET t ≤ 1 −
+T − ∆2 +
+∆2 .
+2
+γµ
+
+From the definition of Lyapunov function (145), we can obtain
+
+γµ t
+2
+∆1 + ∆2 ,
+E xt − x∗ ≤ ET t ≤ 1 −
+2
+where
+∆1 := x0 − x∗
+
+2
+
+− ∆2 .
+
+Considering the requirements (144), (107), and (152) on the step size, we can choose γ as
+µ
+.
+γ≤ √
+4 10 · Cα J 2 L2
+
+(154)
+
+(155)
+
+(156)
+
+(157)
+
+(158)
+
+(159)
+
+(160)
+
+(161)
+
+This completes the proof.
+
+Theorem 5 shows that the Byzantine-robust compressed SAGA with error feedback can also linearly converge to a
+neighborhood of the optimal solution. However, the analysis needs the stochastic gradients to be bounded, which is
+common in the analysis of error feedback. The learning error ∆2 is linear with G2 and can be very large. Improving
+the proof techniques and obtain a tighter bound of learning error for error feedback will be our future work.
+E.3
+
+Numerical Experiments
+
+Here we provide numerical experiments of Byzantine-robust compressed SAGA with error feedback to illustrate its
+effectiveness. The considered problem is also logistic regression. The dataset and detailed settings are the same as
+those in the main text.
+Figure 6 depicts the optimality gap f (xt )− f (x∗ ) of SGD, Byzantine-robust SGD, Byzantine-robust compressed SGD
+with error feedback (EF), SAGA, Byzantine-robust SAGA, and Byzantine-robust compressed SAGA with EF. The
+compressor here is top-k spasification and ratio k/p is 0.1. The Byzantine workers also obey the top-k sparsification
+compression rule and the error feedback framework, so as to recover the effects of uncompressed Byzantine attacks as
+much as possible. Observe that the Byzantine-robust compressed SAGA with EF has the ability to defend all the three
+attacks as the Byzantine-robust SAGA without compression, and their learning errors are similar. This fact implies
+32
+
+A PREPRINT
+
+100
+
+optimality gap (Gaussian attack)
+
+optimality gap (without attack)
+
+optimality gap (zero-gradient attack)
+
+optimality gap (sign-flipping attack)
+102
+
+10−4
+
+0
+
+2
+4
+6
+8
+iteration k / 4000
+
+10−2
+
+10
+
+0
+
+SGD
+Byzantine-robust SGD
+
+2
+4
+6
+8
+iteratio k / 4000
+
+( k ) − f( x * )
+
+101
+
+100
+
+10
+
+100
+
+f x
+
+( k ) − f( x * )
+
+10−3
+
+10−1
+
+f x
+
+( k ) − f( x * )
+
+10−2
+
+f x
+
+f x
+
+( k ) − f( x * )
+
+10−1
+
+0
+
+2
+4
+6
+8
+iteratio k / 4000
+
+Byzantine-robust compressed SGD with EF
+SAGA
+
+10
+
+0
+
+2
+4
+6
+8
+iteratio k / 4000
+
+10
+
+Byzantine-robust SAGA
+Byzantine-robust compressed SAGA with EF
+
+Figure 6: Effect of reduction of stochastic and compression noise.
+optimality gap (Gaussian attack)
+
+10−2
+10−3
+
+10−4
+
+0
+
+2
+4
+6
+8
+iteration k / 4000
+
+SGD
+
+10
+
+( k ) − f( x * )
+
+10−3
+
+f x
+
+10−2
+
+100
+101
+100
+
+f x
+
+10−1
+
+optimality gap (zero-gradient attack)
+
+optimality gap (sign-flipping attack)
+102
+( k ) − f( x * )
+
+10−1
+
+( k ) − f( x * )
+
+100
+
+f x
+
+f x
+
+( k ) − f( x * )
+
+optimality gap (without attack)
+100
+
+10−1
+
+10−1
+0
+
+SignSGD
+
+2
+4
+6
+8
+iteratio k / 4000
+
+10
+
+0
+
+2
+4
+6
+8
+iteratio k / 4000
+
+gradient norm thresholding SGD with EF
+
+10
+
+0
+
+2
+4
+6
+8
+iteratio k / 4000
+
+10
+
+Byzantine-robust comprssed SAGA with EF
+
+Figure 7: Comparison of proposed algorithm and existing methods: SignSGD and gradient norm thresholding SGD.
+that error feedback can successfully reduce compression noise for a biased compressor and achieve compression for
+free, too.
+Figure 7 compares the Byzantine-robust SAGA with EF with SignSGD and the gradient norm thresholding SGD. Here
+the compressor is ℓ1 -sign quantization, and the gradient norm thresholding SGD also uses error feedback as in [28].
+The fraction of removed compressed gradients is 0.3. When only Gaussian attacks are considered, the gradient norm
+thresholding SGD with EF behaves the best because all the malicious messages are removed, such that the training
+process is similar to that of SGD without attacks. However, it cannot remove all the malicious messages under the
+sign-flipping and zero-gradient attacks and behaves worse than the Byzantine-robust SAGA with EF. On the contrary,
+the Byzantine-robust SAGA with EF is able to defend various Byzantine attacks.
+
+33
+
+

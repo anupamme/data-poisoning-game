@@ -1,0 +1,33 @@
+{
+  "title": "Secure Byzantine-Robust Distributed Learning via Clustering",
+  "short_name": "SHARE",
+  "c_d_route": "hyperparameter-sweep",
+  "criteria": {
+    "C-a": {
+      "code": "NO",
+      "quote": "To the best of our knowledge, ours is the first approach that scalably combines Byzantine-robustness with privacy using the common single-server architecture.",
+      "locator": "Introduction; the purpose of the clustering stage is stated as \"These nonlinear operations adversely affect privacy since privacy-preserving methods such as secure Multi-Party Computation (MPC) are inefficient for nonlinear operations [3]\", and the architecture claim is \"we propose a modified federated learning architecture to incorporate any robustness protocol in a privacy preserving manner\" (§6)"
+    },
+    "C-b": {
+      "code": "NO",
+      "quote": "Taken together, this manuscript proposes a federated learning architecture that preserves security and privacy jointly, thus addressing this gap in the literature.",
+      "locator": "Introduction"
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "Figure (2a) shows that SHARE with a strong defense like Zeno++ converges to benign (no-attack) accuracy for any of the considered cluster sizes.",
+      "locator": "§6.1 CIFAR-10, Figure 2"
+    },
+    "C-d": {
+      "code": "YES",
+      "quote": "Figure 2: Results of SHARE with various defenses on CIFAR-10, utilizing varying cluster sizes under label flip attack.",
+      "locator": "§6.1, Figure 2; Figure 3 repeats it for reclustering rounds, \"Results of SHARE with Zeno++ and different reclustering rounds R, Byzantine clients q, cluster sizes m on CIFAR-10 with varying attack strengths\""
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "SHARE with trimmed mean and Krum both converge with cluster size 3 but as cluster size increases, accuracy decreases and SHARE begins to diverge. This can be seen directly from Lemma 2",
+      "locator": "§6.1, reading Figure 2 against Lemma 2 (\"Algorithm 1 is robust to q = q_0 m adversaries, where q_0 is the tolerance limit of the robust aggregation oracle followed and m is the cluster size\")"
+    }
+  },
+  "coder_note": "C-a = NO UNDER AMENDMENT 3, AND THE PAPER'S OWN SENTENCE IS WHY: it combines robustness with PRIVACY, not two defenses. The only component whose stated purpose is resisting malicious updates is the robust aggregation oracle, which SHARE treats as a black box supplied from outside (Krum, trimmed mean, Zeno++ are plugged in interchangeably). Clients are clustered so that secure aggregation can avoid nonlinear operations under MPC; that is a cryptographic feasibility device, and the paper says so. Primary = NO.\n\nBUT C-d = YES ON THE STRICT READING, AND THIS PAPER IS THE CLEANEST NON-SEED INSTANCE SO FAR. Within each panel of Figure 2 the downstream mechanism is fixed (one aggregator per panel: Zeno++, Krum, trimmed mean), the attack is fixed (label flip, q=12), and the ONLY thing varied is the upstream stage's parameter -- cluster size, i.e. how much averaging happens before the aggregator sees anything. The composed system's accuracy is read off that variation, and the reading is then attributed to Lemma 2's q = q_0 m. That is the intervention prop:identification_full describes, run on a privacy stage rather than a defense stage. Figure 3 does the same for reclustering rounds R with Zeno++ held fixed, and Figure 5 repeats the cluster-size sweep across three aggregators under the FoE attack.\n\nThe combination -- C-a = NO but C-d = YES -- is worth flagging for the appendix table's prose, because it is the shape a reader will not predict: a paper can run the identifying contrast without composing two defenses at all, and this one runs it because cluster size is a hyperparameter it introduced and therefore had to sweep. That is a second route to C-d, and it is not a route this paper's argument anticipated."
+}

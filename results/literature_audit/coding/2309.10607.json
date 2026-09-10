@@ -1,0 +1,32 @@
+{
+  "title": "SPFL: A Self-purified Federated Learning Method Against Poisoning Attacks",
+  "c_d_route": "component-contrast",
+  "criteria": {
+    "C-a": {
+      "code": "NO",
+      "quote": "With this in mind, we propose a novel self-purified FL (SPFL) method by using self-distillation to defend against poisoning attacks with high Byzantine tolerance.",
+      "locator": "§1; the only other mechanism named is secure aggregation, and the paper states its purpose and its relation to SPFL in the same breath -- \"It can work in tandem with any existing secure aggregation algorithms and protocols for augmented security and privacy guarantee\" and \"As the shared model parameters carry extensive information about the corresponding training data of the clients, secure aggregation protocols are integrated into FedAvg to prevent indirect leakage of personal information\" (§2)"
+    },
+    "C-b": {
+      "code": "NO",
+      "quote": "It allows the benign clients to implement the defense without any restriction on or conflict with existing aggregation algorithms and secure aggregation protocols for augmented security and privacy risk mitigation.",
+      "locator": "§1 Contributions; this is a COMPATIBILITY claim about a stage the paper does not itself apply, not a reason for pairing two defenses"
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "The attack success rate (ASR) is the ratio of backdoored examples that are misclassified as the target label.",
+      "locator": "§5.1; the composed defense's own main-task accuracy and ASR are the reported outcome throughout, e.g. Figures 2-3, \"Main task accuracy (left) and attack success rate (right) for canonical attacks on MNIST\" / \"on CIFAR10\""
+    },
+    "C-d": {
+      "code": "YES",
+      "quote": "To demonstrate the necessity of attention-based knowledge and the effectiveness of attention map construction in backdoor mitigation, we substitute the distillation loss function of SPFL with two contrasting loss functions for comparison. ... The second option, SPFL NAD, calculates the attention map by a simple sum instead of a weighted combination of feature maps",
+      "locator": "§5.4; the substitution is spelled out at §5.4, \"Unlike SPFL NAD, which combines feature maps over all channels evenly, SPFL performs a weighted combination of forward feature maps, where the weight is derived from the gradient of the score for ground-truth class with respect to the corresponding feature maps\""
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "The superior Byzantine tolerance of SPFL over them is attributed to the adaptive purification of adversarial perturbations.",
+      "locator": "§5.3, reading Figure 4 (attack success rate for different numbers of adversaries)"
+    }
+  },
+  "coder_note": "C-a = NO ON TWO INDEPENDENT GROUNDS, EITHER OF WHICH SUFFICES. First, SPFL is one defense mechanism -- attention-guided self-distillation from a locally purified historical model -- realized with two loss terms (logit-based and attention-based) of a single distillation objective. C-a's own exclusion list rules out \"a single mechanism with hyperparameters\", and two terms of one loss are not two mechanisms applied together any more than a regularizer is. Second, the only candidate second component is secure aggregation, and Amendment 3 disqualifies it by stated purpose (\"to prevent indirect leakage of personal information\") -- but it would fail C-a anyway, because the paper does not apply it: it claims COMPATIBILITY with it (\"can work in tandem with any existing secure aggregation algorithms\"), and C-a requires two mechanisms applied together to the same training round. A defense the paper says it would not conflict with is not a defense the paper composes.\n\nC-d = YES ON SPFL_NAD, WHICH IS THE UPSTREAM SUBSTITUTION, AND NOT ON SPFL_oA, WHICH IS NOT. The paper builds two contrasting variants. SPFL_oA deletes the attention loss term outright -- a leave-one-out that changes the objective rather than the input to a fixed component, and the rubric declines it. SPFL_NAD is different in kind: it holds the distillation loss, the student training and the aggregation fixed and swaps only HOW the attention map is CONSTRUCTED, from a gradient-weighted combination of feature maps to a plain even sum over channels. That is a graded substitution of the upstream representation feeding a fixed downstream mechanism with the attack held fixed, and it is coded the same way as CrowdGuard's adapted HLBIM (absolute for relative distances, stacked clustering fixed) for the same reason.\n\nThat SPFL is a CLIENT-SIDE defense makes the row worth keeping in view for A5's prose: the identifying contrast turns up in a paper whose defense is not an aggregation rule at all, which widens the set of places the practice appears beyond the server-side pipelines the pre-registration imagined.\n\nEXTRACTOR NOTE: the screening record lists mechanism_families ['distillation', 'reputation', 'secure-agg'], but a targeted grep for \"reputation\" returns ZERO hits in the full text -- the family tag is a screening-time false positive and no reputation mechanism exists in this paper. Recorded here because the screening tags are shipped alongside the codes and a reader will otherwise expect a third component that is not there."
+}

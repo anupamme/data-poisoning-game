@@ -1,0 +1,3933 @@
+MUDGUARD: Taming Malicious Majorities in
+Federated Learning using Privacy-Preserving
+Byzantine-Robust Clustering
+
+arXiv:2208.10161v2 [cs.CR] 14 Nov 2023
+
+Rui Wang1 , Xingkai Wang2 , Huanhuan Chen1 , Jérémie Decouchant1 , Stjepan Picek1,3 , Nikolaos Laoutaris4 , and
+Kaitai Liang1
+1
+
+Delft University of Technology
+Shanghai Jiao Tong University
+3
+Radboud University
+4
+IMDEA Networks Institute
+
+2
+
+Abstract—Byzantine-robust Federated Learning (FL) aims to
+counter malicious clients and train an accurate global model
+while maintaining an extremely low attack success rate. Most
+existing systems, however, are only robust when most of the clients
+are honest. FLTrust (NDSS ’21) and Zeno++ (ICML ’20) do
+not make such an honest majority assumption but can only be
+applied to scenarios where the server is provided with an auxiliary
+dataset used to filter malicious updates. FLAME (USENIX ’22) and
+EIFFeL (CCS ’22) maintain the semi-honest majority assumption
+to guarantee robustness and the confidentiality of updates. It
+is therefore currently impossible to ensure Byzantine robustness
+and confidentiality of updates without assuming a semi-honest
+majority. To tackle this problem, we propose a novel Byzantinerobust and privacy-preserving FL system, called MUDGUARD, that
+can operate under malicious minority or majority in both the
+server and client sides. Based on DBSCAN, we design a new
+method for extracting features from model updates via pairwise
+adjusted cosine similarity to boost the accuracy of the resulting
+clustering. To thwart attacks from a malicious majority, we
+develop a method called Model Segmentation, that aggregates
+together only the updates from within a cluster, sending the
+corresponding model only to the clients of the corresponding
+cluster. The fundamental idea is that even if malicious clients
+are in their majority, their poisoned updates cannot harm
+benign clients if they are confined only within the malicious
+cluster. We also leverage multiple cryptographic tools to conduct
+clustering without sacrificing training correctness and updates
+confidentiality. We present a detailed security proof and empirical
+evaluation along with a convergence analysis for MUDGUARD.
+Our experimental results demonstrate that the accuracy of
+MUDGUARD is practically close to the FL baseline using FedAvg
+without attacks (≈0.8% gap on average). Meanwhile, the attack
+success rate is around 0%-5% even under an adaptive attack
+tailored to MUDGUARD. We further optimize our design by using
+binary secret sharing and polynomial transformation leading to
+communication overhead and runtime decreases of 67%-89.17%
+and 66.05%-68.75%, respectively.
+
+I.
+
+I NTRODUCTION
+
+Thanks to its privacy properties, Federated Learning
+(FL) [43] has been widely applied in real-world applications,
+e.g., prediction of the future oxygen requirements of symptomatic patients with COVID-19 [20]. Despite its attractive
+benefits, FL is vulnerable to Byzantine attacks. For example,
+attackers may choose to deteriorate the testing accuracy of
+
+models in an untargeted attack. Alternatively, they might fool
+models to predict an attack-chosen label without downgrading the testing accuracy in a targeted attack. Many research
+works [25], [62], [59] have proved the vulnerability of FL via
+well-designed attack methods, e.g., poisoning training data or
+manipulating updates. Other studies [10], [64], [44], [15], [49],
+[63], [55], [37] have been dedicated to strengthening FL assuming that a minority of the clients can be malicious and that
+the server is honest. Beyond Byzantine attacks, FL could put
+clients at high risk of privacy breach [65], [28] even if clients’
+datasets are maintained locally. Several studies [49], [55],
+[57] have applied secure tools, e.g., Additive Homomorphic
+Encryption (AHE) [50], Differential Privacy (DP) [22], [60],
+and Secure Multiparty Computation (MPC), to protect clients’
+updates1 . However, these works only guarantee security when
+all servers are (semi-)honest and when a minority of the clients
+are malicious.
+To the best of our knowledge, there does not exist any
+FL system that is capable of withstanding the presence of a
+majority of Byzantine clients, as well as malicious servers,
+while also guaranteeing the confidentiality of updates. One
+may think that existing Byzantine-robust solutions could be
+trivially extended to address the above challenge. However,
+that is not the case because they either violate privacy preservation requirements or are only effective in the honest majority
+scenario. For example, FLTrust [15] and Zeno++ [63] require an auxiliary dataset that is independently and identically
+distributed (iid) with the clients’ training datasets to rectify
+malicious updates, which evidently violates the clients’ privacy. As for FLAME [49], it clusters updates and considers the
+smallest cluster as a malicious group, which makes sense in the
+malicious minority context. However, in the case of a malicious
+majority, it is difficult to assert if a given large/small-size
+cluster is malicious. EIFFeL [55] shows similar infeasibility,
+since it combines existing Byzantine-robust methods (e.g.,
+FLTrust [15]) with secure aggregation [11].
+Contributions. We propose a practical and secure Byzantinerobust FL system, MUDGUARD, that defends against malicious
+entities (i.e., malicious minority for servers and malicious
+1 Note AHE and MPC require onerous computation over ciphertexts so that
+the computational complexity could naturally increase.
+
+Aggregation
+strategy
+Zeno++ [63]
+FLTrust [15]
+FLAME [49]
+EIFFeL [55]
+MUDGUARD (Ours)
+
+Threat model
+Malicious
+server(s)
+
+Malicious
+majority clients
+
+%
+%
+%
+%1
+"
+
+"
+"
+%
+%
+"
+
+Byzantine
+robustness
+
+Updates
+confidentiality
+
+No requirement for
+an auxiliary dataset
+
+Computation
+complexity
+
+Communication
+complexity
+
+"
+"
+"
+"
+"
+
+%
+%
+"
+"
+"
+
+%
+%
+"
+"
+"
+
+O(d)
+O(n)
+O(d(S 2 + n2 ))
+O((n + d)n log2 n log log n + md min(n, m2 ))
+O(d + n3 )
+
+O(nd)
+O(nd)
+O(d2 + Sn2 )
+O(n2 + md min(n, m2 ))
+O(S(d + n2 ))
+
+d stands for the dimension of a model. n, m, and S represent the number of clients, malicious clients, and servers, respectively.
+1 EIFFeL considers a malicious server to be one that infers privacy information from other parties, which is equivalent to a semi-honest server in our context.
+
+TABLE I: Comparison of FL systems
+
+updates directly for clustering, we first compute the pairwise
+adjusted cosine similarity of updates (featured by different
+directions and magnitudes of updates between every two
+clients). Then we input the results to DBSCAN.
+• We design a secure FL system to be compatible with the
+cryptographic tools under the malicious context. To protect
+the updates on the server side and guarantee all clients receive
+correct aggregations, we construct a secure DBSCAN clustering that leverages cryptographic tools and secure aggregation
+with Homomorphic Hash Function (HHF) [26]. We further
+optimize the secure computations on the server side based on
+binary secret sharing and polynomial transformation.
+• We provide a formal security proof for MUDGUARD in the
+UC framework. This proof captures dynamic security requirements, making MUDGUARD more practical than theoretical in
+security. MUDGUARD is the first UC-secure type in the research
+line of privacy-preserving FL.
+• We implement MUDGUARD and perform evaluations on
+(F)MNIST and CIFAR-10 to quantify its accuracy under untargeted attacks, the Attack Success Rate (ASR) under targeted
+attacks or under an adaptive attack tailored to MUDGUARD, as
+well as its runtime and communication costs. Our experimental
+results show that the model trained by MUDGUARD maintains
+comparable testing accuracy with the FL baseline - a “noattack-and-protection" FL with only honest parties (≈0.8%
+gap on average under untargeted attacks). The ASR under
+the targeted attacks is as low as 0%-5%. After optimizing the
+cryptographic computations, the runtime and communication
+costs are reduced by about 66.05%-68.75% and 67%-89.17%,
+respectively. For example, in the training of ResNet-18 using
+CIFAR-10, our optimization strategy can reduce training time
+from 95 seconds to 48 seconds and communication costs from
+16331 MB to 5909 MB, whereas a vanilla FL takes nearly 24
+seconds and 758 MB per round.
+
+majority for clients) with privacy preservation. Specifically, we
+perform feature extraction on the client updates by calculating
+the pairwise adjusted cosine similarity. These extracted features are taken to the DBSCAN clustering, which calculates
+the pairwise L2 distance between the inputs and determines
+clusters based on density. Subsequently, a new method, Model
+Segmentation, aggregates the updates based on their assigned
+cluster labels. The aggregated results are returned to clients
+in the respective clusters. Moreover, the integration of cryptographic tools with the aforementioned calculations allows for
+the establishment of both Byzantine robustness and privacy
+preservation within the MUDGUARD system. In spite of the
+utilization of clustering for Byzantine robustness in [49], its
+approach relies on the assumption that only less than half of
+clients are malicious, since updates are directly incorporated
+into HDBSCAN clustering. In contrast to [49], our proposed
+methodology involves preliminary feature extraction of updates
+before sending them to the clustering algorithm and separate
+aggregation, accommodating non-iid and malicious majority
+clients. We stress that [49] is vulnerable to the non-iid and
+majority of malicious clients problems due to the absence of
+pre-processing of updates and cluster detection. To the best of
+our knowledge, MUDGUARD is the first Byzantine-robust FL
+system that is able to defend against malicious majority clients
+without sacrificing clients’ privacy. We also are the first to
+provide detailed security and privacy analysis under Universal
+Composability (UC) in FL. In the literature on centralized
+learning, a few MPC-based solutions [40], [35], [17] were
+proposed for model training and malicious servers under UC.
+Note that the key differences between these works and ours
+are the required computing functionalities for clustering and
+model training, as well as the required security properties of
+the solution. The impact of these works on performance and
+security is unknown when applied to FL.
+We summarize the advantages of MUDGUARD on the SOTA
+FL systems in Table I. For a theoretical and empirical analysis
+of complexity, please refer to Appendix D and Section V-B.
+Our main contributions can be described as follows.
+• We formulate a new aggregation strategy, Model Segmentation, for Byzantine-robust FL to effectively avoid poisoning
+attacks from a majority of malicious clients without requiring
+the servers to own an auxiliary dataset. It posits that the
+utilization of complex algorithms for the detection of malicious
+updates is not necessary. Instead, it only suggests implementing measures to prevent the co-existence of malicious and
+semi-honest clients in one aggregation.
+• We propose a new method to improve the accuracy of
+updates clustering under non-iid scenarios. Instead of using the
+
+II.
+
+BACKGROUND AND R ELATED W ORK
+
+A. Attacks against Federated Learning
+Byzantine Attacks. Malicious clients may attempt to deteriorate the testing accuracy of the global model by intentionally
+uploading poisoned updates (i.e., untargeted attacks). Instead
+of harming the accuracy, the attackers may also intentionally
+use samples with triggers to launch attacks that make the
+model misclassify (i.e., targeted attacks). In the following, we
+review some classical and SOTA untargeted attacks (Gaussian
+Attack [25], Label Flipping Attack [9], Krum Attack and Trim
+Attack [25]) and targeted attacks (Backdoor Attack [3] and
+Edge-case Attack [58]).
+2
+
+• Gaussian Attack (GA). Malicious clients degrade the model
+accuracy by uploading local updates randomly sampled from
+a Gaussian distribution.
+• Label Flipping Attack (LFA). Malicious clients flip the
+local data labels to generate faulty gradients. In particular, the
+label of each sample is flipped from y to L − 1 − y, y ∈ [L],
+where L is the total number of classes.
+• Krum and Trim Attacks. These two untargeted local
+model poisoning attacks are optimized for Krum [10] and
+the Trim-mean/Median [64] aggregation strategies, respectively. They aim to pull the global model towards the opposite
+direction of the honest gradient when it is updated. Besides,
+they also have attack efficacy on FedAvg.
+• Backdoor Attack (BA). Byzantine clients embed triggers
+to training samples and change their labels to targeted labels.
+Their goal is to make the global model misclassify the correct
+labels to the targeted ones when testing samples with triggers.
+• Edge-case Attack (EA). The attack aims to misclassify
+seemingly similar inputs that are unlikely to be part of the
+training or testing data. For example, by labeling Ardis2 “7”
+images as “1” and adding them to training data, EA can
+easily backdoor an MNIST classifier. Similarly, the attack can
+use a Southwest airplanes dataset labeled “truck” to inject a
+backdoor into a CIFAR-10 classifier. Note that the attack relies
+on a restricted assumption that an extra dataset resemblance
+to the training dataset should be given.
+
+into s shares before sending them to servers. This way, updates
+are safeguarded from malicious servers since they do not
+get sufficient shares to perform update reconstruction. Even
+if malicious servers collude with malicious clients, no extra
+benefit can be achieved towards compromising the update
+shares belonging to semi-honest clients.
+Differential Attack. We use DBSCAN in conjunction with
+Model Segmentation to separate benign and malicious updates.
+Features extraction with adjusted cosine similarity greatly
+descends the likelihood of false positives. However, we cannot
+guarantee that the clustering results are 100% correct. A semihonest client could be clustered together with other malicious
+clients by a small probability as it could have a smaller
+similarity from semi-honest clients than that from malicious
+clients. In particular, this case happens more frequently in
+SignSGD, where only taking signs of gradients to update
+the model because the algorithm computing adjusted cosine
+similarity disregards the magnitude of the gradients, resulting
+in the same effect as calculating cosine similarity. The above
+phenomenon triggers the differential attack in the following
+cases. Assuming that, at t-th round, a semi-honest client is
+misclustered to a malicious group. After returning aggregation
+to the group, the benign updates can be easily revealed by
+subtracting those malicious updates, and the inference attack
+can be launched further. Another more common case is that
+a malicious adversary A compromises m clients and then
+makes one of them perform correct operations, i.e., acting
+as a semi-honest client. This malicious-but-act-semi-honest
+client, being assigned to a semi-honest group, can get benign
+aggregation from each round and then conduct an inference
+attack. In this work, we apply DP to make aggregations
+obtained by malicious clients statistically indistinguishable
+from those containing benign updates, guaranteeing that benign
+updates cannot be easily identified from aggregations.
+
+To defend against these attacks, we propose a new approach called Model Segmentation in conjunction with featureextracted DBSCAN. Different from other Byzantine-robust FL,
+our proposed method generates multiple global models and
+does not require servers to detect whether a particular group
+is benign or not. It aggregates only updates with the same
+cluster labels and returns the aggregations to the corresponding
+clients. This ensures that updates with similar directions and
+magnitudes are aggregated together (i.e., benign updates are
+not aggregated with malicious updates), providing a guarantee
+of Byzantine robustness in the case of malicious majority
+clients. Different from FLAME, MUDGUARD first uses pairwise
+adjusted cosine similarity to perform feature extraction on
+updates, then clusters through DBSCAN. The advantage of
+this is that it can reduce the false positive rate and be effective
+in non-iid situations. For detailed explanations, please refer
+to Section IV-B and Appendix I4. The experimental results
+show that the Byzantine robustness and clustering accuracy of
+MUDGUARD is better than that of FLAME as will be shown
+later in Section V-A.
+
+B. Defenses
+Byzantine-robust Federated Learning. Blanchard et al. [10]
+proposed Krum to select 1 out of n (local updates) as a global
+update for each round, where the selected updates should have
+the smallest L2 distance from others. Yin et al. [64] introduced
+Trim-mean and Median to resist Byzantine attacks. The
+former uses a coordinate-wise aggregation strategy. The server
+calculates n − 2z values for each model parameter as the
+global model update, wherein the largest and smallest z values
+are filtered. Unlike FedAvg [43] computing the weighted
+average of all parameters, the latter calculates the median of
+parameters. This median serves as an update to the global
+model. A major drawback of the aforementioned mechanism
+is that it is effective only under a majority of honest clients
+working with an honest server. In Median [64], the median
+calculated by the server can easily be malicious if malicious
+clients control a large/overwhelming proportion of updates.
+This similarly applies to Trim-mean and Krum. Cao et
+al. [15] proposed FLTrust to protect against a malicious
+majority at the client side, assuming an honest server holds a
+small auxiliary dataset. The server treats the gradients trained
+from this small dataset as the root of trust. By comparing these
+trusted results with the updates sent by clients, the server can
+easily rule out malicious updates. Under the same assumption,
+Zeno++ [63] uses an auxiliary dataset to calculate the loss
+value of each local model. A client is determined to be honest
+
+Inference Attacks. Although local datasets are not directly
+revealed during the FL training process, the updates are still
+subject to privacy leakage if the server is semi-honest or even
+malicious [47], [42], [65]. For instance, Zhu et al. [65] investigated a method of training data reconstruction via optimizing
+the L2 distance between uploaded gradients and gradients
+trained from dummy samples using an L-BFGS solver. This
+approach allows servers to easily reconstruct the local datasets
+and achieves even pixel-wise accuracy for images and tokenwise matching accuracy for texts. To defend against such
+attacks, we use Secret Sharing (SS) [56] to split client updates
+2 A dataset extracted from 15,000 Swedish church records written by
+different priests with various handwriting styles in the nineteenth and twentieth
+centuries.
+
+3
+
+if the loss value is beyond the preset threshold. While using an
+auxiliary dataset could be intriguing, such approaches are not
+feasible in the context of FL as they violate the fundamental
+premise of FL in which local datasets are not to be shared
+with any parties.
+
+received messages. Unlike the former, strictly following the
+designed algorithms, the malicious clients additionally aim to
+deteriorate the performance or boost the ASR of the global
+model through untargeted or targeted poisoning attacks, respectively.
+• Attackers’ capabilities. The malicious servers (in a minority
+proportion) and clients (in a majority proportion) can deviate from the designed protocols. For example, the malicious
+servers can perform an incorrect aggregation and send it back
+to the semi-honest group. Moreover, malicious parties (servers
+and clients) can collude with each other to infer benign aggregations and maximize the efficacy of poisoning attacks (e.g.,
+the Krum attack). To resist outside adversaries, secret-shared
+messages are transmitted by private communication channels.
+Other messages are transmitted through public communication
+channels, where outsiders are allowed to eavesdrop on these
+channels and try to infer clients’ (updates) privacy during the
+whole training phase.
+• Attackers’ knowledge. We assume that the loss function,
+data distributions, Byzantine-robust aggregation strategy, and
+public parameters (including training and security parameters)
+are revealed to all parties. The malicious clients can exploit
+this information to design and cast adaptive attacks tailored to
+MUDGUARD. For privacy reasons, the local updates and datasets
+of semi-honest clients are not revealed to malicious parties.
+
+Privacy-preserving Federated Learning. Truex et al. [57]
+proposed a solution enabling clients to use AHE and DP to
+secure gradients in the semi-honest context (for both clients
+and the server). Since DP noise is applied on gradients, the
+accuracy of the global model is deteriorated. In the scenario
+of honest majority clients with two semi-honest servers, Thien
+et al. [49] proposed FLAME using an MPC protocol to
+protect gradients from the servers and enabling the servers
+to perform clustering for Byzantine robustness. Specifically,
+the clients can securely share their updates to the servers
+cryptographically, e.g., via secret sharing, and the servers
+can filter out malicious updates without knowing their concrete values. By expressing existing Byzantine-robust solutions
+(e.g., FLTrust) as arithmetic circuits, EIFFeL [55] enables secure aggregation of verified updates. Although FLAME
+and EIFFeL capture both Byzantine robustness and privacy
+preservation (i.e., update confidentiality), the accuracy of the
+global model could become equivalent to a random guess if
+the proportion of malicious clients is ≥50%.
+III.
+
+P ROBLEM F ORMULATION
+
+IV.
+
+A. System Model
+
+A. Overview
+
+Before proceeding, we provide some assumptions about
+MUDGUARD. We assume training is conducted on a dataset
+D with K data samples composed with feature space X (each
+sample containing all features) and a label set Y. Additionally,
+D is horizontally partitioned among n clients, indicated as
+Xi = Xj , Yi = Yj , Ii ∩ Ij = ∅, ∀Di , Dj , i ̸= j, where all
+clients share the same feature space and labels but differ in
+sample index space I. FL aims to optimize a loss function:
+n
+P
+ki
+arg min
+K Li (w, Di ), where Li (·) and ki are the loss
+w
+
+MUDGUARD OVERVIEW AND D ESIGN
+
+In a traditional FL system, clients send updates to the
+servers for global model aggregation. Considering there exist
+malicious clients, we should maintain the Byzantine robustness
+such that malicious updates should be excluded properly. To
+do so, the servers must separate the malicious clients from the
+semi-honest clients. DBSCAN helps the servers to perform
+clustering. Since the main difference between the malicious
+and the benign is in the direction and magnitude of the
+updates, we use the adjusted cosine similarity of updates as
+feature extraction to obtain better clustering accuracy. Under
+the (semi-)honest majority, the clustering result directly links
+to the group size. However, for a dynamic malicious majority,
+we cannot judge if a cluster is malicious only based on its
+size. To address this issue, we propose Model Segmentation.
+Unlike traditional FL generating “a unique" global model, our
+proposed algorithm can yield multiple aggregation results. It
+does not require the servers to know whether a given group
+is malicious or not. Moreover, it only aggregates the updates
+within the same cluster and then returns the results to the
+corresponding clients. We thus guarantee that the semi-honest
+will not be aggregated with the malicious.
+
+i=1
+
+function and local data size of i-th client.
+For reasons that relate to the versatility of the FL system,
+we also consider S (> 2) servers to carry out clustering and
+aggregation (e.g., FedAvg). This allows us to protect from
+malicious servers who cannot reconstruct the secrets so long
+as their number is less than S/2 by using cryptographic tools,
+in which clients send updates in secret-shared format. We state
+that our Byzantine solution can also be executed by only one
+server. In this case, considering privacy, we have to assume
+that the server must be fully trusted or semi-honest. Note that
+our focus here is on the existence of malicious servers. In
+this research line [46], [40], secure computation is considered
+among multiple servers. Due to page limit, we summarize
+frequently used notations in Table VI (see Appendix A).
+
+As far as fighting against inference attacks is concerned, we
+should protect the confidentiality of the updates. For this, we
+use SS to wrap the updates into a secret shared format in the
+sense that individual secret shares cannot reveal the underlying
+information of the updates. By doing so, we guarantee that
+the updates are secured from eavesdroppers, semi-honest, or
+even malicious servers and further can be used on secure
+multiplication, comparison, and aggregation via cryptographic
+tools. However, using SS alone is not sufficient to defend
+against differential attacks. To thwart the attack, we apply
+DP to prevent the attackers from extracting benign updates
+
+B. Threat Model
+We mainly consider potential threats incurred by participating clients, servers, and outside adversaries.
+• Attackers’ goal. We assume that two different entities are
+involved in the training: semi-honest and dynamic malicious
+parties (including servers and clients), in which both try to
+infer the privacy (updates) information of others from the
+4
+
+Therefore, in each training round (of the optimization),
+client i derives the gradients using SGD [12]. Considering the
+upcoming cryptographic clustering, one needs to compute the
+signs of gradients sign(ĝit ) ∈ {−1, +1} as SignSGD [6] and
+then encodes to Boolean representation, which is compatible
+with binary SS and XOR operations. Without loss of generality,
+we implement a widely used encoding/decoding method as
+
+1, sign(ĝit ) = +1
+ECD(sign(ĝit )) =
+,
+0, otherwise
+
+Fig. 1: Optimization on the calculation of adjusted cosine
+similarity.
+: optimized process: by binary SS, [[CosM]] is
+computed via bit-XOR.
+: unoptimized process: taking
+gradients or weights as updates to compute [[CosM]].
+
+DCD(ECD(sign(ĝit ))) = 2ECD(sign(ĝit )) − 1.
+This method guarantees DCD(ECD(sign(ĝit ))) = sign(ĝit ).
+Each client sends the encoded updates to the servers via binary
+SS and broadcasts the hash results of unencoded updates
+for future verification. Although SignSGD is lightweight, it
+brings a negative impact on the accuracy of clustering. Section V-A provides a detailed analysis of this impact. Note
+that SignSGD has the natural capability of defending against
+scaling attacks [3] since it only takes signs as updates and
+clips the magnitude of gradients. An attacker still can easily
+deteriorate the global model by constructing updates in the
+opposite direction of benign updates.
+
+from the semi-honest group. Since injecting noise brings a
+negative influence on the accuracy of the training model, we
+enable clients to perform denoising before wrapping the results
+into shares. Note that this does not invalidate DP due to the
+post-processing nature [22]. We also consider the malicious
+minority servers and thus leverage HHF to prevent malicious
+servers from performing incorrect aggregation, e.g., merging
+the gradients from two different groups. Due to the page limit,
+we review machine learning and security tools in Appendix C.
+
+Clustering. As a crucial variable in FL, updates determine
+the directions and magnitudes of updating in the model, while
+Byzantine attackers introduce abnormal updates. Traditional
+clustering approaches directly use updates as inputs, and cosine
+similarity as metric [49], causing informative redundancy and
+blurring obvious features, especially in deep models (e.g.,
+ResNet [32]), thereby producing frequent false positives and
+negatives. Since the adjusted cosine similarity measures the
+difference in directions and magnitudes of updates at the same
+time, we use the pairwise adjusted cosine similarity CosM as
+a method for extracting features, i.e., CosM and L2 distance,
+used as the input and the main metric of DBSCAN, respectively. We find that this method is effective in distinguishing
+the updates because 1) calculating CosM (feature extraction) is
+equivalent to reducing the informative redundancy of updates
+to improve the clustering accuracy. 2) Using it to calculate
+the pairwise L2 distance can expand the pairwise differences
+which are not clearly computed by CosM. Thus there is a more
+clear density difference between honest and malicious updates.
+3) By subtracting the mean updates, CosM helps to account
+for reducing the influence of non-iid, allowing for a more
+accurate comparison of clients’ updates. 4) When the model
+converges, using cosine similarity is inappropriate because
+even semi-honest clients have updates in different directions.
+For example, under a Gaussian Attack (GA), the malicious and
+semi-honest clients become indistinguishable. The accuracy
+of the global model drops sharply to the level of the initial
+training. We provide concrete examples in Appendix I4 to
+demonstrate the advantages of using CosM. Note that this
+advantage is more notable when the cryptographic tools are
+not optimized. Since the proposed optimization uses SignSGD
+to align the magnitudes of updates, computing cosine similarity
+on it naturally provides the same effect on clustering as
+adjusted cosine similarity.
+
+B. Byzantine-robust Aggregation Strategy with Cryptographic
+Computations
+Our workflow of the Byzantine-robust aggregation strategy
+is as follows. Firstly, the clients upload the gradients of the
+local models to the server side. Secondly, servers extract
+features of gradients and split gradients into multiple clusters
+via DBSCAN. Finally, servers aggregate the gradients in the
+clusters separately and send aggregations to the corresponding
+clients. In the following, we complete the strategy over secure
+cryptographic computations.
+Gradients Upload. The use of the pairwise adjusted cosine
+similarity matrix (CosM) as a method for extracting features
+is motivated by the fact that it measures both the difference
+in directions and magnitudes of updates. This is particularly
+useful when dealing with clients exhibiting various behaviors
+and non-iid cases. In this context, CosM and L2 distance are
+used as input and the metric of DBSCAN, respectively. The
+most direct method of computing CosM is as follows. We first
+subtract updates with their mean values. For the updates of
+each client, we compute the pairwise dot product and L2 norm
+to derive the numerator and denominator, respectively, and
+then we can calculate CosM from the division (of numerator
+and denominator). The above operations become inefficient if
+the processing is carried out using cryptographic tools. The
+servers are required to perform the computations of shared
+mean, numerator, denomination, and then division to finally
+get the shared adjusted cosine similarity matrix [[CosM]].
+To improve efficiency and optimize the above method, we
+consider the denoised gradients of client i at t-th round ĝit
+as updates and perform binary secret sharing via SignSGD.
+Note that SignSGD only takes the signs of gradients to the
+update model, resulting in benign and malicious having the
+same magnitudes. Thus, in this case, we can easily compute the
+adjusted cosine similarity via simple bit-wise XORing. Figure
+1 depicts this optimization procedure.
+
+Next, we describe the process of our clustering. We first
+extract features (different updates directions with magnitudes)
+- calculating the CosM ← git ⊕ gjt , i, j ∈ [n], and then use
+5
+
+Resistance against Malicious Servers. To further prevent malicious servers from casting and sending incorrect aggregation,
+we use HHF so that every client can verify if the received aggregation is correct. Specifically, the proposed method involves
+a pre-upload step in which client i broadcasts hash values
+of signs of gradients Hδ,ϕ (sign(ĝti )) to the remaining parties
+before uploading secret-shared updates to the server side.
+The servers use additive homomorphism
+of HHF to calculate
+Q
+hash values of aggregations i∈cj Hδ,ϕ (sign(ĝti )) = Hδ,ϕ (Gjt )
+based on the clustering results, where cj refers to a cluster j
+containing client indexes. After receivingQ
+the aggregations Gjt ,
+j
+the clients can calculate Hδ,ϕ (Gt ) and i∈cj Hδ,ϕ (sign(ĝit ))
+based on the cluster labels and the received hash values, and
+subsequently verify whether these two values are equal or not.
+Note that this method considers the possibility of malicious
+servers that may send incorrect aggregations and IndM to the
+semi-honest clients. However, since only a minority of servers
+are assumed to be malicious, the semi-honest clients take the
+most consistent results as the real results.
+
+it as the input for clustering, thereby reducing the rate of
+false positives. Commonly, the adjusted cosine similarity of
+two vectors is obtained by first calculating the dot product of
+the vectors and then dividing them by the product of their
+respective L2 norm. Since encoding updates ĝit ∈ {−1, +1}d
+to git ∈ {0, +1}d is inspired by [53], we compute XOR of git
+with d − 2p bits, which is equivalent to the result of the dot
+product of ĝit , where p is the counted number of set bits.
+After that, the servers collaboratively compute pairwise L2 distance matrix EucM using secure multiplications
+(vectorij ← CosMi − CosMj , i, j ∈ [n], xij ← vectorij ·
+x −1
+(x −1)2
+(x −1)3
+vectorij , and EucMij ← 1 + ij2 − ij 8
++ ij16 ) and
+compare with density α to derive an indication matrix IndM,
+where IndM = 1 if EucM ≤ α, otherwise IndM = 0. Then by
+applying the DBSCAN, one can derive cluster labels. Note that
+the main focus of this paper is not on optimizing DBSCAN,
+we thus do not describe how to retrieve cluster labels from
+IndM. We refer interested readers to [24].
+We see that α has a crucial influence on clustering accuracy.
+According to the conclusion of Bhagoji et al. [8], benign and
+malicious updates follow normal distributions. We formally
+derive its upper bound of selection (see Theorem 1 and its
+proof in Appendix G).
+
+C. System Design
+Assume client i ∈ [n] holds a horizontally partitioned
+n
+S
+dataset Di satisfying D =
+Di , at t-th round, MUDGUARD
+works as follows.
+
+Theorem 1 (Density Selection). Suppose the distribution of
+benign and √
+malicious updates obeys the normal distribution,
+setting α < 2 guarantees that malicious clients conducting
+a poisoning attack will not be grouped together with benign
+clients.
+
+i=1
+
+Protocol MUDGUARD
+
+√
+Note that taking α < 2 only allows malicious clients to
+be identified as noise points, which is not a 100% guarantee
+that all semi-honest clients are clustered together. Due to the
+difference in training data, it could happen that the distances
+between a √
+semi-honest client and other semi-honest clients are
+greater than 2 by chance, resulting in the semi-honest client
+being identified as a noise point.
+
+➊ Local Training. For each local minibatch, each client
+conducts SGD and takes gradients git as updates.
+➋ Noise Injection. Each client adds noise into git to satisfy
+eit ← git / max(1, ||git ||2 /∆) + N (0, ∆2 σ 2 ).
+DP: g
+➌ Denoising. To improve accuracy, each client denoises
+e
+git by ĝit ← KS(e
+git , N )·e
+git , where KS(·) is the KS distance.
+➍ SS. Each client splits git ← ECD(sign(ĝit )) into S shares
+by binary SS with Tiny Oblivious Transfer (OT) and sends
+SS
+the shares to S servers: [[git ]] ←− git . Besides, by running
+HHF, all clients broadcast Hδ,ϕ (sign(ĝit )).
+➎ Feature Extraction. After receiving n shares, each
+server locally computes a pairwise adjusted cosine similarity matrix by bit-XOR: [[CosMij ]] ← [[git ]] ⊕ [[gjt ]],
+i, j ∈ [n]. To further compute L2 distance, all servers
+convert Boolean shares to arithmetic shares by correlated
+randomness.
+➏ L2 Distance Computation. After conversion, deriving
+multiplicative SS, each server uses HE or OT to produce a triple, satisfying further multiplications. Therefore,
+each server takes [[CosM]] as the inputs of DBSCAN
+and then computes [[EucM]] by (a) pairwise subtraction:
+[[vectorij ]] ← [[CosMi ]] − [[CosMj ]], i, j ∈ [n], (b) dot
+product: [[xij ]] ← [[vectorij ]] · [[vectorij ]], and (c) approxi[[x ]]−1
+([[x ]]−1)2
+mated square root: [[EucMij ]] ← 1+ ij2 − ij 8
++
+([[xij ]]−1)3
+.
+16
+➐ Element-wise Comparison. By comparing each element
+of EucM with density parameter α, each server can
+derive shares of indicator matrix [[IndM]], {IndMij = 1 |
+EucMij ≤ α}.
+
+Model Segmentation. To deal with Byzantine-majority attacks, after obtaining the cluster labels, the servers aggregate
+the updates within the same cluster and return the results
+(and their hash values) to the corresponding clients. In our
+design, unless a malicious client acts honestly, then it will
+not be grouped into a cluster with the semi-honest clients,
+with a relatively large probability. This protects benign clients
+by keeping poisonous updates from global model updates
+computed for benign clusters. Note here we do not further
+explore the case in which malicious clients choose to act
+honestly during training. In fact, if malicious clients behave
+semi-honestly, we will obtain a more accurate global model.
+In a sense, this is a bonus for semi-honest clients. After
+all, in the context of Model Segmentation, it is not required
+to identify malicious groups via any verification algorithms,
+which is a positive thing since it removes the processing
+burden from the servers as the latter do not need to run
+verification over “encrypted-and-noised" updates. Compared
+with the method of FLAME, Model Segmentation does not need
+to assume that most clients in the FL system are (semi-)honest.
+When integrated with an optimized clustering method, Model
+Segmentation can also enhance the Byzantine robustness of the
+MUDGUARD.
+6
+
+works [2], [45] leverage straightforward transformation under
+the cases with only semi-honest parties.
+
+➑ Reconstruction. All servers run a reconstruction algorecon
+rithm to reveal IndM: IndM ←− [[IndM]] and broadcast it
+to the client side. By DBSCAN, one can derive cluster
+labels. Based on these labels, the clients learn about
+clustering information to perform aggregation verification
+in step ➓.
+➒ Model Segmentation. The servers aggregate shares
+(based on the number of labels
+c) with the same labels
+P
+after decoding: {[[Gjt ]] ← i∈cj DCD([[git ]]) | cj = {i |
+i ∈ [n]}, j ∈ [c], } and send to the corresponding clients.
+➓ Aggregation Verification. After reconstructing aggregation, according to cluster labels, each client verifies
+Q
+?
+aggregation by i∈cj Hδ,ϕ (sign(ĝit )) = Hδ,ϕ (Gjt ). If the
+equation holds, clients accept the aggregation results;
+otherwise, reject and abort.
+
+Multiplication. As shown in step ➏ of Protocol IV-C, multiplications are necessary in DBSCAN. If we consider the semihonest majority setting on the server side, the replicated SS and
+SSS can be applied here since both satisfy the multiplicative
+property, in which two shares multiplications can be computed
+locally without any interaction. For the existence of malicious
+servers, we consider the protocol proposed by Lindell et
+al. [41], modifying SPDZ [19] to the setting of multiplicative
+secret sharing modulo a prime (including replicated SS and
+SSS). Furukawa et al. [27] also proposed a similar variant for
+TinyOT. Both are based on the observation that the optimistic
+triple production using HE or OT can be replaced by producing
+a triple using multiplicative secret sharing instead.
+Secure Comparison with Density α. With arithmetic shares,
+the comparison (step ➐ of Protocol IV-C) requires extra correlated randomness, especially secret random bits in the larger
+domains. For the semi-honest majority servers, we follow the
+protocol [16] with Z2 to implement comparison efficiently.
+Under the malicious minority, we should check if the output
+is actually a bit. We follow [18] to multiply a secret random
+bit with comparison output and then reconstruct it. If the
+reconstructed value is a bit, it proves that the malicious servers
+do not deviate from the comparison protocol.
+
+We note that the corresponding implementation-level algorithms of MUDGUARD are given in Appendix B and will be
+used in the experiments.
+D. Privacy Preservation Guarantee
+Differential attack resistance. As shown in step ➋ and ➌
+of Protocol IV-C, each client i can add differentially private
+noise into gradients and perform denoising later. Like [48],
+we use KS distance (of noised gradients and noise distribution) as a metric to denoise by multiplying noised gradients.
+Differentially private updates are first denoised, taken signs,
+and encoded before being secretly shared.
+
+E. Security Analysis
+MUDGUARD achieves security properties under malicious
+majority clients and malicious minority servers. Malicious
+parties may arbitrarily deviate from the protocol, while the
+rest of the parties are semi-honest, trying to infer information
+as much as possible (but following the protocol). We assume
+malicious clients and servers may collude with each other.
+
+Binary SS. Unlike arithmetic SS in domain Z2b , binary SS
+works with b = 1, where b is the bit length. To resist malicious
+clients deviating from SS specifications, we apply OT in our
+design (step ➍ of Protocol IV-C). However, this brings a
+considerable increase in communication costs. Furukawa et
+al. [27] used TinyOT to generalize multi-party shares with
+communication complexity linear in the security parameter.
+We follow this method so that each client i binary shares
+its updates to S servers. The SS scheme guarantees that a
+malicious server cannot reconstruct the secret even if colluding
+with the rest of the servers under a malicious minority setting.
+
+A secure FL system satisfies correctness, privacy, and
+soundness. The latter two are security requirements. Informally, the requirements are: (1) the adversary learns nothing
+but the differentially private output; (2) the adversary cannot
+provide an invalid result accepted by a benign client. We first
+define the security in the UC framework [14]. This allows
+the system to remain secure and capable to be arbitrarily
+combined with other UC secure instances. In such a framework, security is defined by a well-designed ideal functionality that captures several properties simultaneously, including
+correctness, privacy, and soundness. Specifically, Figure E
+(Appendix E) shows our ideal functionality FMUDGUARD . The
+definition captures all required security properties except DP
+and soundness against malicious clients. Appendix E will
+discuss the remaining.
+
+XOR. In step ➎ of Protocol IV-C, after receiving shares,
+each server can compute the pairwise dot product independently. Assume a server s has [[git ]]s , where s ∈ [S]. Since
+git = [[git ]]1 ⊕ · · · ⊕ [[git ]]S , we have git ⊕ gjt = [[git ]]1 ⊕
+[[gjt ]]1 · · ·⊕[[git ]]S ⊕[[gjt ]]S , ∀i, j ∈ n. Therefore, in this case, each
+server s can compute [[dot_product]] by {[[dot_productij ]]s =
+[[git ]]s ⊕ [[gjt ]]s | ∀i, j ∈ [n]} locally and without interactions
+with other servers. By multiplying a constant, one can derive
+shares of adjusted cosine similarity. Using binary SS can help
+us to save element multiplication and division operations.
+
+We prove the security in a F-hybrid model. Our proof
+adopts three existing ideal functionalities: FRO , FSS and FB2A .
+The first is for the random oracle model, and the latter two
+are the ideal functionalities of secret sharing [27] and bit-toarithmetic conversion [54] respectively. We have the following
+theorem:
+
+Bit to Arithmetic Conversion. The servers also need to
+convert the shares in Z2 to arithmetic shares (Z2b ) to support
+the subsequent linear operations and multiplications. We implement the conversion by following [54]. A common method
+is to use correlated randomness in these two domains (doublyauthenticated bits) and extend them. After this, the servers
+can derive arithmetic shares of the dot product. Note some
+
+Theorem 2. MUDGUARD securely realizes FMUDGUARD in the
+(FRO , FSS , FB2A )-hybrid model, against malicious-majority
+clients and malicious-minority servers, considering arbitrary
+collusions between malicious parties.
+7
+
+Dataset
+
+The remaining two properties are related to data output,
+which is not concerned with the cryptographic view. Specifically, DP is provided by adding noise (Appendix E), and
+soundness against malicious clients is provided by Model
+Segmentation.
+
+learning rate
+
+Note our well-designed functionality captures as many attacks as possible. In other words, soundness against malicious
+clients and DP cannot be achieved under the UC model.
+On the one hand, recognizing malicious clients is quite a
+subjective task since they do not deviate from the protocol in
+cryptographic ways. There might be a benign client providing
+similar inputs that seem to be malicious, with a non-negligible
+possibility. On the other hand, the output with DP can be
+obtained by the adversary in our definition. Hence differential
+attacks should not be captured in the functionality.
+
+proportion of malicious clients ξ
+λ
+α
+#edge-case
+DP’s (ϵ, δ, ∆)
+
+FL system settings. Table II gives the detailed parameters. We
+follow the parameters setting of [43], [6], set the minibatch size
+to 128, and use the Adam optimizer [34] for training LeNet
+and ResNet-18. In the experiments, all the clients participate in
+the training from beginning to end. By default, we assume that
+there exist 100 clients splitting the training data with non-iid
+degree q=0.5; the proportion of malicious clients is set to ξ=0.6
+(i.e., 60 out of 100 clients are malicious). The testing accuracy
+is computed over the whole testing dataset. We inject triggers
+into the whole testing dataset to inspect the ASR of BA. The
+Ardis and Southwest airplanes datasets with changed labels
+are used to inspect the ASR of EA in MNIST and CIFAR10, respectively. Note that the main focus of the experiments
+is to examine the complexity of MUDGUARD and to check
+if MUDGUARD can effectively fight against Byzantine attacks.
+Thus, we do not further present details for client selection
+during each round of training, which will not affect the test
+of Byzantine robustness. In the clustering and robustness
+comparison, we define weights-MUDGUARD as a variant
+of MUDGUARD, which uses SGD to update models and takes
+pairwise adjusted cosine similarity of updates as inputs and
+L2 norm as clustering metric, without applying any security
+tools.
+
+′
+
+wit ← wt−1 − η∇L(wt−1 , Di ), wit ← wt−1 − η∇L(wt−1 , Di ).
+Then, client i solves the optimization problem:
+′
+
+arg min λLi (wt−1 , Di ) + (1 − λ)∥wit − wit ∥COS ,
+′
+
+wit
+
+where ∥·∥COS refers to adjusted cosine distance. λ ∈ (0, 1] is
+a hyperparameter to balance the efficacy and stealthiness of an
+attack. A smaller λ makes the attack harder to be filtered, but
+its efficacy is less to be upheld. Section V-A gives a detailed
+analysis.
+V.
+
+300
+
+CIFAR-10
+
+Byzantine-attacks settings. We consider six poisoning attacks
+aforementioned in Section II-A. For GA, Krum, and Trim
+attacks, we adopt the default settings in [25]. To achieve a
+fair comparison, we follow the settings of BA [49], where a
+white rectangle with size 6×6 is seen as a trigger embedded
+on the left side of the image. The Poisoning Data Rate (PDR)
+is also aligned with the settings of [49]. Wang et al. [59] did
+not provide a dataset for FMNIST. In the experiments, we do
+not consider launching EA to FMNIST. To balance the main
+and attack tasks, we set λ as 0.5.
+
+Recall that in Section III-B, a Byzantine-robust aggregation
+strategy is available to attackers. Malicious clients can adapt
+their attacks to nullify the robustness of the system. Note
+that untargeted attacks (e.g., Krum and Trim attacks) solve
+an optimization problem to maximize the efficacy of attacks,
+meaning the strategies of untargeted attacks are already optimal. Therefore, we design and evaluate an adaptive backdoor
+attack for MUDGUARD. Specifically, the attack is formulated by
+adding a sub-task to the attack optimization problem. Given
+the fact that MUDGUARD achieves Byzantine-robustness by
+aggregating only benign updates as much as possible based on
+adjusted cosine distance, the sub-task of this attack is to try
+to minimize the adjusted cosine distance of malicious updates
+from that of benign updates. Formally, a malicious
+client i first
+′
+derives benign and malicious updates (wit and wit ) with owned
+′
+unpoisoned and poisoned data (Di and Di ), respectively, at
+the t-th round:
+
+′
+
+0.01
+
+FMNIST
+
+[10, 100, 500]
+1
+[0.1, 0.5, 0.9]
+1
+250
+1200
+0.01 with 1e−5
+weight decay
+[0.1, 0.6, 0.9]
+0.5
+1
+/
+300
+(5, 1e−5 , 5)
+
+TABLE II: FL system settings. The parameters’ range and
+default values are in the form of “[min, default, max]".
+
+F. Adaptive attack
+
+′
+
+MNIST
+
+#clients
+clients subsampling rate
+non-iid degree
+#local epochs
+#global epochs
+
+E VALUATION
+A. Evaluation on Accuracy
+
+We use MNIST [39] and FMNIST [61] to train CNN
+same with [15] and CIFAR-10 [36] to train ResNet-18 [32].
+Please refer to Appendix H1 for a detailed description. To
+conduct a fair comparison against existing Byzantine-robust
+methods, we follow the training settings of [15], [49]. Based
+on the number of classes L, the clients are divided into L
+groups. Non-iid degree q determines the heterogeneity of data
+distribution. For example, if we use MNIST with 10 classes
+and q = 0.5, the samples with label “0" are allocated to
+the group “0" with probability 0.5 (but to other groups with
+probability 1−0.5
+10−1 ).
+
+We set the baseline as a “no-attack-and-defense" FL, which
+means it excludes the use of any cryptographic tools as well
+as Byzantine-robust solutions but only trains with fully honest
+parties. This reaches the highest accuracy and fastest convergence speed for FL training. We then set #clients participating
+in the baseline training equal to #semi-honest clients in the
+malicious existence case. We conduct each experiment for
+10 independent trials and further calculate the average to
+achieve smooth and precise accuracy performance. We evaluate
+MUDGUARD’s accuracy and ASR by varying the total number
+of clients, the proportion of malicious clients, and the degree
+8
+
+Attacks
+
+baseline
+
+GA
+
+LFA
+
+Krum
+
+Trim
+
+AA
+
+BA
+
+EA
+
+ξ
+
+0.5
+0.6
+0.7
+0.8
+0.9
+
+0.975
+0.977
+0.975
+0.969
+0.969
+
+0.973
+0.975
+0.971
+0.968
+0.968
+
+0.967
+0.974
+0.971
+0.964
+0.968
+
+0.955
+0.952
+0.956
+0.942
+0.943
+
+0.965
+0.96
+0.953
+0.944
+0.937
+
+0.979 / 0
+0.979 / 0.002
+0.977 / 0
+0.976 / 0.003
+0.971 / 0.005
+
+0.972 / 0.002
+0.968 / 0.001
+0.963 / 0.002
+0.961 / 0.005
+0.963 / 0.002
+
+0.966 / 0.03
+0.968 / 0.023
+0.953 / 0.07
+0.965 / 0.085
+0.963 / 0.093
+
+n
+
+10
+50
+100
+200
+500
+
+0.978
+0.975
+0.977
+0.962
+0.763
+
+0.978
+0.97
+0.975
+0.962
+0.762
+
+0.965
+0.958
+0.974
+0.948
+0.72
+
+0.961
+0.96
+0.952
+0.951
+0.722
+
+0.962
+0.949
+0.96
+0.943
+0.735
+
+0.976 / 0
+0.975 / 0
+0.979 / 0.002
+0.963 / 0.002
+0.738 / 0.004
+
+0.976 / 0
+0.975 / 0
+0.968 / 0.001
+0.961 / 0
+0.762 / 0.001
+
+0.975 / 0
+0.967 / 0.02
+0.968 / 0.023
+0.962 / 0.042
+0.756 / 0.007
+
+q
+
+0.1
+0.3
+0.5
+0.7
+0.9
+
+0.976
+0.974
+0.977
+0.898
+0.709
+
+0.975
+0.973
+0.975
+0.894
+0.682
+
+0.978
+0.974
+0.974
+0.872
+0.705
+
+0.975
+0.966
+0.952
+0.887
+0.694
+
+0.975
+0.972
+0.96
+0.906
+0.689
+
+0.978 / 0
+0.98 / 0
+0.979 / 0.002
+0.89 / 0.013
+0.689 / 0.017
+
+0.975 / 0.003
+0.978 / 0.002
+0.968 / 0.001
+0.876 / 0.011
+0.707 / 0.025
+
+0.976 / 0.031
+0.978 / 0.026
+0.968 / 0.023
+0.883 / 0.039
+0.72 / 0.06
+
+TABLE III: Comparison of accuracy with baseline and ASR by an increasing proportion of malicious clients (ξ ≥ 0.5), #clients
+n and non-iid degree q, where MNIST is used. The results under targeted attacks are in the form of “testing accuracy / ASR".
+
+of non-iid; and further compare the performance with the
+baseline.
+
+clients, is larger than 0.1 in some trials.
+As shown in Figure 2b-e, the accuracy of the semi-honest
+group under these attacks converges slightly slower than the
+baseline. LFA, Krum, and Trim attacks aim to either train
+poisoned data or optimize local poisoned models to deteriorate
+the global model’s testing accuracy. Due to the attacks being
+relatively slow and not as direct as GA, malicious updates
+cannot deviate 100% from benign updates at the beginning
+of the training (which means that malicious and semi-honest
+clients could be clustered together). However, with more training rounds, the deviation becomes clearer. Thus, MUDGUARD
+separates the two groups easily.
+
+Table III shows that, under GA, AA, BA, and EA, the
+testing accuracy is on par with the baseline (with only a
+0.008 gap on average) in MNIST. However, compared with
+the baseline, the results of MUDGUARD under LFA, Krum,
+and Trim attacks show slight drops (on average, 0.025 in
+MNIST). This is so because MUDGUARD has slow convergence
+and large fluctuation. This is incurred by two factors. To
+reduce the overheads of secure computations, we apply binary
+SS in SignSGD. SignSGD could cause negative impacts on
+clustering. Only taking the signs of the gradients can ignore
+the effect of the magnitudes of the malicious gradients. This
+makes the clustering a bit prone to inaccuracy. The other factor
+is the LFA and Krum/Trim attacks either poison the training
+data and further poison updates or the local model to optimize
+the attacks. In the early stage of training, the malicious models
+do not perfectly fit the poisoned training data and local models
+yet. Thus, the semi-honest and malicious clients could be
+classified into the same cluster.
+
+AA, BA, and EA have no impact on the model’s testing
+accuracy since their main purpose is to improve the ASR
+(nearly equal to 1 without defense). Under MUDGUARD, the
+final ASR is well suppressed. The ASR of AA and BA are
+close to 0 in MNIST (see Figure 2f-g). But the ASR of EA
+is much higher than that of AA and BA, reaching an average
+of 0.041. This is because, in EA, the edge-case training sets
+owned by attackers are very similar to the training sets with
+the target labels. If the discriminative capability of the model
+is not strong enough, the update directions of semi-honest and
+malicious gradients are also very close, making it difficult for
+MUDGUARD to distinguish them.
+
+Figure 2 presents an overview of the testing accuracy (of
+baseline and semi-honest and malicious groups) and ASR (of
+the two groups) under Byzantine attacks in the default settings
+of Table II, where MNIST is used.3 We see that semi-honest
+clients can obtain comparable accuracy to the baseline at the
+end of the training. In Figure 2a-d, the accuracy of the semihonest group and the baseline sharply increase from 0.1 at
+epoch 0 to around 0.95 at epoch 25, then gradually converge
+to 0.97. In the GA, since the malicious group can only receive
+aggregation of noise, their accuracy always fluctuates around
+0.1, equalling a random guess probability. As for LFA, the
+model accuracy gradually drops from 0.1 (at the beginning)
+to 0. This is because their models are trained on label-flipped
+datasets, while the labels of the testing set are not flipped. If
+the testing set is used to detect a poisoned model, the result
+should be flipped labels and failing to match the labels in the
+testing set, which results in 0. Since semi-honest and malicious
+clients can be classified into the same cluster at the beginning
+of the training, the accuracy of their models, w.r.t. malicious
+
+The experimental results in FMNIST and CIFAR-10 show
+the same trends as those in MNIST under the tested attacks.
+Due to space limitations, we present these results in Appendix H2.
+Impact of the proportion of malicious clients. We evaluate
+testing accuracy and ASR when the proportion of malicious
+clients ξ ≥ 0.5. In Tables III, VII, and VIII, we can see that
+all accuracy results show a slightly downward trend with the
+increase of ξ in three datasets. For the baseline, the accuracy
+on average drops 0.008, 0.057, and 0.084 in MNIST, FMNIST,
+and CIFAR-10, respectively. Under GA, AA, BA, and EA,
+this kind of decline is on par with the baseline, whether
+in MNIST (0.003-0.009), FMNIST (0.059-0.66), or CIFAR10 (0.078-0.093). Under the LFA, Krum, and Trim attacks,
+affected by the slow convergence and fluctuation, the testing
+accuracy of MUDGUARD also declines a bit more than the
+baseline, which is 0.012-0.028, 0.035-0.055, and 0.089-0.107
+
+3 The lines refer to average cases, while the shadow outlines the max and
+min accuracy of each epoch.
+
+9
+
+grows with the increase in the number of malicious clients. In
+conclusion, MUDGUARD is effective in maintaining accuracy
+even when the proportion of malicious clients is ≥ 50%. While
+there is a slight decline in accuracy in some cases, it is on par
+with the baseline and does not significantly affect the overall
+performance of the system.
+
+(a) Gaussian Attack
+
+(b) Label Flipping Attack
+
+(c) Krum Attack
+
+(d) Trim Attack
+
+(e) Adaptive Attack
+
+Impact of the total number of clients. Tables III, VII
+and VIII, show the comparable testing accuracy of MUDGUARD
+under different attacks, as well as ASR of BA and EA when
+the total number of clients is set from 10 to 500. We observe
+that the accuracy appears to fall whilst the client number is
+increasing, especially when #clients = 500, it descends by
+about 0.2, 0.25, and 0.4 in MNIST, FMINST, and CIFAR-10,
+respectively. This is caused by a relatively small number of
+training samples. For example, in CIFAR-10, each client can
+only be assigned 100 samples, which does not capture one
+minibatch size, resulting in a “bad" performance in terms of
+testing accuracy. However, MUDGUARD is not affected by this
+factor, and it can further defend against all untargeted attacks
+to maintain accuracy at the same level as the baseline. The
+ASR of AA and BA are controlled to nearly 0%. Although EA
+provides a higher ASR (than AA and BA), it drops to nearly
+0 when #clients = 500, which confirms that its effectiveness
+relies on how well the model learns. Overall, MUDGUARD can
+maintain a high level of accuracy under different attacks and
+across a range of client numbers and can effectively defend
+against untargeted attacks. Even when against EA, MUDGUARD
+can reduce its ASR to nearly 0%.
+Impact of the degree of non-iid. We further present the testing
+accuracy and ASR for the cases where the degree of non-iid
+ranges from 0.1 to 0.9 in Tables III, VII, and VIII. We can see
+that in the presence of attacks, MUDGUARD can still remain
+at the same level of performance as the baseline, dropping
+only 0.018 on average. The largest decrease is 0.067 when
+q = 0.5, which happens under the Krum attack on training
+LeNet with FMNIST. Note the accuracy and the degree of noniid show a negative correlation with/without attacks, which is
+also in line with the conclusion of [43] that FedAvg performs
+not well in the case of heterogeneous data distribution. The
+ASR of BA appears to have a slight growth as q ascends in
+(F)MNIST. This is because, in the high degree of non-iid, the
+distances among semi-honest clients also raise. For targeted
+attacks like AA and BA, the directions of updates are closer
+to those of benign updates than those of untargeted attacks. At
+the beginning of training, there are cases when the distances
+between malicious clients and semi-honest clients are similar
+to those between semi-honest clients, making it difficult for
+MUDGUARD to capture subtle differences. For the ASR of
+EA, as concluded in analyzing the impact of total clients,
+EA performs poorly when the model’s accuracy is low. As
+a general conclusion, MUDGUARD achieves a high robustness.
+Semi-honest clients can get accurate models, while malicious
+clients fail to attack but also are unable to get the models.
+
+(f) Backdoor Attack
+
+(g) Edge-case Attack
+
+Fig. 2: Comparison of testing accuracy among baseline, semihonest, and malicious groups under untargeted attacks (a-d)
+and ASR between the groups under targeted attacks (e-f),
+where we train MNIST by the default settings in Table II.
+
+in MNIST, FMINST, and CIFAR-10, respectively. Recall that
+malicious clients hold a portion of the benign dataset but do
+not contribute to the global model (note this equals to the
+case where the portion of the benign dataset is missing). From
+this perspective, the accuracy should be related to the number
+of semi-honest clients, where the max accuracy we achieve
+could correspond to the case when the clients are all semihonest. Beyond the accuracy, the ASR of EA has an upward
+trend while the number of malicious clients is increasing, rising
+by 0.005 and 0.048 in MNIST and FMNIST. Since EA is
+not perfectly distinguished by MUDGUARD, the ASR naturally
+
+Effectiveness of clustering. To investigate the effectiveness
+of our clustering approach, we present the impact on True
+Positives Rate (TPR) and True Negatives Rate (TNR) under
+all attacks of ξ = 0.6 in Table IV and compare against the
+method of FLAME. The FLAME takes updates as inputs and
+cosine similarity as a metric for clustering. Note on the server
+side, Model Segmentation does not need to identify which
+10
+
+MNIST
+
+ξ =0.6
+
+GA
+
+LFA
+
+Krum
+
+Trim
+
+AA
+
+BA
+
+EA
+
+FMNIST
+
+CIFAR-10
+
+TPR
+
+TNR
+
+TPR
+
+TNR
+
+TPR
+
+TNR
+
+FLAME
+weightsMUDGUARD
+MUDGUARD
+
+0.821
+
+0.846
+
+0.848
+
+0.847
+
+0.879
+
+0.928
+
+1
+
+1
+
+1
+
+1
+
+1
+
+1
+
+0.957
+
+1
+
+0.94
+
+1
+
+0.966
+
+1
+
+FLAME
+weightsMUDGUARD
+MUDGUARD
+
+0.653
+
+0.612
+
+0.634
+
+0.655
+
+0.742
+
+0.711
+
+0.974
+
+0.987
+
+0.975
+
+0.977
+
+0.98
+
+0.985
+
+0.929
+
+0.924
+
+0.927
+
+0.916
+
+0.943
+
+0.967
+
+FLAME
+weightsMUDGUARD
+MUDGUARD
+
+0.587
+
+0.622
+
+0.521
+
+0.63
+
+0.527
+
+0.578
+
+0.974
+
+0.953
+
+0.973
+
+0.968
+
+0.971
+
+0.966
+
+0.916
+
+0.929
+
+0.96
+
+0.933
+
+0.967
+
+0.959
+
+FLAME
+weightsMUDGUARD
+MUDGUARD
+
+0.691
+
+0.679
+
+0.699
+
+0.664
+
+0.646
+
+0.615
+
+0.976
+
+0.964
+
+0.975
+
+0.965
+
+0.973
+
+0.988
+
+0.938
+
+0.944
+
+0.927
+
+0.913
+
+0.964
+
+0.958
+
+FLAME
+weightsMUDGUARD
+MUDGUARD
+
+0.591
+
+0.573
+
+0.612
+
+0.625
+
+0.766
+
+0.719
+
+0.998
+
+0.982
+
+0.99
+
+0.982
+
+0.984
+
+0.982
+
+0.971
+
+0.943
+
+0.941
+
+0.935
+
+0.943
+
+0.96
+
+FLAME
+weightsMUDGUARD
+MUDGUARD
+
+0.777
+
+0.763
+
+0.794
+
+0.83
+
+0.856
+
+0.897
+
+0.957
+
+0.969
+
+0.965
+
+0.97
+
+0.963
+
+0.979
+
+0.936
+
+0.928
+
+0.926
+
+0.931
+
+0.947
+
+0.928
+
+FLAME
+weightsMUDGUARD
+MUDGUARD
+
+0.313
+
+0.32
+
+_
+
+_
+
+0.248
+
+0.288
+
+0.899
+
+0.903
+
+_
+
+_
+
+0.893
+
+0.921
+
+0.856
+
+0.876
+
+_
+
+_
+
+0.827
+
+0.83
+
+extent by binary SS, from the view of testing accuracy and
+ASR, MUDGUARD achieves higher TPR and TNR than FLAME.
+In terms of other analyses of hypeparameters (i.e., α and λ),
+please refer to Appendix H2. Appendix F shows the detailed
+convergence analysis of MUDGUARD.
+Robustness comparison against other methods. We present
+a comparison among MUDGUARD and SOTA methods
+(FLTrust, FLAME, Zeno++, and EIFFeL) in terms of robustness, as shown in Figure 3, where MNIST is used. Several
+Byzantine-robust FL systems can easily and directly apply to
+EIFFeL. We select the two of them (please refer to [55])
+for comparison, namely FLTrust and Zeno++. For brevity, we
+refer to them as EIFFeL-FLtrust and EIFFeL-Zeno++
+hereafter. To demonstrate the advantages of MUDGUARD (based
+on SignSGD), we also compare its robustness with both
+SignSGD and FedAvg w/o defense. To investigate the impact
+of the cryptographic tools on testing accuracy and ASR, we
+also compare MUDGUARD with weights-MUDGUARD. One
+may see that MUDGUARD, countering the case of the malicious
+majority on the client side, does outperform most existing
+approaches.
+In Figure 3a-d, the accuracy of (weights-)MUDGUARD
+and EIFFeL-(FLTrust/Zeno++) can be maintained at
+the same level as the baseline (about 0.97). Due to the
+impacts of misclustering, weights-MUDGUARD has a 0.02
+accuracy gap with EIFFeL-FLTrust. MUDGUARD (with
+DP noise) commits a roughly 0.01 accuracy loss as compared to weights-MUDGUARD. The accuracy of others decreases with the increase in malicious clients, especially when
+ξ ≥ 0.5, the accuracy drops abruptly to the same level
+of FedAvg without defense. For the ASR of AA and BA,
+apart from EIFFeL-(FLTrust/Zeno++), MUDGUARD and
+weights-MUDGUARD, all the remaining methods suddenly
+increase to 1 at ξ=0.4/0.5. Since EA has better attack ability
+(than AA and BA), weights-MUDGUARD and MUDGUARD
+suffer from a nearly 0.08 gap to EIFFeL-FLTrust. The
+ASR of others can raise from ξ = 0.1 and finally reach 1.0
+at ξ = 0.5. SignSGD only limits the magnitude of malicious
+updates rather than filtering them out. Still, it can provide a
+certain level of defense (Figure 3) when there is a low malicious proportion (ξ=0.1-0.2) (compared to FedAvg having an
+average of 0.3 higher testing accuracy under untargeted attacks,
+and an average lower ASR of 0.4 under targeted attacks). As
+the number of malicious clients rises, its robustness drop to
+the level of FedAvg w/o defense.
+
+TABLE IV: Effectiveness of clustering among FLAME
+method, weights-MUDGUARD, and MUDGUARD.
+
+cluster is malicious/semi-honest. We consider false positives
+to occur if semi-honest clients are grouped with the malicious.
+On average, under GA, the TPR and TNR improve from
+0.151 and 0.126 in FLAME to 1 in weights-MUDGUARD,
+respectively. Since MUDGUARD is based on SignSGD, only
+the signs of updates are taken. Ignoring the magnitude effect,
+there is a reduction in TPR (an average reduction of 0.046
+as compared to weights-MUDGUARD). Furthermore, TNR
+does not drop as we set the appropriate parameters according
+to Theorem 1. The same changes can be captured in the case
+of LFA: weights-MUDGUARD has an average increase of
+0.3 and 0.324 in TPR and TNR, respectively, as compared to
+FLAME. Compared with weights-MUDGUARD, MUDGUARD
+drops by 0.04 and 0.05. We see that under other attacks (LFA,
+Krum, Trim, AA, BA, and EA), TPR and TNR are lower than
+the case under GA. Because they launch attacks on either
+training data or optimizing poisoned models, all updates at
+the beginning of training have high similarities, yielding those
+updates being clustered together and the cases of misclustering.
+The true rates of CIFAR-10 are higher than those of (F)MNIST,
+because we can set more rounds to train ResNet-18. After the
+model converges, the true rates reach almost 100%. Thence,
+MUDGUARD obtains more correct clusters.
+
+FLAME indicates that a small-size cluster should be a
+malicious group. Thus, it is easy to confirm malicious clients
+via clustering. In the case of the malicious majority, it is hard to
+identify the malicious/semi-honest via group size. FLTrust
+assumes that before training, an honest server collects and
+trains on a small dataset. In each round, the server takes the
+updates trained by this small dataset as the root of trust. The
+“trusted" results are then compared to the updates sent by the
+clients. If the cosine similarity between them is too small, the
+updates will be filtered out. With this approach, the accuracy
+of the global model remains equivalent to that of the baseline.
+We state that MUDGUARD is on par with FLTrust, but it
+does not suffer from the restriction that the servers need to
+collect an auxiliary dataset ahead of training. We also see that
+when the proportion of malicious clients rises, the accuracy of
+
+From the above analysis, we conclude that TNR and TPR
+are related to the number of training rounds, attack type,
+and the values of updates. Because MUDGUARD groups high
+similarity updates into one cluster and does not need to identify
+malicious/semi-honest clusters, the performance of clustering
+is less affected by the proportion of malicious clients. Similar
+results, like Table IV, can be captured even in the case when
+ξ >0.6. Through Figure 2, Table IV, and the above discussion,
+we state that although TNR and TPR are affected to a certain
+11
+
+model training on the client side. Recall that we propose an
+optimization in Figure 1 (Section IV). We present the average
+overheads of each round of training so as to illustrate the
+optimized and unoptimized results in terms of different training
+models and honest/malicious contexts on the server side. We
+use LeNet and ResNet as models, and the overheads are related
+to their dimensionality (instead of the training data).
+
+MUDGUARD shows a slight decline. When clients upload their
+updates, MUDGUARD can only aggregate them with similar
+directions. If there is only a small percentage of semi-honest
+clients in the system, we naturally have an incomplete training
+set, causing a loss in accuracy. Note the same trends as those
+in MNIST can be seen in FMNIST (Figure 6) and CIFAR-10
+(Figure 7).
+
+(a) Gaussian Attack
+
+(c) Krum Attack
+
+Runtime. In general, we see that providing robustness in the
+malicious context should require more runtime than in the
+semi-honest. This is because extra operations for verification
+are taken, e.g., using HHF to verify whether a received
+aggregation is correct. The unoptimized ResNet-18 takes 3.15s
+per round in the semi-honest context while costing 70.74s
+(approx. an increase of 22 times) in the malicious minority.
+ResNet-18 has more model parameters than LeNet, leading to
+extra computational operations on cryptographic tools, which
+can be seen, in the malicious context, 70.74s v.s. 14.41s. By
+binary SS and polynomial transformation, Table V shows that
+the runtime of LeNet and ResNet-18 are reduced by 68.75%
+(4.54s) and 66.05% (24.03s), respectively, under maliciousminority servers.
+
+(b) Label Flipping Attack
+
+Communication costs. Similar to runtime, malicious-minority
+servers consume a considerable amount of communication
+cost compared to semi-honest ones. Table V shows that after
+optimization, the communication costs drop to 33% in the malicious minority and 10.83% in the semi-honest with ResNet18. In the worse case, we consume 15,572.68MB bandwidth
+per round under malicious minority, but we optimize the cost
+to 5,151.18MB. In the semi-honest context, LeNet achieves the
+best performance, requiring 16MB with optimization, which is
+30.19% of the unoptimized cost (53.46MB).
+
+(d) Trim Attack
+
+Under the same contexts, we present the overheads of the
+client side for FL training in Table V. Note the use of advanced
+FL techniques, such as those outlined in [31], [30], can be
+employed to enhance computing and communication efficiency
+in MUDGUARD. Since applying those is straightforward, we will
+not go into further detail on this matter.
+(e) Adaptive Attack
+
+(f) Backdoor Attack
+
+VI.
+
+C ONCLUSION
+
+We propose a novel Byzantine-robust and privacypreserving FL system. To defend against malicious majority
+clients, we introduce Model Segmentation. Leveraging cryptographic tools and DP, our design enables training to be performed correctly without breaching privacy. Our experimental
+results demonstrate that the proposed protocol effectively deals
+with various malicious settings and outperforms most existing
+solutions. In addition to theoretical and empirical analysis,
+we also provide extensive discussions on model accuracy,
+advantages of MUDGUARD, and its limitations. Due to page
+limits, please refer to Appendix I.
+
+(g) Edge-case Attack
+
+Fig. 3: Comparison with Byzantine-robust methods by ξ =
+0.1 − 0.9.
+
+R EFERENCES
+[1]
+
+M. Abadi, A. Chu, I. Goodfellow, H. B. McMahan, I. Mironov,
+K. Talwar, and L. Zhang, “Deep learning with differential privacy,”
+in CCS, 2016, pp. 308–318.
+[2] T. Araki, A. Barak, J. Furukawa, M. Keller, Y. Lindell, K. Ohara, and
+H. Tsuchida, “Generalizing the spdz compiler for other protocols,” in
+CCS, 2018.
+[3] E. Bagdasaryan, A. Veit, Y. Hua, D. Estrin, and V. Shmatikov, “How
+to backdoor federated learning,” in AISTATS, 2020, pp. 2938–2948.
+
+B. Evaluation on Overheads
+We conduct overheads assessment together with the evaluation of accuracy. The overheads presented in Table V
+capture the runtime and communication costs incurred by
+the implemented cryptographic tools on the server side and
+12
+
+Server-side
+
+Threat Model
+
+Client-side
+
+Semi-honest
+
+Malicious Minority
+
+Semi-honest
+
+Malicious Majority
+
+Traning Model
+
+LeNet
+
+ResNet-18
+
+LeNet
+
+ResNet-18
+
+LeNet
+
+ResNet-18
+
+LeNet
+
+ResNet-18
+
+Runtime(Second)
+Communication Costs (MB)
+
+0.43±0.07/1.3±0.12
+16.20/53.46
+
+1.28±0.25/3.15±0.31
+34.82/314.45
+
+4.54±0.84/14.41±1.49
+873.23/2776.38
+
+24.03±2.83/70.74±2.83
+5151.18/15572.68
+
+14.33±0.74
+16.34
+
+23.71±3.45
+758.48
+
+14.56±1.61
+16.34
+
+23.93 ±4.31
+758.48
+
+TABLE V: Comparison of overheads among different threat models over LeNet & ResNet-18. The results on the server side are
+in the form of "optimized/unoptimized".
+
+[4]
+[5]
+[6]
+
+[7]
+[8]
+
+[9]
+[10]
+
+[11]
+
+[12]
+[13]
+[14]
+[15]
+[16]
+
+[17]
+
+[18]
+
+[19]
+[20]
+
+[21]
+
+[22]
+[23]
+
+[24]
+
+G. Baruch, M. Baruch, and Y. Goldberg, “A little is enough: Circumventing defenses for distributed learning,” in NIPS, 2019.
+M. Bellare, V. T. Hoang, and P. Rogaway, “Foundations of garbled
+circuits,” in CCS, 2012, pp. 784–796.
+J. Bernstein, Y.-X. Wang, K. Azizzadenesheli, and A. Anandkumar,
+“signsgd: Compressed optimisation for non-convex problems,” in ICML,
+2018, pp. 560–569.
+J.-P. Berrut and L. N. Trefethen, “Barycentric lagrange interpolation,”
+SIAM review, pp. 501–517, 2004.
+A. N. Bhagoji, S. Chakraborty, P. Mittal, and S. Calo, “Analyzing
+federated learning through an adversarial lens,” in ICML, 2019, pp.
+634–643.
+B. Biggio, B. Nelson, and P. Laskov, “Poisoning attacks against support
+vector machines,” in ICML, 2012, pp. 1467–1474.
+P. Blanchard, E. M. El Mhamdi, R. Guerraoui, and J. Stainer, “Machine
+learning with adversaries: Byzantine tolerant gradient descent,” in NIPS,
+2017, pp. 118–128.
+K. Bonawitz, V. Ivanov, B. Kreuter, A. Marcedone, H. B. McMahan,
+S. Patel, D. Ramage, A. Segal, and K. Seth, “Practical secure aggregation for privacy-preserving machine learning,” in CCS, 2017, pp. 1175–
+1191.
+L. Bottou, “Large-scale machine learning with stochastic gradient
+descent,” in COMPSTAT, 2010, pp. 177–186.
+R. J. Campello, D. Moulavi, and J. Sander, “Density-based clustering
+based on hierarchical density estimates,” in PAKDD, 2013, pp. 160–172.
+R. Canetti, “Universally composable security: A new paradigm for
+cryptographic protocols,” in FOCS, 2001, pp. 136–145.
+X. Cao, M. Fang, J. Liu, and N. Z. Gong, “Fltrust: Byzantine-robust
+federated learning via trust bootstrapping,” in NDSS, 2021.
+A. Dalskov, D. Escudero, and M. Keller, “Fantastic four:honest-majority
+four-party secure computation with malicious security,” in USENIX
+Security, 2021, pp. 2183–2200.
+I. Damgård, D. Escudero, T. Frederiksen, M. Keller, P. Scholl, and
+N. Volgushev, “New primitives for actively-secure mpc over rings with
+applications to private machine learning,” in IEEE S&P, 2019, pp.
+1102–1120.
+I. Damgård, M. Keller, E. Larraia, V. Pastro, P. Scholl, and N. P. Smart,
+“Practical covertly secure mpc for dishonest majority–or: breaking the
+spdz limits,” in ESORICS, 2013, pp. 1–18.
+I. Damgård, V. Pastro, N. Smart, and S. Zakarias, “Multiparty computation from somewhat homomorphic encryption,” in CRYPTO, 2012.
+I. Dayan, H. R. Roth, A. Zhong, A. Harouni, A. Gentili, A. Z. Abidin,
+A. Liu, A. B. Costa, B. J. Wood, C.-S. Tsai et al., “Federated learning
+for predicting clinical outcomes in patients with covid-19,” Nature
+medicine, pp. 1735–1743, 2021.
+A. Dosovitskiy, L. Beyer, A. Kolesnikov, D. Weissenborn, X. Zhai,
+T. Unterthiner, M. Dehghani, M. Minderer, G. Heigold, S. Gelly et al.,
+“An image is worth 16x16 words: Transformers for image recognition
+at scale,” in ICLR, 2021.
+C. Dwork, “Differential privacy: A survey of results,” in TAMC, 2008,
+pp. 1–19.
+T. ElGamal, “A public key cryptosystem and a signature scheme based
+on discrete logarithms,” IEEE transactions on information theory, pp.
+469–472, 1985.
+M. Ester, H.-P. Kriegel, J. Sander, X. Xu et al., “A density-based
+algorithm for discovering clusters in large spatial databases with noise.”
+in kdd, 1996, pp. 226–231.
+
+13
+
+[25]
+
+M. Fang, X. Cao, J. Jia, and N. Gong, “Local model poisoning attacks
+to {Byzantine-Robust} federated learning,” in USENIX Security, 2020,
+pp. 1605–1622.
+
+[26]
+
+D. Fiore, R. Gennaro, and V. Pastro, “Efficiently verifiable computation
+on encrypted data,” in CCS, 2014, pp. 844–855.
+
+[27]
+
+J. Furukawa, Y. Lindell, A. Nof, and O. Weinstein, “High-throughput
+secure three-party computation for malicious adversaries and an honest
+majority,” in EUROCRYPT, 2017, pp. 225–255.
+
+[28]
+
+J. Geiping, H. Bauermeister, H. Dröge, and M. Moeller, “Inverting
+gradients - how easy is it to break privacy in federated learning?” in
+NIPS, 2020, pp. 16 937–16 947.
+
+[29]
+
+C. Gentry, A fully homomorphic encryption scheme, 2009.
+
+[30]
+
+A. Ghosh, J. Chung, D. Yin, and K. Ramchandran, “An efficient
+framework for clustered federated learning,” in NIPS, 2020, pp. 19 586–
+19 597.
+
+[31]
+
+J. Hamer, M. Mohri, and A. T. Suresh, “FedBoost: A communicationefficient algorithm for federated learning,” in ICML, 2020, pp. 3973–
+3983.
+
+[32]
+
+K. He, X. Zhang, S. Ren, and J. Sun, “Deep residual learning for image
+recognition,” in CVPR, 2016.
+
+[33]
+
+M. Keller, “Mp-spdz: A versatile framework for multi-party computation,” in CCS, 2020, pp. 1575–1590.
+
+[34]
+
+D. P. Kingma and J. Ba, “Adam: A method for stochastic optimization,”
+in ICLR, 2015.
+
+[35]
+
+N. Koti, M. Pancholi, A. Patra, and A. Suresh, “{SWIFT}: Superfast and robust {Privacy-Preserving} machine learning,” in USENIX
+Security, 2021, pp. 2651–2668.
+
+[36]
+
+A. Krizhevsky, G. Hinton et al., “Learning multiple layers of features
+from tiny images,” 2009.
+
+[37]
+
+K. Kumari, P. Rieger, H. Fereidooni, M. Jadliwala, and A. Sadeghi,
+“Baybfed: Bayesian backdoor defense for federated learning,” in IEEE
+Symposium on Security and Privacy (SP), 2023.
+
+[38]
+
+Y. LeCun, B. Boser, J. S. Denker, D. Henderson, R. E. Howard,
+W. Hubbard, and L. D. Jackel, “Backpropagation applied to handwritten
+zip code recognition,” Neural computation, pp. 541–551, 1989.
+
+[39]
+
+Y. LeCun and C. Cortes, “MNIST handwritten digit database,” 2010.
+[Online]. Available: http://yann.lecun.com/exdb/mnist/
+
+[40]
+
+R. Lehmkuhl, P. Mishra, A. Srinivasan, and R. A. Popa, “Muse: Secure
+inference resilient to malicious clients,” in USENIX Security, 2021, pp.
+2201–2218.
+
+[41]
+
+Y. Lindell and A. Nof, “A framework for constructing fast mpc over
+arithmetic circuits with malicious adversaries and an honest-majority,”
+in CCS, 2017, pp. 259–276.
+
+[42]
+
+X. Luo, Y. Wu, X. Xiao, and B. C. Ooi, “Feature inference attack on
+model predictions in vertical federated learning,” in ICDE, 2021, pp.
+181–192.
+
+[43]
+
+B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A. y Arcas,
+“Communication-efficient learning of deep networks from decentralized
+data,” in AISTATS, 2017, pp. 1273–1282.
+
+[44]
+
+E. M. E. Mhamdi, R. Guerraoui, and S. Rouault, “The hidden vulnerability of distributed learning in byzantium,” in ICML, 2018, pp.
+3521–3530.
+
+[45]
+
+P. Mohassel and P. Rindal, “Aby3: A mixed protocol framework for
+machine learning,” in CCS, 2018, pp. 35–52.
+
+[46]
+
+P. Mohassel and Y. Zhang, “Secureml: A system for scalable privacypreserving machine learning,” in IEEE S&P, 2017, pp. 19–38.
+
+[47]
+
+[48]
+[49]
+
+[50]
+[51]
+
+[52]
+[53]
+
+[54]
+[55]
+[56]
+[57]
+
+[58]
+
+[59]
+
+[60]
+
+[61]
+
+[62]
+[63]
+[64]
+
+[65]
+
+Notation
+
+M. Nasr, R. Shokri, and A. Houmansadr, “Comprehensive privacy
+analysis of deep learning: Passive and active white-box inference attacks
+against centralized and federated learning,” in IEEE S&P, 2019, pp.
+739–753.
+M. Nasr, R. Shokri, and A. houmansadr, “Improving deep learning with
+differential privacy using gradient encoding and denoising,” 2020.
+T. D. Nguyen, P. Rieger, H. Chen, H. Yalame, H. Möllering,
+H. Fereidooni, S. Marchal, M. Miettinen, A. Mirhoseini, S. Zeitouni,
+F. Koushanfar, A.-R. Sadeghi, and T. Schneider, “Flame: Taming
+backdoors in federated learning,” in USENIX Security, 2022.
+P. Paillier, “Public-key cryptosystems based on composite degree residuosity classes,” in EUROCRYPT, 1999, pp. 223–238.
+A. Paszke, S. Gross, F. Massa, A. Lerer, J. Bradbury, G. Chanan,
+T. Killeen, Z. Lin, N. Gimelshein, L. Antiga et al., “Pytorch: An
+imperative style, high-performance deep learning library,” NIPS, pp.
+8026–8037, 2019.
+M. O. Rabin, “How to exchange secrets with oblivious transfer.” IACR
+Cryptol. ePrint Arch., 2005.
+M. S. Riazi, M. Samragh, H. Chen, K. Laine, K. Lauter, and F. Koushanfar, “{XONN}: Xnor-based oblivious deep neural network inference,”
+in USENIX Security, 2019, pp. 1501–1518.
+D. Rotaru and T. Wood, “Marbled circuits: Mixing arithmetic and
+boolean circuits with active security,” 2019.
+A. Roy Chowdhury, C. Guo, S. Jha, and L. van der Maaten, “Eiffel:
+Ensuring integrity for federated learning,” in CCS, 2022, pp. 2535–2549.
+A. Shamir, “How to share a secret,” Communications of the ACM, pp.
+612–613, 1979.
+S. Truex, N. Baracaldo, A. Anwar, T. Steinke, H. Ludwig, R. Zhang, and
+Y. Zhou, “A hybrid approach to privacy-preserving federated learning,”
+in AISec, 2019, pp. 1–11.
+H. Wang, K. Sreenivasan, S. Rajput, H. Vishwakarma, S. Agarwal, J.y. Sohn, K. Lee, and D. Papailiopoulos, “Attack of the tails: Yes, you
+really can backdoor federated learning,” in NIPS, 2020.
+H. Wang, K. Sreenivasan, S. Rajput, H. Vishwakarma, S. Agarwal,
+J. Sohn, K. Lee, and D. S. Papailiopoulos, “Attack of the tails: Yes,
+you really can backdoor federated learning,” in NIPS, 2020.
+N. Wu, F. Farokhi, D. Smith, and M. A. Kaafar, “The value of
+collaboration in convex machine learning with differential privacy,” in
+IEEE S&P, 2020, pp. 304–317.
+H. Xiao, K. Rasul, and R. Vollgraf, “Fashion-mnist: a novel image
+dataset for benchmarking machine learning algorithms,” arXiv preprint
+arXiv:1708.07747, 2017.
+C. Xie, K. Huang, P.-Y. Chen, and B. Li, “Dba: Distributed backdoor
+attacks against federated learning,” in ICLR, 2020.
+C. Xie, S. Koyejo, and I. Gupta, “Zeno++: Robust fully asynchronous
+sgd,” in ICML, 2020, pp. 10 495–10 503.
+D. Yin, Y. Chen, R. Kannan, and P. Bartlett, “Byzantine-robust distributed learning: Towards optimal statistical rates,” in ICML, 2018, pp.
+5650–5659.
+L. Zhu, Z. Liu, and S. Han, “Deep leakage from gradients,” NIPS, 2019.
+
+git
+wit
+T
+n
+S
+m
+ki
+c
+l
+E
+Di
+η
+Gz
+[n]
+[[·]]
+CosM
+EudM
+IndM
+δ, ϕ
+∆, σ, ϵ
+N
+α
+ECD(·)
+DCD(·)
+
+Description
+gradients of i-th client at t-th round
+weights of i-th client at t-th round
+the number of rounds
+the number of clients
+the number of servers
+the number of malicious clients
+the number of data instances of i-th client
+the number of clusters
+the cluster labels
+the number of epochs
+the dataset of i-th client
+learning rate
+the aggregation of gradients of z-th cluster
+a set of numbers ranging from 1 to n
+secret shared format
+pairwise adjusted cosine similarity matrix
+pairwise L2 distance matrix
+indicator matrix
+secret keys of homomorphic hash function
+parameters of differential privacy
+Gaussian noise
+density parameter
+encoding algorithm
+decoding algorithm
+
+TABLE VI: Notation summary
+
+Algorithm 1: MUDGUARD.
+Input: training dataset D =
+i
+
+n
+S
+
+Di
+
+i=1
+
+Output: global models {w | i ∈ [n]}
+ServerAggregation:
+2 Initialize global model w0
+3 for each global epoch t = 1,2,· · · ,T do
+4
+for client i ∈ n in parallel do
+5
+[[git ]] ← ClientUpdate(i, wit−1 )
+6
+end
+7
+[[Gjt ]] ←Algorithm 2
+8
+return [[Gjt ]], Hδ,ϕ ([[Gjt ]]) to clients
+9 end
+i
+10 ClientUpdate(i, wt−1 ):
+11 B ←(split Di into batches of size b)
+12 IndM ←MajorityVote({IndMi | i ∈ [s]})
+13 l ←DBSCAN(IndM)
+i
+i
+14 reconstruct Gt−1 by [[Gt−1 ]]
+Q
+i
+15 if
+Hδ,ϕ (ĝt−1 ) = Hδ,ϕ (Git−1 ) then
+16
+accept and continue
+17 else
+18
+refuse and break
+19 end
+i
+i
+i
+20 wt ← wt−1 − η · sign(Gt−1 )
+i
+i
+21 gt ←LocalTraining(wt ; batch; loss)
+eit ← git / max(1, ||git ||2 /∆) + N (0, ∆2 σ 2 )
+22 g
+i
+eit
+23 ĝt ← KS(e
+git , N ) · g
+i
+i
+24 gt ← ECD(sign(ĝt ))
+i
+25 send [[gt ]] to servers
+i
+26 broadcast Hδ,ϕ (sign(ĝt ))
+1
+
+A PPENDIX
+A. Notation
+The frequently used notations are in Table VI.
+B. Implementation Algorithms
+In the evaluation, we implement the proposed MUDGUARD
+(with optimization) mainly based on Algorithms 1 and 2.
+C. Tools
+
+to a parametric server. It aims to optimize a loss function:
+n
+P
+ki
+arg min
+K Li (w, Di ), where Li (·) and ki are the loss
+
+1) Federated Learning: Federated Learning (FL) enables
+n clients to train a global model w collaboratively without revealing local datasets. Unlike centralized learning, FL requires
+clients to upload the weights of local models ({wi | i ∈ n})
+
+function and local data size of i-th client. At t-th round, the
+training of FL can usually be divided into the following steps.
+• Global model download: The server selects partial clients
+engaging in training. All connected clients download the global
+
+w
+
+14
+
+i=1
+
+derive plaintexts.
+
+Algorithm 2: Secure clustering.
+Input: shares of gradients: {[[git ]] | i ∈ [n]}
+Output: shares of aggregation {[[Gzt ]] | z ∈ c}
+
+Secret Sharing (SS). It refers to a type of tool for splitting
+a secret among multiple parties, each of whom is assigned
+a share of the secret. The security of an SS scheme guarantees that one can distinguish shares and randoms with a
+negligible probability. Apart from that, no one can reconstruct
+the secret unless holding all (or a subset) of shares. Let us
+consider Shamir Secret Sharing (SSS) [56] (t, n)-threshold
+scheme asPan example. Assume one chooses a polynomial
+t−1
+i
+f (x) =
+i=0 ai · x over Zq and a secret a0 = f (0).
+The secret can be split into n shares by randomly selecting
+n values: {rj ← Z∗q | j ∈ n}, and then calculating
+shares {f (rj ) | j ∈ n}. Given a subset of any t out
+of n shares, the secret P
+can by reconstructed
+by Lagrange
+Qt−1
+t−1
+z
+interpolation [7]:f (0) = j=0 f (rj )· z=0,z̸=j rzr−r
+. Except
+j
+for SSS, other schemes like additive SS and replicated SS are
+used in the MPC framework [33], [18]. Note these schemes
+have a linear property. Even if each party performs linear
+combinations locally with shares, the combined secret matches
+the result obtained by these linear calculations. This saves
+significant communication costs in the FL context, where
+servers are only required to aggregate shares of gradients.
+Homomorphic Hash Functions (HHF). Given a message
+x ∈ Zq , a collision-resistant HHF [26] H: G1 × G2 ← Zq
+′
+′
+can be indicated as H(x) = (g Hδ,ϕ (x) , hHδ,ϕ (x) ), where δ
+and ϕ are secret
+keys randomly and independently selected
+′
+from Zq . H is a hash function, and G1 and G2 are two
+different groups. Similar to other one-way hash functions, the
+security of the HHF requires that one can find a collision with
+a negligible probability.
+Based
+on additive
+homomorphism:
+′
+′
+′
+′
+H(x1 + x2 ) ← (g Hδ,ϕ (x1 )+Hδ,ϕ (x2 ) , hHδ,ϕ (x1 )+Hδ,ϕ (x2 ) ), in this
+work, we will use this tool as a verification of the correctness
+of aggregation.
+
+for each i, j ∈ n do
+[[dot_productij ]] ← [[git ]] ⊕ [[gjt ]]
+3
+convert binary sharing ([[dot_productij ]], [[git ]]) to
+arithmetic sharing by
+PB2A
+2
+[[dot_productij ]]
+4
+[[CosMij ]] ← 1 − np
+5 end
+6 for each i, j ∈ n do
+7
+[[xij ]] ← ([[CosMi ]] − [[CosMj ]])2
+1
+
+2
+
+8
+9
+10
+11
+12
+13
+
+[[x
+
+]]−1
+
+[[EucMij ]] ← 1 + ij2
+if EucMij ≤ α then
+[[IndMij ]] == [[1]]
+else
+[[IndMij ]] == [[0]]
+end
+
+−
+
+([[xij ]]−1)2
+([[x ]]−1)3
++ ij16
+8
+
+end
+reconstruct IndM
+16 each server broadcasts IndM
+17 l ← DBSCAN(IndM)
+18 for each z ∈ c all servers in parallel do
+P
+19
+[[Gzt ]] ← li =z DCD([[git ]]), i ∈ n
+20
+return [[Gzt ]] to clients {i | li = z}
+21 end
+14
+15
+
+model wt−1 from the server.
+• Local training: Each client updates its local model by
+t−1 ,Di )
+training with its own dataset: git−1 ← ∂L(w
+.
+∂wt−1
+• Aggregation: After the local updates {git−1 | i ∈ n} are
+uploaded, the server updates the global model by aggregation:
+n
+P
+ki i
+wt ← wt−1 − η
+K gt−1 , where η refers to the learning rate.
+i=1
+
+2) DBSCAN: Unlike traditional clustering algorithms (e.g.,
+k-means, k-means++, bi-kmeans), which need to pre-define
+the number of clusters, Density-Based Spatial Clustering of
+Applications with Noise (DBSCAN) [24] is proposed to cluster
+data points dynamically. Based on density-based clustering,
+DBSCAN guarantees that clusters of any shape can always be
+identified. Besides, it can recognize noise points effectively.
+Basically, after setting the density parameter (α) and the
+minimum cluster size (mP ts), DBSCAN can conduct effective
+clustering. We note HDBSCAN [13] could be also used for
+clustering. Its main difference from DBSCAN is the multiple
+densities clustering. In this work, we assume that malicious
+clients may only conduct one kind of attack during the whole
+training, e.g., a group of malicious clients conducting a Label
+Flipping Attack together. The malicious updates could only
+derive one density. Like [49], we may apply HDBSCAN
+in the clustering. But DBSCAN, in general, requires less
+computational complexity than HDBSCAN in algorithmic
+constructions. And further, we will conduct the clustering with
+cryptographic operations. Considering efficiency, we choose
+DBSCAN over HDBSCAN.
+
+Homomorphic Encryption (HE). This tool is an interesting
+privacy-preserving technology enabling users to evaluate polynomial computations on ciphertexts without revealing underlying plaintexts. An encryption scheme is called partial HE if it
+only supports addition [50] or multiplication [23], while fully
+HE [29] can support both. An HE scheme usually includes the
+following steps.
+• Key Generation: (pk, sk) ← KGen (1λ ), where based on
+security level parameter λ, public key pk and secret key sk
+can be generated.
+• Encryption: (c1 , c2 ) ← Enc(pk, m1 , m2 ). By using pk, the
+probabilistic algorithm encrypts messages m1 , m2 to ciphertexts c1 , c2 .
+• Homomorphic evaluation: Eval(c1 , c2 ) = c1 ◦ c2 =
+Enc(pk, m1 )◦Enc(pk, m2 ) = Enc(pk, m1 ◦m2 ), where ◦ refers
+to an operator, e.g., addition or multiplication.
+• Decryption: m1 ◦ m2 ← Dec(sk, Enc(pk, m1 ◦ m2 )). Using
+sk, the operational results of m1 and m2 can be derived.
+Oblivious Transfer (OT). OT [52] is one of the crucial
+building blocks for MPC. In an OT protocol (involving two
+parties), a sender holds n different strings si , i = 1 · · · n, and
+a receiver has an index (ind) and wants to learn sind . At the
+end of the protocol, the receiver cannot get information about
+strings rather than sind , while the sender learns nothing about
+ind selected by the receiver. For example, a 1-out-of-2 OT
+protocol only inputs two strings and a 1-bit index.
+
+3) Cryptographic Tools: The secure Multiparty Computation (MPC) framework aims to enable multiple parties to
+evaluate a function over ciphertexts securely. The parties
+conducting MPC can access inputs via protection approaches,
+e.g., in a secret-shared format. It does not leak any information
+besides the final output unless these shares are combined to
+15
+
+Garbled Circuits (GC) [5]. The protocol is run between two
+parties called the garbler and evaluator. The garbler generates
+the GC corresponding to the Boolean circuit to be evaluated
+securely by associating two random keys per wire representing
+the bit values 0, 1. The garbler then sends the GC together
+with the keys for the inputs to the evaluator. The evaluator
+obliviously obtains the keys for his inputs via OT and evaluates
+the circuit to obtain the output key. Finally, the evaluator maps
+the output key to the real output.
+
+E. Security Analysis
+We first define the ideal functionality FMUDGUARD to execute a byzantine-robust privacy-preserving FL, and then show
+that the proposed protocol ΠMUDGUARD securely realizes the
+functionality. Our security is based on the random oracle model
+where the homomorphic hash function outputs a uniformly
+random value for a new query and the same value for a
+previously answered query, hence we prove the UC security in
+FRO -hybrid model. Besides, the security is also based on the
+existence of a secret sharing protocol where the clients derive
+shares indistinguishable with randoms which securely realizes
+FSS (a combination of Ftriples , Fshare , Freconst [27]), and a bitto-arithmetic conversion protocol that securely realizes FB2A
+(noted as FPREP in [54]).
+
+4) Differential Privacy: Differential Privacy (DP) [22] is
+a data protection approach enabling one to publish statistical
+information of datasets while keeping individual data private.
+The security of DP requires that adversaries cannot statistically distinguish the changes between two datasets where an
+arbitrary data point is different. The most widely used DP
+mechanism is called (ϵ, δ)-DP defined below, requiring less
+injection noise than the ϵ-DP but standing at the same privacy
+level.
+
+Ideal Functionality Fshare
+The functionality Fshare interacts with a dealer party Pj ,
+and a corrupted party Pi .
+
+Definition 1 ((ϵ, δ) - Differential Privacy [22]). Given two
+real positive numbers (ϵ, δ) and a randomized algorithm A:
+Dn → Y, the algorithm A provides (ϵ, δ) - DP if for all data
+′
+sets D, D ∈ Dn differing in only one data′ sample, and all
+S ⊆ Y: P r[A(D) ∈ S] ≤ exp(ϵ) · P r[A(D ) ∈ S] + δ.
+
+Upon receiving (ti , si ) from the corrupted party Pi ,
+and receiving v from the dealer Pj , the functionality Fshare computes (tj+1 , sj+1 ) and (tj+2 , sj+2 ) from
+(ti , si ) and v, and sends the honest Pi−1 and Pi+1 their
+respective shares.
+
+Note that the Gaussian noise N ∼ N (0, ∆2 σ 2 ) should
+be added to the outputpof the algorithm, where ∆ is L2
+sensitivity of D and σ= 2 ln(1.25/δ) [1]. The robustness of
+post-processing guarantees for any probabilistic/deterministic
+functions F, if A satisfies (ϵ, δ)-DP, so does F(A).
+
+Ideal Functionality Freconst
+The functionality Freconst interacts with an adversary
+Sim and a corrupted party Pi , and receives information
+from Pi+1 and Pi+2 .
+
+D. Complexity Analysis
+We use d to denote the dimension of the model. n, S and c
+refer to the number of clients, servers and clusters, respectively.
+• Computation cost. Each client’s computation cost can be
+computed as binary SS with Tiny OT − O(d). The server’s
+computation cost consists of 4 parts: (1) computing pairwise
+XOR − O(n2 ); (2) bit to arithmetic conversion − O(d); (3)
+multiplication for L2 distance − O(n3 ); (4) comparison with α
+− O(n2 ); (5) calculating results of HHF based on the number
+of clusters c − O(nc). Thus, the total computation complexity
+of each server is O(n3 ).
+• Communication cost. For a client in MUDGUARD, the
+communication cost can be divided into 2 parts: (1) sending
+updates to S servers with binary SS and Tiny OT − O(Sd);
+(2) broadcasting hash results of updates to the rest of parties
+− O(n + S). Thus, we have communication complexity
+− O(Sd + n) for each client. The servers’ communication
+costs include (1) receiving correlated randomness and doublyauthenticated bits for converting a boolean shared matrix to
+arithmetic one − O(n2 ); (2) receiving triples for multiplications − O(n2 ); (3) receiving correlated randomness for
+element-wise comparison − O(n2 ); (4) sending shares and
+a random bit to other servers for reconstruction − O(Sn2 );
+(5) sending aggregated shares and values of HHF to all
+clients − O(nd). Overall, the communication cost for every
+server is O(Sn2 ). For detailed experimental results, refer to
+Section V-B.
+
+Upon receiving (ti+1 , si+1 , j) from Pi+1 and
+(ti+2 , si+2 , j) from Pi+2 , Freconst computes v = si+2 ⊕
+ti+1 and sends v to Pj . In addition, the functionality
+Freconst sends (ti , si ) to the adversary Sim, where (ti , si )
+is Pi ’s share as defined by the shares received from the
+honest parties.
+
+Ideal Functionality Ftriples
+The functionality Ftriples interacts with a corrupted
+party Pi , and receive information from P1 , P2 , P3 .
+Upon
+receiving
+N
+triples
+of
+pairs
+{(tjai , sjai ), (tjbi , sjbi ), (tjci , sjci )}N
+from
+P
+,
+the
+i
+j=1
+functionality first Ftriples chooses random aj , bj ∈ {0, 1}
+and computes aj bj , and then defines a vector of sharings
+d = ([aj ], [bj ], [cj ]), for j = 1, ..., N . The sharings are
+computed from [(tjai , sjai ), (tjbi , sjbi ), (tjci , sjci )] provided
+by Pi and the chosen aj , bj , cj . Next, Ftriples sends the
+generated shares to each corresponding party.
+
+16
+
+continue. Otherwise, send (Abort, sid) to all honest parties, and ignore all further messages to FMPC with the
+same sid.
+
+Ideal Functionality FPrep (FB2A )
+Independent copies of FMPC are identified via session
+identifiers sid. For each instance, FPrep maintains a dictionary Dicsid . If a party provides input with an invalid sid,
+the FPrep outputs reject to all parties and await another
+message.
+
+Remark. We use Fshare as the secret share generating algorithm, Freconst as the reconstructing algorithm, Ftriples as the
+secret share multiplication algorithm, and FB2A (see FPREP
+in [54]) as the bit to arithmetic conversion algorithm.
+
+Upon receiving (Init, F, sid) from all parties, initialize a new database of secrets Dicsid indexed by a set
+Dicsid .Keys and store the field Fas Dicsid .Field, if sid
+is a new session identifier. Set the flag Abortsid = FALSE.
+
+We formally define FMUDGUARD as follows.
+
+Upon receiving (Input, i, id, x, sid) from a party Pi
+and (Input, i, id, ⊥, sid) from all other parties, if id ∈
+/
+Dicsid .Keys then insert it and set Dicsid [id] = x. Then
+execute the procedure Wait.
+
+Ideal Functionality FMUDGUARD
+The functionality FMUDGUARD is parameterized with a
+DBSCAN algorithm with corresponding parameters, a
+local training SGD algorithm with appropriate variables,
+Gauss noise parameters ∆ and σ, and the density parameter α. The functionality FMUDGUARD interacts with
+n clients P1 , ..., Pn , s remote servers S1 , ..., Ss , and an
+ideal adversary Sim.
+
+Upon receiving (Add, idx , idy , id, sid), set Dicsid [id] =
+Dicsid [idx ] + Dicsid [idy ] if idx , idy ∈ Dicsid .Keys.
+Upon
+receiving
+(Mult, idx , idy , id, sid),
+set Dicsid [id]
+=
+Dicsid [idx ] · Dicsid [idy ], if
+idx , idy ∈ Dicsid .Keys. Then execute the procedure
+Wait.
+
+Upon receiving (Init, {w0i }i∈[n] , {Gi0 }i∈[n] ) from the
+adversary Sim, send (Init, w0i , Gi0 ) to each Pi .
+
+Upon receiving (RanEle, id, sid), set Dicsid [id] to a
+random element in Dicsid .Field, if id ∈
+/ Dicsid .Keys. Then
+execute the procedure Wait.
+
+i
+Upon receiving (Update, t, wt−1
+, Di ) from each honi
+i
+i
+est client Pi , calculate wt , gt , g̃t , ĝit , ḡit , and store (t, [[ḡit ]])
+for each server, and notify Sim with (Update, t, Pi ). If
+t = T , terminate the protocol. Later, when Sim replies
+with (Update-data, t), send (Update, t) to each server Sj
+i
+for each j ∈ [s]. Upon receiving (Update, t, {[[ḡ′ t ]]}i∈I )
+from Sim for all corrupted client index i, where I ⊂ [n],
+i
+store (t, [[ḡ′ t ]]) for each honest server.
+
+Upon receiving (RanBit, id, sid), set Dicsid [id] to a
+random bit if id ∈
+/ Dicsid .Keys. Then execute the procedure Wait.
+Upon receiving (Open, i , id, sid) from all parties,
+if id ∈ Dicsid .Keys: 1) if i = 0, send Dicsid [id] to the
+adversary and executes Wait. If the answer is (OK, sid),
+await an error ϵ from the adversary. Send Dicsid [id] + ϵ to
+all honest parties. If ϵ ̸= 0, set the flag Abortsid = TRUE.
+2) if i ∈ A, then send Dicsid [id] to the adversary. Then
+execute Wait. 3) if i ∈ [n]\A, execute Wait. If not
+already halted, then await an error ϵ from the adversary.
+Send Dicsid [id] + ϵ to party Pi . If ϵ ̸= 0, set the flag
+Abortsid = TRUE.
+
+Upon receiving (Update, t) from a server Sj , if
+(t, [[ḡit ]]) is stored for each i ∈ [n] and for each
+server, calculate IndM and {[[Gzt ]]}z∈[c] for each server.
+Then send (Model, t, IndM, {[[Gzt ]]}z∈[c] ) to each server.
+If Sj is honest, upon receiving (Update-model, t)
+from the simulator Sim, send (Update-model, t, [[Gzt ]])
+to the corresponding ′client. Otherwise, upon receiving
+(Update-model, t, {[[Gtz ]]}) from the simulator Sim, send
+′
+(Update-model, t, [[Gtz ]]) to corresponding client.
+
+Upon receiving (Check, sid) from all parties, execute
+the procedure Wait. If not already halted and Abortsid =
+TRUE , send (Abort, sid) to the adversary and all honest
+parties, and ignore further messages to FMPC with the
+same sid. Otherwise, send (OK, sid) and continue.
+
+Upon receiving (Abort) from either the adversary or
+any client, send ⊥ to all parties and terminate.
+
+Upon receiving (daBits, id1 , ..., idl , sid1 , sid2 ) from
+all parties where idi ∈
+/ Dicsid .Keys for all i ∈ [l],
+await a message OK or Abort from the adversary. If
+OK is received, sample a set of random bit {bj }j ∈
+[l], and for each j ∈ [l] set Dicsid1 [idj ] = bj
+and Dicsid2 [idj ] = bj , and insert the set {idi }i∈[l]
+into Dicsid1 .Keys and Dicsid2 .Keys. Otherwise, send
+(Abort, sid1 ) and (Abort, sid2 ) to the adversary and all
+honest parties, and ignore all further messages to FMPC )
+with the same sid1 and sid2 .
+
+Remark. According to the ideal functionality, we could capture not only privacy but also soundness against malicious
+corruption of servers. However, the differential attack is based
+on the output of each epoch, which is published roundly and
+could be obtained legally. Hence, the discussion on differential
+privacy is not included in this security definition. Detailed
+proof for differential privacy will be given later. Moreover,
+soundness against malicious corruption of clients is also not
+captured by the previous definition since such security is
+protected by the clustering technique, which is not the concern
+of cryptography.
+
+Procedure Wait: Await a message (OK, sid) or
+(Abort, sid) from the adversary. If OK is received, then
+
+Definition 2 (Universally Composable security). A protocol Π
+17
+
+UC-realizes ideal functionality F if for any PPT adversary
+A there exists a PPT simulator S such that, for any PPT environment E, the ensembles EXECΠ,A,E and EXECIDEALF ,S,E
+are indistinguishable.
+
+since the latter two are the input/output pair of the elementwise comparison algorithm computed by a secure comparison
+algorithm in our protocol. Fortunately, the privacy of a secure comparison algorithm guarantees the indistinguishability
+between real and ideal input/output pairs. Hence, we claim
+that if there exists a distinguisher that could tell the difference
+between the real and ideal world, it contradicts either the UC
+security of FSS or the privacy of secure comparison protocol.
+
+Definition 3 (UC security of MUDGUARD). A protocol
+ΠMUDGUARD is UC-secure if ΠMUDGUARD UC-realizes F,
+against malicious-majority clients and malicious-minority
+servers, considering arbitrary collusion between malicious
+parties.
+
+Case 4: If there exists both corrupted clients and servers. The
+situation, in this case, is simply the combination of Case 2 and
+3 since there is no extra view needed to simulate.
+
+Theorem 3 (UC security of MUDGUARD). Suppose the existence of a homomorphic hash function in a random oracle
+model, our protocol is UC-secure in (FRO , FSS , FB2A )-hybrid
+world.
+
+In summary, for any PPT adversary A we could construct
+a Sim, so that for any PPT environment E, the EXECΠ,A,E
+and EXECFMUDGUARD ,S,E are indistinguishable.
+
+Proof: We show the validity of the theorem by proving that the protocol ΠMUDGUARD securely realizes F
+in the (FRO , FSS , FB2A )-hybrid world against any corruption pattern. We construct a simulator Sim for any nonFRO ,FSS ,FB2A
+uniform PPT environment E such that EXECΠ
+≈
+MUDGUARD ,A,E
+EXECFMUDGUARD ,Sim,Z . The Sim is constructed as follows.
+
+UC framework captures attacks on input and intermediate
+data. On the contrary, differential privacy prevents the adversary from inferring about private information from outputs
+or updates, and such information might also be utilized by
+malicious clients. When false positives clustering exists, or
+malicious clients pretend to be honest, local updates have a
+chance to be revealed to the adversary. The following theorem
+shows that these updates do not leak any individual data due
+to differential privacy.
+
+It writes on A’s input tape upon receiving an input value
+from E, as if coming from E, and writes on Z’s output tape
+upon receiving an output value from A, as if from A.
+Case 1: If all clients and servers are not corrupted. Since we
+assume private channels between client and server, Sim could
+just simply randomly choose all intermediate values. There is
+no distinguisher who could tell the difference between random
+values and real transcripts.
+
+Theorem 4. No adversary in corrupted client set Ac ⊂ C,
+where |Ac | ≤ n − 1, can retrieve the individual values of
+honest clients.
+Proof: Since we apply differential privacy [22], the local
+updates cannot leak information regarding the inputs. According to Def. 1, the added differentially private noise guarantees
+that the aggregation is indistinguishable whether an individual
+update participates or not. Therefore, it guarantees the security
+of individual local updates while aggregation can be calculated.
+
+Case 2: If corrupted clients exist. We note the corrupted subset
+as I ⊂ [n]. We need to simulate the adversary’s view, which is
+the secret share and its corresponding hash value. For t ∈ [T ]
+i
+and i ∈ I, the simulator randomly chosen ḡ′ t ← {0, 1}, and
+i
+internally executes FSS to obtain [[ḡ′ t ]]. Then, Sim internally
+executes FRO to obtain Hit . Because of the UC security of FSS
+and FRO , there is no distinguisher that could tell the difference
+i
+between ([[ḡ′ t ]], Hit ) and ([[ḡit ]], Hδ,ϕ (sign(ĝti ))).
+
+F. Convergence Analysis
+
+Case 3: If corrupted servers exist. We not the corrupted
+subset as I ⊂ [T ]. We need to simulate the adversary’s view,
+including all secret shares in the protocol. It is worth noticing
+that we should not only guarantee the indistinguishability
+between two groups of shares but also the relationship among
+elements within each group. After obtaining IndM, the Sim
+executes DBSCAN protocol on IndM and acquires cluster
+labels l, and executes the functionality FSS to obtain [[IndMij ]]
+for each i, j ∈ [n]. Then, Sim randomly chosen |l| secret
+i
+i
+sharing values [[ḡ′ t ]] such that the summation Σli =z DCD([[ḡ′ t ]])
+z
+equals to the given share [[Gt ]]. This procedure could be easily
+achieved by first randomly choosing the first |l| − 1 values and
+then calculating the last value. For each i ∈
+/ c, the simulator
+Sim simply chooses the shares of gradients randomly since
+those values are irrelevant to the calculation. After acquiring
+i
+all the shares of gradients [[ḡ′ t ]], the simulation Sim pairwisely
+′
+calculate [[dot_productij ]], and convert it to arithmetic sharing
+by executing the functionality FB2A , and then calculate the
+adjusted cosine similarity matrix share [[CosM′ij ]]. Next, as in
+Algorithm 2, Sim calculates [[x′ij ]], [[EucM′ij ]] for each i, j ∈
+[n]. We claim that all shares that were previously generated
+are interdeducible, except between [[EucM′ij ]] and [[IndM′ij ]],
+
+Let M be the total number of clients in a semi-honest
+majority client cluster. Semi-honest clients and malicious
+clients are indexed by {1, · · · , h} and {h + 1, · · · , h + m},
+respectively, where M = h + m and h > m if TNR is greater
+than 50%. The component j of stochastic gradient and of true
+gradient are denoted as {g̃i,j }M
+i=1 and gj respectively. An error
+probability is shown as follows.
+Lemma 1 (The bound of error probability with malicious clients). If the TNR (h/M) of the clustering
+is h relatively
+hP high, theni we have ithe error probability
+p
+M
+P Sign
+≤ Ph · O( M/h),
+i=1 Sign(g̃i,j ) ̸= Sign(gj )
+where Ph is the bound for the error probability without
+malicious clients.
+Proof: Every client is a Bernoulli trial with success
+probability ph for semi-honest clients and pm for malicious
+clients, respectively, to receive the true gradient signs. Let Zh
+be the number of semi-honest clients with true signs, which
+therefore equals the sum of h independent Bernoulli trials,
+so we know Zh follows the binomial distribution B(h, ph ).
+Similarly, we know the number of malicious clients with
+18
+
+correct signs Zm follows the binomial distribution B(m, pm ).
+Denote qh = 1 − ph and qm = 1 − pm .
+
+from
+"
+|gt |P Sign
+
+Let Z be the total number of clients with true gradient signs, so Z = Zh + Zm . We use the Gaussian distribution to simplify the analysis. Notice that B(h, ph ) ∼
+N (hph , hph qh ) and B(m, pm ) ∼ N (mpm , mpm qm ), so
+we get
+hPZ ∼ N (hph i+ mpm , hph qh + mpm qm ) . The event
+M
+Sign
+̸= Sign(gj ) is equivalent to event
+i=1 Sign(g̃i,j )
+Z ≤ M/2. Then the error probability equals P(Z ≤ M/2).
+By using Cantelli’s inequality, we know
+
+"M
+X
+
+#
+
+#
+
+σi
+Sign(g̃i,j ) ̸= Sign(gj ) ≤ √ .
+M
+i=1
+
+(3)
+
+As Lemma 1 proved,p
+in the existence of the malicious clients,
+i
+·O( M/h) = O(σ√i h) . By plugging the result
+we get (3)≤ √σM
+into (2), we have the convergence rate of MUDGUARD:
+" T −1
+"
+#2
+
+
+1
+1 X
+1 p
+E
+∥L∥1 f0 − f∗ +
+∥gt ∥1 ≤ √
+T t=0
+2
+N
+#2
+p
+2
++ √ ∥σ∥1 · O( M/h)
+M
+"
+
+ (4)
+1
+1 p
+∥L∥1 f0 − f∗ +
+=√
+2
+N
+#2
+2
+√ ∥σ∥1 .
++
+O( h)
+
+P [Z ≤ M/2] = P[Z ≥ 2(hph + mpm ) − M/2]
+= P[Z − (hph + mpm ) ≥ (hph + mpm ) − M/2]
+√
+1
+hph qh + mpm qm
+≤
+≤
+[(hph +mpm )−M/2]2
+2|(hp
+h + mpm ) − M/2|
+1 + hph qh +mpm qm
+p
+√
+h/M + m/M · pm qm /ph qh
+M p h qh
+=
+·
+2M (ph − 1/2) (h/M · ph + m/M · pm − 1)/(ph − 1/2)
+p
+= Ph · O( M/h)
+(1)
+1
+where the second inequality holds since x21+1 ≤ 2x
+for
+x > 0, and the last two equalities hold since ph > 1/2 by [6]
+and we assume hph > M/2 with overwhelming probability for
+a sufficient large TNR. The assumption is reasonable because
+hph = M ph > M/2 if T N R = 100%. The first factor in
+Eq. (1) is the bound for the error probability without malicious
+p
+clients, so we get the error probability less than a O( M/h)
+factor of that in the case of without malicious clients.
+
+G. Proof of Theorem 1
+Proof: We denote a = (a1 , · · · , ad ) and b = (b1 , · · · , bd )
+are two vectors uploaded by malicious clients, where np refers
+to the number of model parameters:
+1
+, sign = +1
+, ∀i ∈ [d].
+P r(ai , bi = sign) = 12
+2 , sign = −1
+
+Let L and σ be non-negative losses and standard deviation
+of stochastic gradients g̃ respectively. ∀x, the objective values
+f (x) are bounded by constants f∗ (i.e. f (x) ≥ f∗ ). The
+objective value of 0-th round is referred to as f0 . Under the
+above conditions, the results are the following.
+
+The adjusted cosine similarity can be computed as:
+a1 b1 + · · · + ad bd
+p
+COS_similarity = p 2
+a1 + · · · + a2d · b21 + · · · + b2d
+a1 b1 + · · · + ad bd
+.
+=
+d
+Since ai and bi are relatively independent, we have:
+1
+, sign = +1
+P r(ai · bi = sign) = 12
+, ∀i ∈ [d].
+2 , sign = −1
+
+Theorem 5 (Non-convex convergence rate of MUDGUARD).
+If the TNR of the clustering is relatively high, then the global
+model generated in the semi-honest cluster converges at a rate
+#2
+"
+" T −1
+
+
+1 p
+1 X
+1
+∥gt ∥1 ≤ √
+E
+∥L∥1 f0 − f∗ +
+T t=0
+2
+N
+#2
+2
+√ ∥σ∥1 ,
++
+O( h)
+
+According
+to
+the
+Law
+of
+large
+numbers,
+E(COS_similarity) ∼ E(ai bi ) = 0. This conclusion
+can be generalized to any two malicious clients, and
+malicious clients have the same distance as a semi-honest
+client. Therefore, if we calculate the adjusted cosine similarity
+vector of two malicious clients, there should be only two
+elements of difference. The L2 distance of these two vectors
+√
+is 2.
+
+where N is the cumulative number of stochastic gradient calls
+up to round T (i.e., N = O(T 2 )). Therefore, the higher the
+rate is, the closer the convergence speed is to the case without
+malicious clients.
+Proof: Following the results of Theorem 2 in [6], in the
+distributed SignSGD with a majority vote, we can get the nonconvex convergence rate without malicious clients at
+" T −1
+#2
+"
+
+
+1 X
+1 p
+1
+∥gt ∥1 ≤ √
+E
+∥L∥1 f0 − f∗ +
+T t=0
+2
+N
+(2)
+#2
+2
++ √ ∥σ∥1
+M
+
+H. Other Experimental Setup and Experimental Results
+1) Other Experiment Setup: We implement MUDGUARD in
+C++ and Python. We use MP-SPDZ library [33] to implement
+secure computations and Pytorch framework [51] for training.
+All the experiments are conducted on a cluster of machines
+with Intel(R) Xeon(R) CPU E5-2620 v4 @ 2.10GHz and
+NVIDIA 1080 Ti GPU, with 32GB RAM in a local area
+network. As for the cryptographic tools, all the parameters
+are set to a 128-bit security level.
+19
+
+Datasets. We use MNIST and FMNIST datasets for the image
+classification task.
+• MNIST [39]. It consists of 60,000 training samples and
+10,000 testing samples, where each sample is a 28×28
+gray-scale image of handwritten digital (0-9).
+• FMNIST [61]. It contains article images from Zalando and
+has the same size as MNIST, where each image is a 28×28
+gray-scale image associated with a label from 10 classes.
+• CIFAR-10 [36]. It offers 50,000 training samples and
+10,000 test samples, where each is a 32×32 color image in a
+label from 10 different objectives, and there are 6,000 images
+for each class.
+Classifiers. We use LeNet and ResNet-18 to perform training
+and classification of the datasets.
+• LeNet [38]. Containing 6 layers (including 3 convolution
+layers, 2 pooling layers, and 1 fully connected layer), LeNet
+aims to train 44,426 parameters for image classification.
+• ResNet-18 [32]. It provides 18 layers with 11 million
+trainable parameters to train color images. We use a light
+vision of ResNet with approx. 2.07 million parameters and
+complete the experiments with the CIFAR-10 dataset.
+2) Other Experimental Results: In Figures 4 and 5, we
+present the comparison of testing accuracy among baseline,
+semi-honest and malicious groups under targeted attacks and
+ASR between the groups under untargeted attacks. In addition,
+we also give the experimental results by varying proportion of
+malicious clients (ξ ≥ 0.5), #clients n and non-iid degree q in
+Tables VII and VIII. We see that the results are consistent with
+the analysis in Section V-A: the untargeted attacks nearly have
+no impact on the accuracy of the final model (only slightly
+decreasing the speed of convergence). Since GA may directly
+upload noise, it can be easily detected from the beginning of
+the training to the end, resulting in the same convergence
+as the baseline. For LFA, Krum, Trim, and AA Attacks,
+MUDGUARD is also difficult to distinguish between semi-honest
+and malicious clients at the beginning. Thus, the speed of
+convergence is slightly decreased. The main difference is that:
+LeNet achieves around 78% in FMNIST, while ResNet-18
+provides approx. 56% accuracy in CIFAR-10.
+
+(a) Gaussian Attack
+
+(b) Label Flipping Attack
+
+(c) Krum Attack
+
+(d) Trim Attack
+
+(e) Adaptive Attack
+
+(f) Backdoor Attack
+
+Fig. 4: Comparison of testing accuracy among baseline, semihonest, and malicious groups under targeted attacks (a-e) and
+ASR between the groups under untargeted attack (f), where
+we use LeNet to train FMNIST by default settings in Table II.
+
+loss of the effectiveness of Byzantine-robustness. A similar
+situation can be found when α is set as too small (in this case,
+all clients will be identified as noise.). From the experiment,
+we found 1 is a best practice for α, so we set it as the default
+parameter. Nevertheless, MUDGUARD cannot 100% guarantee
+to exclude EA because EA has a strong stealthiness. We will
+leave this as future work.
+
+We also provide comparisons with the state-of-the-art
+Byzantine-robust methods in Figure 6 and 7 on FMNIST
+and CIFAR-10 respectively. Similar to Figure 3, under the
+malicious majority of untargeted attacks, the testing accuracies
+of FLTrust, MUDGUARD, and weights-MUDGUARD are
+maintained at the same level of the baseline. Under the targeted
+attacks, FLTrust, MUDGUARD, and weights-MUDGUARD
+can restrain ASR to about 0%-10%. For more detailed explanations, please refer to Section V-A.
+
+Impact of λ on Adaptive Attack. Figure 9 shows how the
+ASR varies in semi-honest and malicious groups when we
+adapt BA to MUDGUARD, where (F)MNIST, CIFAR-10 and
+default settings in Table II are used. In MNIST (Figure 9a), the
+ASR of the semi-honest group remains at a low level (nearly
+0%) while that of the malicious group raises from 0.23 to 1 as
+λ grows from 0.1 to 0.3. This is so because when the value of
+λ is low, the malicious clients using AA more focus on evading
+filtering (i.e., inducing a drop in clustering accuracy). Even if
+malicious clients are grouped with semi-honest clients, they
+cannot produce practical attack effectiveness. When the value
+of λ gradually increases, the malicious clients will focus more
+on attack performance. In this way, MUDGUARD will easily
+distinguish the malicious from the semi-honest. It thus can
+
+Impact of α on robustness of MUDGUARD Turning back
+to Section IV-B and Theorem 1, the Byzantine-robustness
+of MUDGUARD relies on whether we can choose a desirable
+density α. From the experimental results in Section V-A, we
+know that EA has a stronger stealthiness than other attacks.
+Therefore, we use EA as an example in this section to analyze
+the influence of α on MUDGUARD. Figure 8 shows how the
+ASR and clustering accuracy varies in semi-honest and malicious groups under EA when we√change α. Consistent with
+Theorem 1, once α is great than 2, the malicious and semihonest clients will cluster together, resulting in MUDGUARD
+20
+
+Attacks
+
+Baseline
+
+GA
+
+LFA
+
+Krum
+
+Trim
+
+AA
+
+BA
+
+ξ
+
+0.5
+0.6
+0.7
+0.8
+0.9
+
+0.811
+0.783
+0.769
+0.754
+0.755
+
+0.803
+0.772
+0.767
+0.752
+0.737
+
+0.772
+0.77
+0.747
+0.731
+0.73
+
+0.751
+0.761
+0.723
+0.743
+0.718
+
+0.763
+0.757
+0.726
+0.754
+0.724
+
+0.793 / 0
+0.784 / 0.002
+0.776 / 0.003
+0.771 / 0.001
+0.753 / 0.002
+
+0.797 / 0
+0.801 / 0
+0.777 / 0.005
+0.758 / 0.001
+0.731 / 0.008
+
+n
+
+10
+50
+100
+200
+500
+
+0.846
+0.834
+0.783
+0.774
+0.61
+
+0.844
+0.829
+0.772
+0.77
+0.601
+
+0.824
+0.829
+0.77
+0.763
+0.61
+
+0.829
+0.829
+0.761
+0.771
+0.599
+
+0.831
+0.827
+0.757
+0.766
+0.602
+
+0.836 / 0
+0.827 / 0
+0.784 / 0.002
+0.747 / 0.002
+0.615 / 0.015
+
+0.845 / 0
+0.836 / 0
+0.801 / 0
+0.771 / 0.002
+0.602 / 0.003
+
+q
+
+0.1
+0.3
+0.5
+0.7
+0.9
+
+0.787
+0.788
+0.783
+0.65
+0.566
+
+0.787
+0.777
+0.772
+0.637
+0.542
+
+0.772
+0.765
+0.77
+0.657
+0.545
+
+0.789
+0.773
+0.761
+0.639
+0.542
+
+0.786
+0.784
+0.757
+0.65
+0.548
+
+0.783 / 0
+0.783 / 0
+0.784 / 0.002
+0.642 / 0.008
+0.546 / 0.001
+
+0.787 / 0.004
+0.782 / 0.002
+0.801 / 0
+0.649 / 0.006
+0.55 / 0.007
+
+TABLE VII: Comparison of accuracy with baseline and ASR by an increasing proportion of malicious clients (ξ ≥ 0.5), #clients
+n and non-iid degree q, where FMNIST is used. The results under targeted attacks are in the form of “testing accuracy / ASR".
+Attacks
+
+Baseline
+
+GA
+
+LFA
+
+Krum
+
+Trim
+
+AA
+
+BA
+
+EA
+
+ξ
+
+0.5
+0.6
+0.7
+0.8
+0.9
+
+0.573
+0.562
+0.54
+0.519
+0.489
+
+0.57
+0.559
+0.52
+0.508
+0.492
+
+0.574
+0.559
+0.506
+0.489
+0.474
+
+0.557
+0.547
+0.513
+0.494
+0.45
+
+0.562
+0.534
+0.515
+0.488
+0.483
+
+0.568 / 0.006
+0.521 / 0.011
+0.531 / 0.011
+0.482 / 0.003
+0.475 / 0.006
+
+0.572 / 0.007
+0.567 / 0
+0.524 / 0
+0.52 / 0.004
+0.484 / 0.008
+
+0.571 / 0.019
+0.568 / 0.03
+0.531 / 0.031
+0.501 / 0.05
+0.478 / 0.059
+
+n
+
+10
+50
+100
+200
+500
+
+0.677
+0.641
+0.562
+0.46
+0.27
+
+0.672
+0.637
+0.559
+0.453
+0.26
+
+0.668
+0.635
+0.559
+0.474
+0.254
+
+0.665
+0.653
+0.547
+0.457
+0.274
+
+0.668
+0.634
+0.534
+0.45
+0.252
+
+0.658 / 0
+0.639 / 0
+0.521 / 0.011
+0.468 / 0.003
+0.276 / 0.004
+
+0.659 / 0.001
+0.647 / 0.001
+0.567 / 0
+0.446 / 0
+0.262 / 0
+
+0.66 / 0.037
+0.641 / 0.068
+0.568 / 0.03
+0.458 / 0.028
+0.242 / 0
+
+q
+
+0.1
+0.3
+0.5
+0.7
+0.9
+
+0.573
+0.567
+0.562
+0.426
+0.229
+
+0.574
+0.567
+0.559
+0.417
+0.227
+
+0.566
+0.556
+0.559
+0.394
+0.216
+
+0.562
+0.535
+0.547
+0.435
+0.224
+
+0.554
+0.553
+0.534
+0.424
+0.229
+
+0.555 / 0
+0.561 / 0
+0.521 / 0.011
+0.44 / 0.013
+0.219 / 0.024
+
+0.572 / 0.001
+0.569 / 0
+0.567 / 0
+0.41 / 0.004
+0.217 / 0.013
+
+0.558 / 0.058
+0.543 / 0.064
+0.568 / 0.03
+0.429 / 0.015
+0.214 / 0.018
+
+TABLE VIII: Comparison of accuracy with baseline and ASR by an increasing proportion of malicious clients (ξ ≥ 0.5), #clients
+n and non-iid degree q, where CIFAR-10 is used. The results under targeted attacks are in the form of “testing accuracy / ASR".
+
+resist AA. Note the experimental results with FMNIST and
+CIFAR-10 (Figure 9b and c) share the same trend with MNIST
+(Figure 9a).
+
+stage is the most computationally expensive. We, therefore,
+focus on its optimization. After the optimization, the servers
+avoid using “heavy" tools, like HE and Beaver’s multiplication,
+to calculate cosine so that communication and computational
+overheads are naturally reduced. Therefore, MUDGUARD has
+much lighter complexity than FLAME.
+
+I. Discussions
+1) Boosting Accuracy: Intuitively, CIFAR-10 is more difficult to train than (F)MNIST. SignSGD [6] achieves 90% accuracy with centralized learning. The reasons for the accuracy
+drop in FL are (1) the number of clients: when the number
+increases, the amount of data allocated to a client becomes
+smaller, and the local model is more prone to overfitting; (2)
+Data heterogeneity: a larger degree of non-iid leads to less
+information being available for the local model to learn, which
+harms accuracy; (3) Malicious clients: malicious clients taking
+a part of the training data can be filtered out by MUDGUARD.
+This is equivalent to discarding that part of the training
+data. Additional improvements in accuracy could be obtained
+by using different models, e.g., ViT [21], or by performing
+hyperparameters grid search for FL, etc.
+
+Note that FLAME uses a 2-party semi-honest MPC scheme
+which is very similar to the semi-honest situation in our
+design (Table V). Our optimized version of MUDGUARD is less
+computationally and communicationally complex than FLAME.
+In MUDGUARD, CosM is calculated by doing XOR locally
+on servers, and the matrix size reduces from the number of
+clients × the number of model updates (n × d) to n × n after
+calculation. Then this n × n matrix is used to calculate the
+pairwise-L2 distance (where only multiplication is involved).
+In FLAME, directly calculating cosine similarity requires multiplication, division, and the square root of the n × d matrix,
+which are relatively intensive, expensive operations in MPC.
+The fact that FLAME’s code is not publicly available prevents
+a code/implementation-based comparison.
+
+2) Comparison of Overheads with FLAME: Intuitively,
+systems that use clustering, like FLAME [49], could experience
+efficiency problem if left without proper optimization. In
+our design, MPC impacts three main phases: computation of
+CosM, L2 distance, and element-wise comparison. The 1st
+
+We followed state-of-the-art Byzantine-robust FL [15]’s
+default setting on the client number (number = 100). Table V
+shows overheads (the runtime and communication costs) on
+the server side are acceptable; in particular, only 0.4s and 16
+21
+
+(a) Gaussian Attack
+
+(b) Label Flipping Attack
+
+(a) Gaussian Attack
+
+(b) Label Flipping Attack
+
+(c) Krum Attack
+
+(d) Trim Attack
+
+(c) Krum Attack
+
+(d) Trim Attack
+
+(e) Adaptive Attack
+
+(f) Backdoor Attack
+
+(e) Adaptive Attack
+
+(f) Backdoor Attack
+
+Fig. 6: Comparison with Byzantine-robust methods in FMNIST by ξ = 0.1 − 0.9.
+
+of the backdoor task. Since the cosine distance between
+malicious and benign updates are distinguishable, MUDGUARD
+can still work well under DBA. Note another attack, Little Is
+Enough [4], have not been considered in this work because it
+requires attackers to have knowledge of the gradients of semihonest clients, which violates privacy preservation.
+
+(g) Edge-case Attack
+
+Fig. 5: Comparison of testing accuracy among baseline, semihonest, and malicious groups under targeted attacks (a-e) and
+ASR between the groups under untargeted attacks (f-g), where
+we use ResNet-18 to train CIFAR-10 by the default settings
+in Table II.
+
+4) Advantages of Adjusted Cosine Similarity: As shown
+in Figure 10, we present an example of the calculation of
+adjusted cosine similarity. It is clear to see that adjusted cosine
+similarity is able to capture the magnitudes and directions of
+updates by transferring updates to adjusted updates. Although
+m1 does not have too many differences in directions (i.e.,
+m1 will be clustered with h1 and h2 ), its differences with
+h1 and h2 in magnitudes can be easily captured by CosM.
+Furthermore, due to non-iid, the (h1 , h2 ) and (h3 , h4 ) will
+be clustered into two groups if cosine distance is applied.
+However, by subtracting mean updates, this influence can be
+reduced.
+
+MB are required with LeNet in the semi-honest case.
+3) Defending Against Other Attacks: In the experiments,
+we consider SOTA (un)targeted attacks. We say that interested readers may use other attacks to test MUDGUARD, in
+which Byzantine-robustness could not be seriously affected.
+We take the Distributed Backdoor Attack (DBA) [62] as
+an example. DBA decomposes a global trigger into several
+pieces distributed to local clients. It, however, yields significant
+changes to some dimensions of updates to maintain the ASR
+
+We also show the experimental results in Figure 11, where
+FMNIST is used under BA and the number of clients is set
+to 10 (the first six are benign clients, the rest are malicious
+clients). The rest of the default settings follow Table II. From
+Figure 10, we can see that if only cosine distance is calculated,
+22
+
+(a) Gaussian Attack
+
+(b) Label Flipping Attack
+
+(a) MNIST
+
+(b) CIFAR-10
+
+Fig. 8: Impact of α on the robustness of MUDGUARD, where
+EA and default settings are used.
+
+(c) Krum Attack
+
+(d) Trim Attack
+
+(a) MNIST
+
+(e) Adaptive Attack
+
+(b) FMNIST
+
+(f) Backdoor Attack
+
+(c) CIFAR-10
+
+Fig. 9: Impact of λ on Adaptive Attack, where backdoor attack
+and default settings are used.
+
+(g) Edge-case Attack
+
+Fig. 7: Comparison with Byzantine-robust methods in CIFAR10 by ξ = 0.1 − 0.9.
+
+honest updates will be classified as noise due to the influence
+of non-iid. The adjusted cosine similarity weakens this effect
+(Figure 10b). Calculating the L2 distance again will make the
+distinction between the two groups more obvious (Figure 10c).
+Furthermore, we provide a comparison when MUDGUARD
+uses cosine similarity and adjusted cosine similarity for clustering in Figure 12. It is clear to see that the testing accuracy of
+MUDGUARD with cosine similarity abruptly goes down when
+the model approaches convergence. On the contrary, this does
+not happen in MUDGUARD with adjusted cosine similarity. The
+detailed explanation is given in Section IV-B.
+
+Fig. 10: An example of calculation of adjusted cosine similarity
+
+5) Dynamic Attacks: Recall that MUDGUARD can perform
+well in terms of testing accuracy under the assumption that
+23
+
+group those attacks together friendly and meanwhile maximize
+their attack effects. In practice, the attacks may deliver an
+update in different directions, and further, they may even yield
+influence on each other. For example, GA could easily destroy
+the convergence of BA. We say that it is an interesting open
+problem to consider launching GA, LFA, Krum, Trim, and AA
+attacks together in an epoch to evaluate the accuracy and ARS.
+
+(a) Pairwise cosine distance
+
+6) Varying Clients Subsampling Rate: We assert that
+MUDGUARD can perform well under different clients’ subsampling rates. This benefits from the proposed Model Segmentation that can resist malicious-majority clients. Imagine
+that in the context of an honest majority (e.g., 40 out of 100
+are malicious), if the subsampling rate is set relatively low
+(e.g., 10%), we eventually have a malicious majority case in
+one training epoch with a high probability. Our experimental
+results have demonstrated that MUDGUARD can still achieve
+Byzantine-robustness under a low subsampling rate.
+
+(b) Pairwise adjusted cosine distance (CosM)
+
+7) Learning Rate and Local Epoch: They are subtle parameters that decide the performance of FL training. A low
+learning rate can slow down the speed of convergence, and on
+the other hand, a high rate hinders the model’s convergence,
+harming accuracy. As for the local epoch, in the case of iid,
+if carefully increasing the number of epochs, we can make
+the model converge fast. But under a large degree of non-iid
+(e.g., q=0.5), the increase of epoch leads to updates in different
+directions, making the FedAvg algorithm invalid [43]. In
+this work, we set these two parameters according to the
+recommendations given in [43], [6]. Exploring their impacts
+on training is orthogonal to the main focus of this work.
+
+(c) Pairwise L2 distance for CosM
+
+Fig. 11: Calculation results of pairwise distance.
+
+8) Privacy-preserving DBSCAN: This is one of the core
+parts we used to build MUDGUARD. It can apply to other realworld domains, e.g., anomaly detection and encrypted traffic
+analytics, where data should be clustered securely. But we note
+that the current MUDGUARD with optimization may not scale
+well in these applications. We did the optimization for the
+sake of efficiency by using SignSGD and binary secret sharing,
+which cannot support precise floating-point arithmetic.
+9) Test Datasets: We notice that the EA is not applicable
+for FMINST since the research work [58] did not provide a
+backdoor dataset. We leave this as an open problem. Based on
+the performance of MUDGUARD on MNIST and CIFAR-10, we
+claim that even in FMNIST, the ASR of EA stays low, which
+is consistent with our main conclusion.
+
+Fig. 12: Comparison of MUDGUARD with cosine similarity
+and adjusted cosine similarity under GA.
+
+malicious clients consistently perform one type of attack (e.g.,
+GA) throughout the whole training period. It can also perform
+well if we allow malicious clients to perform different attacks
+on the epochs, e.g., GA to the first 10 epochs and then Krum
+attacks to the remaining epochs. We notice that all the attacks
+(we consider in this work) except GA may require several
+epochs of training (as a buffer) to produce attack effects.
+But these buffer epochs can boost MUDGUARD’s clustering
+performance. This is so because the clustering ability is
+enhanced with the increase of training rounds. On the other
+hand, the TNR and TPR (of the clustering) could be relatively
+low in these epochs. Some malicious clients can be clustered
+into a semi-honest group, but this will not seriously affect the
+accuracy performance of the model.
+
+In the experiments, we conduct three image datasets
+(MNIST, FMNIST, and CIFAR-10). We claim that MUDGUARD
+can be further used to capture the Byzantine-robust and
+privacy-preserving features of the models trained on text and
+speech datasets, where the text dataset for the next-word prediction task can require Recurrent Neural Networks (RNNs).
+To train these datasets, we can also use weights or gradients
+to update the models (in the context of FL). If the models or
+datasets are poisoned (by malicious clients), malicious updates
+have differences in updates directions from benign ones. Then
+we can use MUDGUARD to protect benign clients. We could
+use other types of datasets during training, but this will not
+affect our conclusions on Byzantine robustness and privacy
+preservation.
+
+One may think malicious clients are allowed to perform all
+the attacks in a single epoch. But so far, it is unknown how to
+
+10)Limitations: Using weights as updates. To provide costeffective secure computations, the proposed MUDGUARD only
+24
+
+implements the update method by SignSGD. If we use weights
+as updates, the secret shares sent to the servers will be in
+floating-point format. In this case, we will have to downgrade
+the design to the unoptimized MUDGUARD in Table V, which
+could cause a considerable amount of both communication
+costs and runtime. An interesting future work could be to
+propose a more lightweight (than the current design) and
+secure MPC framework for MUDGUARD.
+Performance under EA. Although MUDGUARD does achieve
+good performance in terms of accuracy and (to some extent)
+efficiency, under the EA, MUDGUARD’s ASR cannot be eventually reduced to nearly 0%. In future work, we will improve the
+TNR and TPR of the clustering algorithm so as to recognize
+subtle differences between malicious and semi-honest clients.
+
+25
+
+

@@ -1,0 +1,1844 @@
+JOURNAL OF LATEX CLASS FILES, VOL. 00, NO. 0, SEPTEMBER 0000
+
+1
+
+Mitigating Backdoor Attacks in Federated Learning
+Using PPA and MiniMax Game Theory
+
+arXiv:2603.28652v1 [cs.LG] 30 Mar 2026
+
+Osama Wehbi, Sarhad Arisdakessian, Omar Abdel Wahab, Anderson Avila, Azzam Mourad, Hadi Otrok
+
+Abstract—Federated Learning (FL) is witnessing wider adoption due to its ability to benefit from large amounts of scattered
+data while preserving privacy. However, despite its advantages,
+federated learning suffers from several setbacks that directly
+impact the accuracy, and the integrity of the global model it
+produces. One of these setbacks is the presence of malicious
+clients who actively try to harm the global model by injecting
+backdoor data into their local models while trying to evade
+detection. The objective of such clients is to trick the global
+model into making false predictions during inference, thereby
+compromising the integrity and trustworthiness of the global
+model on which honest stakeholders rely. To mitigate such
+mischievous behavior, we propose FedBBA (Federated Backdoor
+and Behavior Analysis). The proposed model aims to dampen the
+effect of such clients on the final accuracy, creating more resilient
+federated learning environments. We engineer our approach
+through the combination of (1) a reputation system to evaluate
+and track client behavior, (2) an incentive mechanism to reward
+honest participation and penalize malicious behavior, and (3)
+game theoretical models with projection pursuit analysis (PPA) to
+dynamically identify and minimize the impact of malicious clients
+on the global model. Extensive simulations on the German Traffic
+Sign Recognition Benchmark (GTSRB) and Belgium Traffic Sign
+Classification (BTSC) datasets demonstrate that FedBBA reduces
+the backdoor attack success rate to approximately 1.1%–11%
+across various attack scenarios, significantly outperforming stateof-the-art defenses like RDFL and RoPE, which yielded attack
+success rates between 23% and 76%, while maintaining high
+normal task accuracy (∼95%–98%).
+Index Terms—Cybersecurity, Federated Learning (FL), Backdoor Attacks, Game Theory, Reputation System, Projection
+Pursuit Analysis (PPA)
+
+I. I NTRODUCTION
+Federated learning (FL) enables collaborative model training across distributed clients while keeping data locally on
+devices, thus preserving privacy and reducing centralized data
+storage requirements. [1]. This framework not only preserves
+user privacy but also leverages edge device capabilities, making it vital for applications such as healthcare, finance, and
+Osama Wehbi is with the Department of Computer and Software Engineering, Polytechnique Montréal, Montreal, Quebec, Canada (e-mail:
+osama.wehbi@etud.polymtl.ca).
+Sarhad Arisdakessian is with the Department of Computer and Software
+Engineering, Polytechnique Montréal, Montreal, Quebec, Canada (e-mails:
+sarhad.arisdakessian@etud.polymtl.ca).
+Omar Abdel Wahab is with the Department of Computer and Software
+Engineering, Polytechnique Montréal, Montreal, Quebec, Canada (e-mails:
+omar.abdul-wahab@polymtl.ca).
+Anderson Avila is with the Institut national de la recherche scientifique
+(INRS-EMT), Montréal, Canada (e-mail: Anderson.Avila@inrs.ca).
+Azzam Mourad is with the Department of Computer Science, Khalifa
+University, Abu Dhabi, UAE, as well as the Artificial Intelligence & Cyber
+Systems Research Center, Department of CSM, Lebanese American University (e-mails: azzam.mourad@ku.ac.ae).
+Hadi Otrok is with the Department of Computer Science, Khalifa University, Abu Dhabi, UAE (e-mails: hadi.otrok@ku.ac.ae).
+
+autonomous driving. Despite these benefits, FL inherits unique
+security challenges, particularly its vulnerability to backdoor
+attacks. These attacks exploit the training process to implant
+malicious behaviors in models that are activated by specific
+triggers, such as pixel modifications or hidden patterns in the
+input data [2]. For instance, in autonomous vehicles (AVs), a
+trigger embedded in traffic sign images could lead to misclassifications, jeopardizing safety-critical systems. Such attacks
+aim to manipulate the model’s behavior while remaining
+undetected during training, allowing malicious functionality
+to coexist with otherwise normal model performance. The
+decentralized nature of FL further exacerbates these challenges. Clients often possess limited or imbalanced datasets
+that may not fully represent the global data distribution.
+As a result, clients may incorporate external data during
+local training, increasing the potential for backdoor attacks.
+Malicious participants can exploit this setting by injecting
+poisoned data or embedding triggers into their local training
+process. Moreover, backdoor attacks can be carried out in
+multiple forms, including single or multiple attempts, coordinated attacks across several clients, targeted (one-to-one),
+untargeted (one-to-many), and multi-trigger scenarios. These
+attacks are particularly difficult to detect due to their stealthy
+design and the high dimensionality of deep learning models.
+Another major challenge arises from the federated aggregation
+process itself. Since only model updates are shared with the
+server rather than raw data, it becomes difficult to identify
+and isolate malicious contributions. Traditional evaluation metrics such as accuracy and precision primarily assess overall
+model performance but often fail to capture hidden malicious
+behaviors embedded within the model [3]. Consequently, a
+model may maintain high accuracy on benign inputs while
+still containing covert backdoor functionality. Although several
+defense mechanisms have been proposed to address backdoor
+attacks in federated learning, many existing approaches focus
+primarily on scalability and complexity, and some introduce
+additional privacy concerns. More importantly, most solutions
+treat participating clients as static entities and overlook the
+dynamic behavior and evolving motivations of both honest
+and malicious participants during the training process. This
+limitation restricts their ability to adapt to changing attack
+strategies. In addition, many existing defenses are designed to
+address only specific forms of attacks, particularly one-to-one
+backdoor attacks, while overlooking other types that can be
+equally harmful.
+To address these challenges, we propose FedBBA (Federated
+Backdoor and Behavior Analysis), a framework designed to
+enhance the security and reliability of federated learning systems. The proposed approach integrates statistical analysis, a
+
+JOURNAL OF LATEX CLASS FILES, VOL. 00, NO. 0, SEPTEMBER 0000
+
+reputation-based evaluation mechanism, and game-theoretical
+modeling to dynamically detect and mitigate malicious client
+behavior. In particular, our framework leverages Projection
+Pursuit Analysis (PPA) with kurtosis scores to identify suspicious model updates, while a reputation mechanism continuously evaluates client behavior over multiple training rounds.
+Furthermore, we model the interaction between the federated
+server and potentially malicious clients as a non-cooperative
+MiniMax game, where malicious clients attempt to maximize
+the impact of backdoor attacks while the server aims to
+minimize their influence on the global model. Based on this
+framework, the federated server assigns adaptive weights to
+client updates according to their PPA scores, reputation values,
+and gradient differences, thereby reducing the influence of
+suspicious or malicious contributions while preserving the
+benefits of collaborative learning. Through extensive simulations using real-world datasets, including GTSRB and BTSC,
+we demonstrate that FedBBA significantly reduces backdoor
+attack success rates while maintaining high model accuracy
+and outperforming existing state-of-the-art approaches.
+This work contributes to advancing secure federated learning by addressing the dynamic nature of client behavior
+and providing a more comprehensive defense against diverse
+backdoor attack strategies. By improving the robustness and
+trustworthiness of federated models, our approach supports the
+safe deployment of FL in safety-critical domains.
+A. Contributions
+The main contributions of this work are summarized as
+follows:
+1) Develop a novel federated learning framework based
+on non-cooperative MiniMax games, incorporating PPA
+scores, reputation scores, and differences in local model
+gradients to dynamically adapt to client behavior and
+model updates, with the objective of assigning optimal
+weights to minimize the impact of malicious clients.
+2) Leverage a reputation mechanism to evaluate client behavior dynamically, rewarding honest clients and penalizing malicious ones, thereby enhancing the robustness
+of the global model against backdoor attacks.
+3) Utilize Projection Pursuit Analysis (PPA) with Kurtosis
+scores, coupled with a reputation mechanism, to identify
+possible suspicious client updates and mitigate their
+impact on the global model by reducing the influence
+of backdoored contributions.
+4) Design the proposed solution to be generic enough to
+address different types of attacks, including one-to-one
+and one-to-many scenarios, which are often overlooked
+by existing works.
+B. Paper Outline
+Section II reviews the related work on backdoor attack
+detection and mitigation strategies in FL. Section III discusses
+the main concepts and methods used in this research. Section IV formulates the core problem of backdoor attacks in FL
+and discusses their impact on model integrity and performance.
+
+2
+
+The system architecture and PPA methodology for mitigating anomalous model updates are presented in Section V,
+while Section VI details the MiniMax game framework and
+the decision-making process used to reduce the influence of
+suspicious clients. Section VII describes the implementation
+of FedBBA and its operation across multiple training rounds.
+Section VIII reports the experimental results, evaluating the
+effectiveness of FedBBA using real-world datasets and comparing its performance with state-of-the-art methods in terms
+of model accuracy and backdoor attack success rates. Finally,
+Section IX concludes the paper and outlines potential directions for future research.
+II. R ELATED W ORK
+In this section, we provide an overview of the existing
+literature on the detection and mitigation strategies of backdoor attacks in federated learning. Additionally, we highlight
+the distinct contributions of our approach compared with the
+reviewed works.
+The authors of [4] propose a security mechanism against
+backdoor attacks in federated learning using Generative Adversarial Networks (GANs) and knowledge distillation. The
+approach compare the performance of a clean model trained on
+clean data (teacher) with a global model trained on aggregated
+data (student). To reduce the probability of backdoor attacks,
+the authors of [5] propose a distributed method to prune
+neurons. Clients measure neuron activation and submit local
+pruning sequences to the server, which aggregates them to
+eliminate less-used neurons, enhancing model performance.
+Modeling the backdoor problem as a coalitional game theory,
+the authors of [6] measure participant performance using
+their data’s influence on the aggregated model, distinguishing
+benign and backdoored models via Shapley value. Addressing
+attacker behavior fluctuations, the authors of [7] introduce a
+MiniMax game strategy where the server generates authentic
+client ratings to adjust model weights, reducing the influence
+of compromised clients. In [8], the authors propose an anomaly
+detection framework that uses conditional variational autoencoders (CVAE) to identify benign and malicious updates,
+leveraging the majority of benign clients to distinguish updates
+effectively. The authors of [9] describe a federated learning
+system where an anomaly detector trained on adversarial data
+discards malicious updates. In [10], the authors introduce
+FedSV, a Byzantine-robust framework utilizing Shapley values
+to quantify client contributions and eliminate malicious clients,
+though it is sensitive to noise. Similarly, the authors of [11]
+propose FLPurifier, which uses decoupled contrastive training
+to detect and remove backdoored data. However, computational requirements and communication overhead limit its
+scalability. The authors of [12] propose Model Anomalous
+Activation Behavior Detection (MAABD), monitoring neural
+network activation patterns to detect deviations and identify
+malicious tampering. In [13], the authors introduce a max-min
+security game approach that assigns adaptive weights based
+on client trust and data quality. This ensures updates from
+malicious clients have less influence, though computational
+overhead limits practicality in certain FL environments. Dimensionality reduction techniques have also been explored for
+
+JOURNAL OF LATEX CLASS FILES, VOL. 00, NO. 0, SEPTEMBER 0000
+
+detecting backdoored models. The authors of [14] introduce
+RoPE, which employs Principal Component Analysis (PCA) to
+identify anomalous updates based on distinct principal components, though its effectiveness depends on the backdoor’s
+strength as well as the data distribution, which can lead to
+the exclusion of benign models. In [15], the authors propose
+RDFL to mitigate backdoor attacks in federated learning.
+The method combines adaptive hierarchical clustering with
+cosine-distance-based anomaly detection. Suspicious updates
+are removed, followed by adaptive clipping and noising to
+suppress poisoned local models. However, RDFL is sensitive
+to data distribution and distance metrics; additionally, model
+clipping may negatively affect accuracy. The authors of [16]
+use Singular Value Decomposition (SVD) to analyze singular values of model updates, capturing linear structures but
+overlooking complex backdoor patterns. While the reviewed
+approaches show potential, many rely on single detection
+metrics, leaving them vulnerable to sophisticated attacks.
+Others fail to address the decentralized nature of federated
+learning, limiting their applicability. Most solutions target
+basic backdoor types, neglecting adaptive strategies. Privacy
+concerns emerge in methods requiring sensitive client data,
+and many treat attacker behavior as static, reducing resilience
+to evolving threats.
+Our proposal addresses these gaps by leveraging Projection
+Pursuit Analysis to detect abnormal similarities among local
+models. The MiniMax game framework dynamically counters
+attackers, while the reputation system enhances decisionmaking. This multifaceted approach provides a comprehensive
+solution to mitigating malicious clients in federated learning.
+TABLE I
+N OTATION S UMMARY
+Symbol
+N
+T
+t
+Di
+Di′
+x j , yj
+M(t)
+(t)
+Mi
+wi
+τ, τk
+yja
+L, R
+X, V, S
+Ri (t)
+Hi (t), Gi (t)
+α, β
+gij , gi
+γ, δ
+ρi
+I′
+si
+U (F ), U (A)
+Φ(ρi , τ )
+θ, λ
+λ∗
+Rmax
+
+Description
+Number of participating clients.
+Total communication rounds.
+Current round index.
+Local dataset of client i.
+Poisoned dataset of client i.
+Input sample and true label.
+Global model at round t.
+Local model update from client i.
+Aggregation weight of client i.
+Backdoor trigger and trigger intensity.
+Target label for backdoor attack.
+Loss and regularization functions.
+Data matrix, projection vectors and PPA scores.
+Reputation score of client i.
+Historical behavior and gradient variation scores.
+Weights for reputation components.
+Gradient at round j and mean gradient.
+Reward and penalty factors.
+Poisoning ratio of client i.
+Set of compromised clients.
+PPA anomaly score of client i.
+Utility functions of server and attacker.
+Backdoor impact function.
+Similarity threshold and defense sensitivity parameter.
+Optimal defense sensitivity chosen by the server at equilibrium
+Upper bound on any client’s reputation score
+
+III. SYSTEM PRELIMINARIES
+In this section, we introduce the main concepts used in our
+framework, including the federated learning process and Pro-
+
+3
+
+jection Pursuit Analysis (PPA) with kurtosis-based anomaly
+detection.
+A. Federated Learning
+Federated learning is a decentralized machine learning approach that allows multiple clients to collaboratively train a
+model without sharing their raw data. Let Di denote the dataset
+of client i, M the global model, and Mi the local update.
+During the training proceeds over communication rounds, the
+server initializes the global model at t = 0. At each round t,
+clients update their models using local data:
+Mti = Mt−1 − η∇L(Mt−1 , Di )
+
+(1)
+
+The updates are sent to the server and aggregated to produce
+the next global model:
+N
+
+Mt+1 =
+
+1 X t
+M
+N i=1 i
+
+(2)
+
+The updated model is then redistributed to clients for the
+next round of training.
+B. Projection Pursuit Analysis and Kurtosis
+Projection Pursuit Analysis (PPA) is a multivariate
+technique that identifies informative projections of highdimensional data by maximizing a projection index [17].
+Unlike Principal Component Analysis (PCA), which focuses
+on variance, PPA detects non-Gaussian structures that often
+correspond to anomalies or outliers. Formally, PPA searches
+for a projection vector w that maximizes the projection index:
+w∗ = arg max I(wT X)
+w
+
+(3)
+
+In our context, the server applies PPA to the collection
+of client updates in each round. Malicious updates typically
+introduce abnormal patterns in the high-dimensional parameter
+space, which PPA can highlight. The projection index used in
+our work is the kurtosis score, defined as the standardized
+fourth central moment of a distribution:
+kurtosis =
+
+E[(X − µ)4 ]
+σ4
+
+(4)
+
+A high kurtosis values indicate heavy tails or outliers in
+the projected distribution, allowing the detection of anomalous
+client updates. This property makes kurtosis-based PPA particularly effective for identifying stealthy backdoor behaviors
+embedded in model updates.
+To illustrate this property, we conducted an experiment on
+the MNIST dataset with 30 clients, where 10 clients used
+poisoned data. The backdoor attack modified the first row of
+pixels in images of class 0 and changed the label to 9. After
+30 training rounds, PPA successfully separated malicious and
+benign updates, whereas PCA did not produce clear clustering
+(Fig. 1). These results demonstrate the effectiveness of PPA
+for detecting anomalous model updates in federated learning.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 00, NO. 0, SEPTEMBER 0000
+
+4
+
+B. Attack Execution Strategies
+
+(a) PPA score plot; each point
+
+(b) PCA score plot; each point
+
+represents a local model
+
+represents a local model
+
+Fig. 1. Comparison of model clustering using PPA vs. PCA. PPA shows
+clearer separation between benign (black) and backdoored (blue) models.
+
+IV. P ROBLEM F ORMULATION
+In this section, we provide the formal definitions of different
+backdoor attack models considered in our work and the
+methods used to inject these attacks into federated learning
+systems.
+A. Backdoor Attack Models
+Backdoor attacks aim to embed malicious behaviors into the
+global model without significantly affecting its performance.
+These attacks are particularly insidious because they can
+remain undetected during the training process and only get
+activated under specific conditions. When a certain trigger is
+present, the model will behave differently from its expected
+behavior. We can differentiate between three types of backdoor
+attacks:
+1) One-to-One Attack: An attack with a single trigger τ
+modifies the local dataset Di such that:
+Di′ = {(xj + τ, yja ) : (xj , yj ) ∈ Di }
+
+(5)
+
+This ensures that when the trigger τ is present, the input xj +τ
+is misclassified as yja . This type of attack is straightforward but
+effective, causing the model to produce incorrect predictions
+for inputs containing the specific trigger.
+2) One-to-N Attack: An attack with varying trigger intensities τk targets multiple behaviors yja :
+Di′ = {(xj + τk , yja ) : (xj , yj ) ∈ Di , k = 1, . . . , K}
+
+(6)
+
+In this scenario, different intensities of the trigger τk cause
+different misclassifications, making detection more challenging. The model may behave correctly under normal conditions
+but produce erroneous outputs for inputs with varying degrees
+of the trigger, complicating the identification of malicious
+behavior.
+3) N-to-One Attack: An attack requires all N backdoors τk
+to be present simultaneously to trigger the attack:
+Di′ = {(xj +
+
+N
+X
+
+τk , yja ) : (xj , yj ) ∈ Di }
+
+This section describes how these attacks can be performed.
+One approach involves multiple rounds, where clients repeatedly send backdoored updates to the server. Another method is
+model replacement, where clients wait until the model is near
+convergence and then replace it to introduce the backdoor.
+1) Multiple Rounds with Backdoored Updates: In this approach, the attack occurs over several communication rounds
+t = 1, 2, . . . , T (where T is the total number of rounds). Each
+client i trains its local model on dataset Di and computes
+local updates. Malicious clients instead use a modified dataset
+Di′ containing backdoors using one of the methods defined
+in Equation (5), (6), or (7). Clients send their updates to
+the server, which aggregates them to form the new global
+model using Equation (2). Malicious clients continue submitting backdoored updates over several rounds, gradually
+embedding the backdoor into the global model. This attack
+can be performed by a single malicious client or collaboratively by multiple clients. Collaborative attacks are more
+effective, as distributing poisoned updates reduces detection
+risk. In contrast, a single client must inject more poisoned
+data to influence the global model, making detection easier.
+Additionally, when only one client attacks, the backdoor effect
+may gradually vanish due to catastrophic forgetting across
+rounds [18]. This scenario is realistic because it does not
+require high-privilege access or control over the federated
+learning process [19].
+2) Model Replacement: In this approach, the attack occurs
+when the global model is near convergence. Each client i trains
+its local model on dataset Di , while malicious clients prepare
+a significantly altered model using a modified dataset Di′ with
+one of the methods defined in Equation (5), (6), or (7). At
+a strategic round T ′ ≈ T , malicious clients submit altered
+models containing the backdoor:
+(T ′ )
+
+Mi
+
+= arg max L(M; Di′ ) + R(M)
+M
+
+(8)
+
+The server then aggregates the updates to form the new
+global model:
+N
+
+′
+
+M(T +1) =
+
+1 X (T ′ )
+M
+N i=1 i
+
+(9)
+
+Due to the large modifications introduced by malicious
+clients, the global model may contain the backdoor. Although
+model replacement attacks can be highly effective, they are
+less realistic in practical federated learning systems [20].
+Successfully replacing the global model without detection typically requires high-privilege access and precise control over
+the aggregation process, which is rarely available to adversarial
+clients. Therefore, this scenario assumes a stronger threat
+model and is harder to implement in real-world deployments.
+
+(7)
+
+k=1
+
+This type of attack is particularly stealthy because individual
+triggers τk do not cause misclassifications on their own. Only
+when all triggers are present together does the attack activate,
+making it difficult to detect through traditional methods.
+
+V. S YSTEM A RCHITECTURE
+In this section, we present the overall system architecture
+designed to mitigate backdoor attacks in federated learning.
+The architecture includes Projection Pursuit Analysis (PPA)
+for mitigating anomalous model update effects from malicious
+
+JOURNAL OF LATEX CLASS FILES, VOL. 00, NO. 0, SEPTEMBER 0000
+
+clients, a reputation system to evaluate client behavior based
+on historical data, including action taken as well as gradient
+variation.
+Algorithm 1 Multivariate Kurtosis Projection Pursuit (MKPP)
+Require: Data matrix X, dimension p, number of guesses guess, search
+type M axM in, algorithm type StSh
+Ensure: Projection scores S, projection vectors V , kurtosis values kurtObj
+1: Mean-center the data: X ← X − mean(X)
+2: Perform SVD: (U, Z, V ) ← SVD(X)
+3: Dimensionality reduction: X ← U Z
+4: Initialize maxcount ← 1000, kurtObj ← 0
+5: for k = 1 to guess do
+6:
+Initialize random projection V
+7:
+count ← 0, converged ← f alse
+8:
+while not converged and count < maxcount do
+9:
+A ← V T X T XV
+10:
+Update V using (A, M axM in, StSh)
+11:
+Normalize V using SVD
+12:
+if change in V < threshold then
+13:
+converged ← true
+14:
+end if
+15:
+count ← count + 1
+16:
+end while
+17:
+kurtObj[k] ← kurtosis(XV )
+18: end for
+19: Select best projection vector V
+20: Compute scores S ← XV
+21: return S, V , kurtObj
+
+A. PPA-based Detection
+The algorithm 1 aims to find optimal projection vectors
+V from a data matrix X by maximizing or minimizing
+the kurtosis score. The process begins by mean-centering
+the data matrix X (line 1) and performing Singular Value
+Decomposition (SVD) to reduce its dimensionality (lines 23). The algorithm then iterates over a set number of initial
+guesses for the projection vectors V (line 5). In each iteration,
+it initializes V randomly (line 6) and sets the count and
+convergence flag (line 7). The algorithm updates V using a
+quasi-power method (lines 9-10), normalizes V using SVD
+(line 11), and checks for convergence based on changes in V
+(lines 12-14). The iteration stops if convergence is achieved
+or the maximum iteration count is reached (line 18). Once
+all guesses are evaluated, the algorithm computes the kurtosis
+for each projection (line 17) and selects the best V based on
+the computed kurtosis values (line 19). Finally, it calculates
+the scores S using this optimal projection vector (line 20).
+The algorithm returns the scores, the optimal projection vector,
+and the kurtosis values for each guess (line 21). The resulting
+projection scores highlight extreme non-Gaussian deviations,
+which often correspond to malicious updates. The computational complexity of the MKPP algorithm can be approximated
+as O(|guess| × maxcount × n × p2 ), where n is the number of
+samples and p is the dimensionality of the projection space.
+The kurtosis-based PPA aims to identify extreme nonGaussian deviations that may indicate malicious behavior,
+rather than capturing normal variance from benign data heterogeneity. To avoid misclassifying clients with legitimate
+data distributions, PPA is combined with a dynamic reputation system that tracks each client’s historical behavior
+and gradient consistency across training rounds. This duallayer assessment ensures that clients with stable behavior are
+
+5
+
+not unfairly penalized. Additionally, we introduce a reward
+and penalty mechanism that adjusts reputation scores based
+on behavioral patterns rather than statistical outliers alone,
+encouraging participation and fairness while strengthening the
+robustness of the detection strategy.
+B. Reputation System
+The reputation mechanism evaluates each client based on
+historical behavior and gradient consistency. A probationary
+phase allows the server to establish baseline behavior before
+applying reputation adjustments.
+The reputation score for client i at round t is:
+Ri (t) = αHi (t) + βGi (t)
+
+(10)
+
+where Hi (t) represents historical behavior, Gi (t) captures
+gradient variation and α,β are weights such that α + β = 1.
+The historical behavior score can be derived as follows :
+correct actions of client i
+(11)
+total actions
+The gradient variation score tracks update stability over the
+last n rounds:
+Hi (t) =
+
+Gi (t) =
+
+t
+1 X
+(g j − gi )2
+n j=t−n+1 i
+
+(12)
+
+Client influence is then dynamically adjusted using reward
+and penalty updates:
+Rinew = Riold + γRiold
+
+(13)
+
+Rinew = Riold − δRiold
+
+(14)
+
+Where γ is the adjustment factor for rewarding and δ is the
+adjustment factor for penalizing.
+This mechanism gradually reduces the influence of suspicious clients while allowing recovery for honest participants.
+By combining PPA anomaly detection with reputation tracking, the system identifies persistent malicious behaviors rather
+than incidental irregularities.
+VI. M INIMAX G AME
+In this section, we present the minimax security game,
+where the server aims to minimize the impact of attacks by
+reducing the influence of weights of suspicious clients while
+the attack leader seeks to maximize this minimization.
+A. Game Model
+MiniMax is a game theoretical model in which one player’s
+gain represents the other player’s exact loss. We can model
+the interaction between a federated server (minimizer) and
+malicious clients (maximizers) as a MiniMax game in federated learning, where malicious clients aim to maximize their
+utility by injecting backdoor triggers into their local models
+to manipulate the global model’s predictions. In contrast,
+the federated server aims to minimize the impact of these
+
+JOURNAL OF LATEX CLASS FILES, VOL. 00, NO. 0, SEPTEMBER 0000
+
+6
+
+Adversary (Attack Leader) –
+Maximizer
+
+Attack Optimization
+Eq. 29
+
+Poisoned Updates (M′i)
+
+M′2
+
+.....
+
+Step 1:
+
+M1
+
+Step 2 : Model Transmission
+
+Inputs:
+Reputation (Rᵢ),
+Sensitivity (λ),
+Baseline (θ)
+
+Federated Server (Defender) – Minimizer
+
+Mi
+Mi
+M′i
+
+Step 3: Detection &
+Assessment (PPA)
+
+Reward
+
+and DBSCAN
+
+Penalty
+
+Increase
+Reputation (Rᵢ)
+Decrease
+Reputation (Rᵢ)
+
+Step 6: Reputation
+Update
+
+Step 4:
+
+Weight Calculation
+Eq. 17
+
+Reputation
+History
+
+Step 5:
+
+Weighted Aggregation
+Eq. 18
+
+Global Model
+Update M⁽ᵗ⁺¹⁾
+
+Fig. 2. Architectural workflow of the proposed Minimax game.
+
+malicious clients to ensure the integrity and accuracy of the
+global model. The interaction is represented between two
+players:
+Server (minimizer): aims to preserve the integrity of
+the global model by choosing the defense sensitivity
+parameter λ ∈ [λmin , λmax ] ⊂ R+ , which controls the
+aggressiveness of the PPA penalty on suspicious updates.
+A larger λ penalises high-ρi clients more sharply but risks
+false positives on honest clients.
+• Adversary (maximizer): attempts to inject backdoor
+triggers through poisoned local updates by selecting the
+poisoning ratio ρi ∈ [0, 1] for each compromised client
+i ∈ I ′ , given the server’s chosen λ.
+
+•
+
+This formulation allows the analysis of worst-case attack
+scenarios and enables the design of defensive aggregation
+strategies based on anomaly detection and reputation mechanisms.
+B. Player Strategies
+1) Adversarial Strategy: Malicious clients aim to inject
+backdoor triggers into the federated training process using
+the poisoning mechanisms defined in Section IV-A. Let Di
+denote the benign dataset of client i. The attacker constructs
+a poisoned dataset Di′ by injecting trigger patterns τ into a
+subset of samples. The poisoning ratio ρi ∈ [0, 1] represents
+the fraction of poisoned samples:
+Di′ (ρi ) = Diclean ∪ Dipoisoned
+
+(15)
+
+wi (ρi , λ) =
+
+Ri + θ − λρi
+N
+X
+
+Rj + θ − λρj
+
+(16)
+
+where Mbd (τ ) represents the gradient direction induced by
+poisoned samples.
+
+(17)
+
+j=1
+
+Remark 1 (Approximation and validity). The linear model
+si (ρi , λ) = θ − λρi is motivated by Eq. (16), where the poisoned update deviates from the benign update proportionally
+to ρi . Since wi depends on all ρj via the denominator,
+we
+P
+approximate it by a normalising constant C = j (Rj + θ),
+yielding the separable surrogate J˜ used throughout Section VID; this preserves the monotonic incentive structure of the original game. Non-negativity of wi is guaranteed at equilibrium
+since λρ∗i = (Ri + θ)/2 < Ri + θ.
+The global model update is then:
+N
+
+Mt+1 =
+
+1 X
+wi (ρi , λ) Mti
+N i=1
+
+(18)
+
+The server determines λ by anticipating the adversary’s best
+response, as formalized in Section VI-D. The server uses
+Projection Pursuit Analysis to compute anomaly scores across
+client updates as follows:
+S = PPA(M)
+
+where |Dipoisoned | = ρi |Di |.
+The resulting model update becomes
+M′i = (1 − ρi )Mi + ρi Mbd (τ )
+
+2) Server Strategy: The federated server mitigates malicious influence by choosing the defense sensitivity λ and
+then assigning adaptive aggregation weights based on reputation scores and PPA anomaly scores. Substituting the PPA
+similarity score si (ρi , λ) = θ − λρi into Equation (17),
+the aggregation weight is therefore a function of both the
+adversary’s poisoning ratio and the server’s chosen λ:
+
+(19)
+
+To further detect abnormal behaviors, the server applies
+Density-Based Spatial Clustering of Applications with Noise
+(DBSCAN) clustering to identify suspicious groups of clients.
+DBSCAN is suitable for this task because of its ability to
+detect clusters of arbitrary shape and its robustness to noise,
+which allows it to isolate anomalous updates that deviate
+
+JOURNAL OF LATEX CLASS FILES, VOL. 00, NO. 0, SEPTEMBER 0000
+
+7
+
+significantly from the majority. Once DBSCAN identifies
+clusters, Clients identified as anomalous are penalized through
+reduced reputation scores, while benign clients receive rewards
+according to Equations (13) and (14).
+3) Utility Functions: The utility functions are derived from
+the joint weight formula in Equation (17). Because the game
+is zero-sum, it suffices to define the joint objective J(λ, ρ),
+with U (F ) = −J and U (A) = J. Following the standard
+approximation of replacing Φ(ρi , τ ) with ρi (motivated by the
+linear poisoning structure in Remark 1), the joint objective is:
+X
+J(λ, ρ) =
+wi (ρi , λ) · ρi
+(20)
+i∈I ′
+
+D. Equilibrium Analysis and Solution
+We adopt a simultaneous-move Nash formulation. The
+adversary maximizes J˜A (ρi ) = wi (ρi , λ) · ρi for each i ∈ I ′ ,
+treating λ as fixed; the server analogously chooses λ∗ as its
+best response to ρ∗ (λ). Substituting si (ρi , λ) = θ − λρi into
+the weight formula and approximating the denominator by C
+(Remark 1) yields the surrogate per-client objective:
+i
+1h
+(27)
+(Ri + θ)ρi − λρ2i
+J˜A (ρi ) ≈
+C
+This quadratic is strictly concave in ρi for any λ > 0. The unconstrained first-order condition gives the interior maximizer:
+Ri + θ
+(28)
+2λ
+Since the constraint ρi ∈ [0, 1] is binding whenever ρ̂i (λ) > 1,
+the constrained best response is:
+
+
+Ri + θ
+∗
+, 1
+(29)
+ρi (λ) = min
+2λ
+ρ̂i (λ) =
+
+Server’s utility:
+U (F ) = −J(λ, ρ)
+
+(21)
+
+The server minimizes J by choosing λ ∈ [λmin , λmax ]: a
+larger λ reduces wi (ρi , λ) for high-ρi clients more aggressively, suppressing their weighted contribution to the objective.
+Adversary’s utility:
+U (A) = J(λ, ρ)
+
+(22)
+
+The adversary controls the poisoning ratio vector ρ =
+{ρi }i∈I ′ , subject to ρi ∈ [0, 1], introducing a trade-off as:
+1) Efficacy: Increasing ρi strengthens the backdoor objective.
+2) Detectability: Larger ρi increases deviation from benign
+updates via si (ρi , λ) = θ − λρi , reducing wi (ρi , λ)
+and penalizing the reputation score Ri , which drives wi
+toward zero.
+C. Game Formulation
+The strategic interaction is defined
+⟨{Server, Adversary}, Λ, P, J, −J⟩, where:
+
+as
+
+G
+
+=
+
+Server strategy space: Λ = [λmin , λmax ] ⊂ R+ , a
+compact interval. The server chooses λ ∈ Λ to minimize
+the worst-case adversarial impact.
+|I ′ |
+• Adversary strategy space: P = [0, 1]
+. The adversary
+chooses ρ = {ρi }i∈I ′ to maximize J.
+
+•
+
+The interaction is formulated as the following minimax
+program:
+X
+min max J(λ, ρ) = min max
+wi (ρi , λ) · ρi
+(23)
+λ∈Λ ρ∈P
+
+λ∈Λ ρ∈P
+
+i∈I ′
+
+subject to:
+0 ≤ ρi ≤ 1,
+N
+X
+
+∀i ∈ I ′
+
+Note that ρ∗i = 1 whenever λ < (Ri +θ)/2, so a well-designed
+server must satisfy the criterion:
+Rmax + θ
+(30)
+2
+where Rmax = supt,i Ri (t). To keep Rmax finite, the reward
+update (Equation 13) is augmented with a cap:
+
+Rinew = min Riold + γRiold , Rmax
+(31)
+λ∗ ≥
+
+Setting Rmax = 1 with θ ≤ 1 keeps λ∗ ≤ 1, interpretable as
+full detection certainty at maximum poisoning.
+2) Server’s Optimal Strategy: Substituting ρ∗i (λ) from
+Equation (29) into Equation (20), the server solves:
+X
+
+λ∗ = arg min
+wi ρ∗i (λ), λ · ρ∗i (λ)
+(32)
+λ∈Λ
+
+i∈I ′
+
+In the interior regime, this objective is strictly decreasing in
+λ (increasing λ simultaneously shrinks each ρ∗i and reduces
+wi ), so the minimum is attained at the boundary:
+λ∗ = λmax
+
+(33)
+
+subject to criterion (30); in practice λmax is tuned to balance
+detection power against false positives on honest clients, and
+is set to λmax = 1.0 in our experiments.
+3) Existence and Uniqueness of the Saddle Point:
+Theorem 1 (Existence of a Nash Saddle-Point Equilibrium).
+The surrogate game G̃ (see Remark 1) admits at least one Nash
+saddle-point equilibrium (λ∗ , ρ∗ ), constituting an approximate
+equilibrium of the original game G.
+
+(24)
+
+wk (ρk , λ) = 1
+
+(25)
+
+λmin ≤ λ ≤ λmax
+
+(26)
+
+k=1
+
+where wi (ρi , λ) is defined in Equation (17). Both strategy
+spaces are compact and convex, satisfying the prerequisites
+for the equilibrium analysis in Section VI-D.
+
+Proof. We verify the conditions of Sion’s minimax theo˜ ρ) (Remark 1).
+rem [21]. Let f (λ, ρ) = J(λ,
+(i) Compact, convex strategy spaces. Λ = [λmin , λmax ]
+′
+is a compact convex subset of R. P = [0, 1]|I | is a compact
+′
+convex subset of R|I | .
+(ii) Quasi-convexity in λ. In the interior regime, each term
+wi (ρ∗i , λ) · ρ∗i (λ) ∝ (Ri + θ)2 /λ is strictly convex in λ > 0.
+In the boundary regime (ρ∗i = 1), wi (1, λ) = (Ri + θ − λ)/C ′
+
+JOURNAL OF LATEX CLASS FILES, VOL. 00, NO. 0, SEPTEMBER 0000
+
+is affine (hence convex) in λ. Thus J˜ is quasi-convex on all
+of Λ.
+(iii) Quasi-concavity in ρ (adversary’s variable). For fixed
+λ, Equation (27) shows JA (ρi ) is strictly concave (hence
+quasi-concave) in each ρi . Since the objectives are separable
+across clients i ∈ I ′ , J is quasi-concave in ρ jointly.
+(iv) Continuity. wi (ρi , λ) is continuous in both arguments
+on the interior of Λ × P (it is a rational function with positive
+denominator). Thus J is jointly continuous.
+By Sion’s minimax theorem, minλ maxρ J
+=
+maxρ minλ J, and there exists a saddle point (λ∗ , ρ∗ )
+satisfying:
+J(λ∗ , ρ) ≤ J(λ∗ , ρ∗ ) ≤ J(λ, ρ∗ )
+
+∀ λ ∈ Λ, ρ ∈ P (34)
+
+Interpretation. At equilibrium, λ∗ = λmax forces each
+adversary’s best response to ρ∗i = (Ri + θ)/2λmax < 1,
+deterring full poisoning and confirming the low attack success
+rates observed in Figure 4 even at 30% malicious participation.
+VII. F ED BBA: F EDERATED BACKDOOR AND B EHAVIOR
+A NALYSIS
+In this section, we present the operational flow of our
+proposed federated learning defense framework, FedBBA (Federated Backdoor and Behavior Analysis).
+FedBBA enhances the robustness of federated learning by
+identifying and mitigating backdoor attacks without accessing
+raw client data, thereby preserving data privacy. Instead, it
+analyzes only model updates using Projection Pursuit Analysis
+(PPA) and a dynamic reputation scoring system.
+Algorithm 2 Round-Based Execution of the FedBBA Framework
+1: Initialize global model M0 , reputation scores Ri
+2: for each federated learning round r in 1 to T do
+3:
+for each client i in 1 to N do
+4:
+Train local model Mi on client’s data
+5:
+Send local model Mi to server
+6:
+end for
+7:
+Calculate PPA score si = PPA(Mi )
+8:
+Cluster PPA scores using DBSCAN to determine
+classes
+9:
+for each client i in classes do
+10:
+Compute normalized weights using Equation (17)
+11:
+if classi == 0 then
+12:
+Update reputation score Ri negatively using Equation (14)
+13:
+else
+14:
+Update reputation score Ri positively using Equation (13)
+15:
+end if
+16:
+end for
+17:
+Update global model using Equation (18)
+18:
+Calculate server’s payoff using Equation (21)
+19:
+Calculate attacker’s payoff using Equation (22)
+20: end for
+
+8
+
+The detailed step-by-step procedure is formalized in Algorithm 2. At the start of training (t = 0), the server initializes
+the global model M and assigns an initial reputation score
+Ri for each client. These scores are based on both historical
+behavior and gradient variation, as defined in Equation (11)
+(Line 1). During each federated learning round r from 1 to
+T , selected clients train local models Mi on their private
+data and transmit them back to the server (Lines 2–5). The
+server then computes PPA scores si to quantify the level of
+anomalous behavior in each update (Line 7), followed by
+clustering using DBSCAN to identify suspicious clients (Line
+8). Based on these clusters, client reputation scores Ri are
+updated: suspicious clients are penalized (Lines 11–12) using
+Equation (14), while benign clients are rewarded (Lines 13–
+14) via Equation (13). Normalized aggregation weights are
+computed using both reputation and PPA scores (Line 10),
+and the global model is updated accordingly using Equation (18) (Line 16). Finally, the server and attacker payoffs
+are calculated using the MiniMax game-based utility functions
+(Equations 21 and 22, Lines 18–19). This iterative process
+allows FedBBA to dynamically detect and suppress malicious
+behaviors across rounds.
+Figure 2 illustrates the strategic execution of the proposed
+Minimax game framework. The interaction starts with the
+Attack Leader solving the maximization problem to derive the
+constrained optimal poisoning ratio ρ∗i = min{(Ri +θ)/2λ, 1}
+via Equation (29), which balances attack impact with detectability given the server’s chosen defense sensitivity λ
+(Step 1). Following this, both malicious and benign clients
+perform local training and transmit their model updates Mi to
+the server (Step 2). Upon receiving the updates, the Federated
+Server initiates the defense phase by calculating Projection
+Pursuit Analysis (PPA) scores and utilizing DBSCAN to
+cluster the updates and identify anomalies (Step 3). Based on
+these clusters, the server computes the aggregation weights
+wi (ρi , λ∗ ) for all clients using Equation (17), suppressing
+the influence of high-poisoning clients consistent with the
+equilibrium defense sensitivity λ∗ (Step 4). The server then
+aggregates the weighted local models to produce the global
+model update M(t+1) via Equation (18) (Step 5). Finally, the
+feedback loop is closed as the server updates the reputation
+scores Ri penalizing identified malicious actors via Equation (14) and rewarding honest participants via Equation (13),
+which reduces the adversary’s optimal poisoning ratio ρ∗i in
+the subsequent round via Equation (29), as a lower Ri directly
+decreases the equilibrium best response (Step 6).
+VIII. S IMULATION & E XPERIMENTS
+In this section, we present the experimental results demonstrating the effectiveness of our approach in minimizing the
+effects of backdoor attacks while maintaining the accuracy of
+the global model.
+A. Context & Environment
+We conduct our experiments using the GTSRB and BTSC
+datasets, which contain 43 and 62 traffic sign classes respectively, to evaluate classification performance. The implemen-
+
+JOURNAL OF LATEX CLASS FILES, VOL. 00, NO. 0, SEPTEMBER 0000
+
+tation relies on industry-standard libraries including Torch,
+Torchvision, NumPy, and Pandas.
+We employ a convolutional neural network (CNN) composed of convolutional layers for feature extraction and two
+fully connected layers for classification. The poisoning ratio
+ρi is dynamically determined by the adversary according to
+the optimization formulation described in Section VI. For
+the GTSRB dataset, we reduce it to 10 classes by selecting
+those with the highest number of samples. Each client is
+assigned 4 to 6 classes, with 250 to 350 samples per class.
+For the BTSC dataset, each client receives between 20 and
+40 classes, with 50 to 150 images per class. This class-based
+partitioning results in a non-IID data distribution across clients,
+simulating realistic federated settings where participants hold
+heterogeneous local datasets. The federated learning setting
+consists of a total of C = 300 clients, from which c = 40
+clients are randomly selected in each training round. Among
+the participating clients, up to 30% are malicious.
+We use two primary metrics to evaluate our approach:
+• Accuracy: the percentage of correctly classified images.
+• Backdoor attack success rate: the percentage of triggered (backdoored) test samples misclassified by the
+global model into the attacker’s predefined target label.
+We compare our approach (FedBBA) with two state-of-theart methods and a baseline:
+• Vanilla: standard federated learning with random client
+selection, used as a baseline [1].
+• RoPE: a state-of-the-art method that applies PCA for
+backdoor detection [14].
+• RDFL: a state-of-the-art approach using clustering and
+noise clipping for robust aggregation [15].
+For the clustering component of our approach, we use the
+DBSCAN algorithm. The parameters are tuned through grid
+search, with the neighborhood radius set to ε = 0.6 and the
+minimum samples parameter set to 5. These values balance
+cluster cohesion and noise filtering, ensuring stable clustering
+results across the datasets.
+B. Experimental Results
+In this section, we present the results of our experiments in
+terms of accuracy and backdoor attack success rate, providing
+a detailed comparative analysis with baseline and state-of-theart approaches.
+To evaluate the impact of the reputation score’s weighting
+parameters, we performed a sensitivity analysis on the values
+of α and β, which represent the contribution of historical
+behavior and gradient-based anomaly signals, respectively. We
+constrained α + β = 1 and varied each to assess the effect
+on both clean-task accuracy and backdoor success rate. The
+experiments were conducted on the GTSRB dataset with a
+training duration of 100 federated learning rounds.
+As illustrated in Table II, the balanced configuration α =
+β = 0.5 provides a better trade-off between clean accuracy and
+backdoor resilience. It achieves one of the highest accuracy
+values 96.8%, while minimizing the backdoor success rate
+to just 16%. In contrast, skewed configurations α = 0.9,
+β = 0.1 result in a significantly higher backdoor success
+
+9
+
+TABLE II
+I MPACT OF α AND β ON M ODEL ACCURACY AND BACKDOOR S UCCESS
+R ATE USING GTSRB DATASET OVER 100 ROUNDS
+
+α
+
+β
+
+Accuracy (%)
+
+Backdoor Success Rate (%)
+
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+
+0.9
+0.8
+0.7
+0.6
+0.5
+0.4
+0.3
+0.2
+0.1
+
+96.6
+95.4
+96.9
+96.2
+96.8
+96.2
+95.6
+95.5
+96.1
+
+25.0
+28.0
+21.0
+33.0
+16.0
+22.0
+41.0
+21.0
+45.0
+
+rate up to 45%, indicating reduced robustness. This empirical
+evidence justifies our choice of equal weights in the reputation
+calculation. However, we recognize that optimal values may
+vary across applications, and tuning may be warranted in
+future work depending on domain-specific factors and threat
+severity.
+1) One-to-One Attacks: Figure 3(a) illustrates the performance of our FedBBA approach in mitigating backdoor
+attacks while maintaining high normal task accuracy using the
+GTSRB dataset. Initially, all methods exhibit nearly similar
+accuracy levels; however, as training progresses, FedBBA’s
+accuracy significantly surpasses that of the other approaches.
+By the 20th round, FedBBA achieves an accuracy exceeding 60%, which is markedly higher than RDFL and RoPE,
+whose accuracy remains below 15%. This trend continues with
+FedBBA reaching an accuracy of approximately 96.8% by the
+100th round, compared to 93.4% for RDFL, 95.5% for Vanilla,
+and 91.5% for RoPE. While the improvement in clean-task accuracy over baseline methods may appear modest ∼3.4–11%,
+it is statistically meaningful and, more importantly, shows that
+the mitigation happened without hindering the performance
+on normal tasks. This is especially important in the context
+of backdoor attacks, which are stealthy and preserve normal
+task accuracy to evade detection. Many existing defenses
+apply techniques such as excluding clients or pruning updates,
+leading to significant degradation in normal task performance.
+In contrast, FedBBA achieves a strong balance by preserving
+high accuracy on the normal task while substantially reducing
+the backdoor success rate to the lowest ∼1–10%. These results
+underscore FedBBA’s robust capability in maintaining model
+integrity and performance, effectively addressing backdoor
+attacks more efficiently than the other methods evaluated.
+Figure 4(a) presents the backdoor attack success rate results,
+highlighting the effectiveness of the FedBBA technique using
+the GTSRB dataset. The Vanilla baseline confirms the efficacy
+of the attack, rapidly reaching and maintaining a 100% success
+rate, thereby establishing the severity of the threat in an unprotected setting. In sharp contrast, FedBBA effectively suppresses
+the backdoor, maintaining a complete 0% attack success rate
+for the first 18 rounds. While other defense methods like
+RDFL and RoPE exhibit significant instability, with RoPE
+peaking at 85.2% and RDFL fluctuating considerably, FedBBA
+consistently keeps the attack impact minimal. By the 100th
+
+JOURNAL OF LATEX CLASS FILES, VOL. 00, NO. 0, SEPTEMBER 0000
+
+(a) GTSRB (1 1) Accuracy
+
+100
+
+(b) BTSC (1 1) Accuracy
+
+100
+80
+
+80
+
+60
+
+60
+
+60
+
+40
+
+40
+
+40
+
+20
+
+20
+
+20
+
+0
+
+20
+
+100
+
+40
+
+60
+
+(d) BTSC (1 N) Accuracy
+
+80
+
+100
+
+0
+
+0
+
+100
+
+20
+
+40
+
+60
+
+80
+
+(e) GTSRB (N 1) Accuracy
+
+100
+
+0
+
+80
+
+80
+
+60
+
+60
+
+60
+
+40
+
+40
+
+40
+
+20
+
+20
+
+20
+
+0
+
+20
+
+40
+
+60
+
+80
+
+100
+
+0
+
+0
+
+20
+
+40
+
+60
+
+0
+
+20
+
+0
+
+20
+
+100
+
+80
+
+0
+
+(c) GTSRB (1 N) Accuracy
+
+100
+
+80
+
+0
+
+Accuracy (%)
+
+10
+
+80
+
+100
+
+0
+
+40
+
+60
+
+80
+
+100
+
+40
+
+60
+
+80
+
+100
+
+(f) BTSC (N 1) Accuracy
+
+Communication Rounds
+Vanilla
+
+FedBBA
+
+RoPE
+
+RDFL
+
+Fig. 3. Normal task accuracy comparison of RDFL, Vanilla, FedBBA, and RoPE across datasets and attack settings over 100 communication rounds.
+
+(a) GTSRB (1 1) Attack
+
+Backdoor Success Rate (%)
+
+100
+
+(b) BTSC (1 1) Attack
+
+100
+
+80
+
+80
+
+80
+
+60
+
+60
+
+60
+
+40
+
+40
+
+40
+
+20
+
+20
+
+20
+
+0
+
+0
+
+20
+
+100
+
+40
+
+60
+
+(d) BTSC (1 N) Attack
+
+80
+
+100
+
+0
+
+0
+
+20
+
+100
+
+40
+
+60
+
+(e) GTSRB (N 1) Attack
+
+80
+
+100
+
+0
+
+80
+
+80
+
+60
+
+60
+
+60
+
+40
+
+40
+
+40
+
+20
+
+20
+
+20
+
+0
+
+0
+
+20
+
+40
+
+60
+
+80
+
+100
+
+0
+
+20
+
+40
+
+60
+
+0
+
+20
+
+0
+
+20
+
+100
+
+80
+
+0
+
+(c) GTSRB (1 N) Attack
+
+100
+
+80
+
+100
+
+0
+
+40
+
+60
+
+80
+
+100
+
+40
+
+60
+
+80
+
+100
+
+(f) BTSC (N 1) Attack
+
+Communication Rounds
+Vanilla
+
+FedBBA
+
+RoPE
+
+RDFL
+
+Fig. 4. Backdoor success rate comparison of RDFL, Vanilla, FedBBA, and RoPE across datasets and attack scenarios over 100 communication rounds.
+
+round, FedBBA restricts the attack success rate to just 10.8%,
+significantly outperforming RDFL (42.4%) and RoPE (55.8%).
+Figure 3(b) shows the performance of FedBBA in maintaining high normal task accuracy compared to RDFL, Vanilla,
+and RoPE using the BTSC dataset. Initially, all methods
+exhibit similar accuracy levels, with FedBBA starting at 3.4%
+while RDFL, Vanilla, and RoPE start at 6.2%, 5.3%, and
+3.5%, respectively. As training progresses, FedBBA’s accuracy
+significantly surpasses that of the other approaches in the early
+stages. By the 10th round, FedBBA achieves an accuracy of
+57.1%, markedly higher than RDFL (6.4%), Vanilla (5.9%),
+and RoPE (47.6%). By the 20th round, FedBBA achieves an
+
+accuracy of 83.0%, while RDFL, Vanilla, and RoPE reach
+16.7%, 79.6%, and 73.6%, respectively. This trend stabilizes
+with FedBBA reaching an accuracy of approximately 94.6%
+by the 100th round. In comparison, RDFL, Vanilla, and RoPE
+exhibit accuracies of 94.2%, 95.9%, and 94.8%, respectively.
+Figure 4(b) highlights the effectiveness of the FedBBA
+approach in mitigating backdoor attacks compared to RDFL,
+Vanilla, and RoPE using the BTSC dataset. Initially, no
+approach exhibits vulnerability. This delay can be attributed
+to the complexity and breadth of the BTSC dataset, which necessitates a higher number of training rounds for the backdoor
+mechanism to establish persistence. This behavior is clearly
+
+JOURNAL OF LATEX CLASS FILES, VOL. 00, NO. 0, SEPTEMBER 0000
+
+observed in the Vanilla approach, where, even in the absence
+of any defense mechanism, the attack required more than 20
+rounds to achieve a 100% success rate.
+As training progresses beyond this initial phase, FedBBA
+demonstrates remarkable resilience compared to the baselines.
+For example, at round 38, FedBBA and RDFL still show
+an attack success rate of 0%, whereas Vanilla has already
+stabilized at 100% and RoPE has risen to approximately 7.8%.
+By round 100, FedBBA successfully suppresses the attack
+success rate to just 1.1%, significantly lower than RDFL
+(53.5%), RoPE (56.7%), and Vanilla (100%). This consistent
+suppression underscores FedBBA’s superior robustness in mitigating backdoor attacks throughout the training process.
+2) One-to-N Attacks: Figure 3(c) presents the main task
+accuracy of the global model throughout the training process.
+Despite the presence of the attack, FedBBA demonstrates a
+high level of utility preservation, achieving a final accuracy of
+95.38% by round 100. This performance is comparable to, and
+slightly exceeds, the Vanilla baseline, which reaches 94.69%.
+In contrast, the other defense mechanisms show a notable
+degradation in model utility, with RDFL and RoPE achieving
+lower final accuracies of 91.78% and 90.81%, respectively.
+This indicates that FedBBA successfully defends against the
+attack without compromising the model’s ability to learn the
+primary task.
+Figure 4(c) highlights the effectiveness of the approaches
+in mitigating the backdoor attack. The Vanilla model is compromised almost immediately, with the attack success rate
+jumping to 40% at round 1 and reaching total saturation of
+100% as early as round 7, where it remains for the duration
+of training. RoPE and RDFL also fail to prevent the attack,
+ending with high attack success rates of 76.4% and 67%,
+respectively. Conversely, FedBBA exhibits superior robustness,
+maintaining the attack success rate near zero for most of the
+training process. By round 100, FedBBA suppresses the attack
+success rate to just 5.84%, significantly outperforming all other
+methods and effectively neutralizing the backdoor threat.
+Figure 3(d) presents the main task accuracy of the global
+model throughout the training process. FedBBA demonstrates
+exceptional utility preservation, achieving a final accuracy of
+98.06% by round 100. This performance is effectively on par
+with the Vanilla baseline, which reaches 98.30%, indicating
+that the defense mechanism does not hinder the model’s ability
+to learn the complex features of the BTSC dataset. In contrast,
+the other defense mechanisms suffer from significant utility
+loss, with RDFL and RoPE dropping to final accuracies of
+89.79% and 87.98%, respectively.
+Figure 4(d) highlights the effectiveness of the approaches in
+mitigating the backdoor attack. The Vanilla model exhibits extreme vulnerability, with the attack success rate surging rapidly
+to 99.6% by round 9 and reaching total saturation (100%)
+by round 10, where it remains fixed. RoPE and RDFL also
+fail to provide adequate protection, ending the training with
+high attack success rates of 49.02% and 56.10%, respectively.
+Conversely, FedBBA shows superior resilience. Despite the aggressive nature of the attack, FedBBA consistently suppresses
+the backdoor, maintaining a low attack success rate throughout
+the session and concluding at just 4.88% by round 100.
+
+11
+
+This sharp contrast with the baselines underscores FedBBA’s
+capability to neutralize One-to-N backdoor injections on the
+BTSC dataset.
+3) N-to-One Attacks: Figure 3(e) evaluates the performance
+of various defense mechanisms under a multiple-to-one backdoor attack using the GTSRB dataset. Initially, at round 1,
+all defenses exhibit similar performance with accuracy rates
+around 7.41% for RDFL and Vanilla, 11.57% for FedBBA,
+and 10.19% for RoPE. As training progresses, FedBBA consistently outperforms or matches the other methods. By round
+20, FedBBA’s accuracy escalates to 71.74%, higher than RDFL
+(68.66%), Vanilla (64.55%), and significantly outperforming
+RoPE (10.56%). By round 100, FedBBA reaches a peak
+accuracy of 96.14%, effectively matching or slightly exceeding RDFL (96.06%) and Vanilla (96.02%), while remaining
+superior to RoPE (93.97%).
+Figure 4(e) underscores the superior efficacy of the FedBBA
+approach in comparison to RDFL and RoPE in reducing the
+backdoor success rate under the multi-trigger setting using
+the GTSRB dataset. Initially, Vanilla exhibits immediate vulnerability, starting at 50.2% in round 0, while RDFL spikes
+to 100% by round 1. In contrast, FedBBA starts with an
+attack success rate of 0% and, despite the aggressive attack
+environment, keeps the rate significantly lower than the other
+methods throughout the session. For example, at round 40,
+FedBBA shows an attack success rate of just 4.2%, whereas
+Vanilla has already saturated at 100%, RDFL is at 54.6%,
+and RoPE is at 34.4%. By round 100, FedBBA suppresses the
+attack success rate to 11.0%, which is significantly lower than
+RDFL (75.6%), RoPE (59.8%), and Vanilla (100%).
+Figure 3(f) illustrates the performance of various defense
+mechanisms in the normal task accuracy under a multipleto-one backdoor attack scenario using the BTSC dataset.
+Initially, all methods exhibit comparable accuracy levels below
+7%. By round 10, Vanilla takes an early lead with 66.5%,
+while FedBBA achieves 47.9%, RDFL 8.1%, and RoPE 8.5%.
+However, FedBBA demonstrates steady and robust learning as
+training progresses. By round 100, FedBBA reaches a peak
+accuracy of 95.08%, effectively matching RDFL (95.16%)
+and outperforming both Vanilla (94.44%) and RoPE (94.72%).
+This confirms that FedBBA maintains high utility even under
+complex attack scenarios.
+Figure 4(f) highlights the effectiveness of FedBBA in mitigating backdoor attacks compared to RDFL and RoPE in
+a multiple-to-one attack scenario using the BTSC dataset.
+FedBBA demonstrates a significant improvement, consistently
+achieving lower success rates. Specifically, FedBBA starts with
+a success rate of 0% and, despite the attack’s persistence, keeps
+the rate significantly low throughout the rounds. For instance,
+by round 50, FedBBA suppresses the attack success rate to
+5.3%, whereas Vanilla has already reached total saturation
+(100%), and RDFL and RoPE have risen to 25.6% and 30.6%,
+respectively. By round 100, FedBBA further limits the attack
+success rate to 1.77%, significantly lower than RDFL (31.9%),
+RoPE (23.8%), and Vanilla (100%).
+In summary, the results illustrate that FedBBA consistently
+outperforms RDFL and RoPE in maintaining high accuracy
+and mitigating backdoor attacks. Across different attack sce-
+
+JOURNAL OF LATEX CLASS FILES, VOL. 00, NO. 0, SEPTEMBER 0000
+
+narios and datasets, FedBBA proves to be a robust defense
+mechanism, specifically in the N-to-One and One-to-N coordinated backdoor attack, which reflects the framework’s ability
+to detect the pattern of the malicious data in the suspicious
+models, effectively enhancing model integrity and performance while addressing the challenges posed by backdoor
+attacks.
+IX. C ONCLUSION
+In this work, we proposed a novel and comprehensive
+backdoor attack detection and mitigation scheme for federated
+learning called FedBBA. Our framework uniquely integrates
+Projection Pursuit Analysis (PPA), a robust reputation system,
+and game-theoretic incentives to neutralize malicious clients.
+Extensive simulations on the GTSRB and BTSC datasets
+demonstrate that FedBBA significantly outperforms existing
+state-of-the-art methods, specifically RDFL and RoPE, across
+diverse attack scenarios, including One-to-N and N-to-One
+attacks. Empirical results confirm that FedBBA effectively
+suppresses backdoor attack success rates to between 1.1%
+and 11%, whereas baseline defenses often failed to contain
+the threat, yielding success rates as high as 76%. Crucially,
+this robustness is achieved without hindering the global
+model’s performance; FedBBA consistently maintained normal
+task accuracy in the range of 95% to 98%. While FedBBA
+demonstrates strong effectiveness, its evaluation is restricted
+to image-based classification tasks. Future work will explore
+generalizing the framework to diverse modalities, such as natural language processing and IoT sensor data. Additionally, we
+plan to incorporate adaptive parameter learning to dynamically
+tune the reputation weights (α and β), further enhancing the
+framework’s scalability and responsiveness to evolving threat
+landscapes.
+R EFERENCES
+[1] B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A. y Arcas,
+“Communication-efficient learning of deep networks from decentralized
+data,” in Artificial intelligence and statistics. PMLR, 2017, pp. 1273–
+1282.
+[2] M. P. Uddin, Y. Xiang, M. Hasan, J. Bai, Y. Zhao, and L. Gao,
+“A systematic literature review of robust federated learning: Issues,
+solutions, and future research directions,” ACM Computing Surveys,
+vol. 57, no. 10, pp. 1–62, 2025.
+[3] D. Shenoy, R. Bhat, and K. Krishna Prakasha, “Exploring privacy
+mechanisms and metrics in federated learning,” Artificial Intelligence
+Review, vol. 58, no. 8, p. 223, 2025.
+[4] C. Zhu, J. Zhang, X. Sun, B. Chen, and W. Meng, “Adfl: Defending
+backdoor attacks in federated learning via adversarial distillation,”
+Computers & Security, vol. 132, p. 103366, 2023.
+[5] C. Wu, X. Yang, S. Zhu, and P. Mitra, “Mitigating backdoor attacks in
+federated learning,” arXiv preprint arXiv:2011.01767, 2020.
+[6] B. Xi, S. Li, J. Li, H. Liu, H. Liu, and H. Zhu, “Batfl: Backdoor detection
+on federated learning in e-health,” in 2021 IEEE/ACM 29th International
+Symposium on Quality of Service (IWQOS). IEEE, 2021, pp. 1–10.
+[7] J. Jia, Z. Yuan, D. Sahabandu, L. Niu, A. Rajabi, B. Ramasubramanian,
+B. Li, and R. Poovendran, “Fedgame: a game-theoretic defense against
+backdoor attacks in federated learning,” Advances in Neural Information
+Processing Systems, vol. 36, pp. 53 090–53 111, 2023.
+[8] Z. Gu and Y. Yang, “Detecting malicious model updates from federated
+learning on conditional variational autoencoder,” in 2021 IEEE international parallel and distributed processing symposium (IPDPS). IEEE,
+2021, pp. 671–680.
+
+12
+
+[9] P. Quan, W.-H. Lee, M. Srivatsa, and M. Srivastava, “Enhancing robustness in federated learning by supervised anomaly detection,” in 2022
+26th International Conference on Pattern Recognition (ICPR). IEEE,
+2022, pp. 996–1003.
+[10] K. Otmani, R. El-Azouzi, and V. Labatut, “Fedsv: Byzantine-robust
+federated learning via shapley value,” in ICC 2024-IEEE International
+Conference on Communications. IEEE, 2024, pp. 4620–4625.
+[11] J. Zhang, C. Zhu, X. Sun, C. Ge, B. Chen, W. Susilo, and S. Yu, “Flpurifier: Backdoor defense in federated learning via decoupled contrastive
+training,” IEEE Transactions on Information Forensics and Security,
+vol. 19, pp. 4752–4766, 2024.
+[12] H. Cai, J. Wang, L. Gao, and F. Li, “Flmaacbd: Defending against
+backdoors in federated learning via model anomalous activation behavior
+detection,” Knowledge-Based Systems, vol. 289, p. 111511, 2024.
+[13] O. A. Wahab and A. Avila, “A max-min security game for coordinated
+backdoor attacks on federated learning,” in 2023 IEEE International
+Conference on Big Data (BigData). IEEE, 2023, pp. 3566–3573.
+[14] Y. Wang, D.-H. Zhai, and Y. Xia, “Rope: Defending against backdoor
+attacks in federated learning systems,” Knowledge-Based Systems, vol.
+293, p. 111660, 2024.
+[15] Y. Wang, D.-H. Zhai, Y. He, and Y. Xia, “An adaptive robust defending algorithm against backdoor attacks in federated learning,” Future
+Generation Computer Systems, vol. 143, pp. 118–131, 2023.
+[16] Y. Wang, D.-H. Zhai, and Y. Xia, “Scfl: Mitigating backdoor attacks in
+federated learning based on svd and clustering,” Computers & Security,
+vol. 133, p. 103414, 2023.
+[17] F. Bong, I. Ahmed, N. Ramakrishnan, K. N. Valenzuela-Valderas, P. D.
+Wentzell, J. Barra, and T. K. Karakach, “Augmented kurtosis-based
+projection pursuit: a novel, advanced machine learning approach for
+multi-omics data analysis and integration,” Nucleic Acids Research,
+vol. 53, no. 17, p. gkaf844, 2025.
+[18] Z. Zhang, A. Panda, L. Song, Y. Yang, M. Mahoney, P. Mittal, R. Kannan, and J. Gonzalez, “Neurotoxin: Durable backdoors in federated
+learning,” in International conference on machine learning. PMLR,
+2022, pp. 26 429–26 446.
+[19] Y. Dai and S. Li, “Chameleon: Adapting to peer images for planting
+durable backdoors in federated learning,” in International Conference
+on Machine Learning. PMLR, 2023, pp. 6712–6725.
+[20] V. Shejwalkar, A. Houmansadr, P. Kairouz, and D. Ramage, “Back to the
+drawing board: A critical evaluation of poisoning attacks on production
+federated learning,” in 2022 IEEE symposium on security and privacy
+(SP). IEEE, 2022, pp. 1354–1371.
+[21] M. Sion, “On general minimax theorems,” Pacific Journal of Mathematics, vol. 8, no. 1, pp. 171–176, 1958.
+Osama Wehbi is a Ph.D. candidate in the Department of Computer and Software Engineering at Polytechnique Montreal, Canada. His primary research
+areas include cybersecurity, federated learning, and game theory.
+Sarhad Arisdakessian is a Ph.D. candidate in the Department of Computer
+and Software Engineering at Polytechnique Montreal, Canada. His research
+interests lie in federated learning and game theory.
+Omar Abdel Wahab holds an assistant professor position with the Department of Computer and Software Engineering, Polytechnique Montreal,
+Canada. His research activities focus on cybersecurity, Internet of Things,
+and artificial intelligence.
+Anderson R. Avila is a Ph.D. candidate at the Institut National de la
+Recherche Scientifique (INRS), Canada. His research interests include speaker
+and emotion recognition, pattern recognition, and multimodal signal processing for biometric applications.
+Azzam Mourad is a Professor of Computer Science with Khalifa University,
+UAE. His research interests include cloud computing, artificial intelligence,
+and cybersecurity.
+Hadi Otrok is a Professor and Chair of the Department of Electrical
+Engineering and Computer Science at Khalifa University, UAE. His research
+interests include computer and network security, crowd sensing and sourcing,
+ad hoc networks, and cloud security.
+
+

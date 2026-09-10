@@ -1,0 +1,2699 @@
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+1
+
+EnCAgg: Enhanced Clustering Aggregation for Robust Federated
+Learning against Dynamic Model Poisoning
+
+arXiv:2605.22506v1 [cs.CR] 21 May 2026
+
+Tianyun Zhang, Zhen Yang, Haozhao Wang, Ru Zhang, Yongfeng Huang, Senior Member, IEEE
+
+Abstract—Federated learning faces increasing threats from
+model poisoning attacks, which harms its application to improve
+privacy. Existing defense methods typically rely on fixed thresholds or perform clustering with a fixed number of clusters to
+distinguish malicious gradients from benign ones. However, these
+methods are difficult to adapt to dynamic poisoning strategies
+of malicious clients, and often result in the loss of benign
+gradients due to the heterogeneity of clients’ local datasets. To
+address these problems, we propose a novel robust aggregation
+method that leverages a small number of known benign clients
+as references, enabling accurate identification and filtering of
+malicious gradients while retaining as many benign gradients as
+possible, even when the number of malicious clients is unknown
+and variable. First, we introduce a density-based low-dimensional
+gradient clustering method, which projects gradients onto the two
+most divergent dimensions and applies density-based clustering
+to identify malicious gradients while retaining clustered benign
+gradients and potentially benign outliers. Second, we design an
+enhancing clustering low-dimensional gradient generator model,
+which learns to generate pseudo-gradients aligned with the
+boundary of the benign cluster. These pseudo-gradients act as
+bridges to connect sparse benign gradient outliers. Third, we
+introduce low-dimensional gradient re-clustering that clusters
+the generated pseudo-gradients together with real gradients to
+recover benign gradients misclassified as noise points, enabling
+more benign gradients to participate in aggregation. Extensive
+experiments on the MNIST, CIFAR-10, and MIND datasets
+demonstrate that our method exhibits superior fidelity and
+robustness under dynamic poisoning scenarios.
+Index Terms—federated learning, model poisoning attack,
+robust aggregation.
+
+I. I NTRODUCTION
+
+F
+
+EDERATED learning (FL) allows decentralized clients to
+collaboratively train models without exposing raw data,
+and is widely used in privacy-sensitive domains. However,
+due to its distributed, heterogeneous and uncontrollable nature,
+FL is vulnerable to model poisoning attacks (MPAs), where
+malicious clients upload random or carefully crafted gradients
+to disrupt global convergence and degrade performance.
+In particular, recent poisoning strategies have become increasingly stealthy and dynamic, substantially intensifying the
+This work was supported in part by the Natural Science Foundation of
+China under Grant U21B2020.(Corresponding author: Ru Zhang.)
+Tianyun Zhang, Zhen Yang contributes equally to this work. Tianyun
+Zhang, Zhen Yang and Ru Zhang are with School of Cyberspace
+Security, Beijing University of Posts and Telecommunications, Beijing
+100876, China (email: zhangtianyun@bupt.edu.cn, yangzhenyz@bupt.edu.cn,
+zhangru@bupt.edu.cn).
+Haozhao Wang with the School of Computer Science and Technology,
+Huazhong University of Science and Technology, Wuhan 430074, China (email: hz wang@hust.edu.cn).
+Yongfeng Huang is with the Department of Electronic Engineering, Tsinghua University, Beijing 100084, China(email: yfhuang@tsinghua.edu.cn).
+
+challenge of defense methods. Sophisticated malicious clients
+can finely constrain their updates, minimizing distances or
+angular deviations from benign updates [1], [2] or selectively
+perturb only high-impact parameters [3] to avoid detection.
+Besides, malicious clients may decide to alternate between
+benign and malicious behavior to fraudulently obtain a higher
+trust score, thereby making the malicious ratio vary across iterations. These stealthy and dynamic scenarios cause malicious
+updates to appear indistinguishable from benign ones in highdimensional gradient space, especially since benign gradients
+naturally exhibit diversity.
+Numerous robust aggregation methods have been proposed
+to defend MPAs. Traditional methods [4]–[8] rely on fixed
+thresholds or statistical metrics to remove malicious gradients,
+usually assuming a known and relatively small proportion of
+adversaries. When the number of malicious clients fluctuates,
+fixed thresholds often lead to false positives or negatives.
+Moreover, due to data heterogeneity, the natural diversity
+among benign clients may cause some benign gradients to
+be mistakenly discarded, reducing generalization ability of the
+global model.
+To flexibly defend against stealthy and dynamic attacks, recent studies have introduced clustering-based defenses. Some
+methods applied distance-based methods such as K-means,
+which partition all gradients into two clusters, assuming the
+larger one contains benign gradients [9]–[11]. However, when
+no malicious gradients are present in an iteration, forced
+clustering may wrongly discard benign gradients. Besides, if
+malicious clients are dominant, they may form the largest
+cluster and evade detection. Other methods applied densitybased methods like HDBSCAN, which divide gradients into
+multiple small clusters without requiring a preset number [12],
+[13]. These approaches assign trust scores or weights based
+on features such as variance. However, benign updates may be
+inherently scattered and appear as outliers, while well-crafted
+malicious updates may form dense clusters that are mistakenly
+trusted as benign.
+In summary, current defense methods face two major challenges: first, most methods assume a fixed and relatively low
+proportion of malicious updates, but in reality, the behavior
+of malicious clients may vary dynamically across iterations.
+Some iterations may have no active attacks, while others may
+involve all malicious clients submitting poisoned gradients,
+resulting in a high proportion of adversarial gradients that
+disrupt detection accuracy. Second, benign gradients naturally
+exhibit diversity due to variations in client data, and traditional
+filtering methods often discard a considerable amount of
+
+0000–0000/00$00.00 © 2021 IEEE
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+useful updates. Nevertheless, we observe that the discrepancy
+between malicious and benign gradients is generally greater
+than the variation within benign gradients, while malicious
+gradients themselves tend to be more homogeneous—this
+offers a potential clue for precise discrimination.
+To address the above issues, we propose a novel robust aggregation method for FL that does not rely on prior knowledge
+of the malicious client proportion or access to trusted data.
+By leveraging a small number of known benign clients as
+references, our method can accurately distinguish and filter out
+malicious gradients even under scenarios involving dynamic
+poisoning strategies from malicious clients. Specifically, we
+analyze the dissimilarity between client gradients and project
+high-dimensional gradients into a low-dimensional space to
+enhance the separability of benign and malicious gradients. We
+then apply density-based clustering in this low-dimensional
+space to identify potential benign clusters and introduce a generative model to aid in identifying borderline benign gradients,
+thereby improving the retention of sparse benign gradients.
+Finally, we employ a re-clustering mechanism to make more
+robust aggregation decisions, significantly enhancing resilience
+against dynamic poisoning attacks.
+Our main contributions are summarized as follows:
+1) We propose a density-based low-dimensional gradient
+clustering method that projects high-dimensional gradients
+onto a two-dimensional space using the two most divergent
+dimensions, and performs initial density-based clustering. This
+method effectively distinguishes benign from malicious gradients and retains possible benign gradients, overcoming the
+limitations of traditional fixed-threshold strategies.
+2) We design an enhancing clustering low-dimensional
+gradient generator model. It is trained to generate pseudogradients along the boundary of the benign cluster, serving as
+“bridges” to connect benign gradients that were misclassified
+as outliers in the first round of clustering. Then we introduce
+low-dimensional gradient re-clustering, which combines real
+and generated pseudo-gradients for a second density-based
+clustering to recover benign outliers. After re-clustering, the
+generation model is optimized using the clustering labels of the
+generated gradients along with their symmetry and diversity
+as constraints.
+3) We conduct extensive experiments on three representative
+datasets(MNIST, CIFAR10 and MIND) to comprehensively
+evaluate the fidelity and robustness of our proposed method.
+The results demonstrate that our method consistently outperforms baseline methods under both low and high malicious
+ratios and effectively maintains superior global model performance.
+
+2
+
+during aggregation, thereby degrading global model performance and disrupting federated learning. The aim is to significantly degrade the performance of the global model and
+disrupt the normal operation of the federated system.
+Early strategies manipulated all parameters using extreme
+values. For example, the Gaussian attack [14] samples malicious updates from a Gaussian distribution estimated from
+benign ones. Li et al. [15] proposed (1) gradient explosion—uploading overly large gradients to cause instability, and
+(2) sign-flipping—reversing the sign of benign gradients to
+induce inverse learning. Tolpegin et al. [16] manipulate local
+training data via label flipping and malicious sample injection
+to indirectly control the gradients uploaded by compromised
+clients. Wang et al. [17] proposed the model replacement
+attack, where a malicious client scales its update to dominate
+aggregation and effectively overwrite the global model.
+However, overly aggressive perturbations are easily detected
+and removed by robust aggregation rules. To evade robust
+defenses, later methods tuned poisoning intensity. Baruch et
+al. [18] used the negative mean of benign updates, allowing a
+few attackers to be effective. Fang attack [14] optimized perturbation strength coordinate-wise to bypass outlier detection
+like Median. UA-FedRec [19] extended such techniques to
+federated news recommendation, targeting news vectors, user
+embeddings, and sample sizes. FedGhost [20] simulated local
+training trajectories to craft adversarial updates without real
+data. These approaches required manual tuning and showed
+unstable performance across tasks.
+To achieve effective yet stealthy attacks, recent methods
+aim to disguise malicious updates as benign in terms of key
+statistical indicators such as mean and direction. Min-Max
+and Min-Sum attack [1] employs multi-objective optimization
+balancing attack strength and detectability. Covert attack [21]
+constrains distance, direction, and norm to make malicious
+updates statistically indistinguishable from benign ones.
+Another direction selectively poisons key parameters. FedIMP [3] perturbs only high-impact parameters measured via
+Fisher information, achieving significant attack performance
+while keeping most parameters unchanged. SINE attack [2]
+exploits cosine similarity by aligning perturbations with benign directions to boost evasion. DMPA [22] leverages model
+diversity across decentralized settings, introducing divergent
+perturbations across federated subgroups to escape clusteringbased defenses.
+Overall, poisoning strategies increasingly emphasize stealth
+and precision—injecting small, carefully crafted perturbations
+that degrade the model while eluding detection, posing growing challenges to existing defenses.
+
+II. R ELATED W ORK
+In this section, we review existing works on model poisoning attacks and corresponding defenses in federated learning.
+A. Model Poisoning Attacks
+Model poisoning attacks aim to craft or manipulate clientsubmitted gradients to introduce imperceptible interference
+
+B. Robust Aggregation Defenses
+The basic aggregation method, FedAvg/FedSGD [23], computes a weighted average of client updates based on local
+data size. To counter increasingly sophisticated poisoning
+attacks, robust aggregation methods have emerged, generally
+categorized as: (1) value/distance-based, (2) direction-based,
+(3) clustering-based and (4) reference-based defenses.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+1) Value/Distance-based Defenses: These approaches use
+gradient magnitudes or pairwise distances to detect outliers
+or select representative values for aggregation. Krum [4]
+selects the update with the smallest total distance to others
+as the global update. Median and Trimmed-Mean [5] apply
+value selection, Median chooses the middle value, while
+Trimmed-Mean removes extremes before averaging. Bulyan
+[6] enhances Krum with Trimmed-Mean. FABA [7] filters
+updates far from the mean. Norm-Bounding [8] constrains
+update norms. While these methods are simple and efficient,
+they may exclude a large number of clients, resulting in less
+representative global models.
+2) Direction-based Defenses: These defenses assume benign gradients share directionality, while malicious ones deviate. FLTrust [24] computes cosine similarity with a trusted
+gradient from a server-held root dataset. ShieldFL [25] and
+TDFL [26] replace server references with inter-client similarities. FLAIR [27] detects directional flips, and FLShield [28]
+combines validation accuracy with cosine similarity. Although
+effective against extreme perturbations, these methods can be
+fooled by attacks which mimic the direction of benign updates.
+Moreover, the natural direction diversity among benign clients
+further reduces accuracy.
+3) Clustering-based Defenses: These methods utilize various clustering techniques to aid in judgment, based on the
+assumption that benign updates exhibit strong consistency
+in direction and distance, while malicious updates cluster
+abnormally in these dimensions.
+MODEL [9] and DPFLA [10] apply K-means to divide
+updates into two clusters, treating the larger one as benign.
+FLGuardian [11] clusters per-layer metrics to detect layerspecific poisoning. However, these methods fail if attackers
+outnumber benign clients. FLAME [12] introduces random
+grouping followed by group-wise HDBSCAN clustering to
+detect local anomalies within each group. FedMP [13] applies
+HDBSCAN globally and selects representative updates from
+each cluster for aggregation. However, HDBSCAN may oversegment benign updates, and lacking a reference, the server
+struggles to identify benign clusters.
+4) Reference-based Defenses: To improve detection accuracy by establishing a reliable baseline, Some methods use
+clean server-side datasets to establish baselines. FLTrust [24]
+generates a trusted gradient for directional filtering. FLShield
+[28] uses clean validation sets. Zeno [29] compares loss on
+auxiliary data to detect adversaries. But these methods face
+severe performance degradation in dynamic model poisoning
+scenarios.
+III. P ROBLEM S TATEMENT
+In this section, we introduce our system model, describe the
+threat model, and define our defense objectives.
+A. System Model
+As illustrated in Fig. 1, we consider a federated learning
+system with n = b + m clients, where b are benign and m
+are malicious. A central server coordinates training across I
+iterations. In each iteration i, clients perform local training and
+
+3
+
+Server
+
+ഥ𝒊
+𝒈
+
+𝒈𝒊𝟏
+
+𝒈𝒊𝒌
+
+𝒈𝒊𝒌+𝟏 𝒈𝒊𝒌+𝟐
+
+…
+k Known Clients
+
+𝒈𝒊b+𝟏
+
+𝒈𝒊b
+
+…
+
+𝒘i𝒈𝒍𝒐𝒃𝒂𝒍
+
+𝒈𝒊b+𝟐
+
+𝒈𝒊b+m
+
+…
+
+n-m-k Other Benign Clients
+
+n-m Benign Clients
+
+m Malicious Clients
+
+Fig. 1. System Model
+
+upload gradients, while the server aggregates them to update
+the global model.
+• Clients: Each client holds a private dataset and a copy of
+the global model from the previous round. In iteration
+i, each benign client trains locally and uploads local
+gradients. Malicious clients, in contrast, craft adversarial
+gradients to degrade global performance. These attackers
+may communicate and share gradients, but they make
+independent per-iteration decisions on whether to poison
+or submit genuine gradients to gain trust. All clients
+upload gradients g and await the updated global model.
+• Server: Without access to client data or knowledge of
+the exact number of poisoned gradients per round, the
+server performs gradient screening. It knows k clients
+(2 ≤ k ≤ 2b ) are strictly benign, and uses their gradients
+as references to filter others. The filtered gradients are
+aggregated into a global update ḡ, which is used to update
+the model parameters w before being sent to all clients.
+B. Threat Model
+We focus on model poisoning attacks (MPA), where malicious clients alter submitted gradients to disrupt global
+learning, without modifying local datasets. We assume each
+attacker can access the global model and its local dataset, and
+may obtain benign gradients from local data to guide attack
+generation. Poisoned updates may be shared across attackers,
+but the aggregation strategy remains unknown to them.
+Furthermore, each malicious client adopts a dynamic strategy, which they decide independently in each round whether
+to poison or behave benignly.
+C. Defense Objectives
+We aim to design a robust aggregation method that dynamically handles varying numbers and behaviors of malicious
+clients while retaining as many benign contributions as possible. Specifically, our method should ensure:
+• Robustness: The method should effectively filter diverse
+and dynamic attacks, eliminating only malicious gradients
+while retaining benign ones even when some clients
+alternate between malicious and benign behavior.
+• Fidelity: The method should minimize performance loss.
+When attackers are present, it may tolerate mild degradation due to reduced data, but must prevent significant
+global model corruption.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+4
+
+Client
+
+Server
+
+training
+
+client 1
+(benign,known)
+
+projecting
+
+client k
+(benign,known)
+
+training
+poisoning
+
+client b+m
+(malicious)
+
+mal
+
+gen
+
+removed
+TBD
+
+𝒢
+
+𝑔𝑘𝑖
+
+𝐠 𝐢𝐤
+
+𝒢 (1)
+
+ε
+
+𝒢 (2)
+
+ε
+
+updating
+
+aggregating
+
+ഥi
+𝒈
+
+projecting
+
+𝑔b𝑖
+
+𝐠 𝐢𝐛
+
+projecting
+
+training
+poisoning
+
+client b+1
+(malicious)
+
+retained
+
+projecting
+
+training
+
+client b
+(benign)
+
+Low-dimensional
+Gradient Re-Clustering
+
+𝒢𝑟𝑜𝑜𝑡
+
+cluster radius(ε)
+
+𝑔1𝑖
+
+𝒈𝒊𝟏
+
+training
+
+clustering radius selection mechanism
+
+ben
+
+𝑖
+𝑔b+1
+
+𝐠 𝐢𝐛+𝟏
+
+Density-based Low-dimensional
+Gradient Clustering
+Enhancing-Clustering Lowdimensional Gradient Generation
+
+𝒢መ
+generator model updating
+
+projecting
+
+𝐠 𝐢𝐛+𝐦
+
+𝑖
+𝑔b+m
+
+𝒘i𝒈𝒍𝒐𝒃𝒂𝒍
+
+𝓩
+
+Lossgen =𝐿𝑐𝑙𝑢st + α𝐿𝑑𝑖r + β𝐿𝑑𝑖s
+
+𝑔ො
+
+Fig. 2. Framework of our method
+
+IV. O UR M ETHOD
+This section elaborates on the design of the method.
+A. Overview
+Fig. 2. shows the framework of our method, which consists
+of three main parts:
+• Distance-based Low-dimensional Gradient Clustering:
+The server computes pairwise differences among gradients submitted by clients to identify the two most variant
+dimensions, projecting gradients into a low-dimensional
+space to enhance separability between benign and malicious gradients. Density-based clustering then splits lowdimensional gradients into clusters, while server applies
+filter algorithm to exclude possible malicious gradients
+and retain others for next steps.
+• Enhancing-Clustering Low-dimensional Gradient Generation: A generator model produces pseudo-gradients near
+the benign cluster boundary, linking it to sparsely located benign gradients previously misclassified as noise,
+thereby improving their likelihood of being correctly
+clustered in the next stage.
+• Low-dimensional Gradient Re-Clustering: Retained real
+gradients and pseudo-gradients are combined for a second
+clustering. Sparse benign gradients can now join the
+benign cluster via the bridges built by pseudo-gradient,
+while distant noise points, which are more likely malicious now, are excluded. Only high-dimensional gradients
+corresponding to the real gradients in final benign cluster
+are aggregated, while pseudo-gradients are excluded.
+
+dimensions to mimic benign gradients. Moreover, methods like
+k-means require a fixed cluster number, which is unsuitable
+in dynamic attack scenarios which either excluding benign
+updates when no attack exists or misidentifying malicious
+clusters as benign under severe attacks.
+To address this, we apply dimensionality reduction to
+enhance gradient separability and alleviate sparsity. Then,
+density-based clustering like DBSCAN adaptively detects
+clusters without predefined numbers, preserving benign gradients in normal cases and isolating outliers under attack. With
+a few trusted benign references, the benign cluster can be
+identified more reliably, enabling adaptive and precise anomaly
+detection in federated learning.
+Based on the above analysis, we design a preliminary
+screening mechanism that combines gradient projection and
+density-based clustering. As shown in Fig. 3., the process
+consists of four steps. First, the server analyzes all submitted
+gradients and identifies the two dimensions with the greatest
+variance. The original high-dimensional gradients are projected into a two-dimensional space. Then, the server selects
+two clients from the k known benign clients and uses their
+distances to define a reasonable clustering radius. A densitybased clustering is applied to the low-dimensional gradients,
+resulting in a clusters set C of size c with corresponding cluster
+centers set C and remaining noise N . Next, the server selects
+(1)
+a benign cluster Cb and retains gradients Gb according to a
+predefined rule, along with the noise points N . These together
+form the retained gradient set G (1) after the first clustering.
+② radius
+
+…
+…
+…
+
+…
+
+…
+
+…
+
+𝐆
+
+𝒢
+
+𝒞1
+
+…
+1
+
+…
+
+③ density-based
+clustering
+
+① gradient
+projection
+
+…
+
+Clustering gradients in high-dimensional space suffers from
+sparsity and large intra-class variance, leading to benign gradients being misclassified as noise and reducing effective samples. Some attacks further exploit this by perturbing only a few
+
+…
+…
+
+…
+
+…
+
+B. Density-based Low-dimensional Gradient Clustering
+
+…
+
+ε
+
+selection
+
+𝒢b
+…
+
+𝒞c
+…
+
+④ gradients
+filtering
+
+𝒩
+
+Fig. 3. Density-based Low-dimensional Gradient Clustering
+
+…
+
+𝒢1
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+5
+
+1) Gradient Projecting: To address the challenge of detecting malicious gradients in high-dimensional space, we
+propose using Principal Component Analysis (PCA) to analyze
+the original high-dimensional gradients and project them into
+a lower-dimensional space by selecting the two dimensions
+with the greatest variance among gradients. Specifically, let
+the original gradient matrix be G ∈ Rn×d (where each
+high-dimensional gradient is denoted as ⃗gi ∈ Rd for i =
+1, 2, . . . , n). We compute the covariance matrix of G and
+obtain its top two eigenvectors corresponding to the largest
+eigenvalues. Let V2 ∈ Rd×2 denote the matrix composed
+of these two eigenvectors (principal directions), then the
+projected two-dimensional gradients are given by:
+G = GV2 ,
+
+G ∈ Rn×2
+
+(1)
+
+where each projected gradient is gi ∈ R2 for i = 1, 2, . . . , n.
+Compared to direct detection in the original highdimensional space, PCA projection maximizes the variance
+in the principal directions, thereby amplifying the anomalous
+deviations introduced by malicious gradients. In other words,
+if malicious gradients differ significantly from benign ones
+in certain dimensions, those dimensions tend to dominate
+the principal components, increasing the Euclidean distance
+∥gi − gj ∥2 between malicious and benign after projection.
+This can be further interpreted as follows: suppose the
+difference vector between a malicious and benign gradient in
+the original space is ∆⃗g , then the projected difference becomes
+V2⊤ ∆⃗g . Its magnitude is controlled by the eigenvalues associated with the principal directions. Since principal components
+correspond to directions with the highest variance, and malicious perturbations typically induce significant variation in at
+least one direction, these components dominate the projection,
+thereby stretching the distance between benign and malicious
+updates in the projected space.
+By projecting all gradients G into a 2D feature space G
+using PCA, we enhance the separability between benign and
+malicious gradients, providing a clearer and more discriminative feature representation for subsequent clustering process.
+2) Clustering Radius Selection: In density-based clustering,
+the radius parameter ε plays a crucial role. If it is set too small
+or too large, clustering quality may deteriorate. In federated
+training, the magnitude and direction of gradients change
+dynamically with the model state, especially in early rounds
+before convergence. Thus, a fixed radius across all rounds is
+infeasible: a small ε may cause even similar benign gradients
+to be misclassified as noise, while a large ε may mistakenly
+group distant malicious gradients into the benign cluster.
+Given that the server knows k strictly benign clients, we
+design a clustering radius selection mechanism. Specifically,
+the server randomly chooses two clients from the known
+benign set and uses the Euclidean distance between their
+projected gradients as the clustering radius. However, blindly
+selecting any two clients may introduce bias: if the distance
+is too small, the cluster will not cover most benign updates;
+if too large, it may admit malicious gradients.
+Let the known benign gradient set be
+Gknown = {g1 , g2 , . . . , gk }.
+
+(2)
+
+We compute all pairwise distances:
+dij = ∥gi − gj ∥2 , where i, j ∈ [1, k], i < j.
+(3)
+
+this yields k2 distances forming a set D, which is then sorted
+in ascending order:
+Dsorted = {d(1) ≤ d(2) ≤ · · · ≤ d((k)) }.
+
+(4)
+
+2
+
+
+The server selects the ⌈r · k2 ⌉-th smallest value as the radius:
+ε = d(⌈r·(k)⌉) ,
+
+(5)
+
+2
+
+where r ∈ (0, 1) is a preset radius coefficient that determines
+which two known benign clients are selected as root clients
+Groot . The Euclidean distance between their projected gradients
+is then used as the clustering radius ε. In practice, our primary
+goal is to prevent stealthy malicious gradients from being
+clustered into the benign group, while also aiming to include
+as many benign gradients as possible. Since most benign
+gradients are tightly clustered with small pairwise distances,
+whereas malicious ones lie farther away. Thus, choosing a
+moderately small r yields a clustering radius ε that effectively
+excludes malicious gradients while still covering the majority
+of benign updates. Besides, malicious gradients are typically
+closer to each other than to benign ones so that they are
+likely to form a separate cluster. This conservative selection
+improves the quality of clustering and provides a secure basis
+for subsequent steps.
+3) Density-based Clustering: We apply DBSCAN
+(Density-Based Spatial Clustering of Applications with
+Noise) to cluster the projected gradients. Unlike K-means,
+DBSCAN does not require specifying the number of clusters.
+Instead, it uses two parameters: the clustering radius ε and
+the minimum number of neighbors min samples.
+Based on density, DBSCAN divide all gradients
+{g1 , g2 , . . . , gn } ⊂ R2 into a set of clusters C a set of
+noise points N :
+C = {C1 , C2 , . . . , Cc }, Ci ⊂ R2
+c
+X
+|Ci |
+N =n−
+
+(6)
+
+i=1
+
+A group of points is assigned to a cluster if any one point has
+at least min samples neighbors within radius ε. If a point
+has no neighbors within ε , it is treated as a noise point. After
+clustering, server computes the mean of each cluster to obtain
+the cluster centers C.
+Benign gradients are expected to be more dispersed due to
+data heterogeneity, while malicious gradients—often coordinated—are tightly clustered. When there are enough malicious
+clients, their updates may form a distinct cluster. Conversely, if
+they are few, they may appear as isolated noise. In either case,
+DBSCAN can effectively separate them from benign updates
+under most attack scenarios.
+4) Gradients Filtering: Since DBSCAN is an unsupervised
+clustering algorithm, each resulting cluster lacks an inherent
+label, making it impossible for the server to directly identify
+which cluster consists of benign gradients. Additionally, even
+known benign clients may be marked as noise due to their
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+6
+
+distance from other samples, preventing their gradients from
+being used as labeled references. This increases the difficulty
+of identifying the benign cluster.
+To address this issue, we design a hierarchical cluster
+filtering mechanism guided by root clients in Algorithm 1.
+Algorithm 1 Gradients Filtering
+Input: Projected gradients G, known benign set Gknown ,
+root clients set Groot , cluster sets C, noise set N , cluster center
+sets C, cluster radius ε, cluster minimum samples number
+min samples, density constraint γ
+Output: Filtered set G (1)
+1: Let lroot be the label of Groot
+2: if lroot ̸= −1 then
+3:
+lbenign ← lroot
+4: else if c > 1 then
+5:
+for each cluster Cj with center Cj and label j ∈
+{0, . . . , c − 1} do
+
+6:
+Compute Dj ← 12 ∥Cj −groot1 ∥2 +∥Cj −groot2 ∥2
+7:
+end for
+8:
+lbenign ← arg mini Di
+9: else
+10:
+lbenign ← −1
+11: end if
+12: Cbenign ← {gi ∈ G | li = lbenign }
+(1)
+13: Gb ← {gi ∈ Cbenign | ∃gk ∈ Gknown , ∥gi − gk ∥2 ≤ γε}
+(1)
+14: G (1) ← Gb ∪ N
+15: return G (1)
+When valid clusters exist, the server first checks the clustering labels lroot of the two root benign users. Since the clustering
+radius is based on their distance, if they are clustered together,
+they must belong to the same cluster. If this label is not −1,
+the cluster to which they belong is directly regarded as the
+benign cluster:
+lbenign = lroot , Cbenign = Clroot
+
+if lroot ̸= −1.
+
+(7)
+
+If root clients are marked as noise (lroot = −1) but more
+than one valid cluster exists (nclusters > 1), the server computes
+the average euclidean distance between each cluster center
+in C and the two root gradients groot . Due to significant
+distance differences between benign and malicious gradients,
+the cluster closest to the root clients is more likely to be
+benign. Let:
+c∗ = arg min
+
+1
+
+(∥Cc − groot1 ∥2 + ∥Cc − groot2 ∥2 ) ,
+
+(8)
+
+lbenign = c∗ , Cbenign = Cc∗
+
+(9)
+
+c∈C 2
+
+then assign:
+
+In extreme cases, if root clients are not clustered and there
+is at most one cluster, nclusters ≤ 1 and lroot = −1, the server
+cannot determine the benign cluster. It then computes the
+global mean of all gradients as a temporary center and assigns
+cluster label −1 to all gradients for further screening.
+To defend against potential propagation attacks, we incorporate a filtering step controlled by density constraint parameter
+
+γ. In propagation attacks, malicious clients may collude to design a chain of stealthy adversarial gradients. These gradients
+form a sequence where each is within the clustering radius ε
+of the next, allowing a malicious gradient that is close to the
+benign cluster to “drag” other malicious ones into the same
+cluster under DBSCAN, ultimately corrupting the aggregation.
+To mitigate this risk, we restrict final benign selections to
+those within a tighter radius γε of known benign gradients.
+(1)
+Specifically, the refined benign set Gb is defined as:
+(1)
+
+Gb
+
+= {gi | li = lbenign and ∃gk ∈ Gknown , ∥gi − gk ∥2 ≤ γε}
+(10)
+(1)
+Finally, we reserve gradients in Gb and noise set N for
+further detection.
+(1)
+
+G (1) = Gb
+
+∪ N = {g1 , g2 , ..., gn1 }.
+
+(11)
+
+This hierarchical filtering ensures robust identification of benign gradients under varying attack intensities: most malicious
+gradients are removed after the first clustering, and only
+gradients in the benign cluster or labeled as noise are retained.
+Notably, even if strong attacks cause some benign gradients
+to be marked as noise, the geometric optimization strategy
+still helps identify the most likely benign cluster, providing a
+reliable foundation for the next-stage processing.
+C. Enhancing-Clustering Low-dimensional Gradient Generation
+To ensure projection stability, we reapply PCA to the
+high-dimensional gradient matrix G(1) corresponding to the
+retained gradients G (1) . Since PCA directions depend on
+dominant distributions, the relative positions of benign and malicious gradients can shift unpredictably between rounds when
+benign and malicious ratio are similar, hindering consistent
+boundary learning. After filtering most malicious gradients,
+reapplying PCA yields more stable projections, helping the
+generator better capture the benign cluster’s geometry and
+generate boundary pseudo-gradients.
+After the first clustering and filtering, the server retains
+gradients in the benign cluster and those labeled as noise.
+Noise points may include both malicious and benign gradients,
+but benign ones are generally closer to and more directionally
+aligned with the benign cluster. This allows intermediate
+points to act as bridges, enabling the clustering radius ε to
+reach and absorb sparse benign gradients. We thus design
+a gradient generation method that produces multiple pseudogradients near the boundary of the benign cluster to connect
+sparse benign gradients and enhance clustering quality without
+participating in aggregation.
+The pseudo-gradients are designed to stay within ε of the
+benign cluster and align directionally, while also being within
+ε of sparse benign gradients. This makes the latter reachable
+in DBSCAN and can be included in the benign cluster.
+The generative model takes as input a set of ngen noise
+vectors Z = z1 , . . . , zngen , each zi ∈ Rdg . Each vector in
+Z is independently passed through a shared three-layer fully
+connected network as:
+h(ℓ) = tanh(W (ℓ) h(ℓ−1) + b(ℓ) ),
+
+ℓ = 1, 2, 3
+
+(12)
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+7
+
+where W (ℓ) and b(ℓ) are the weight matrix and bias term
+of the ℓ-th layer, respectively.
+The output of the model consists of two components:
+2
+• A 2-dimensional vector ĝ ∈ R , representing the generated pseudo-gradient.
+• A confidence score ŷ ∈ (0, 1), produced by a sigmoid
+activation, estimating the likelihood that ĝ belongs to the
+benign cluster:
+ĝ = tanh(Wg h(3) + bg ),
+
+ŷ = σ(Wy h(3) + by )
+
+(13)
+
+where σ(·) denotes the sigmoid function.
+D. Low-dimensional Gradient Re-Clustering
+The server merges ngen pseudo-gradients Ĝ and remaining
+gradients G (1) to form the new input and conduct a second
+round of DBSCAN clustering, with the same parameters
+(ε, min samples) as before.
+Let the new gradients set be denoted by:
+Ĝ = {ĝ1 , . . . , ĝngen }, G (1) = {g1 , . . . , g} .
+
+(14)
+
+The second-round clustering follows the same procedure as
+the first, but only gradients within the identified benign cluster
+are retained. All others, including noise points and gradients in
+non-benign clusters, are discarded. The resulting real gradients
+are denoted as Gb(2) . In rare cases where all root gradients are
+labeled as noise and only one cluster is found, the server falls
+back to using the known benign set Gknown for aggregation.
+Pseudo-gradients Ĝ are not included in the final aggregation
+and discarded after clustering.
+Introducing multiple pseudo-gradients around the benign
+cluster boundary effectively expands its ε-neighborhood, shortening the distance to sparsely distributed benign gradients
+and increasing their inclusion likelihood. Since inter-class
+distances (benign vs. malicious) typically exceed intra-class
+variation, gradients still labeled as noise are likely adversarial
+and safely removed.
+E. Global Model Aggregation
+After the second round of clustering and filtering, the
+server retains the final set of real low-dimensional gradients
+(2)
+Gb . These gradients correspond to original high-dimensional
+gradients, which are directly used in the final aggregation step.
+The server performs a unweighted average over these highdimensional gradients to compute the global update:
+X
+1
+ḡ = (2)
+⃗gi
+(15)
+|Gb |
+(2)
+⃗
+gi ∈Gb
+
+We intentionally avoid using weighted averaging (e.g.,
+based on client sample sizes) to prevent malicious clients from
+manipulating the weights by falsely reporting larger training
+sets.
+Then then global model is updated by:
+w ← w − η · ḡ
+
+(16)
+
+where η denotes the learning rate. The updated global model
+w is distributed to all clients for the next training round.
+
+F. Generator Model Updating
+Simultaneously with the global model update, the server
+optimizes the generator model using clustering results from
+the current round. The objective is to enhance the generator’s
+ability to produce pseudo-gradients that facilitate the expansion of the benign cluster boundary.
+1) Clustering Classification Loss: We encourage the generator to produce pseudo-gradients that are likely to be assigned
+to the benign cluster during re-clustering. Instead of using
+cluster labels (which may vary across rounds), we treat cluster
+assignment as a binary classification task: for each pseudogradient ĝj , the ground-truth label yj ∈ {0, 1} is 1 if it
+was clustered into the benign cluster, and 0 otherwise. The
+generator outputs a predicted probability ŷj ∈ (0, 1), and we
+define a weighted binary cross-entropy loss:
+ngen
+1 X
+[w1 yj log ŷj + w0 (1 − yj ) log(1 − ŷj )]
+ngen j=1
+(17)
+Here, w1 > w0 to penalize false negatives more heavily and
+avoid trivial solutions where all generated samples are rejected,
+such as yj = 0, ŷj ≈ 0.
+2) Direction Diversity Loss: To avoid generated gradients
+clustering tightly at the benign center, we encourage symmetric and dispersed directions. Let µx , µy denote the mean
+offsets in the x and y directions of pseudo-gradients from
+the benign cluster center, and let σx , σy be their respective
+standard deviations. We define:
+
+Lclust = −
+
+stdx = ReLU(τ − σx ),
+
+stdy = ReLU(τ − σy )
+
+Ldir = |µx | + |µy | + stdx + stdy
+
+(18)
+
+where τ is a minimum dispersion threshold. This loss penalizes imbalance and collapse in directional spread.
+3) Distance Diversity Loss: We further enforce spatial
+separation among generated pseudo-gradients. Define a target
+minimum distance ρ·ε, where ε is the clustering radius and ρ is
+a scaling factor. For each pair of generated gradients (ĝi , ĝj ),
+we define the pairwise penalty:
+Ldis =
+
+1
+ngen
+
+X
+
+max(0, ρ · ε − ∥ĝi − ĝj ∥2 )2
+
+(19)
+
+1≤i<j≤ngen
+
+This ensures that pseudo-gradients are not overly concentrated.
+4) Total Generator Loss: Combining the above, the total
+loss for the generator is:
+LG = Lclust + α · Ldir + β · Ldis
+
+(20)
+
+where α and β are hyper-parameters controlling the trade-off
+between classification accuracy and diversity.
+V. T HEORETICAL ANALYSIS
+In this section, we conduct the necessary theoretical analysis. We separately analyze the convergence of the generator
+model and the global model.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+8
+
+A. Convergence Analysis of Generator Model
+We analyze the convergence of the generative model in
+EncAgg. The following assumptions are made:
+Assumption 1: The objective function FG (θ) is L-smooth,
+that is, its gradient is L-Lipschitz continuous:
+∥∇FG (θ1 ) − ∇FG (θ2 )∥ ≤ L∥θ1 − θ2 ∥,
+
+∀θ1 , θ2 .
+
+(21)
+
+Assumption 2: FG (θ) has a non-negative lower bound:
+FG (θ) ≥ Fmin ≥ 0.
+Assumption 3: The generator uses a fixed learning rate
+η ≤ L1 and performs single-step gradient descent:
+θt+1 = θt − η∇FG (θt )
+
+(22)
+
+Lemma 1: Under Assumptions 1–3, we have the following
+descent inequality:
+
+
+Lη 2
+FG (θt+1 ) ≤ FG (θt ) − η −
+∥∇FG (θt )∥2
+(23)
+2
+In particular, when η ≤ L1 :
+η
+FG (θt+1 ) ≤ FG (θt ) − ∥∇FG (θt )∥2
+(24)
+2
+Proof: Since FG is L-smooth, that means we can apply the
+standard upper bound of the first-order Taylor expansion for
+smooth non-convex functions:
+L
+FG (θt+1 ) ≤ FG (θt ) + ∇FG (θt )⊤ (θt+1 − θt ) + ∥θt+1 − θt ∥2
+2
+(25)
+Substituting the update rule θt+1 = θt − η∇FG (θt ) into the
+inequality yields:
+L 2
+η ∥∇FG (θt )∥2
+2
+(26)
+which simplifies to the desired descent inequality.
+Summing over T steps and using Assumption 2, we obtain:
+FG (θt+1 ) ≤ FG (θt ) − η∥∇FG (θt )∥2 +
+
+T −1
+
+2
+1 X
+∥∇FG (θt )∥2 ≤
+(FG (θ0 ) − Fmin )
+T t=0
+ηT
+
+(27)
+
+2
+(FG (θ0 ) − Fmin ) ,
+ηδ 2
+
+(28)
+
+then there exists t∗ < T such that ∥∇FG (θt∗ )∥ ≤ δ.
+B. Convergence Analysis of Global Model
+To analyze the convergence of the global model with
+EnCAgg, the necessary assumptions are listed below:
+Assumption 1: The non-convex loss function F (w) is LLipschitz smooth, that is, for any w, w′ , we have:
+∥∇F (w) − ∇F (w′ )∥ ≤ L∥w − w′ ∥,
+
+i∈B
+
+We assume the client gradient differences are bounded in
+variance, and there exists a constant σ ≥ 0 , such that:
+1 X
+∥∇fi (w) − ∇F (w)∥2 ≤ σ 2 , ∀w.
+(31)
+|B|
+i∈B
+
+Assumption 3: There exists a constant v > 0 such that for
+any benign client i ∈ B and any w, we have:
+∥∇fi (w)∥ ≤ v.
+
+(32)
+
+Based on the above assumptions, we analyze the convergence of the global model under two scenarios: (1) high and
+(2) low-intensity malicious gradients.
+1) Case 1: High-Intensity Malicious Gradients: When malicious gradients are strongly perturbed, their distances from
+benign gradients are large enough to be excluded during
+clustering. As a result, only benign gradients are aggregated,
+and the process reduces to the benign-only scenario.
+By Assumption 2, the aggregated gradient equals the true
+gradient: g̃t = ∇F (wt ). Using the L-smoothness in Assumption 1 and the gradient descent update wt+1 = wt −η∇F (wt ),
+we obtain:
+L
+F (wt+1 ) ≤ F (wt ) − η∥∇F (wt )∥2 + η 2 ∥∇F (wt )∥2 . (33)
+2
+If Lη ≤ 1, then:
+1
+(34)
+F (wt+1 ) ≤ F (wt ) − η∥∇F (wt )∥2 ,
+2
+showing that the loss decreases at each step as long as
+the gradient is non-zero. Thus, F (wt ) is monotonically nonincreasing and bounded below, implying the convergence.
+Summing over t = 0 to T − 1 and using F (wT ) ≥ Finf :
+T −1
+
+Since the average of T non-negative values is bounded, there
+must exist at least one t∗ < T such that the gradient norm at
+t∗ is below the average. Therefore we can give Theorem 1.
+Theorem 1: Under Assumptions 1–3, for any δ > 0, if
+T ≥
+
+of benign clients is B. For each benign client i ∈ B, its local
+loss function is defined as fi (w). The global loss function is
+1 X
+fi (w).
+(30)
+F (w) =
+|B|
+
+(29)
+
+where ∇F (w) is the gradient vector of F (w)about w.
+Assumption 2: Under ideal conditions, the global model is
+obtained by averaging all benign clients. We assume the set
+
+1 X
+∥∇F (wt )∥2 → 0.
+T t=0
+
+(35)
+
+This implies that min0≤t<T ∥∇F (wt )∥2 → 0, which means
+the global gradient converges to zero and wt approaches a
+stationary point.
+2) Case 2: Low-Intensity Malicious Gradients: In this case,
+malicious gradients with small perturbations may be retained
+in the benign cluster with a big clustering radius, and may
+lead to a propagating attack, where malicious gradients are
+gradually absorbed into the benign cluster via radius-based
+chaining. However, under a density constraint parameter γ,
+we can still find a suitable ε to prevent unrestricted malicious
+gradient propagation and ensure convergence.
+(2)
+Assumption 4 (Special Condition for Case 2): Let Gb
+denote the set of low-dimensional gradients retained after
+(2)
+(2)
+the second-round clustering, and let gm ⊆ Gb denote the
+subset of malicious gradients that are mistakenly retained and
+participate in the final aggregation. We make the following
+additional assumption:
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+9
+
+If DBSCAN clusters malicious gradients together with
+benign gradients, there must exist at least one benign gradient
+in low-dimensional space, denoted by ga , such that:
+min ∥g − ga ∥ < ε,
+
+(36)
+
+(2)
+
+g∈gm
+
+Since we impose an upper bound γε on the distance from each
+(2)
+gradient in Gb to known benign gradients, we have:
+∥g − ga ∥ ≤ ⌊γ⌋ε,
+
+(2)
+∀g ∈ gm
+.
+(2)
+
+(37)
+(2)
+
+Lemma 1: If the distance between gm ∈ gm ⊆ Gb
+(2)
+benign gradient ga ∈ Gb satisfies:
+∥gm − ga ∥ ≤ γε,
+
+and a
+
+(38)
+
+Then their distance in the high-dimensional space satisfies:
+∥⃗gm − ⃗ga ∥2 ≤ ⌊γ⌋2 ε2 + 2(n − 1)(d − 2)λ2 .
+
+(39)
+
+Proof: Since PCA projects the gradients onto orthonormal
+directions {u1 , u2 , . . . , ud }, we can decompose the full highdimensional squared distance as:
+d
+X
+
+2
+∥⃗gm − ⃗ga ∥ =
+(⃗gm − ⃗ga )⊤ uℓ
+2
+
+=
+
+ℓ=1
+2
+X
+
+Since
+⌊γ⌋
+X
+p
+p
+iε
+(1 + ⌊γ⌋)⌊γ⌋ε
+√
++ ⌊γ⌋ 2(n − 1)λ2 ,
+( √ + 2(n − 1)λ2 ) =
+d
+2 d
+i=1
+u
+X
+p
+p
+(1 + u)uε
+iε
+√
+( √ + 2(n − 1)λ2 ) =
++ u 2(n − 1)λ2
+Su ≤
+d
+2
+d
+i=1
+
+Sγ ≤
+
+(48)
+
+d
+
+2 X
+
+2
+(⃗gm − ⃗ga )⊤ uℓ +
+(⃗gm − ⃗ga )⊤ uℓ
+
+ℓ=1
+
+Suppose a = (a1 , ..., aj , ...ad ) is opposite direction with the
+correct part of global gradient g̃t ,
+r
+⌊γ⌋
+X
+i2 ε2 + 2(n − 1)(d − 1)λ2
+(2)
+′
+g̃t ≥ (n −κ)⃗gb +κ⃗ga +s
+(a1
+,
+d
+i=1
+r
+i2 ε2 + 2(n − 1)(d − 1)λ2
+..., ad
+)+
+d
+r
+u
+X
+i2 ε2 + 2(n − 1)(d − 1)λ2
+(a1
+,
+d
+i=1
+r
+i2 ε2 + 2(n − 1)(d − 1)λ2
+), aj = ±1. (46)
+..., ad
+d
+Let
+⌊γ⌋ r
+X
+i2 ε2 + 2(n − 1)(d − 1)λ2
+,
+Sγ =
+d
+i=1
+(47)
+r
+u
+X
+i2 ε2 + 2(n − 1)(d − 1)λ2
+Su =
+d
+i=1
+
+ℓ=3
+
+(40)
+The first term corresponds to the 2D projected distance:
+2
+X
+
+2
+(⃗gm − ⃗ga )⊤ uℓ = ∥(gm − ga )∥2 ≤ γ 2 ε2 .
+
+(41)
+
+ℓ=1
+
+To upper-bound the tail sum, consider an extreme case
+where only ⃗gm and ⃗ga lie at opposite ends along each direction
+uℓ (ℓ ≥ 3), and the remaining n − 2 samples lie at the mean.
+This maximizes the variance under the constraint λℓ ≤ λ2 :
+
+Then,
+(s⌊γ⌋ + s⌊γ⌋2 + u + u2 )ε
+√
+2 d
+p
+(κ + κ⌊γ⌋ + u2 − u⌊γ⌋)ε
+√
++ (s⌊γ⌋ + u) 2(n − 1)λ2 =
+2 d
+p
+p
+(1 + ⌊γ⌋)κε
+√
++ κ 2(n − 1)λ2 ≤
++ κ 2(n − 1)λ2 (49)
+2 d
+Given a = (a1 , ..., aj , ...ad ) is opposite direction with the
+correct part of g̃t , which we call ⃗gbb ,
+s · S γ + Su ≤
+
+⃗gbb = (κ + 1)⃗ga +
+
+′
+nX
+−κ
+
+⃗gbk = (gbb1 , ..., gbbj , ..., gbbd ),
+
+k=1
+
+
+2
+(⃗gm − ⃗ga )⊤ uℓ ≤ 2(n − 1)λℓ ≤ 2(n − 1)λ2 .
+
+(42)
+
+g̃t ≥ ⃗gbb +(
+
+Summing over ℓ = 3 to d gives:
+d
+X
+
+2
+(⃗gm − ⃗ga )⊤ uℓ ≤ 2(n − 1)(d − 2)λ2 .
+
+We need to satisfy this inequality to achieve convergence:
+(43)
+
+ℓ=3
+
+Hence, the full squared distance is bounded by:
+∥⃗gm − ⃗ga ∥2 ≤ ⌊γ⌋2 ε2 + 2(n − 1)(d − 2)λ2 .
+
+(44)
+
+This implies that each malicious gradient has an upper
+bound on its distance to the same benign gradient ga . From
+this lemma, we can further discuss the convergence of global
+model. Let:
+κ = s⌊γ⌋ + u.
+
+p
+(1 + ⌊γ⌋)κε
+√
++κ 2(n − 1)λ2 )(a1 , .., aj , ..., ad )
+2 d
+(50)
+
+(45)
+
+p
+(1 + ⌊γ⌋)κε
+√
++ κ 2(n − 1)λ2 ) + ...+
+2 d
+p
+(1 + ⌊γ⌋)κε
+√
+gbbd (gbbd + ad (
++ κ 2(n − 1)λ2 )) ≥ 0 (51)
+2 d
+Then we can derive:
+gbb1 (gbb1 + a1 (
+
+d
+X
+j=1
+
+2
+gbbj
+− |gbbj |(
+
+p
+(1 + ⌊γ⌋)κε
+√
++ κ 2(n − 1)λ2 ) ≥ 0 (52)
+2 d
+
+It can be seen as equally:
+Pd
+2
+p
+(1 + ⌊γ⌋)κε
+j=1 gbbj
+√
+≥
++ κ 2(n − 1)λ2
+Pd
+2 d
+j=1 |gbbj |
+
+(53)
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+10
+
+To get an available ε, we need to let:
+√
+2
+2
+2 d
+j=1 gbbj
+ε ≤ Pd
+·
+−
+κ(1
++
+⌊γ⌋)
+j=1 |gbbj |
+Pd
+
+p
+
+2(n − 1)dλ2
+1 + ⌊γ⌋
+
+(54)
+
+So a non-negative ε requires:
+Pd
+
+2
+j=1 gbbj
+
+( Pd
+
+j=1 |gbbj |
+
+)2 ≥ 2κ2 (n − 1)λ2
+
+(55)
+
+With the above inequality holding true, we can always find
+an appropriate ε to guarantee global model convergence. This
+implies that convergence can be achieved under any proportion
+of malicious clients, as long as γ is imposed and a nonnegative ε satisfying the inequality is chosen.
+
+VI. E XPERIMENTS
+In this section, we evaluate the performance of our model
+from multiple perspectives and compare it with existing works.
+
+A. Experimental Settings
+1) Environment Setup: Our method is implemented in
+Python 3.8. All experiments are conducted on a server
+equipped with Ubuntu 20.04, an Intel(R) Xeon(R) Gold 5220R
+CPU, 256 GB RAM, and an Nvidia GeForce RTX 3090 GPU.
+2) Datasets and Metrics: We evaluate the performance of
+our method on three datasets: MNIST, CIFAR-10, and MIND
+[30]. Both MNIST and CIFAR10 are image classification
+datasets which have ten categories. MNIST has 60,000 training
+examples and 10,000 testing examples while CIFAR10 contains 50,000 training examples and 10,000 testing examples.
+On these datasets, we use model accuracy as evaluation metric.
+MIND is a large-scale dataset built by Microsoft News
+Platform for news recommendation tasks. The dataset comes in
+two versions, MIND-small and MIND-large. In this work,we
+use MIND-small, which contains 65,238 news articles and
+50,000 users. On MIND, we use AUC, MRR and NDCG as
+evaluation metrics. AUC measures model’s ability to recommend candidate news, while MRR and NDCG evaluate the
+ranking quality of the recommended results.
+TABLE I
+F EDERATED LEARNING CONFIGURATION ON DIFFERENT DATASETS
+Parameter
+
+Explanation
+
+MNIST
+
+CIFAR-10
+
+MIND
+
+model
+n
+E
+I
+η
+mal
+min samples
+r
+γ
+ngen
+
+Model
+Total clients
+Epochs
+Iterations per epoch
+Learning rate
+Malicious Ratio
+Min cluster sample number
+Radius coefficient
+Density Constraint
+Pseudo Gradient Number
+
+CNN
+20
+10
+50
+0.001
+
+ResNet18
+20
+100
+50
+0.01
+10% & 60%
+5
+0.2
+3.0
+100
+
+NRMS
+50
+5
+1000
+0.0001
+
+3) FL System Settings: The FL system configurations are
+summarized in Table I. For MNIST, we use a CNN with
+two convolutional layers and one fully connected layer. For
+CIFAR-10, we adopt ResNet-18, which includes 17 convolutional layers and 1 fully connected layer with residual blocks
+and shortcut connections. For MIND, we employ NRMS [31],
+a model utilizing multi-head self-attention to represent user
+interests and match relevant news.
+Each epoch consists of multiple iterations, during which
+each client trains on one local data batch, computes gradients,
+and uploads them to the server. The server then applies our
+EnCAgg algorithm to identify and filter potential malicious
+gradients. Remaining benign gradients are aggregated to update the global model. While we use dataset-specific settings
+for epoch count, iteration number, client count, and learning
+rate, we keep the radius coefficient r and density constraint γ
+consistent across datasets.
+To evaluate robustness under varying adversarial intensities,
+we test at 10% and 60% malicious client ratios, which representing benign-dominant and adversary-dominant scenarios,
+respectively. Malicious clients follow a dynamic strategy,
+submitting either malicious or benign gradients per round,
+ensuring their gradient proportion never exceeds the predefined
+malicious ratio mal.
+4) Attack and Defense Methods: In our experiments, the
+model is attacked using three model poisoning strategies:
+1. UA-FedRec [19] is a targeted attack designed for news
+recommendation systems. It separately crafts the gradients of
+the user and news encoders to induce significant performance
+degradation using only a small fraction of malicious clients.
+On the MNIST and CIFAR-10 datasets, we adopt only the
+user encoder poisoning component to simulate this attack in
+general classification settings. 2. LIE (Little is Enough) [18]
+perturbs benign gradients by adding small manipulations in the
+opposite direction of the benign mean. This allows malicious
+updates to evade detection methods based on thresholding or
+deviation metrics, while still degrading model performance.
+3. Min-Max [1] seeks to maximize the adversarial effect of
+poisoned gradients while maintaining a bounded distance from
+benign updates. This design helps the attack bypass distancebased defense mechanisms by mimicking the distribution of
+legitimate gradients.
+To evaluate the performance of our EnaAgg, we compare
+it with seven high-performing baselines, including FedSGD
+[23], Krum [4], Median [5], TrimmedMean [5], FLTrust [24],
+DPFLA [10] and FLGuardian [11].
+B. Experimental Results
+1) Fidelity Evaluation: To demonstrate the fidelity of our
+method, we first evaluate its performance alongside baseline
+methods under non-adversarial conditions. As shown in Table
+II, our method achieves similar results to the baselines across
+different datasets.
+The results indicate that the performance gap between our
+method and FedSGD is within 0.8 on image classification
+tasks, and within 0.3 on all metrics in the news recommendation task. Moreover, our method consistently outperforms
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+11
+
+66
+
+TABLE II
+F IDELITY E VALUATION (%)
+
+40
+
+65
+
+CIFAR10
+
+MIND
+
+ACC
+
+ACC
+
+AUC
+
+MRR
+
+nDCG@5
+
+nDCG@10
+
+99.38
+95.29
+97.09
+98.55
+98.08
+98.58
+98.09
+98.60
+
+82.03
+73.46
+62.13
+81.19
+80.56
+81.52
+81.40
+81.57
+
+65.20
+52.91
+54.05
+61.30
+62.66
+65.01
+64.61
+65.17
+
+30.72
+23.12
+23.31
+28.71
+29.13
+30.16
+30.70
+30.75
+
+33.58
+24.23
+24.36
+30.87
+31.66
+32.99
+33.49
+33.61
+
+40.09
+30.56
+31.17
+37.37
+38.07
+39.64
+39.91
+40.15
+
+all baselines across all evaluation metrics, demonstrating that
+it preserves comparable performance to standard federated
+learning algorithm FedSGD in non-adversarial settings and
+achieves strong fidelity.
+2) Robustness Evaluation: Table III and Table IV report
+the performance of all methods on MNIST, CIFAR-10, and
+MIND. We define the malicious client ratio as the fraction of
+clients capable of launching global poisoning attacks. These
+clients may randomly submit benign or malicious gradients
+in each round, so the ratio indicates the maximum possible
+proportion of malicious gradients.
+Under low malicious ratios (10%), many defenses fail to
+resist low-intensity attacks like LIE and Min-Max, which craft
+subtle perturbations to evade detection yet degrade the global
+model. For example, on CIFAR-10 under 10% LIE and MinMax, all methods except Krum and FLGuardian fall below
+70.00 accuracy. However, EnCAgg overcomes this by blocking
+such perturbations from entering the benign cluster through
+carefully designed clustering and maintaining robustness. It
+achieves 81.01 and 80.58 under 10% LIE and Min-Max on
+CIFAR-10 and outperforms all baselines on three datasets.
+Under a high malicious ratio (60%), most defenses break
+down as their benign-dominant assumptions no longer hold,
+and performance collapses. For example, on CIFAR-10 with
+60% malicious clients, almost all accuracies of other methods
+drops below 20 except FLTrust. In contrast, EnCAgg leverages
+known benign gradients to guide clustering without relying on
+majority assumptions, enabling stable defense against camouflaged and dynamic malicious strategies.As a result, it can
+maintain around 98 accuracy on MNIST and higher than 80
+on CIFAR10, with only 1.0 drop from the 10% setting on
+MIND, showing remarkable resilience.
+3) Impact of Malicious Client Ratio: To further evaluate
+robustness under varying malicious client ratios mal, we test
+our method on MIND under UA-FedRec attacks with 5%,
+10%, 20%, 40%, 60%, and 80% malicious clients.
+As shown in Fig. 4, our method remains consistently robust
+across the entire range. At 5% malicious clients, metrics
+reach AUC = 65.25, MRR = 30.95, nDCG@5 = 33.99,
+and nDCG@10 = 40.41, which almost matching no attack
+scenario. Even at 80% malicious clients, they remain as high
+as 62.34, 28.50, 30.88, and 37.45, with no drop exceeding
+3.0. This degradation stems from reduced effective benign
+
+39
+
+nDCG@10
+
+MNIST
+
+AUC
+
+FedSGD
+Krum
+Median
+TMean
+FLTrust
+DPFLA
+FLGuardian
+EnCAgg
+
+41
+
+64
+
+38
+63
+
+62
+
+37
+AUC
+nDCG@10
+0
+
+10
+
+20
+
+30
+
+40
+
+50
+
+Malicious Ratio (%)
+
+60
+
+70
+
+80
+
+36
+
+Fig. 4. Impact of malicious client ratio on EnCAgg
+
+participation, which limits usable training data and, due to
+heterogeneity, causes global updates to deviate from the true
+data distribution. Still, the performance drop remains mild,
+preserving overall model utility. These results confirm our
+method’s strong robustness, even under extreme attack scenarios with up to 80% malicious clients.
+4) Impact of Radius Coefficient: In our clustering mechanism, the radius coefficient r is a key hyperparameter that
+determines the clustering radius ε by selecting two known benign gradients. To assess its impact under different malicious
+ratios, we conduct experiments on CIFAR-10 and MNIST
+using LIE and Min-Max attacks at 10% and 60% malicious
+client participation. For each setting, r ranges from 0.1 to 0.9
+(step size: 0.1), and classification accuracy is recorded.
+As shown in Fig. 5, accuracy remains stable when r is
+moderately small (0.1–0.3), regardless of dataset or malicious
+ratio. This aligns with our design: a smaller r yields a
+tighter ε, excluding stealthy malicious gradients while still
+preserving most tightly packed benign ones. In contrast, larger
+r degrades performance under stealthy attacks, especially
+at high malicious ratios. This is because such attacks craft
+perturbations close to sparse benign updates. A larger r leads
+to a larger ε, which increases the risk of adversarial gradients
+being clustered with benign ones and degrades global model
+performance. This poisoning effect becomes more severe as
+the malicious client ratio rises. With an appropriate r, EnCAgg
+effectively resists various poisoning attacks across different
+malicious ratios and attack intensities.
+5) Adaptive Attack: As EnCAgg mainly relies on lowdimensional clustering results to filter gradients, adversaries
+can construct adaptive attacks specifically targeting this aggregation rule. In this work, we adopt the AGR Tailored Attack
+idea proposed by Shejwalkar et al. [1], where the attacker is
+assumed to have full knowledge of the server-side aggregation
+rule and benign clients’ gradients, and exploits this information
+to craft malicious gradient accordingly. In this setting, the
+attacker can not only access all or part of the gradients
+submitted by other clients, but also obtain the aggregation rule
+of EnCAgg. Based on this information, the attacker locally
+simulates the dimensionality reduction, clustering, and filtering
+process of EnCAgg, and further adjusts malicious gradients to
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+12
+
+TABLE III
+ROBUSTNESS E VALUATION ON MNIST AND CIFAR10 ( ACCURACY (%) )
+10% Malicious Clients
+MNIST
+
+60% Malicious Clients
+CIFAR10
+
+MNIST
+
+CIFAR10
+
+UA-FedRec
+
+LIE
+
+Min-Max
+
+UA-FedRec
+
+LIE
+
+Min-Max
+
+UA-FedRec
+
+LIE
+
+Min-Max
+
+UA-FedRec
+
+LIE
+
+Min-Max
+
+92.48
+95.86
+97.00
+93.82
+98.06
+98.48
+98.04
+98.58
+
+97.42
+96.27
+96.03
+97.48
+97.24
+97.44
+97.58
+98.23
+
+97.14
+96.32
+96.15
+96.34
+97.29
+97.22
+98.22
+98.16
+
+40.12
+73.78
+46.70
+51.76
+80.09
+81.40
+80.02
+81.86
+
+37.07
+73.25
+31.89
+36.19
+56.48
+39.53
+80.38
+81.01
+
+43.29
+71.36
+32.63
+38.19
+53.44
+41.38
+80.12
+80.58
+
+12.65
+12.86
+10.86
+10.15
+97.49
+12.81
+11.46
+98.32
+
+88.79
+68.09
+71.97
+82.29
+91.80
+77.55
+72.41
+97.91
+
+87.55
+71.87
+76.72
+88.35
+89.94
+72.60
+76.74
+97.78
+
+5.73
+11.20
+9.80
+10.62
+79.44
+2.59
+9.12
+81.54
+
+16.84
+17.16
+16.46
+16.65
+20.19
+17.07
+16.56
+80.69
+
+15.60
+17.09
+17.15
+17.09
+18.95
+16.87
+16.58
+80.39
+
+FedSGD
+Krum
+Median
+TMean
+FLTrust
+DPFLA
+FLGuardian
+EnCAgg
+
+TABLE IV
+ROBUSTNESS E VALUATION ON MIND (%)
+10% Malicious Clients
+UA-FedRec
+
+60% Malicious Clients
+
+LIE
+
+Min-Max
+
+UA-FedRec
+
+LIE
+
+Min-Max
+
+AUC MRR n@5 n@10 AUC MRR n@5 n@10 AUC MRR n@5 n@10 AUC MRR n@5 n@10 AUC MRR n@5 n@10 AUC MRR n@5 n@10
+FedSGD
+Krum
+Median
+TMean
+FLTrust
+DPFLA
+FLGuardian
+EnCAgg
+
+48.93
+58.38
+51.41
+50.46
+55.42
+64.58
+63.66
+65.07
+
+21.76
+25.39
+21.61
+23.14
+22.55
+30.39
+29.52
+30.59
+
+21.65
+27.49
+22.40
+23.66
+23.73
+33.27
+32.21
+33.54
+
+27.88
+34.14
+29.03
+29.53
+30.88
+39.73
+38.72
+40.02
+
+51.49
+51.81
+52.69
+54.16
+60.20
+64.79
+60.98
+65.12
+
+22.90
+24.14
+23.39
+23.22
+26.98
+30.39
+27.53
+30.85
+
+23.79
+24.97
+24.58
+24.62
+29.13
+33.21
+29.76
+33.89
+
+80
+
+70
+
+70
+
+60
+
+60
+
+50
+40
+30
+
+23.79
+23.03
+25.21
+23.40
+24.86
+29.08
+29.49
+33.58
+
+30.09
+29.58
+31.40
+29.63
+31.52
+35.60
+36.12
+39.98
+
+47.39
+47.61
+47.57
+47.47
+53.24
+46.06
+47.60
+63.08
+
+21.09
+20.28
+20.26
+21.11
+23.10
+20.39
+20.43
+28.86
+
+20.57
+19.46
+19.42
+20.61
+24.00
+19.69
+19.79
+31.47
+
+27.33
+26.48
+26.48
+27.37
+30.80
+26.59
+26.68
+38.01
+
+48.27
+49.13
+48.26
+48.44
+53.09
+49.13
+47.92
+62.87
+
+21.60
+21.77
+21.50
+21.57
+22.71
+21.77
+21.19
+29.11
+
+21.52
+21.89
+21.49
+21.52
+23.80
+21.89
+21.15
+31.55
+
+27.81
+28.09
+27.71
+27.89
+30.49
+28.09
+27.37
+38.11
+
+48.89
+48.78
+48.54
+49.00
+52.49
+49.23
+48.67
+64.00
+
+21.70
+21.63
+21.53
+21.70
+22.60
+21.79
+21.56
+30.15
+
+21.64
+21.59
+21.44
+21.69
+23.68
+21.83
+21.52
+32.89
+
+28.09
+27.95
+27.82
+28.13
+30.17
+28.23
+27.89
+39.36
+
+in the original high-dimensional space to influence the final
+aggregation result. Specifically, the adversarial update is constructed as
+gadv = gref + δ∥ + δ⊥ ,
+(56)
+
+50
+40
+20
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+r
+
+0.6
+
+0.7
+
+0.8
+
+0.9
+
+0.1
+
+0.2
+
+MNIST (10% malicious)
+
+0.3
+
+0.4
+
+0.5
+
+r
+
+0.6
+
+0.7
+
+0.8
+
+0.9
+
+0.8
+
+0.9
+
+MNIST (60% malicious)
+98
+96
+
+Accuracy
+
+Accuracy
+
+22.72
+22.22
+24.00
+22.40
+23.93
+26.83
+27.44
+30.56
+
+30
+
+20
+
+99.0
+98.5
+98.0
+97.5
+97.0
+96.5
+96.0
+95.5
+95.0
+
+51.45
+51.94
+51.83
+50.67
+55.03
+60.47
+60.99
+64.81
+
+CIFAR10 (60% malicious)
+
+80
+
+Accuracy
+
+Accuracy
+
+CIFAR10 (10% malicious)
+
+30.13
+31.01
+30.97
+31.27
+35.79
+39.81
+36.55
+40.28
+
+94
+92
+90
+88
+86
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+r
+
+0.6
+
+0.7
+
+0.8
+
+UA-Fedrec
+
+0.9
+
+84
+
+0.1
+
+LIE
+
+0.2
+
+0.3
+
+0.4
+
+Min-Max
+
+0.5
+
+r
+
+0.6
+
+0.7
+
+Fig. 5. Impact of malicious client ratio on our method
+
+increase their probability of passing the clustering filter and
+participating in the final aggregation.
+The proposed adaptive attack mainly exploits the lowdimensional clustering and high-dimensional aggregation characteristic of EnCAgg. Specifically, the attacker first estimates the benign cluster distribution in the projected twodimensional space according to benign gradients and selects
+benign reference gradient. The malicious gradients are then
+constructed to remain close to benign gradients in the lowdimensional projection space so as to satisfy the clustering
+radius and density constraints, while simultaneously deviating
+
+where gref denotes the benign reference gradient, δ∥ represents the low-dimensional perturbation within the PCA principal subspace, which is used to adjust the position of malicious
+updates in the two-dimensional projection space so that they
+remain close to the benign cluster and pass the clustering
+filter, and δ⊥ denotes the high-dimensional perturbation in
+the orthogonal complement space of the PCA principal subspace. This perturbation is used to interfere with the final
+high-dimensional aggregation result while maintaining lowdimensional similarity to benign gradients, thereby enhancing
+the attack effectiveness. To prevent the high-dimensional perturbation from affecting the clustering result in the projected
+space, the attacker further constrains
+V2⊤ δ⊥ ≈ 0.
+
+(57)
+
+As a result, δ⊥ remains nearly invisible in the twodimensional projection space while still influencing the final high-dimensional aggregation process. The perturbation
+strength is further adaptively adjusted according to the locally
+simulated clustering results to balance attack effectiveness and
+stealthiness.
+Based on the above adaptive attack setting, we evaluate the
+robustness of different aggregation methods. Experimental results are summarized in Table V. Under a 10% malicious client
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+65.25
+
+38
+
+MRR and nDCG
+
+64.75
+
+AUC
+
+40
+
+Method
+
+PCA+Clust+Gen
+PCA+Clust
+Clust+Gen
+Clust
+
+65.00
+
+13
+
+36
+
+64.50
+
+34
+
+64.25
+64.00
+
+32
+
+63.75
+63.50
+
+30
+AUC
+
+MRR
+
+nDCG@5
+
+nDCG@10
+
+defends against dynamic model poisoning attacks. EnCAgg
+consists of low-dimensional gradient clustering and pseudogradient generation to accurately distinguish and retain benign
+updates, while filtering out a wide range of adversarial ones.
+Extensive experimental results on multiple datasets under various attack and parameter settings demonstrate that EnCAgg
+outperforms existing baselines in both fidelity and robustness
+against novel model poisoning strategies, especially under high
+proportions of malicious clients. For future work, we plan to
+extend the generator model’s capability and diversity against
+multiple types of sophisticated attacks.
+
+Fig. 6. Ablation study
+
+ratio, all methods maintain relatively high accuracy, while
+EnCAgg achieves the best performance with 97.51% accuracy.
+When the malicious ratio increases to 60%, most methods
+degrade significantly, whereas EnCAgg still maintains a high
+accuracy of 94.67%, demonstrating strong robustness against
+adaptive attacks. These results indicate a trade-off between
+attack effectiveness and low-dimensional stealthiness, which
+limits the ability of adaptive attacks to fully bypass EnCAgg.
+TABLE V
+P ERFORMANCE UNDER A DAPTIVE ATTACK (%)
+Method
+FedSGD
+Krum
+Median
+Trimmed Mean
+FLTrust
+DPFLA
+FLGuardian
+EnC
+
+10% Malicious
+
+60% Malicious
+
+95.47
+94.65
+95.14
+96.13
+95.94
+97.20
+97.37
+97.51
+
+73.11
+69.71
+70.99
+73.97
+76.08
+70.80
+71.93
+94.67
+
+6) Ablation Study: Finally, we conduct ablation studies on
+the MIND dataset with 10% malicious clients performing
+UA-FedRec attacks to evaluate the contributions of dimensionality reduction and the gradient generator. As shown in
+Fig. 6, removing the generator causes an approximately 0.1
+performance drop. This is because pseudo-gradients help pull
+sparsely distributed benign updates into the benign cluster
+during the second round of clustering. Without them, these
+updates are treated as noise and excluded from aggregation,
+resulting in incomplete global updates.
+Removing dimensionality reduction causes a larger performance drop of approximately 0.7. Dimensionality reduction
+improves the separability between benign and malicious gradients. Without it, attackers can more easily craft gradients
+within the clustering radius, bypassing the filtering mechanism
+and degrading model performance.
+When both components are removed, the performance drops
+by approximately 1.3, indicating that density-based clustering
+alone is insufficient for robust defense. The results demonstrate
+that dimensionality reduction and pseudo-gradient generation
+jointly contribute to the effectiveness of EnCAgg.
+VII. C ONCLUSION
+In this paper, we proposed EnCAgg, a novel robust aggregation framework for federated learning, which effectively
+
+R EFERENCES
+[1] V. Shejwalkar and A. Houmansadr, “Manipulating the byzantine:
+Optimizing model poisoning attacks and defenses for federated
+learning,” in Network and Distributed Systems Security (NDSS)
+Symposium. Internet Society, 2021. [Online]. Available: https:
+//par.nsf.gov/servlets/purl/10286354
+[2] H. Kasyap and S. Tripathy, “Sine: Similarity is not enough for mitigating
+local model poisoning attacks in federated learning,” IEEE Transactions
+on Dependable and Secure Computing, vol. 21, no. 5, pp. 4481–4494,
+2024.
+[3] X. Li, N. Wang, S. Yuan, and Z. Guan, “Fedimp: Parameter importancebased model poisoning attack against federated learning system,”
+Computers & Security, vol. 144, p. 103936, 2024. [Online]. Available:
+https://www.sciencedirect.com/science/article/pii/S0167404824002414
+[4] P. Blanchard, E. M. El Mhamdi, R. Guerraoui, and J. Stainer,
+“Machine learning with adversaries: Byzantine tolerant gradient
+descent,” in Advances in Neural Information Processing Systems,
+I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus,
+S. Vishwanathan, and R. Garnett, Eds., vol. 30. Curran Associates,
+Inc., 2017. [Online]. Available: https://proceedings.neurips.cc/paper
+files/paper/2017/file/f4b9ec30ad9f68f89b29639786cb62ef-Paper.pdf
+[5] D. Yin, Y. Chen, R. Kannan, and P. Bartlett, “Byzantine-robust
+distributed learning: Towards optimal statistical rates,” in Proceedings
+of the 35th International Conference on Machine Learning, ser.
+Proceedings of Machine Learning Research, J. Dy and A. Krause, Eds.,
+vol. 80. PMLR, 10–15 Jul 2018, pp. 5650–5659. [Online]. Available:
+https://proceedings.mlr.press/v80/yin18a.html
+[6] E. M. El Mhamdi, R. Guerraoui, and S. Rouault, “The hidden
+vulnerability of distributed learning in Byzantium,” in Proceedings
+of the 35th International Conference on Machine Learning, ser.
+Proceedings of Machine Learning Research, J. Dy and A. Krause, Eds.,
+vol. 80. PMLR, 10–15 Jul 2018, pp. 3521–3530. [Online]. Available:
+https://proceedings.mlr.press/v80/mhamdi18a.html
+[7] Q. Xia, Z. Tao, Z. Hao, and Q. Li, “Faba: An algorithm for fast
+aggregation against byzantine attacks in distributed neural networks,”
+IJCAI. [Online]. Available: https://par.nsf.gov/biblio/10119268
+[8] Z. Sun, P. Kairouz, A. T. Suresh, and H. B. McMahan, “Can
+you really backdoor federated learning?” 2019. [Online]. Available:
+https://arxiv.org/abs/1911.07963
+[9] M. Wu, B. Zhao, Y. Xiao, C. Deng, Y. Liu, and X. Liu, “Model: A model
+poisoning defense framework for federated learning via truth discovery,”
+IEEE Transactions on Information Forensics and Security, vol. 19, pp.
+8747–8759, 2024.
+[10] X. Feng, W. Cheng, C. Cao, L. Wang, and V. S. Sheng, “Dpfla:
+Defending private federated learning against poisoning attacks,” IEEE
+Transactions on Services Computing, vol. 17, no. 4, pp. 1480–1491,
+2024.
+[11] X. Zhou, X. Chen, S. Liu, X. Fan, Q. Sun, L. Chen, M. Qiu, and
+T. Xiang, “Flguardian: Defending against model poisoning attacks via
+fine-grained detection in federated learning,” IEEE Transactions on
+Information Forensics and Security, vol. 20, pp. 5396–5410, 2025.
+[12] T. D. Nguyen, P. Rieger, H. Chen, H. Yalame, H. Möllering,
+H. Fereidooni, S. Marchal, M. Miettinen, A. Mirhoseini, S. Zeitouni,
+F. Koushanfar, A.-R. Sadeghi, and T. Schneider, “FLAME: Taming
+backdoors in federated learning,” in 31st USENIX Security Symposium
+(USENIX Security 22). Boston, MA: USENIX Association, Aug. 2022,
+pp. 1415–1432. [Online]. Available: https://www.usenix.org/conference/
+usenixsecurity22/presentation/nguyen
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+[13] K. Zhao, L. Wang, F. Yu, B. Zeng, and Z. Pang, “Fedmp: A
+multi-pronged defense algorithm against byzantine poisoning attacks in
+federated learning,” Computer Networks, vol. 257, p. 110990, 2025.
+[Online]. Available: https://www.sciencedirect.com/science/article/pii/
+S1389128624008223
+[14] M. Fang, X. Cao, J. Jia, and N. Gong, “Local model poisoning attacks
+to Byzantine-Robust federated learning,” in 29th USENIX Security
+Symposium (USENIX Security 20). USENIX Association, Aug. 2020,
+pp. 1605–1622. [Online]. Available: https://www.usenix.org/conference/
+usenixsecurity20/presentation/fang
+[15] L. Li, W. Xu, T. Chen, G. B. Giannakis, and Q. Ling, “Rsa: Byzantinerobust stochastic aggregation methods for distributed learning from
+heterogeneous datasets,” Proceedings of the AAAI Conference on
+Artificial Intelligence, vol. 33, no. 01, pp. 1544–1551, Jul. 2019.
+[Online]. Available: https://ojs.aaai.org/index.php/AAAI/article/view/
+3968
+[16] V. Tolpegin, S. Truex, M. E. Gursoy, and L. Liu, “Data poisoning attacks
+against federated learning systems,” in Computer Security – ESORICS
+2020, L. Chen, N. Li, K. Liang, and S. Schneider, Eds. Cham: Springer
+International Publishing, 2020, pp. 480–501.
+[17] H. Wang, K. Sreenivasan, S. Rajput, H. Vishwakarma, S. Agarwal, J.-y.
+Sohn, K. Lee, and D. Papailiopoulos, “Attack of the tails: Yes, you really
+can backdoor federated learning,” in Advances in Neural Information
+Processing Systems, H. Larochelle, M. Ranzato, R. Hadsell, M. Balcan,
+and H. Lin, Eds., vol. 33. Curran Associates, Inc., 2020, pp. 16 070–
+16 084. [Online]. Available: https://proceedings.neurips.cc/paper files/
+paper/2020/file/b8ffa41d4e492f0fad2f13e29e1762eb-Paper.pdf
+[18] G. Baruch, M. Baruch, and Y. Goldberg, “A little is
+enough: Circumventing defenses for distributed learning,” in
+Advances in Neural Information Processing Systems, H. Wallach,
+H. Larochelle, A. Beygelzimer, F. d'Alché-Buc, E. Fox, and
+R. Garnett, Eds., vol. 32.
+Curran Associates, Inc., 2019.
+[Online]. Available: https://proceedings.neurips.cc/paper files/paper/
+2019/file/ec1c59141046cd1866bbbcdfb6ae31d4-Paper.pdf
+[19] J. Yi, F. Wu, B. Zhu, J. Yao, Z. Tao, G. Sun, and X. Xie, “Ua-fedrec:
+Untargeted attack on federated news recommendation,” in Proceedings
+of the 29th ACM SIGKDD Conference on Knowledge Discovery and
+Data Mining, ser. KDD ’23. New York, NY, USA: Association
+for Computing Machinery, 2023, p. 5428–5438. [Online]. Available:
+https://doi.org/10.1145/3580305.3599923
+[20] Z. Ma, X. Huang, Z. Wang, Z. Qin, X. Wang, and J. Ma, “Fedghost:
+Data-free model poisoning enhancement in federated learning,” IEEE
+Transactions on Information Forensics and Security, vol. 20, pp. 2096–
+2108, 2025.
+[21] K. Wei, J. Li, M. Ding, C. Ma, Y.-S. Jeon, and H. V. Poor, “Covert
+model poisoning against federated learning: Algorithm design and optimization,” IEEE Transactions on Dependable and Secure Computing,
+vol. 21, no. 3, pp. 1196–1209, 2024.
+[22] C. Feng, Y. Li, Y. Gao, A. H. Celdrán, J. von der Assen, G. Bovet,
+and B. Stiller, “Dmpa: Model poisoning attacks on decentralized
+federated learning for model differences,” 2025. [Online]. Available:
+https://arxiv.org/abs/2502.04771
+[23] B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A. y.
+Arcas, “Communication-Efficient Learning of Deep Networks from
+Decentralized Data,” in Proceedings of the 20th International
+Conference on Artificial Intelligence and Statistics, ser. Proceedings
+of Machine Learning Research, A. Singh and J. Zhu, Eds., vol. 54.
+PMLR, 20–22 Apr 2017, pp. 1273–1282. [Online]. Available:
+https://proceedings.mlr.press/v54/mcmahan17a.html
+[24] X. Cao, M. Fang, J. Liu, and N. Z. Gong, “Fltrust: Byzantinerobust federated learning via trust bootstrapping,” in 28th Annual
+Network and Distributed System Security Symposium, NDSS
+2021, virtually, February 21-25, 2021. The Internet Society,
+2021. [Online]. Available: https://www.ndss-symposium.org/ndss-paper/
+fltrust-byzantine-robust-federated-learning-via-trust-bootstrapping/
+[25] Z. Ma, J. Ma, Y. Miao, Y. Li, and R. H. Deng, “Shieldfl: Mitigating
+model poisoning attacks in privacy-preserving federated learning,”
+IEEE Trans. Inf. Forensics Secur., vol. 17, pp. 1639–1654, 2022.
+[Online]. Available: https://doi.org/10.1109/TIFS.2022.3169918
+[26] C. Xu, Y. Jia, L. Zhu, C. Zhang, G. Jin, and K. Sharif, “Tdfl: Truth
+discovery based byzantine robust federated learning,” IEEE Transactions
+on Parallel and Distributed Systems, vol. 33, no. 12, pp. 4835–4848,
+2022.
+[27] A. Sharma, W. Chen, J. Zhao, Q. Qiu, S. Bagchi, and S. Chaterji,
+“Flair: Defense against model poisoning attack in federated learning,”
+in Proceedings of the 2023 ACM Asia Conference on Computer and
+Communications Security, ser. ASIA CCS ’23. New York, NY, USA:
+
+14
+
+Association for Computing Machinery, 2023, p. 553–566. [Online].
+Available: https://doi.org/10.1145/3579856.3582836
+[28] E. Kabir, Z. Song, M. R. Ur Rashid, and S. Mehnaz, “Flshield:
+A validation based federated learning framework to defend against
+poisoning attacks,” in 2024 IEEE Symposium on Security and Privacy
+(SP), 2024, pp. 2572–2590.
+[29] C. Xie, S. Koyejo, and I. Gupta, “Zeno: Distributed stochastic gradient
+descent with suspicion-based fault-tolerance,” in Proceedings of the
+36th International Conference on Machine Learning, ser. Proceedings
+of Machine Learning Research, K. Chaudhuri and R. Salakhutdinov,
+Eds., vol. 97. PMLR, 09–15 Jun 2019, pp. 6893–6901. [Online].
+Available: https://proceedings.mlr.press/v97/xie19b.html
+[30] F. Wu, Y. Qiao, J.-H. Chen, C. Wu, T. Qi, J. Lian, D. Liu,
+X. Xie, J. Gao, W. Wu, and M. Zhou, “MIND: A large-scale
+dataset for news recommendation,” in Proceedings of the 58th Annual
+Meeting of the Association for Computational Linguistics, D. Jurafsky,
+J. Chai, N. Schluter, and J. Tetreault, Eds. Online: Association
+for Computational Linguistics, Jul. 2020, pp. 3597–3606. [Online].
+Available: https://aclanthology.org/2020.acl-main.331/
+[31] C. Wu, F. Wu, S. Ge, T. Qi, Y. Huang, and X. Xie, “Neural
+news recommendation with multi-head self-attention,” in Proceedings
+of the 2019 Conference on Empirical Methods in Natural Language
+Processing and the 9th International Joint Conference on Natural
+Language Processing (EMNLP-IJCNLP), K. Inui, J. Jiang, V. Ng, and
+X. Wan, Eds. Hong Kong, China: Association for Computational
+Linguistics, Nov. 2019, pp. 6389–6394. [Online]. Available: https:
+//aclanthology.org/D19-1671/
+
+

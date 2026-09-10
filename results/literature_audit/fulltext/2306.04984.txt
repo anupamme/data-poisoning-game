@@ -1,0 +1,4685 @@
+G2 uardFL: Safeguarding Federated Learning Against Backdoor Attacks through
+Attributed Client Graph Clustering
+Hao Yu: , Chuan Ma; , Meng Liu: , Tianyu Du‹ , Ming Ding§ , Tao Xiang¶ , Shouling Ji‹ , Xinwang Liu:
+
+arXiv:2306.04984v2 [cs.CR] 8 Dec 2023
+
+‹
+
+:
+;
+National University of Defense Technology, China
+Zhejiang Lab, China
+§
+¶
+Zhejiang University, China
+Data 61, Australia
+Chongqing University, China
+
+Abstract—Federated Learning (FL) offers collaborative model
+training without data sharing but is vulnerable to backdoor
+attacks, where poisoned model weights lead to compromised
+system integrity. Existing countermeasures, primarily based
+on anomaly detection, are prone to erroneous rejections of
+normal weights while accepting poisoned ones, largely due to
+shortcomings in quantifying similarities among client models.
+Furthermore, other defenses demonstrate effectiveness only
+when dealing with a limited number of malicious clients,
+typically fewer than 10%. To alleviate these vulnerabilities, we
+present G2 uardFL, a protective framework that reinterprets
+the identification of malicious clients as an attributed graph
+clustering problem, thus safeguarding FL systems. Specifically,
+this framework employs a client graph clustering approach to
+identify malicious clients and integrates an adaptive mechanism to amplify the discrepancy between the aggregated model
+and the poisoned ones, effectively eliminating embedded backdoors. We also conduct a theoretical analysis of convergence to
+confirm that G2 uardFL does not affect the convergence of FL
+systems. Through empirical evaluation, comparing G2 uardFL
+with cutting-edge defenses, such as FLAME (USENIX Security
+2022) [28] and DeepSight (NDSS 2022) [36], against various
+backdoor attacks including 3DFed (SP 2023) [20], our results
+demonstrate its significant effectiveness in mitigating backdoor
+attacks while having a negligible impact on the aggregated
+model’s performance on benign samples (i.e., the primary
+task performance). For instance, in an FL system with 25%
+malicious clients, G2 uardFL reduces the attack success rate
+to 10.61%, while maintaining a primary task performance of
+73.05% on the CIFAR-10 dataset. This surpasses the performance of the best-performing baseline, which merely achieves
+a primary task performance of 19.54%.
+
+1. Introduction
+Federated Learning (FL) has emerged as a novel decentralized learning paradigm that empowers clients to collectively construct a deep learning model (global model)
+while retaining the confidentiality of their local data. In
+contrast to traditional centralized methods, FL requires the
+transmission of individually trained model weights from
+clients to a central orchestration server for the aggregation
+of the global model throughout the process. FL has gained
+prominence due to its ability to address critical challenges
+
+TABLE 1: Summary of existing defenses.
+Methods
+
+Client
+filtering
+
+Historical
+information
+
+Server’s
+data absence1
+
+Noise-free
+aggregation
+
+Poison
+eliminating
+
+FLAME [28]
+DeepSight [36]
+FoolsGold [10]
+(Multi-)Krum [3]
+RLR [30]
+FLTrust [5]
+NDC [41]
+RFA [33]
+Weak DP [6]
+G2 uardFL (ours)
+
+✓
+✓
+✓
+✓
+✗
+✗
+✗
+✓
+✗
+✓
+
+✗
+✗
+✓
+✗
+✗
+✗
+✗
+✗
+✗
+✓
+
+✓
+l2
+✓
+✓
+✓
+✗
+✓
+✓
+✓
+✓
+
+✗
+✓
+✓
+✓
+✓
+✓
+✓
+✗
+✗
+✓
+
+✗
+✗
+✗
+✗
+✗
+✗
+✗
+✗
+✗
+✓
+
+1
+2
+
+: The orchestration server utilizes its local data to identify malicious clients.
+: DeepSight generates random input data to measure changes in model predictions.
+
+such as data privacy, resulting in increased adoption across
+diverse applications, e.g., self-driving cars [7], [34].
+However, FL introduces a trade-off in that no client,
+other than themselves, can access their own data during training. As prior research has highlighted, this inherent characteristic renders FL susceptible to backdoor
+attacks [20], [28], [47]. These attacks involve a minority
+subset of clients, malicious and compromised by an attacker,
+transmitting manipulated weights to the server, thereby corrupting the global model. The objective of these attacks is
+to induce the global model to make predictions aligned with
+the attacker’s intent for specific samples, often triggered by
+specific patterns, e.g., car images with racing stripes [1] or
+sentences about Athens [42].
+Deficiencies of Existing Defenses. Countermeasures against
+backdoor attacks (Table 1) broadly fall into two categories.
+The first category encompasses anomaly detection methods [28], [36] designed to identify malicious clients by
+detecting anomalous ones within the distribution of client
+weights. However, these solutions are often prone to the
+erroneous rejection of normal weights or the acceptance
+of poisoned ones due to inadequate client representations,
+e.g., cosine similarity [10], [28] or Euclidean distance [3]
+between model updates. The second category explores
+anomaly detection-free methods that employ various techniques, e.g., robust aggregation rules [30], [33], differential
+privacy [6], [41] and local validation [5], to mitigate the
+influence of poisoned weights during aggregation. However,
+these defenses are primarily effective when the number
+of malicious clients is relatively small (typically less than
+10% [27]). Moreover, some methods, like local validation,
+assume the server collects a small number of clean samples,
+which contradicts the essence of FL [46], and differential
+
+privacy may adversely affect the primary task performance
+of the global model. Hence, the effectiveness of defenses
+hinges on 1) the precise identification of malicious clients
+and 2) the successful elimination of the influence of previously embedded backdoors.
+Our Key Idea. To address these challenges, this paper introduces G2 uardFL, a framework designed to safeguard FL
+systems against backdoor attacks by redefining the detection
+of malicious clients as an attributed graph clustering problem. Prior defenses motivated by traditional clustering algorithms like HDBSCAN rely heavily on the discrimination of
+model weights when calculating similarities among clients.
+Nevertheless, model weights, particularly those associated
+with textual data, are inherently high-dimensional. Textual
+models often entail numerous weights related to word embeddings. Consequently, relying solely on the direct utilization of model weights proves inadequate for accurately
+identifying malicious clients (Table 4). Differing from these
+defenses, G2 uardFL employs low-dimensional representations for capturing client features rather than relying directly
+on high-dimensional weights. Additionally, it introduces
+three methods to model inter-client relationships, inspired
+by the analysis of poisoned model weights. By constructing
+an attributed graph and employing a graph clustering approach that leverages low-dimensional representations and
+inter-client relationships, G2 uardFL effectively segregates
+clusters with similar characteristics and close associations.
+By combining current and historical detection results (i.e.,
+benign scores), malicious client clusters are discerned and
+effectively filtered out, addressing the first challenge. Additionally, an adaptive mechanism is proposed to reduce
+the effectiveness of backdoors by eliminating previously
+embedded ones, effectively addressing the second challenge.
+Our Contributions. We formally present G2 uardFL, an
+effective and robust defense that introduces the attributed
+client graph clustering technique to minimize the impact
+of backdoor attacks while preserving the primary task performance. The defense scheme consists of four key components: a graph construction module that translates interclient relations into an attributed graph, a graph clustering
+module that assigns clients to distinct clusters, a dynamic
+filtering and clipping module that identifies malicious clients
+and limits their influence, and an adaptive poison eliminating module that removes previously implanted backdoors.
+The main contributions can be summarized as follows:
+‚ To the best of our knowledge, our study pioneers the
+reformation of defense strategies against backdoor attacks
+by redefining it as an attributed graph clustering problem.
+We demonstrate that directly applying the similarity of
+high-dimensional weights of client models does not fully
+exploit the model information, thereby resulting in a drop
+in the accuracy of anomaly detection.
+2
+‚ We introduce G uardFL, a defense framework based on
+attributed client graph clustering, designed to accurately
+detect malicious clients under various backdoor attacks
+and employ an adaptive mechanism to amplify divergence
+between normal and poisoned models. Additionally, we
+provide a theoretical convergence analysis, proving that
+
+G2 uardFL does not affect the convergence of FL systems.
+‚ Thorough evaluations of diverse datasets demonstrate that
+G2 uardFL surpasses state-of-the-art solutions across various FL backdoor attack scenarios. Specifically, G2 uardFL
+effectively identifies malicious clients and significantly
+reduces the attack success rate to below 12% on these
+datasets, outperforming the best-performing baseline.
+
+2. Background
+2.1. Federated Learning
+FL is an emerging approach for training decentralized
+machine learning models, denoted as G, across a multitude
+of clients C and an orchestration server S [24]. In each
+communication round r P r1, Rs, the server S selects a
+r
+random subset of m clients Cm
+and shares the current global
+model Gr with them. The choice of m aims to balance
+communication costs per round and overall training time.
+r
+initializes its local model
+Subsequently, each client ci P Cm
+r
+r
+Wci with G and fine-tunes it using its local data Dci .
+Following training, each client transmits its updated local
+model Wcri back to the server S , which then employs an
+aggregation mechanism to construct the new global model
+Gr`1 . Throughout this process, multiple clients collaboratively train a shared model while preserving the privacy of
+their local data, not sharing it with the server. Key notations
+used in this paper are summarized in Table 8.
+Various aggregation mechanisms have been proposed,
+including FedAvg [24] and Krum [3]. This paper primarily
+focuses on the FedAvg mechanism, as it is widely applied
+in FL [7], [11], [34] and related works on backdoor attacks [22], [23], [28], [41], [42]. In FedAvg, the global
+model Gr`1 at round r ` 1 is computed as
+ř a weighted averr
+n
+age of client weights, given by Gr`1 “ ci PCm
+r p ci{nqWci ,
+where
+řnci “ ∥Dci ∥ represents the number of samples, and
+n “ ci PC r nci . We also evaluate the performance of Krum
+m
+under backdoor attacks.
+
+2.2. Backdoor Attacks on FL
+The susceptibility of FL to backdoor attacks has been
+recognized [1], making these attacks a significant security
+concern. In a backdoor attack, an attacker A compromises a
+subset of K clients and manipulates their weights, changing
+them from Wci to W̃ci (ci P CK ). These manipulated
+weights may then be aggregated into the global model G,
+impacting its performance. The attacker’s goal is to induce
+the global model to make specific, attacker-determined predictions on samples xA „ PDA , where DA represents the
+set of backdoored samples. Backdoor attacks can be classified into two types based on their execution stages: data
+poisoning [27], [29], [42], [44] and model poisoning [1],
+[2], [20], [41], [48].
+Data Poisoning. In data poisoning attacks, the attacker
+has full control over the training data collection process
+for malicious clients, enabling the injection of backdoored
+
+samples into the original training data. These backdoored
+samples can be further categorized into semantic samples,
+which exhibit specific properties or are out-of-distribution
+(e.g., cars with striped patterns [1] or uncommon airplane
+types [42]), and artificial samples, which have specific triggers (e.g., added square patterns in corners [44]). Backdoored samples created through data poisoning serve as a
+basis for constructing poisoned weights.
+Model Poisoning. Data poisoning attacks are often hindered
+by the aggregation mechanism, which mitigates most of the
+poisoned weights and causes the global model to forget
+the backdoor [1], [48]. To address this, model poisoning
+attacks directly modify model weights to amplify the influence of poisoned weights. Model poisoning attacks require
+the attacker A to have complete control over the training
+process. Bagdasaryan et al. [1] first introduced the model
+replacement method, which replaces the new global weights
+Gr`1 with poisoned weights by scaling them by a certain
+factor. Bhagoji et al. [2] alternated the objective function to
+evade the anomaly detection algorithm, preventing the attack
+from being detected. Additionally, the projected gradient
+descent (PGD) [41] is employed to project poisoned weights
+W̃ci onto a small sphere centered around global weights
+Gr , ensuring that W̃ci does not deviate significantly from
+Gr . Li et al. [20] designed an adaptive and multi-layered
+framework, 3DFed, to utilize the attack feedback in the
+preceding epoch for improving the attack performance.
+Since data and model poisoning attacks operate at different stages, combining these attack types can enhance
+the efficacy of backdoor attacks. In this paper, we assess
+the effectiveness of G2 uardFL under both data and model
+poisoning attack scenarios.
+
+3. Threat Model and Design Goals
+3.1. Threat Model
+In the context of countering backdoor attacks, it is
+crucial to establish clear boundaries for the knowledge and
+abilities possessed by both attackers and defenders.
+Attacker Knowledge and Abilities. Drawing from prior
+research [1], [42], [46], we assume that the attacker A remains unaware of the orchestration server’s inner workings,
+including the aggregation process and any implemented
+backdoor defense mechanisms. Consequently, the attacker
+cannot manipulate server operations. Note that the attacker
+can devise a specific mechanism to probe inner workings,
+like the indicators used in 3DFed [20].
+Once the attacker successfully compromises clients,
+which could be devices such as smartphones, wearable
+devices, or edge devices [14], they gain control over all
+aspects of data collection and model training. This control
+extends to hyper-parameters such as the number of training
+epochs and learning rates. The attacker is free to execute
+data poisoning attacks, model poisoning attacks, or a combination of both. In data poisoning attacks, the attacker
+modifies backdoored samples to generate poisoned weights.
+
+To maintain a low profile, the attacker employs a Poisoned
+Data Rate (PDR) [1], [42], which constrains the deviation of
+poisoned weights from the global model. Specifically, if D̃ci
+represents all training samples in a malicious client ci , and
+DcAi represents the subset of backdoored samples within D̃ci ,
+A
+the PDR for client ci is defined as P DRci “ ∥Dci ∥{∥D̃ci ∥.
+We denote the fraction of compromised clients as the Poisoned Model Rate P M R “ K{M , with the assumption that
+the attacker can control up to 50% of clients. Importantly,
+due to the server’s random selection of a fraction of M
+clients in each FL round, the exact number of malicious
+clients participating remains unpredictable.
+Defender Knowledge and Abilities. Given that clients may
+include resource-constrained devices like wearable devices,
+the defender’s abilities are constrained to deploying defenses
+exclusively at the server S . The server is honest, with
+no intentions of leaking client information through model
+weights. In contrast to FLTrust [5], to safeguard privacy, the
+server is assumed to possess no local data while possessing
+a certain level of computation capacity.
+The defender is assumed to lack access to client training
+data Dci , control over the behavior of malicious clients, or
+even knowledge of the presence and quantity of compromised clients within the FL system. However, the defender
+has complete access to model weights Wcri and correspondr
+)
+ing model updates ∆Wcri “ Wcri ´ Gr of client ci (ci P Cm
+during the r-th communication round. The defender can extract statistical characteristics to identify poisoned weights.
+
+3.2. Attacker’s Goals
+Before elucidating the design objectives of G2 uardFL, it
+is imperative to clarify the objectives of attacker A.
+Efficiency. The attacker strives to maximize the performance of the poisoned model FG̃ p¨q on backdoored samples.
+Stealthiness. In addition to achieving high performance on
+backdoored samples, the attacker endeavors to ensure that
+the performance of the poisoned model FG̃ p¨q closely resembles that of the normal model FG p¨q on benign samples.
+Specifically, the attacker aims to achieve:
+#
+yc ,
+@x P DA ;
+FG̃ pxq “
+FG pxq,
+@x P tDci |ci P CzCK u.
+The attacker employs various strategies, such as reducing
+PDR and adjusting loss functions, to minimize the discrepancy between normal weights W and poisoned weights W̃
+to a threshold value η , i.e., distpW, W̃ q ď η . The threshold
+can be estimated by comparing disparities in distances between local poisoned weights and global weights, as well as
+the distances between local weights trained on normal data
+and global weights.
+
+3.3. Our Design Goals of Defense
+Subsequently, guided by the attacker’s objectives, we
+outline two-fold design goals of G2 uardFL.
+
+i. Local Training
+
+ii. Weight Transmitting
+
+iii. Global Aggregating
+① Graph Construction
+
+③ Dynamic Filtering and Clipping
+
+② Graph Clustering
+
+④ Adaptive Poison Eliminating
+
+Client
+
+iv. Model Broadcasting
+
+Client
+
+Client
+
+Figure 1: The flowchart illustrates G2 uardFL within the FL system. Each communication round comprises four sequential
+steps: local training, weight transmitting, global aggregating, and model broadcasting.
+Effectiveness. 1) After experiencing backdoor attacks, the
+global model GR at the final round should perform at a level
+comparable to a model trained exclusively on clean data. 2)
+Despite the efficiency of attacks, the defense must ensure
+that the final global model’s performance on backdoored
+samples is minimized. 3) After poisoned weights from malicious clients impact the global model, the defense should
+promptly mitigate their influence.
+Robustness. 1) G2 uardFL should serve as a universal defense framework capable of countering a wide range of
+potential backdoor attacks, including data poisoning and
+model poisoning attacks. It operates without prior knowledge of specific attack types. 2) The defense should not
+assume a specific data distribution among clients, whether
+independent and identically distributed (iid) or non-iid.
+
+4. G2 ardFL: Overview
+2
+
+In this section, we present G uardFL, an effective and
+robust defense framework designed to mitigate backdoor
+attacks while preserving the primary task performance.
+Motivation. G2 uardFL redefines the detection of malicious
+clients by utilizing an attributed client graph clustering
+approach to differentiate model weights originating from
+malicious clients. Traditional clustering algorithms, such as
+K-means and HDBSCAN, rely heavily on the discrimination
+of model weights and updates when calculating similarities
+among clients. In contrast, graph-based clustering methods
+leverage Graph Convolutional Networks (GCNs) to harness
+locality for learning more representative and clusteringoriented latent representations. These representations are
+then utilized to perform clustering, allowing graph-based
+methods to achieve improved clustering performance naturally. Specifically, G2 uardFL extracts statistical characteristics from model weights and model updates as client attributes and represents similarities among clients as a graph.
+To accurately identify malicious clients, we propose a
+framework consisting of four key components, as illustrated
+in Fig. 1. The complete defense process is presented in
+Algorithm 1 in Appendix B.1.
+Graph Construction. This module extracts unique features
+from client weights and model updates and constructs an
+attributed graph G r “ pC, Er , Xr q to model inter-client
+relations at the r-th communication round. Here, Er and
+
+Xr represent the adjacency matrix and client attributes.
+Importantly, the topological structure and client attributes
+of graph G r evolve over communication rounds, rather than
+remaining static, as highlighted in Subsection 3.1. Further
+details will be discussed in Subsection 5.1.
+
+Graph Clustering. This module samples a sub-graph Ĝ r
+r
+at
+from the entire graph G r based on selected clients Cm
+the r-th round. Graph-based clustering approaches are then
+employed to learn more representative latent representations
+and group clients with similar attributes into the same clusr
+in each
+ter. As the orchestration server randomly selects Cm
+r
+round, the number of malicious clients k in Cm also varies,
+falling within the range of r0, minpm, Kqs. Consequently,
+the graph-based clustering algorithm must be capable of
+handling the varying number of clusters. Further details will
+be discussed in Subsection 5.2.
+Dynamic Filtering and Clipping. This module aims to
+identify both benign and malicious clusters. Benign clusters
+(resp. malicious clusters) predominantly consist of benign
+clients (resp. malicious clients). The module aggregates the
+normal and poisoned global models separately from benign
+and malicious clusters, respectively. Given that the number
+r
+of malicious clients k in Cm
+varies with each round, relying
+solely on cluster size (i.e., the number of clients per cluster)
+to identify malicious clusters is not suitable. Therefore,
+this module introduces the benign score to combine current
+and historical detection results and utilizes cluster size and
+benign scores to accurately identify malicious clients. The
+positive benign score indicates that the client is consistently
+assigned to a larger cluster, and its magnitude signifies the
+corresponding likelihood. Further details will be discussed
+in Subsection 5.3.
+Adaptive Poison Eliminating. This module employs an
+adaptive mechanism to mitigate previously implanted backr
+doors. In cases where all selected clients Cm
+are malicious
+and the global model is contaminated by poisoned weights,
+G2 uardFL should have a mechanism to purify the global
+model in subsequent rounds. After constructing normal and
+poisoned global models, G2 uardFL applies benign scores
+and geometric properties to adjust the direction of the new
+global model Gr`1 , aligning it more closely with normal
+models and moving it away from poisoned ones. Further
+details will be discussed in Subsection 5.4.
+
+5. G2 ardFL: Detailed Algorithms
+5.1. Graph Construction
+This module is responsible for constructing an attributed
+graph G r “ pC, Er , Xr q to model the inter-client relationships within FL. The constructed graph is subsequently used
+to train a model for predicting client behavior. This module
+confronts two primary challenges: 1) The first challenge pertains to determining which features should be extracted from
+the weights and model updates of clients. These weights and
+model updates are typically high-dimensional and thus pose
+difficulties for effective processing directly by clustering
+algorithms. 2) The second challenge involves constructing
+the adjacency matrix Er in a way that enables accurate
+differentiation between benign and malicious clients. This
+task is challenging because the characteristics of poisoned
+models generated by different backdoor attacks vary.
+Client Attribute Construction. To address the first challenge, two types of features are introduced for client attribution representation: model-wise features X1 and layer-wise
+features X2 . These features are extracted using measures of
+statistical characteristics M, as detailed in Table 9. Given
+that these measures compress high-dimensional vectors into
+a scalar, resulting in significant information loss, we opt for
+multiple measures to mitigate this concern. For constructing
+X1 features, G2 uardFL flattens model weights into a single
+vector. However, considering that different layers of a model
+serve various functions, such as lower layers of convolutional neural networks detecting simple features while
+higher layers identify more complex concepts, flattening
+weights from distinct layers into a single vector could lead
+to the information loss due to the heterogeneous parameter
+value distribution spaces. To address this, G2 uardFL separately flattens the weights of each layer, calculating layerwise features X2 as an additional measure.
+Assuming that flattened weights of local model Wcri and
+global model Gr can be presented as wcri and gr , and that
+the dimension of model-wise features is d1 , model-wise
+features Xr1 P Rmˆd1 can be formulated as follows:
+“
+‰J “
+‰J
+Xr1 “ mi pwcr1 q, ¨ ¨ ¨ , mi pwcrm q ‘ mi p∆wcr1 q, ¨ ¨ ¨ , mi p∆wcrm q
+,
+“
+‰
+J
+‘ cospwcr1 , gr q, ¨ ¨ ¨ , cospwcrm , gr q
+
+where the symbol ‘ denotes the operation of horizontally
+concatenating vectors, mi P Mztcosu is a measure of
+statistical characteristics, and ∆wcri is the flattened vector
+of model updates ∆Wcri , i.e., ∆wcri “ wcri ´ gr . This
+formulation demonstrates model-wise features consist of 19
+distinct features (i.e., d1 “ 19).
+For the computation of layer-wise features X2 P Rmˆd2 ,
+weights are first segmented based on the layer they belong to, and then weights of the same layer are integrated into a vector. Assuming a model FWcr p¨q with L
+i
+layers, weights Wcri are partitioned into a set of vectors
+twcri ,1 , wcri ,2 , ¨ ¨ ¨ , wcri ,L u. Building on the observation by
+Zhang et al. [47] that model updates from malicious clients
+are inconsistent in backdoor attacks, we explore changes
+in model updates between two successive iterations in the
+
+layer-wise features. Specifically, at the r-th iteration, we
+compute model updates ∆Wcri and ∆Wcr´1
+from the previi
+ous iteration of the local client ci . As Cm is chosen randomly
+r
+at each iteration, it is possible that ci P Cm
+is not in
+r´1
+Cm
+. In such cases, we replace Wcr´1
+with
+Gr and set
+i
+∆Wcr´1
+“ Gr ´ Gr´1 . The layer-wise features X2 can
+i
+then be calculated as:
+“
+‰J “
+‰J
+Xr2 “ mi pwcr1 ,l q, ¨ ¨ ¨ , mi pwcrm ,l q ‘ mi p∆wcr1 ,l q, ¨ ¨ ¨ , mi p∆wcrm ,l q
+”
+ıJ
+“
+‰
+J
+‘ cospwcr1 ,l , glr q, ¨ ¨ ¨ , cospwcrm ,l , glr q ‘ cosp∆wcr1 ,l , ∆wcr´1
+q, ¨ ¨ ¨ , cosp∆wcrm ,l , ∆wcr´1
+q
+1 ,l
+m ,l
+”
+ıJ
+‘ mi p∆wcr1 ,l ´ ∆wcr´1
+q, ¨ ¨ ¨ , mi p∆wcrm ,l ´ ∆wcr´1
+q
+1 ,l
+m ,l
+
+,
+
+where l P r1, Ls and mi has the same meaning with that
+the above equation. According to this equation, G2 uardFL
+generates a total of 29L (i.e., d2 “ 29L) layer-wise features.
+G2 uardFL leverages Z-Score Normalization [8] to normalize features Xr1 and Xr2 due to their different magnitudes. Since the orchestration server randomly selects K
+clients, G2 uardFL utilizes zero vectors to fill client features
+of non-participating clients, i.e.,
+#
+Xrci “
+
+Xr1,ci ‘ Xr2,ci ,
+0,
+
+r
+;
+c i P Cm
+r
+,
+ci P CzCm
+
+(1)
+
+where Xr1,ci and Xr2,ci are normalized model-wise and
+layer-wise features of client ci at iteration r, respectively.
+Inter-client Relation Construction. To address the second
+challenge, the attention turns towards delineating relationships between normal and poisoned weights, as represented
+in Fig. 2. Weights of benign clients exhibit variations, ascribed to the partially non-iid local data, symbolized by w1 ,
+w2 , and w3 . Poisoned weights align roughly in the same
+direction as normal ones to avert degradation of primary
+task performance, as shown by cospwi , w̃j q ą 0.
+We identify three types of poisoned weights following
+previous research [28]. The first type, denoted by w̃1 and
+w̃2 , demonstrates a large angular deviation from local models of benign clients and the global model. These weights are
+trained to optimize performance on backdoored samples, either by high PDR or large local training rounds. The second
+type, denoted by w̃3 and w̃4 , possesses a small deviation but
+exhibits a large magnitude intended to amplify the impact
+of the attacker. This magnitude is a product of scaling up
+weights to augment their influence on the global model [42].
+In the third category of attacks, the angular and magnitude
+variations are not substantially different from normal models
+(i.e., w̃5 ), rendering them less discernible from normal
+models. These poisoned weights are crafted by constraining
+the Lp -norm of the difference between poisoned weights
+and the global model, as seen in the Constrain-and-scale
+attack [1] and AnaFL [2]. Next, we develop a method for
+assessing inter-client relationships by reducing similarities
+between benign and malicious clients, while simultaneously
+enhancing similarities among malicious clients.
+For the first type, where poisoned weights consistently
+maintain a large angle with normal ones, G2 uardFL applies
+
+Hidden Layer
+
+Hidden Layer
+
+Global Model
+Normal Model
+Poisoned Model
+First Type Poisoned Model
+Second Type Poisoned Model
+Third Type Poisoned Model
+
+Figure 2: Flattened weights of client models. The two gray
+dashed lines represent the direction of the global model and
+its corresponding orthogonal direction, respectively.
+cosine similarity to measure distances among clients. The
+adjacency matrix Er1 is thus formulated as follows:
+»
+
+1
+— 1`cospwcr2 ,wcr1 q
+—
+r
+2
+—
+E1 “ —
+..
+–
+.
+
+1`cospwcrm ,wcr q
+1
+2
+
+1`cospwcr ,wcr q
+1
+2
+2
+
+¨¨¨
+
+1
+..
+.
+
+¨¨¨
+..
+.
+
+1`cospwcrm ,wcr q
+2
+2
+
+¨¨¨
+
+1`cospwcr ,wcrm q fi
+1
+2
+1`cospwcr ,wcrm q ffi
+2
+ffi
+2
+ffi
+
+..
+.
+
+ffi .
+fl
+
+(2)
+
+1
+
+To measure the magnitude difference between weights
+for the second type of attack, G2 uardFL substitutes the
+r1`cospwcr ,wcr qs{2 term in Eq. (2) with absp∥wr ∥ ´∥wr ∥ q
+i
+j
+cj 2
+ci 2
+to construct the adjacency matrix Er2 . The rationale is that
+the magnitude of poisoned weights consistently exceeds that
+of normal weights. Consequently, when flattened weights of
+normal and poisoned models have a small deviation, model
+differences between normal and poisoned models are of a
+larger magnitude than those between normal models.
+To enhance the similarity between malicious clients for
+the third type of backdoor attacks, G2 uardFL computes
+the difference between L2 norms of model updates of two
+clients absp∥∆wcri ∥2 ´ ∥∆wcrj ∥2 q and uses this to construct
+adjacency matrix Er3 . This stems from the fact that this
+type of attack constrains the magnitude of model updates of
+malicious clients to a pre-defined small constant η , as shown
+by the circle enclosed by a dashed line in Fig. 2, resulting
+in an absolute difference between poisoned weights that is
+close to 0.
+Given that the defender is unaware of the type of backdoor attacks, G2 uardFL applies the Z-Score Normalization
+to normalize each adjacency matrix and integrates these
+three adjacency matrices. Note that for the Lp norm-based
+matrices, a smaller norm value signifies a higher similarity,
+which is the inverse of the cosine similarity-based matrix.
+Consequently, G2 uardFL alters elements within Er2 and Er3
+to the opposite number after the normalization of normbased matrices.
+G2 uardFL focuses exclusively on positive inter-client
+relations, considering elements of adjacency matrices below
+0 as non-existent edges, and scales the intensity of relations
+between clients to r0, 1s, i.e.,
+
+Eri “ expp´ tanhpclipmin pEri , 0qqq,
+
+@i P t1, 2, 3u .
+
+Finally, G2 uardFL sets relations of non-participating clients
+to 0 and constructs the adjacency matrix Er at iteration r,
+i.e.,
+#
+r
+r
+0,
+ci R Cm
+_ cj R Cm
+;
+r
+Eci ,cj “ 1 ř3
+r
+r
+r
+{3 i“1 Ei,ci ,cj , ci P Cm ^ cj P Cm .
+
+Figure 3: The conceptual design for GAE-based clustering.
+The graph construction method illustrated above constructs an attributed graph at each round. This could result
+in substantial differences in features of the same client or
+inter-client relations of client pairs between two successive rounds. To mitigate this issue, G2 uardFL introduces
+a momentum component to smooth the attributed graph as
+follows:
+Xr “ p1 ´ κ1 qXr´1 ` κ1 Xr ;
+(3)
+r
+r´1
+r
+E “ p1 ´ κ2 qE
+
+` κ2 E ,
+
+where κ1 and κ2 , both within the range [0, 1], are employed
+to balance historical and current graphs.
+
+5.2. Graph Clustering
+This module leverages graph clustering techniques to
+segregate clients with similar attributes into corresponding
+clusters. Compared with traditional clustering algorithms
+(e.g., K-means and HBDSCAN), graph-based clustering
+methods utilize GCNs to learn more representative representations from client attributes and use these representations to
+perform clustering instead of directly using client attributes.
+Thus, graph-based clustering methods can naturally achieve
+better clustering performance. A challenge arises when
+considering the indeterminate quantity of clusters since m
+clients are arbitrarily chosen by server S at each iteration.
+Clustering Design. The preceding module produces an attributed graph G r “ pC, Er , Xr q. G2 uardFL applies Eq. (4)
+to extract an attributed sub-graph Ĝ r “ pCm , Êr , X̂r q, which
+comprises m clients selected by the server at each round.
+!
+)
+␣
+(
+Êr “ Erci ,cj |ci P Cm ^ cj P Cm , X̂r “ Xrci |ci P Cm . (4)
+
+According to the framework employed by recent graph
+clustering methods [15], [26], [31], G2 uardFL employs
+Graph Auto-Encoders (GAEs) to transform client attributes
+into lower-dimension space (i.e., latent representations) via
+GCNs. These representations are then used for adjacency
+matrix reconstruction and clustering assignments, as illustrated in Fig. 3. Specifically, G2 uardFL integrates a selfsupervision task (i.e., reconstruction) to obtain clusteringoriented latent representations, and implements a pseudosupervision task (i.e., clustering) to segregate clients into
+distinct clusters.
+Initially, this module uses a non-linear encoder Encp¨, ¨q,
+based on GCNs, to craft low-dimensional latent representations depicted by the matrix Z P Rmˆd3 .
+Z “ EncpX̂r , Êr q.
+
+(5)
+
+Here, d3 represents the dimensionality of latent representations. Later, in the reconstruction task, this module applies
+derived features Z to reconstruct the adjacency matrix Êr .
+Ěr “ SigmoidpZ ˆ ZJ q,
+
+(6)
+
+where Sigmoidp¨q limits the magnitude of elements within
+the reconstructed adjacency matrix Ěr to r0, 1smˆm . Assuming the existence of Q clusters among clients, the module uses the matrix Q P RQˆd3 to represent clustering centroids. To address the challenge initially mentioned, Eq. (7)
+calculates the similarity between latent representations and
+clustering centers.
+¯
+´
+J
+exp ´ 12 pZi ´ Qj q pZi ´ Qj q
+´
+¯ ,
+Pi,j “ ř
+Q
+J
+1
+q“1 exp ´ 2 pZi ´ Qq q pZi ´ Qq q
+
+(7)
+
+where P P r0, 1smˆQ is the soft clustering assignment
+matrix, Zi is the i-th row of latent presentations Z, and Qj is
+the j -th row of the matrix Q (i.e., the j -th clustering center).
+The cluster to which the i-th client of chosen clients Cm
+belongs is determined by pi “ arg maxjPt1,¨¨¨ ,Qu pPi,j q. The
+hard clustering assignment can be formulated as follows:
+#
+1, j “ pi ;
+P̂i,j “
+(8)
+0, j ‰ pi .
+Note that, while Q is pre-defined, Eq. (8) shows the possibility of certain clusters having no clients.
+Loss Functions. For the reconstruction task, a loss function
+Lrec is introduced to minimize the discrepancy between the
+original adjacency matrix Êr and the reconstructed one Ěr :
+¯
+ÿ´
+Lrec “ ´
+Êri,j logpĚri,j q ` p1 ´ Êri,j q logp1 ´ Ěri,j q .
+
+(9)
+
+i,j
+
+In Eq. (9), the ground-truth adjacency weight Ěri,j P r0, 1s
+can be considered as a soft label. The clustering task loss
+is represented by the Kullback-Leibler divergence between
+the soft clustering assignment P and its corresponding hard
+clustering assignment P̂:
+ÿ
+`
+˘
+Lclus “ KLpP̂}Pq “
+P̂i,j log P̂i,j{Pi,j .
+(10)
+i,j
+
+To achieve a balance between these two loss functions, the
+module incorporates a positive, small constant λ P r0, 1s to
+formulate the total loss function:
+L “ Lrec ` λLclus .
+
+(11)
+
+To obtain clustering-oriented latent representations,
+G uardFL first pre-trains the weights of Encp¨q solely using
+the loss function Lrec for multiple iterations. Subsequently,
+the model is trained to optimize both the latent representations and clustering centers by minimizing L. Before
+training, the clustering center matrix Q is initialized using
+clustering centers generated by K-means, with the number
+of clusters being initialized by HBDSCAN. Throughout the
+training, we employ Lclus to optimize the matrix Q.
+2
+
+5.3. Dynamic Filtering and Clipping
+Once clusters have been established in the preceding
+module, it is challenging to determine which clusters largely
+consist of malicious clients. As discussed in Section 3, we
+anticipate that less than 50% of all clients will be malicious,
+thereby constituting a minority in most instances. However,
+r
+the precise number of malicious clients in Cm
+remains undefined. Therefore, this module introduces the benign score,
+which combines historical and current clustering results,
+and simultaneously utilizes both the cluster size and benign
+scores to pinpoint malicious clusters. The rationale of benign
+scores is that, although poisoned models may dominate in
+specific rounds, they constitute a minority on average.
+Cluster Filtering. This module assigns a benign score
+sci P R to each client ci P C . A vector srm is produced
+r
+to symbolize benign scores of clients within Cm
+at the r-th
+round. As a result, the score of a cluster being benign can
+be calculated as follows:
+´
+¯ ´
+¯ ´
+¯˝´1
+, (12)
+p “ κ3{m P̂J ˆ 1 ` P̂J ˆ srm ˝ P̂J ˆ 1
+
+where 1 is a vector with all elements equal to 1. The
+Hadamard product and Hadamard inverse are denoted by ˝
+and ˝´1 , respectively [35]. The first term signifies the ratio
+between the cluster size and the number of chosen clients
+per round, while the second term computes the average
+benign score for each cluster. Next, we can obtain benign
+cluster p` “ arg maxjPt1,¨¨¨ ,Qu pj and malicious cluster
+p´ “ arg minjPt1,¨¨¨ ,Qu pj , and further acquire clients
+within clusters p` and p´ as follows:
+!
+)
+r
+Cˆ` “ ci |ci P Cm
+^ P̂i,p` “ 1 ;
+!
+)
+r
+C ´ “ ci |ci P Cm
+^ P̂i,p´ “ 1 ,
+
+(13)
+
+where Cˆ` and C ´ are considered to be clusters where benign
+and malicious clients dominate, respectively.
+However, as Eq. (12) utilizes the average benign score
+of each cluster to pinpoint malicious clients, there might
+be scenarios where some clients within the benign cluster
+p` have low benign scores. To address this concern, this
+module utilizes statistical data of benign scores within the
+benign cluster p` and calculates the distance between the
+latent representations of clients and their respective cluster
+centers. Based on this information, this module identifies
+and excludes clients that do not meet the criteria for inclusion. This module calculates the distance using Eq. (14):
+›
+›
+›
+›
+d “ ›Z ´ P̂ ˆ Q› .
+2
+
+(14)
+
+Next, this module utilizes the α1 percentile Pα1 p¨q of benign
+scores and the α2 percentile Pα2 p¨q of distances within the
+benign cluster p` to filter out clients as follows:
+!
+)
+`
+C ` “ ci |ci P Cˆ` ^ srm,i ě Pα1 psrm q ^ d`
+i ď Pα2 pd q , (15)
+
+where d` “ tdi |ci P Cˆ` u indicates the vector of distances
+of clients within benign cluster p` .
+
+Having distinguished benign clients C ` and malicious
+clients C ´ , benign scores should be further updated using
+$
+’
+&sci ` κ4 abspsci qPci ,p` ,
+sci “ sci ´ κ4 abspsci q,
+’
+%s ,
+ci
+
+ci P C ` ;
+ci P C ´ ;
+ci R C ` ^ ci R C ´ ,
+
+(16)
+
+where κ4 P p0, 1s is the factor to balance historical and
+current benign scores. Examining Eq. (16), the magnitude
+of benign scores indicates the likelihood of a client being
+assigned to a cluster with a larger or smaller size. Finally, benign scores should be normalized to attribute negative values
+to malicious clients, hence ensuring that such clients exert
+a detrimental influence, represented by sr`1 “ tanh psr q.
+Furthermore, benign scores are randomly initialized in the
+first round, enabling G2 uardFL to refine and update benign
+scores based on the clustering results.
+Norm Clipping. As shown in Fig. 2, poisoned weights
+(e.g., w̃1 , w̃2 , w̃3 , and w̃4 ) derived from the preceding
+two types of backdoor attacks demonstrate a significant
+divergence from the global model. When these poisoned
+weights are inadvertently aggregated into the global model,
+the corrupted global model deviates from benign clients
+abruptly, thereby leading to an unstable training process. To
+minimize the impact of these poisoned models, this module
+employs the average median norm of model updates to
+restrict this divergence.
+This module computes the average median norm nr of
+model updates at the r-th round as follows:
+›
+›
+›
+›
+˘
+`
+nr “ nr´1 ` 1{r medianp›∆Wcr0 ›2 , ¨ ¨ ¨ , ›∆Wcrm ›2 q ´ nr´1 ,
+
+(17)
+
+where }∆Wcri }2 is the L2 norm of model update of the client
+r
+. This module then limits the norm of weights of
+ci P Cm
+r
+benign and malicious clients to be lower than n :
+r
+
+W ci “ Gr´1 ` ∆Wcri ¨ minp1.0, n {}∆Wcri }2 q .
+r
+
+(18)
+
+Note that norm clipping is executed on every client chosen
+in the r-th round. This procedure aids in mitigating the
+influence of malicious clients on the global model, thereby
+enhancing the robustness of the FL process.
+
+5.4. Adaptive Poison Eliminating
+At the end of each FL round, the orchestration server
+performs the aggregation of model weights from participating clients to form a new global model. However, this
+process can potentially introduce poisoned weights into the
+global model, thus inadvertently implanting backdoors. To
+mitigate this risk, we introduce an adaptive mechanism
+within this module, which independently aggregates normal
+and poisoned global models and adjusts the direction of the
+new global model away from poisoned models.
+The module separately aggregates normal and poisoned
+global models, as detailed in Eq. (19):
+G` “
+
+ÿ
+
+´ r
+¯
+`
+`
+d
+ř
+Gr´1 ` W ci ´ Gr´1 ¨ e i { j edj ;
+
+ci PC `
+´
+
+G “
+
+ÿ
+ci PC ´
+
+´ r
+¯
+´
+´
+d
+ř
+Gr´1 ` W ci ´ Gr´1 ¨ e i { j edj ,
+
+(19)
+
+where d` “ tdi |ci P C ` u and d´ “ tdi |ci P C ´ u represent
+distance vectors between latent representations of clients and
+their corresponding cluster centers. Unlike FedAvg, which
+assumes importance according to the size of local data for
+each client, Eq. (19) considers that client weights closer to
+cluster centers should be given heightened attention.
+As previously mentioned, the global model Gr´1 may
+have backdoors introduced in previous rounds. To reduce
+the impact of these backdoors on the global model, and to
+impair the success of backdoor attacks, G2 uardFL strives
+to widen differences between new global model Gr and
+poisoned global model G´ . In practice, given that poisoned
+weights in the second type of backdoor attacks show significant deviation from the global model, this module limits
+the magnitude of model updates between Gr and G´ to the
+same level as the magnitude of model updates between Gr
+and G` :
+› `
+›
+›G ´ Gr´1 ›
+`
+˘
+´
+2 .
+G “ Gr´1 ` G´ ´ Gr´1 ¨ minp1.0, ´
+q
+}G ´ Gr´1 }2
+
+(20)
+
+Subsequently, this module increases the disparity between
+normal and poisoned global models to aggregate the new
+global model:
+r
+´
+¯
+´
+c PC ´ abspsm,j q
+r
+`
+r q ¨ log p1.0 ` n q ¨ G ´ G
+absps
+m,j
+cj PC r
+m
+
+ř
+
+Gr “ G` ` γ ř j
+
+, (21)
+
+where γ is a positive number and set to 0.01 in experiments.
+Eq. (21) considers that the magnitude of the divergence
+between normal and poisoned global models is influenced
+by three factors: the relative level of maliciousness of
+clients within a malicious cluster, the average median norm
+of model updates, and the difference between two global
+models. When the poisoned global model G´ significantly
+diverges from normal global model G` , the aggregated new
+global model Gr`1 will veers further away from G´ . Consequently, the performance of Gr`1 on backdoored samples
+diminishes, compelling malicious clients to generate larger
+model updates in an attempt to alter the update direction
+of the global model towards backdoor implantation, thereby
+increasing the chance of detection.
+In summary, we design the first three modules for constructing the client attribute graph and utilizing the graph
+clustering to precisely identify malicious clients, and introduce the fourth module for eliminating the influence of
+previously embedded backdoors.
+
+6. Convergence Analysis
+In this section, we delve into the convergence analysis of
+our proposed G2 uardFL. We commence by establishing certain assumptions regarding functions tFci p¨q|ci P Cu, similar
+to those commonly made in previous research works [9],
+[21], [25], [43].
+Assumption 1. Each local function Fci p¨q is lowerbounded, i.e., Fci pW q ě F pG‹ q ě ´8 and is L-smooth:
+for all V and W ,
+L
+2
+Fci pV q ď Fci pW q ` pV ´ W qJ ∇Fci pW q ` ∥V ´ W ∥2 .
+2
+
+Assumption 2. Let ξci be randomly sampled from the
+local data of client ci . The mean of stochastic gradients
+is unbiased:
+E r∇Fci pWci ; ξci qs “ E r∇Fci pWci qs .
+Moreover, the variance of stochastic gradients is bounded:
+“
+‰
+E ∥∇Fci pWci ; ξci q ´ ∇Fci pWci q∥2 ď ζ 2 .
+
+Assumption 3. We assume there exist M constants Di ě 0
+such that:
+‰
+“
+E ∥∇Fci pW q ´ ∇F pW q∥2 ď Di2 , @i “ 1, ¨ ¨ ¨ , M.
+These Di quantify the heterogeneity of local datasets.
+With these assumptions in place, we proceed with the
+convergence analysis. It is assumed that each client conducts
+E local stochastic gradient descent updates per FL round.
+The FL process concludes after R rounds, yielding GR as
+the final global model. The subsequent theorem articulates
+the convergence properties of G2 uardFL.
+Theorem 1. Under Assumptions 1 to 3, where L, ζ and
+Di are defined as previously described, if we choose
+1
+1
+1
+3
+E ď T 4 {K 4 where T “ ER ě
+λ “␣ K 2 {8LT 2 and
+(
+3 16 16
+max 16K , K , L2 denotes the total number of stochastic
+gradient descent updates per client, then we have:
+`
+˘
+R
+‰ 20L ErF pG0 qs ´ F pG‹ q
+1 ÿ “
+`
+E ∥∇F pGr´1 q∥2 ď
+3
+1
+R r“1
+T 2K2
+,
+21K ` 11 ÿ
+K `1 ÿ
+1
+Di2 `
+Di2 ` ζ 2
+4K
+4K
+4
+`
+´
+ci PC
+
+(22)
+
+ci PC
+
+where K represents the number of chosen clients in each
+iteration and λ denotes the learning rate.
+The proof of this theorem is provided in Appendix A.
+λ
+Additionally, since we assume γ “ C ?
+with C ą 0
+K
+being the constant in this proof, it is evident that the update direction alterations introduced by the adaptive poison
+elimination module in Subsection 5.4 will not impede the
+convergence of the global model when a small positive
+constant is assigned to γ , alongside the utilization of a
+decaying learning rate. The ablation study of this module
+can be found in Appendix. C.2.
+
+7. Experimental Evaluation
+In this section, we conduct comprehensive evaluations
+of G2 uardFL’s defense abilities against backdoor attacks.
+Specifically, we seek to answer the following questions:
+2
+‚ Can G uardFL outperform existing state-of-the-art defenses in terms of both attack effectiveness and primary
+task performance? (Refer to Subsection 7.2)
+2
+‚ Can G uardFL demonstrate sufficient robustness against
+various backdoor attacks, accommodate data heterogeneity, and adaptive attacks? (Refer to Subsection 7.3)
+2
+‚ Can G uardFL maintain stable performance regardless of
+variations in hyper-parameters, such as the number of
+malicious clients or the number of total clients per round?
+(Refer to Subsection 7.4)
+
+7.1. Experimental Setup
+Implementation. We have implemented G2 uardFL in PyTorch [32]. Our simulated FL system follows the established
+framework used in previous works [1], [24], [42]. In each
+communication round, the orchestrating server randomly
+picks a subset of clients and shares the current global model
+with them. Selected clients perform local training for E
+stochastic gradient descent steps and transmit the updated
+model weights to the server. Our FL system is deployed on
+a server equipped with 64GB RAM, an Intel(R) Core(TM)
+I9-10900X@3.70GHz CPU, and an Nvidia RTX 3080 GPU.
+For the non-linear encoder Encp¨, ¨q, we employ two
+GCN layers [16] as the backbone for graph embedding. The
+dimension of latent representations is set to 32. The values
+of α1 and α2 in Eq. (15) are set to 25 and 75, and the
+hyper-parameters κ1 , κ2 , κ3 , and κ4 are set to values of
+0.1, 0.1, 0.3, and 0.5 respectively. Prior to executing graph
+clustering, we use HDBSCAN [4] to cluster client features
+X , thereby determining the number of clusters Q.
+Datasets. Consistent with prior researches [1], [42], We
+evaluate G2 uardFL on four different tasks: 1) Digit classification on MNIST [19] with LeNet, 2) Image classification
+on CIFAR-10 [17] with VGG-9 [39], 3) Sentiment classification on Sentiment-140 [37] with LSTM [12], and 4) Next
+word prediction on Reddit [24] with LSTM. We distribute
+the training data uniformly to construct the local data Dci
+for benign client ci , unless otherwise specified. All other
+hyper-parameters are specified in Appendix B.2.
+For the poisoned data DA , we apply the following
+strategies: In the first task, we choose images of digit 7
+from Ardis [18] and label them as 1. In the second task,
+we gather images of planes of Southwest Airline and label
+them as truck. In the third task, we collect tweets containing
+the name of Greek film director Yorgos Lanthimos along
+with positive sentiment comments and label them negative.
+Finally, in the fourth task, we replace the suffix of sentences
+with pasta from Astoria is and set the last word as delicious.
+Baselines. For comparison, we utilize state-of-the-art defenses, including FLAME [28], DeepSight [36], FoolsGold [10], (Multi-)Krum [3], RLR [30], FLTrust [5],
+NDC [41], RFA [33], and Weak DP [6] are all employed for
+comparison. All these methods are discussed in Section 9,
+and additional details can be found in Appendix B.3.
+Backdoor Attacks. We select five typical backdoor attacks
+to evaluate the robustness of G2 uardFL:
+‚ Black-box Attack [42], a data poisoning attack where the
+attacker does not have extra access to the FL process and
+trains using DA like other benign clients.
+‚ PGD with/without replacement [42], a model poisoning
+attack where the attacker uses PGD to limit the divergence between poisoned models and the global model,
+with/without modifying weights of poisoned models to
+eliminate contributions of other benign clients.
+‚ Constrain-and-scale [1], a model poisoning attack that
+alters the objective function to evade anomaly detection
+methods such as adding the limitation of Lp distances.
+
+TABLE 2: Effectiveness of G2 uardFL in comparison to state-of-the-art defenses for backdoor attacks(%). We select 3DFed
+attack [20] for MNIST and CIFAR-10, and PGD with replacement attack [42] for Sentiment-140 and Reddit.
+Defense
+
+MNIST
+
+CIFAR-10
+
+Sentiment-140
+
+Reddit
+
+ASR
+
+ACC
+
+DS
+
+ASR
+
+ACC
+
+DS
+
+ASR
+
+ACC
+
+DS
+
+ASR
+
+ACC
+
+DS
+
+Benign setting
+
+09.64
+
+99.20
+
+-
+
+09.93
+
+73.71
+
+-
+
+19.80
+
+76.59
+
+-
+
+00.00
+
+22.67
+
+-
+
+No defense
+
+98.18
+
+97.52
+
+-
+
+96.16
+
+73.08
+
+-
+
+100.00
+
+64.51
+
+-
+
+100.00
+
+22.53
+
+-
+
+FLAME [28]
+
+87.22
+
+98.91
+
+22.64
+
+42.34
+
+73.86
+
+64.76
+
+99.01
+
+65.82
+
+1.95
+
+99.49
+
+22.52
+
+1.00
+
+DeepSight [36]
+
+98.86
+
+99.04
+
+02.25
+
+73.01
+
+73.80
+
+39.52
+
+100.00
+
+50.00
+
+0.00
+
+OOM
+
+OOM
+
+OOM
+
+FoolsGold [10]
+
+20.68
+
+98.83
+
+88.01
+
+98.05
+
+73.36
+
+03.80
+
+99.01
+
+66.13
+
+1.95
+
+100.00
+
+22.17
+
+0.00
+
+Krum [3]
+
+93.30
+
+93.97
+
+01.39
+
+88.19
+
+72.51
+
+20.31
+
+94.06
+
+67.90
+
+10.92
+
+75.26
+
+22.68
+
+23.67
+
+Multi-Krum [3]
+
+12.36
+
+96.24
+
+91.74
+
+50.27
+
+73.54
+
+59.34
+
+100.00
+
+65.10
+
+0.00
+
+100.00
+
+22.64
+
+0.00
+
+RLR [30]
+
+40.83
+
+98.43
+
+73.91
+
+23.32
+
+72.51
+
+74.54
+
+27.72
+
+75.44
+
+73.58
+
+35.79
+
+22.81
+
+33.66
+
+FLTrust [5]
+
+18.07
+
+98.75
+
+89.56
+
+23.28
+
+72.51
+
+74.54
+
+51.49
+
+70.04
+
+57.32
+
+100.00
+
+22.69
+
+0.00
+
+NDC [41]
+
+95.13
+
+99.19
+
+09.28
+
+24.48
+
+72.32
+
+73.89
+
+100.00
+
+64.67
+
+0.00
+
+100.00
+
+22.62
+
+0.00
+
+RFA [33]
+
+12.27
+
+96.32
+
+91.82
+
+19.54
+
+73.58
+
+76.87
+
+100.00
+
+65.36
+
+0.00
+
+100.00
+
+22.64
+
+0.00
+
+Weak DP [6]
+
+94.67
+
+99.05
+
+10.12
+
+22.48
+
+72.58
+
+74.97
+
+100.00
+
+64.30
+
+0.00
+
+100.00
+
+20.81
+
+0.00
+
+09.98 Ó 2.29
+
+97.84 Ó 1.35
+
+93.77 Ò 1.95
+
+10.61 Ó 8.93
+
+73.05 Ó 0.81
+
+80.40 Ò 5.78
+
+7.92 Ó 19.80
+
+74.12 Ó 1.32
+
+82.13 Ò 8.55
+
+0.00 Ó 35.79
+
+22.48 Ó 0.33
+
+36.71 Ò 3.05
+
+G2 uardFL (ours)
+
+DBA [45], a data poisoning attack that decomposes the
+trigger pattern into sub-patterns and distributes them
+among several malicious clients for implantation.
+‚ 3DFed [20] employs the attack feedback in the previous
+round to obtain the higher attack performance by implanting indicators into a backdoor model.
+Detailed settings are outlined in Appendix B.4.
+Unless otherwise mentioned, our simulated FL system
+consists of 200 clients, with the orchestration server randomly selecting 10 clients per round. The selected clients
+per round train their local models for 2 local gradient
+descent steps. 50 out of 200 clients are compromised by
+the attacker, i.e., PMR “ 0.25, and malicious clients have
+an equal proportion of normal data and backdoored data,
+i.e., P DR “ 0.5, unless otherwise stated. Malicious clients
+conduct backdoor attacks whenever they are chosen by
+the orchestration server in a given round. Following prior
+studies [1], [45], [46], all attacks occur after the global
+model converges. In all evaluations, we set the maximum
+FL round to 600.
+Evaluation Metrics. We use several metrics to assess defense effectiveness, including Attack Success Rate (ASR),
+primary task accuracy (ACC), and Defense Score (DS).
+ASR measures the proportion of backdoored samples misclassified as the target label. ACC represents the percentage of correct predictions on benign samples. As
+our goal is to decline ASR while upholding ACC,
+DS “ 2ACCp1´ASRq{ACC`p1´ASRq computed similarly to
+F1 Score [40] is introduced as a combined metric to balance
+ASR and ACC. Additionally, we evaluate malicious client
+detection using Precision, Recall, and F1 Score.
+‚
+
+7.2. Evaluating Effectiveness of G2 ardFL
+In this subsection, we evaluate the performance of
+G2 uardFL in comparison to nine state-of-the-art defense
+mechanisms across four distinct tasks. Considering the
+trade-off between attack effectiveness and primary task performance, as discussed in Subsection 7.3, we choose the
+3DFed attack [20] on the MNIST and CIFAR-10 datasets,
+while selecting the PGD with replacement attack [42] for
+the Sentiment-140 and Reddit datasets. Furthermore, we ini-
+
+tially assume that client data is independently and identically
+distributed to assess the peak defensive performance. Subsequently, we demonstrate the performance of G2 uardFL under varying degrees of data heterogeneity in Subsection 7.3.
+The experimental results are presented in Table 2, wherein
+Benign setting signifies the absence of backdoor attacks,
+and No defense implies the presence of malicious clients
+without any defensive countermeasures. Our observations
+are summarized as follows:
+1) G2 uardFL significantly mitigates the effectiveness of
+attacks while concurrently maintaining a commendably high
+ACC, thereby achieving the highest DS across four tasks.
+This can be attributed to G2 uardFL’s capacity to construct
+an attributed graph that captures inter-client relationships
+and employs graph-based clustering algorithms to aggregate
+normal weights while excluding poisoned ones.
+2) Deployed defenses can paradoxically result in higher
+ASRs compared to scenarios without defenses. Since defenses classify a subset of clients as malicious ones,
+thereby rejecting these local models (e.g., Krum) or reducing
+weights (e.g., FoolsGold) during aggregation, aggregated
+models would be poisoned if defense mechanisms erroneously identify malicious clients.
+3) Tasks related to textual data are more susceptible to
+attacks and pose a more formidable challenge to mitigate
+backdoor attacks, aligning with the findings of Bagdasaryan
+et al. [1]. This susceptibility is because of the greater
+dissimilarity between backdoored samples of textual data
+and benign clients’ data distribution in comparison to image
+data. Sentences within backdoored samples in Sentiment140 and Reddit are less likely to appear in benign clients’
+local data, rendering backdoors resistant to being overwritten by model updates from other benign clients.
+Additionally, we evaluate the performance of G2 uardFL
+in detecting malicious clients. The results, comprehensively
+presented in Table 4, reveal the following key insights:
+1) G2 uardFL consistently demonstrates accurate detection of malicious clients across all datasets, consistently
+achieving F1 Scores exceeding 78%. This underscores the
+potency of low-dimensional latent representations learned by
+graph-based clustering algorithms, which exhibit heightened
+representational power relative to high-dimensional model
+
+TABLE 3: Robustness of G2 uardFL for various backdoor attacks(%).
+MNIST
+
+Attacks
+
+Typical Attacks
+
+ACC
+
+ASR
+
+ACC
+
+ASR
+
+ACC
+
+34.00
+
+99.30
+
+17.22
+
+85.38
+
+99.01
+
+65.69
+
+100.00
+
+22.02
+
+G2 uardFL
+
+00.00 Ó 34.00
+
+99.31
+
+01.11 Ó 16.11
+
+84.05
+
+07.92 Ó 91.09
+
+74.86
+
+00.00 Ó 100.00
+
+22.63
+
+PGD w/o
+replacement [42]
+
+no-defense
+
+41.00
+
+99.28
+
+22.78
+
+85.22
+
+99.01
+
+65.54
+
+100.00
+
+22.66
+
+G2 uardFL
+
+00.00 Ó 41.00
+
+99.35
+
+01.67 Ó 21.11
+
+83.97
+
+07.92 Ó 91.09
+
+74.93
+
+00.00 Ó 100.00
+
+22.75
+
+PGD w/
+replacement [42]
+
+no-defense
+
+68.00
+
+99.26
+
+47.78
+
+84.97
+
+100.00
+
+64.51
+
+100.00
+
+22.58
+
+G2 uardFL
+
+00.00 Ó 68.00
+
+99.33
+
+01.67 Ó 46.11
+
+84.84
+
+07.92 Ó 92.08
+
+74.12
+
+00.00 Ó 100.00
+
+22.48
+
+no-defense
+
+67.00
+
+99.19
+
+29.44
+
+85.20
+
+100.00
+
+65.22
+
+100.00
+
+22.18
+
+G2 uardFL
+
+00.00 Ó 67.00
+
+99.29
+
+01.67 Ó 68.00
+
+84.44
+
+08.91 Ó 91.09
+
+74.83
+
+00.00 Ó 100.00
+
+22.86
+
+no-defense
+
+100.00
+
+99.16
+
+99.14
+
+82.03
+
+N/A
+
+N/A
+
+N/A
+
+N/A
+
+G2 uardFL
+
+18.63 Ó 91.37
+
+99.28
+
+18.14 Ó 81.00
+
+84.21
+
+N/A
+
+N/A
+
+N/A
+
+N/A
+
+no-defense
+
+98.18
+
+97.52
+
+96.16
+
+73.08
+
+N/A
+
+N/A
+
+N/A
+
+N/A
+
+G2 uardFL
+
+09.98 Ó 88.20
+
+97.84
+
+10.61 Ó 85.55
+
+73.05
+
+N/A
+
+N/A
+
+N/A
+
+N/A
+
+no-defense
+
+85.00
+
+99.31
+
+58.33
+
+85.13
+
+100.00
+
+64.59
+
+100.00
+
+22.69
+
+G2 uardFL
+
+00.00 Ó 85.00
+
+99.36
+
+03.89 Ó 54.44
+
+83.78
+
+07.92 Ó 92.08
+
+74.38
+
+00.00 Ó 100.00
+
+22.68
+
+no-defense
+
+100.00
+
+98.41
+
+100.00
+
+38.85
+
+100.00
+
+64.57
+
+100.00
+
+13.83
+
+G2 uardFL
+
+00.00 Ó 100.00
+
+99.30
+
+03.89 Ó 96.11
+
+83.93
+
+10.89 Ó 89.11
+
+75.63
+
+00.00 Ó 100.00
+
+21.97
+
+no-defense
+
+62.00
+
+99.20
+
+24.44
+
+85.56
+
+100.00
+
+64.82
+
+100.00
+
+22.53
+
+G2 uardFL
+
+00.00 Ó 62.00
+
+99.28
+
+01.11 Ó 23.33
+
+84.44
+
+06.93 Ó 93.07
+
+74.94
+
+00.00 Ó 100.00
+
+22.54
+
+3DFed [20]
+
+Dynamic PDR
+
+Model Obfuscation
+Randomized Attack
+
+TABLE 4: Results of malicious client detection(%).
+MNIST
+
+7.3. Evaluating Robustness of G2 ardFL
+
+CIFAR-10
+
+Precision
+
+Recall
+
+F1 Score
+
+Precision
+
+Recall
+
+F1 Score
+
+FLAME [28]
+
+52.40
+
+86.79
+
+65.34
+
+31.96
+
+53.20
+
+39.93
+
+DeepSight [36]
+
+97.93
+
+97.46
+
+97.70
+
+85.12
+
+90.13
+
+87.56
+
+G2 uardFL (ours)
+
+78.49
+
+82.84
+
+80.61
+
+93.26
+
+67.62
+
+78.40
+
+G2 uardFL1
+
+87.92
+
+93.66
+
+90.70
+
+92.22
+
+97.55
+
+94.81
+
+Defense
+
+Reddit
+
+ASR
+
+no-defense
+
+DBA [45]
+
+Defense
+
+Sentiment-140
+
+ACC
+
+Black-box
+Attack [42]
+
+Constrain-and-scale [1]
+
+Adaptive
+Attacks
+
+CIFAR-10
+
+ASR
+
+Sentiment-140
+
+Reddit
+
+Precision
+
+Recall
+
+F1 Score
+
+Precision
+
+Recall
+
+F1 Score
+
+FLAME [28]
+
+60.04
+
+83.24
+
+69.76
+
+63.72
+
+82.20
+
+71.79
+
+DeepSight [36]
+
+00.00
+
+00.00
+
+00.00
+
+N/A
+
+N/A
+
+N/A
+
+G2 uardFL (ours)
+
+94.77
+
+95.16
+
+94.97
+
+89.92
+
+89.04
+
+89.48
+
+G2 uardFL1
+
+93.79
+
+96.70
+
+95.22
+
+92.95
+
+97.39
+
+95.12
+
+weights adopted by FLAME and DeepSight.
+2) Although FLAME exhibits a commendable performance in identifying malicious clients, its effectiveness in
+defending against backdoor attacks is relatively lower. This
+can be attributed to the dynamic nature of client selection
+in each FL round, where clients are randomly chosen by the
+orchestration server in this paper. Furthermore, the number
+of chosen malicious clients varies over rounds. However,
+FLAME employs a straightforward strategy of designating
+clusters with smaller sizes as malicious and filtering out
+malicious ones during the aggregation. Consequently, there
+exists a notable probability that malicious clients dominate
+in a particular round, leading FLAME to erroneously accept
+these malicious clusters to construct the global model.
+3) In the MNIST and CIFAR-10 datasets, G2 uardFL,
+while potentially yielding a slightly lower F1 Score than
+DeepSight, outperforms in terms of defense effectiveness.
+This divergence can be attributed to the adaptive poison
+eliminating module, which removes previously implanted
+backdoors, improves the difficulty of implanting backdoors
+in subsequent rounds, and finally enhances the similarity
+between normal and poisoned models. To validate this conjecture, we evaluate G2 uardFL without the adaptive poison
+1
+eliminating module, denoted as G2 uardFL . The outcomes
+affirm our hypothesis, as the graph-based detection method
+utilizes clustering algorithms on attributed graphs to acquire
+more representative latent representations.
+
+In this subsection, we investigate the robustness of
+G2 uardFL against six standard backdoor attacks, three adaptive attacks, and diverse degrees of non-iid data.
+Typical Attacks. We assess G2 uardFL’s resilience against
+state-of-the-art backdoor attacks including Black-box Attack, PGD without replacement, PGD with replacement,
+Constrain-and-scale, DBA, and 3DFed, across multiple
+datasets. Note that, given that 3DFed designs indicators to
+acquire attack feedback, we use the model specified in [20]
+as the global model in our evaluation. Hence, the primary
+task performance of 3DFed differs from that of other attacks.
+The results, summarized in Table 3, reveal the insights:
+1) G2 uardFL adeptly thwarts typical attacks while maintaining primary task performance. It achieves this by taking
+into account backdoor attacks that constrain the Lp -norm
+of differences between poisoned models and the global
+model when forming inter-client relationships, thus effectively countering Constrain-and-scale attacks.
+2) DBA, which decomposes triggers in backdoored samples into some local triggers to maximize attack performance, presents a more formidable challenge for G2 uardFL
+compared to the other four attacks. This aligns with findings
+from Nguyen et al. [27]. However, DBA is only designed
+for image-related tasks, limited by its trigger design.
+3) PGD with replacement achieves a favorable balance
+between achieving a high ASR and maintaining primary task
+performance. Consequently, we designate it as the default
+backdoor attack in our evaluations.
+Adaptive Attacks. We assess G2 uardFL’s resilience against
+adaptive attacks, where attackers possess sufficient knowledge of G2 uardFL and aim to circumvent its defenses. We
+examine several attack strategies and scenarios:
+‚ Dynamic PDR. Attackers can manipulate models to minimize differences between normal and poisoned models,
+leading to their inclusion in the same cluster during graph
+clustering. This is achieved by assigning a random PDR
+ranging from 5% to 20% to each malicious client.
+
+TABLE 6: The impact of M on G2 uardFL(%).
+
+80%
+
+40%
+
+M
+
+0%
+0.05
+
+0.10
+
+0.50
+
+1.00
+
+5.00
+
+10.00
+
+a) MNIST
+
+∞
+
+Benign setting
+
+G2 uardFL
+
+no-defense
+
+ASR
+
+ACC
+
+ASR
+
+ACC
+
+ASR
+
+ACC
+
+5%
+
+00.56
+
+85.89
+
+48.33
+
+83.80
+
+01.67
+
+84.16
+
+10%
+
+00.56
+
+85.89
+
+47.78
+
+83.48
+
+01.11
+
+84.17
+
+15%
+
+00.56
+
+86.08
+
+50.56
+
+83.62
+
+01.11
+
+83.78
+
+TABLE 7: Impacts of κ1 , κ2 , κ3 and κ4 on G2 uardFL(%).
+80%
+40%
+0%
+0.05
+
+0.10
+
+0.50
+
+1.00
+
+5.00
+
+10.00
+
+b) Sentiment-140
+benign-setting-ASR
+benign-setting-ACC
+
+∞
+G2 uardFL-ASR
+G2 uardFL-ACC
+
+no-defense-ASR
+no-defense-ACC
+
+Figure 4: The impact of data heterogeneity in G2 uardFL on
+CIFAR-10 and Sentiment-140.
+TABLE 5: The impact of PMR on G2 uardFL(%).
+PMR
+no-defense
+G2 uardFL
+
+0.00
+
+0.05
+
+0.10
+
+0.15
+
+0.20
+
+0.25
+
+ASR
+
+00.56
+
+37.22
+
+40.00
+
+41.11
+
+43.89
+
+47.78
+
+ACC
+
+85.72
+
+82.22
+
+85.66
+
+85.68
+
+85.15
+
+84.97
+
+ASR
+
+02.78
+
+00.56
+
+00.00
+
+00.56
+
+00.56
+
+01.67
+
+ACC
+
+85.05
+
+84.91
+
+84.48
+
+84.46
+
+84.84
+
+84.04
+
+0.30
+
+0.35
+
+0.40
+
+0.45
+
+0.50
+
+0.55
+
+ASR
+
+48.33
+
+47.22
+
+48.89
+
+55.56
+
+62.22
+
+65.00
+
+ACC
+
+84.24
+
+85.11
+
+84.33
+
+82.49
+
+83.28
+
+83.00
+
+ASR
+
+00.00
+
+03.89
+
+17.22
+
+13.89
+
+16.11
+
+78.33
+
+ACC
+
+84.62
+
+83.88
+
+83.32
+
+83.18
+
+83.40
+
+82.30
+
+PMR
+no-defense
+G2 uardFL
+
+Model Obfuscation. Attackers can introduce noise to poisoned models before transmission to the orchestration
+server, rendering them more challenging to detect. We
+set the noise level following previous work [28] to 0.034
+to avoid significantly impacting ASR.
+2
+‚ Randomized Attack. G uardFL relies on both cluster sizes
+and benign scores to identify malicious clusters. In this
+scenario, malicious clients selected in an FL round have
+a 50% probability of launching attacks, undermining the
+utility of historical detection results.
+The results in Table 3 yield the following observations:
+1) G2 uardFL achieves low ASR and high ACC in all
+cases (e.g., Model Obfuscation in CIFAR-10). This success
+can be attributed to the graph construction module, which effectively captures inter-client relationships, and the dynamic
+filtering and clipping module, which accurately discerns
+benign and malicious clusters. The removal of poisoned
+models during the aggregation process ensures that they
+do not adversely impact the performance of the aggregated
+model in the primary task.
+2) The Randomized Attack has a limited impact on
+G2 uardFL’s performance due to the introduction of Eq. (3).
+This equation serves to smooth the constructed attributed
+graph, thereby mitigating the instability of detection results.
+Data Heterogeneity. The variability in clients’ data distribution can potentially influence G2 uardFL’s performance,
+as the graph construction module evaluates the disparity
+between normal and poisoned model weights. To simulate
+data heterogeneity, we introduce data partitioning [13] by
+sampling diverse proportions of data to clients. Specifically, we use a Dirichlet distribution parameterized by α
+to allocate data to clients, ranging from highly non-iid
+‚
+
+κ1
+
+0.0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+ASR
+
+01.67
+
+01.67
+
+00.56
+
+01.67
+
+00.56
+
+00.56
+
+00.00
+
+ACC
+
+84.01
+
+84.84
+
+83.46
+
+83.96
+
+83.60
+
+84.20
+
+84.33
+
+κ2
+
+0.0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+ASR
+
+00.00
+
+01.67
+
+00.00
+
+01.11
+
+01.11
+
+01.11
+
+01.11
+
+ACC
+
+83.89
+
+84.84
+
+84.05
+
+83.47
+
+84.28
+
+84.33
+
+84.65
+
+κ3
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+ASR
+
+01.11
+
+03.89
+
+01.67
+
+03.89
+
+03.89
+
+05.00
+
+02.78
+
+ACC
+
+84.06
+
+84.11
+
+84.84
+
+83.95
+
+84.11
+
+84.07
+
+84.71
+
+κ4
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+ASR
+
+00.00
+
+05.00
+
+01.11
+
+01.11
+
+01.67
+
+00.00
+
+00.00
+
+ACC
+
+84.45
+
+84.28
+
+84.26
+
+84.14
+
+84.84
+
+83.89
+
+83.95
+
+(α Ñ 0) to uniformly distributed (α Ñ 8). We choose
+α P t0.05, 0.10, 0.50, 1.00, 5.00, 10.00u and the evaluation
+results in Fig. 4 with the PGD with replacement attack show:
+1) G2 uardFL effectively defends against backdoor attacks, with a marginal drop in primary task performance as
+data heterogeneity increases. The attributed graph construction ensures that differences between benign and malicious
+clients outweigh differences among benign clients, facilitating the filtration of poisoned weights regardless of data
+heterogeneity levels.
+2) At α “ 0.05, the ASR of Sentiment-140 experiences a significant decline under G2 uardFL’s defense. This
+phenomenon is attributed to the fact that numerous benign
+clients possess only one sample at α “ 0.05, as evidenced in
+Fig. 6. If G2 uardFL erroneously accepts poisoned weights
+in rounds where they prevail, it becomes challenging to
+eliminate the backdoors from the aggregated global model
+due to the limited number of samples on benign clients.
+
+7.4. Evaluating Sensitivity of G2 ardFL
+PMR. We assess G2 uardFL’s performance under different
+PMR values on the CIFAR-10 dataset. The results in Table 5
+demonstrate that G2 uardFL effectively defends against backdoor attacks as long as the number of malicious clients in the
+FL system remains below 50% (PMR less than 0.5). This
+robustness arises from the dynamic filtering and clipping
+module’s ability to utilize benign scores for identifying
+malicious clients. However, when PMR exceeds 0.5, and
+malicious clients constitute the majority in the FL system,
+G2 uardFL’s defense capabilities diminish.
+Number of Clients M . In practical FL scenarios, clients
+may join or leave the system dynamically during the FL
+process. In our evaluation, we simulate scenarios where
+a certain proportion of clients go offline or join the FL
+system (i.e., 5%, 10%, and 15%). The results, as presented in
+Table 6, indicate that the number of clients has a negligible
+impact on G2 uardFL’s performance.
+κ1 , κ2 , κ3 and κ4 . We explore the influence of hyperparameters on G2 uardFL’s performance, as detailed in Ta-
+
+ble 7. The results demonstrate that the defense results remain stable even when hyper-parameters vary. Among these
+hyper-parameters, κ3 exerts a more significant impact on
+G2 uardFL’s performance. This is primarily because cluster
+sizes change discretely, unlike benign scores, necessitating
+a delicate balance between these two factors to accurately
+identify malicious clients.
+
+8. Discussion
+Advantages of G2 uardFL over other defenses (e.g.,
+FLAME [28] and DeepSight [36]). A key factor lies in
+benign scores. This paper considers the practical complexity
+setting where the server dynamically selects clients for
+participation in each round. The variability in the number of
+malicious clients selected during a round challenges traditional defenses like FLAME and DeepSight. To address this,
+G2 uardFL introduces benign scores, leveraging historical
+detection results to identify malicious client clusters accurately. The motivation of this strategy is that, while poisoned
+models may dominate in specific rounds, they constitute a
+minority on average.
+Side effects on primary task performance. Indeed,
+G2 uardFL introduces a slight reduction in primary task
+performance when initiating G2 uardFL at the beginning of
+FL training, as evident in Table 11. However, this effect can
+be mitigated strategically. The adaptive poison eliminating
+module empowers G2 uardFL to neutralize the influence
+of previously embedded backdoors effectively. Defenders
+can prudently initiate G2 uardFL when the global model
+has already converged, minimizing potential side effects on
+primary task performance.
+Practicalness of G2 uardFL. G2 uardFL eliminates constraints on aggregation strategies that require all clients to
+participate in the aggregation and obviates the need for the
+server to validate client-transmitted weights using collected
+data. In all experiments, the graph clustering utilizes latent
+embeddings of only 32 dimensions, delivering exceptional
+detection results. This suggests that G2 uardFL can function
+on servers without demanding significant computational resources, which shows its potential practicalness.
+
+9. Related Work
+Existing defenses can broadly be divided into two categories: anomaly detection-based approaches and anomaly
+detection-free approaches. The first group identifies poisoned weights as anomalous data in the distribution of client
+weights and excludes them from aggregation. In contrast, the
+second group employs various methods to reduce the influence of poisoned weights during the aggregation process.
+Anomaly Detection-based Approaches. These methods
+generally assume that weights from malicious clients are
+similar and utilize anomaly detection techniques to identify
+poisoned weights [3], [10], [28], [36]. Krum and MultiKrum [3] aggregate client models by choosing a local model
+with the smallest average Euclidean distance to a portion
+
+of other models as the new global model. FoolsGold [10]
+assumes that poisoned models always exhibit higher similarity and employs the cosine similarity function to measure
+the similarity between model weights. Other defenses such
+as DeepSight [36] and FLAME [28] assess differences in
+structure, weights, and outputs of local models and use the
+HDBSCAN algorithm to detect poisoned models.
+However, Krum, Multi-Krum, and FoolsGold only operate under specific assumptions about the underlying data
+distributions. Krum and Multi-Krum assume that data from
+benign clients are independent and identically distributed
+(iid), while FoolsGold assumes that backdoored samples
+are iid. Furthermore, the weight distance measurement used
+by DeepSight and FLAME cannot provide a comprehensive
+representation of client weights. As a result, as demonstrated
+in Subsection 7.2, these approaches may either reject normal
+weights, causing degradation in global model performance,
+or accept poisoned weights, leaving backdoors effective.
+Anomaly Detection-free Approaches. These methods employ strategies such as robust aggregation rules [30], [33],
+[41], differential privacy [6] and local validation [5], to
+reduce the impact of backdoors. Norm Different Clipping
+(NDC) [41] examines the norm difference between the
+global model and client model weights, and clips the norm
+of model updates that exceed a threshold. RFA [33] computes a weighted geometric median using the smoothed
+Weiszfeld’s algorithm to aggregate local models. RLR [30]
+adjusts the learning rate of the orchestration server in each
+round, according to the sign information of client model
+updates. Weak DP [6] applies the Differential Privacy (DP)
+technique to degrade the performance of local models from
+malicious clients, where Gaussian noise with a small standard deviation is added to the model aggregated by standard
+mechanisms, such as FedAvg. FLTrust [5] maintains a model
+in the orchestration server and assigns a lower trust score
+to the client whose update direction deviates more from the
+direction of the server model update.
+However, anomaly detection-free approaches do not
+completely discard local models of malicious clients, allowing a substantial portion of poisoned weights to influence the
+aggregated global model. Therefore, these methods are only
+effective when the number of malicious clients is relatively
+small, such as less than 10% [27]. FLTrust assumes the
+server collects a small number of clean samples, which
+violates the essence of FL [46]. Additionally, as shown in
+Subsection 7.2, DP-based methods result in a degradation
+of the primary task performance due to the added noise.
+
+10. Conclusion
+In this paper, we have proposed G2 uardFL, an effective
+and robust framework safeguarding FL against backdoor
+attacks via attributed client graph clustering. The detection
+of malicious clients has been reformulated as an attributed
+graph clustering problem. In this framework, a graph clustering method has been developed to divide clients into
+distinct groups based on their similar characteristics and
+
+close connections. An adaptive mechanism has been devised to weaken the effectiveness of backdoors previously
+implanted in global models. We have also conducted a
+theoretical convergence analysis of G2 uardFL. Comprehensive experimental results have demonstrated that G2 uardFL
+can significantly mitigate the impact of backdoor attacks
+while preserving the performance of the primary task. Future research will focus on investigating methods to further
+enhance G2 uardFL’s effectiveness and defend against more
+powerful backdoor attacks.
+
+References
+[1]
+
+E. Bagdasaryan, A. Veit, Y. Hua, et al. How to backdoor federated
+learning. In AISTATS, 2020.
+
+[2]
+
+A. N. Bhagoji, S. Chakraborty, P. Mittal, et al. Analyzing federated
+learning through an adversarial lens. In ICML, 2019.
+
+[3]
+
+P. Blanchard, E. M. E. Mhamdi, R. Guerraoui, et al. Machine learning
+with adversaries: Byzantine tolerant gradient descent. In NIPS, 2017.
+
+[4]
+
+R. J. G. B. Campello, D. Moulavi, and J. Sander. Density-based
+clustering based on hierarchical density estimates. In PAKDD, 2013.
+
+[5]
+
+X. Cao, M. Fang, J. Liu, et al. Fltrust: Byzantine-robust federated
+learning via trust bootstrapping. In NDSS, 2021.
+
+[6]
+
+C. Dwork and A. Roth. The algorithmic foundations of differential
+privacy. Found. Trends Theor. Comput. Sci., 2014.
+
+[7]
+
+A. M. Elbir, B. Soner, S. Çöleri, et al. Federated learning in vehicular
+networks. In IEEE MeditCom, 2022.
+
+[8]
+
+N. Fei, Y. Gao, Z. Lu, et al. Z-score normalization, hubness, and
+few-shot learning. In ICCV, 2021.
+
+[9]
+
+F. Fourati, S. Kharrat, V. Aggarwal, et al. Filfl: Accelerating federated
+learning via client filtering. CoRR, abs/2302.06599, 2023.
+
+[10] C. Fung, C. J. M. Yoon, and I. Beschastnikh. The limitations of
+federated learning in sybil settings. In RAID, 2020.
+[11] A. Hard, K. Rao, R. Mathews, et al. Federated learning for mobile
+keyboard prediction. arXiv preprint arXiv:1811.03604, 2018.
+[12] S. Hochreiter and J. Schmidhuber. Long short-term memory. Neural
+Comput., 1997.
+[13] T. H. Hsu, H. Qi, and M. Brown. Measuring the effects of nonidentical data distribution for federated visual classification. CoRR,
+abs/1909.06335, 2019.
+[14] C. Huang, J. Huang, and X. Liu. Cross-silo federated learning:
+Challenges and opportunities. CoRR, abs/2206.12949, 2022.
+[15] B. Hui, P. Zhu, and Q. Hu. Collaborative graph convolutional
+networks: Unsupervised learning meets semi-supervised learning. In
+AAAI, 2020.
+[16] T. N. Kipf and M. Welling. Semi-supervised classification with graph
+convolutional networks. In ICLR, 2017.
+[17] A. Krizhevsky, G. Hinton, et al. Learning multiple layers of features
+from tiny images. 2009.
+[18] H. Kusetogullari, A. Yavariabdi, A. Cheddad, et al. ARDIS: a swedish
+historical handwritten digit dataset. Neural Comput. Appl., 2020.
+[19] Y. LeCun, L. Bottou, Y. Bengio, et al. Gradient-based learning applied
+to document recognition. Proc. IEEE, 1998.
+[20] H. Li, Q. Ye, H. Hu, et al. 3dfed: Adaptive and extensible framework
+for covert backdoor attack in federated learning. In IEEE SP, 2023.
+[21] X. Li, K. Huang, W. Yang, et al. On the convergence of fedavg on
+non-iid data. In ICLR, 2020.
+[22] C. Ma, J. Li, M. Ding, et al. On safeguarding privacy and security
+in the framework of federated learning. IEEE Netw., 2020.
+[23] C. Ma, J. Li, L. Shi, et al. When federated learning meets blockchain:
+A new distributed learning paradigm. IEEE Comput. Intell. Mag.,
+2022.
+[24] B. McMahan, E. Moore, D. Ramage, et al. Communication-efficient
+learning of deep networks from decentralized data. In AISTATS, 2017.
+[25] B. Mirzasoleiman, J. A. Bilmes, and J. Leskovec. Coresets for dataefficient training of machine learning models. In ICML, 2020.
+[26] N. Mrabah, M. Bouguessa, M. F. Touati, et al. Rethinking graph
+auto-encoder models for attributed graph clustering. IEEE TKDE,
+2022.
+
+[27] T. D. Nguyen, T. Nguyen, P. L. Nguyen, et al. Backdoor attacks and
+defenses in federated learning: Survey, challenges and future research
+directions. Engineering Applications of Artificial Intelligence, 2023.
+[28] T. D. Nguyen, P. Rieger, H. Chen, et al. FLAME: taming backdoors
+in federated learning. In USENIX Security, 2022.
+[29] T. D. Nguyen, P. Rieger, M. Miettinen, et al. Poisoning attacks
+on federated learning-based iot intrusion detection system. In Proc.
+Workshop Decentralized IoT Syst. Secur.(DISS), 2020.
+[30] M. S. Ozdayi, M. Kantarcioglu, and Y. R. Gel. Defending against
+backdoors in federated learning with robust learning rate. In AAAI,
+2021.
+
+TABLE 8: List of notations.
+Description
+
+Sign
+S
+
+Orchestration server
+
+Description
+
+Sign
+A
+
+Malicious attacker
+Malicious clients
+
+C rm
+
+Chosen clients at r-th round
+
+CK
+
+Dci
+
+Local data of client ci
+
+DA
+
+Backdoored samples
+
+Gr
+
+Global weights at r-th round
+
+G̃
+
+Poisoned global weights
+
+Wcri
+
+Local weights of ci at the r-th round
+
+∆Wcri
+
+Corresponding model updates of Wir
+
+W̃
+
+Poisoned local weights
+
+F p¨q
+
+Task model of FL systems
+
+L
+
+The number of f p¨q layers
+
+R
+
+The number of iteration rounds
+
+M
+
+The number of all clients
+
+K
+
+The number of malicious clients
+
+m
+
+The number of chosen clients
+
+yc
+
+Attacker-chosen predictions
+
+[31] S. Pan, R. Hu, G. Long, et al. Adversarially regularized graph
+autoencoder for graph embedding. In IJCAI, 2018.
+
+A.1. Proof of Convergence Rate
+
+[32] A. Paszke, S. Gross, F. Massa, et al. Pytorch: An imperative style,
+high-performance deep learning library. In NeurIPS, 2019.
+
+With Assumption 1, we have
+
+[33] V. K. Pillutla, S. M. Kakade, and Z. Harchaoui. Robust aggregation
+for federated learning. CoRR, abs/1912.13445, 2019.
+
+D‰
+˘‰
+“@
+` r´1 ˘ r
+“ `
+, G ´ Gr´1 `
+E rF pGr qs ´ E F Gr´1 ď E ∇F G
+looooooooooooooooooomooooooooooooooooooon
+H1
+
+[34] S. R. Pokhrel. Federated learning meets blockchain at 6g edge:
+A drone-assisted networking for disaster response. In Proceedings
+of the 2nd ACM MobiCom workshop on drone assisted wireless
+communications for 5G and beyond, 2020.
+
+.
+
+›2 ı
+L ”›› r
+E G ´ Gr´1 ›
+2 loooooooooomoooooooooon
+
+(23)
+
+H2
+
+[35] R. Reams. Hadamard inverses, square roots and products of almost
+semidefinite matrices. Linear Algebra and its Applications, 1999.
+
+We need the following three key lemmas which are proved
+in subsequent subsections.
+
+[36] P. Rieger, T. D. Nguyen, M. Miettinen, et al. Deepsight: Mitigating
+backdoor attacks in federated learning through deep model inspection.
+In NDSS, 2022.
+
+Lemma 1. Let λ be the learning rate of all benign and
+malicious clients, we have
+
+[37] T. Sahni, C. Chandak, N. R. Chedeti, et al. Efficient twitter sentiment
+classification using subjective distant supervision. In COMSNETS,
+2017.
+
+Gr ´ Gr´1 “ ´r4
+
+ci PC ` e“1
+
+[38] F. Sattler, S. Wiedemann, K. Müller, et al.
+Robust and
+communication-efficient federated learning from non-iid data. CoRR,
+abs/1903.02891, 2019.
+[39] K. Simonyan and A. Zisserman. Very deep convolutional networks
+for large-scale image recognition. In ICLR, 2015.
+[40] M. Sokolova and G. Lapalme. A systematic analysis of performance
+measures for classification tasks. Inf. Process. Manag., 2009.
+[41] Z. Sun, P. Kairouz, A. T. Suresh, et al. Can you really backdoor
+federated learning? arXiv preprint arXiv:1911.07963, 2019.
+[42] H. Wang, K. Sreenivasan, S. Rajput, et al. Attack of the tails: Yes,
+you really can backdoor federated learning. NIPS, 2020.
+[43] Y. Wang, Y. Xu, Q. Shi, et al. Quantized federated learning under
+transmission delay and outage constraints. IEEE J. Sel. Areas Commun., 2022.
+[44] E. Wenger, J. Passananti, A. N. Bhagoji, et al. Backdoor attacks
+against deep learning systems in the physical world. In CVPR, 2021.
+[45] C. Xie, K. Huang, P. Chen, et al. DBA: distributed backdoor attacks
+against federated learning. In ICLR. OpenReview.net, 2020.
+[46] K. Zhang, G. Tao, Q. Xu, et al. Flip: A provable defense framework for backdoor mitigation in federated learning. arXiv preprint
+arXiv:2210.12873, 2022.
+[47] Z. Zhang, X. Cao, J. Jia, et al. Fldetector: Defending federated
+learning against model poisoning attacks via detecting malicious
+clients. In KDD, 2022.
+[48] Z. Zhang, A. Panda, L. Song, et al. Neurotoxin: Durable backdoors
+in federated learning. In ICML, 2022.
+
+Appendix A.
+Proof of Theorem 1
+Our analysis considers each client conducts E stochastic
+gradient descent updates per FL round. The main notations
+used in this paper are summarized in Table 8.
+
+ÿ E
+ÿ
+
+r5
+
+E
+ÿ ÿ
+ci PC ´ e“1
+
+∇Fci
+
+´
+
+`
+˘
+∇Fci Wce´1
+; ξcei `
+i
+
+W̃ce´1
+; ξ˜cei
+i
+
+,
+
+(24)
+
+¯
+
+ř
+r
+c PC ´ abspsm,j q
+}G` ´Gr´1 }2
+where r1 “ minp1, }G´ ´Gr´1 }2 q, r2 “ ř j
+,
+r
+r abspsm,k q
+ck PCm
+r
+r3 “ γr2 logp1 ` n q, r4 “ p1 ` r3 qλ and r5 “ r1 r3 λ.
+
+Lemma 2. Under Assumption 1 to 3, it holds that
+H1 ď
+
+”›
+ÿ
+`
+˘›2 ı
+p5r5 ´ r4 q
+KE E ›∇F Gr´1 › `r4 E
+Di2 `
+2
+loooooooooomoooooooooon
+`
+ci PC
+
+H3
+E
+ÿ
+
+”›
+ÿ
+ÿ
+›2 ı
+r5
+2r5 E
+Di2 ` KEζ 2 ` r4 L2
+E ›Wce´1
+´ Gr´1 › `
+i
+2
+loooooooooooomoooooooooooon .
+c PC ` e“1
+c PC ´
+i
+
+i
+
+(25)
+
+H4
+
+›2 ȷ
+ÿ E
+ÿ „››
+›
+r5 L2
+E ›W̃ce´1
+´ Gr´1 ›
+i
+ci PC ´ e“1 loooooooooooomoooooooooooon
+H5
+
+Lemma 3. The difference between two global models during
+two successive rounds is bounded by
+ÿ E
+ÿ
+
+H2 ď 2r42 K 2 E 2 ζ 2 ` 4r42 KEL2
+
+H4 `
+
+ci PC ` e“1
+
+ÿ
+
+8r42 KE 2
+
+Di2 ` 8r42
+
+ci PC `
+
+4r52 KEL2
+
+ÿ E
+ÿ
+ci PC ´ e“1
+
+E
+ÿ ÿ
+
+H3 ` 2r52 K 2 E 2 ζ 2 `
+
+.
+
+(26)
+
+ci PC ` e“1
+
+H5 ` 8r52 KE 2
+
+ÿ
+ci PC ´
+
+Di2 ` 8r52
+
+ÿ E
+ÿ
+
+H3
+
+ci PC ´ e“1
+
+Lemma 4. At benign clients, the difference between the
+local model at each round r and the global model at the
+previous last round is bounded by
+E
+ÿ
+e“1
+
+H4 ď
+
+` 2 3 2
+˘
+1
+λ E ζ ` 4λ2 E 3 Di2 ` 4λ2 E 3 H3 ,
+1 ´ 2λ2 E 2 L2
+
+(27)
+
+where ci P C ` . While they are malicious clients, the difference is bounded by
+E
+ÿ
+
+H5 ď
+
+e“1
+
+` 2 3 2
+˘
+1
+λ E ζ ` 4λ2 E 3 Di2 ` 4λ2 E 3 H3 .
+1 ´ 2λ2 E 2 L2
+
+(28)
+
+řE
+Let ∆Wcri “ ´λ e“1 ∇Fci pWcr,e´1
+; ξcr,e
+q, we plug it
+i
+i
+into Eq. (17) and Eq. (18) and have
+´νci pci λ
+E
+ÿ ÿ
+
+paq
+
+E
+ÿ
+e“1
+
+ci PC `
+
+By substituting Eq. (25) into the first term of RHS in
+Eq. (23), and Eq. (26) into the second term, and by Eq. (27)
+and Eq. (28), we have
+ȷ
+*
+”
+ı
+1 ´ 4r3‹
+2
+´ 2r6 p1 ` 2r3‹ q λKE ´ 4 r3‹ 2 ` p1 ` r3‹ q p1 ` r6 qλ2 K 2 E 2 L H3 ď
+2
+˘‰
+“ `
+E F Gr´1 ´ E rF pGr qs `
+”
+ı ÿ
+2
+p1 ` r3‹ q p1 ` 2r6 q λE ` 4 p1 ` r3‹ q p1 ` r6 q λ2 KE 2 L
+Di2 `
+
+ÿ
+
+G` ´ Gr´1 “
+
+ď ´λ
+ci PC ` e“1
+
+`
+˘
+∇Fci Wce´1
+; ξcei
+i
+
+,
+
+(32)
+
+˘
+`
+∇Fci Wce´1
+; ξcei
+i
+
+"„
+
+ci PC `
+
+d
+
+r
+
+,
+
+`
+
+`
+
+where νci “ minp1, n {}∆Wcri }2 q and pci ř“ e i { j edj .
+Inequality (a) is due to νci ď 1, pci ě 0 and ci PC ` pci “ 1.
+Similarly, we have
+ř
+
+ı ÿ
+”
+Di2 `
+2r3‹ p1 ` r6 qλE ` 4r3‹ 2 p1 ` r6 q λ2 KE 2 L
+c PC ´
+
+i
+" ‹
+”
+ı*
+r3 ` r6
+2
+λKE ` r3‹ r6 λKE ` λ2 K 2 E 2 Lp1 ` r6 q p1 ` r3‹ q ` r3‹ 2 ζ 2
+2
+
+G´ ´ Gr´1 “ ´λ
+
+(29)
+2 2 2
+where r6 “ 2λ E L {1´2λ2 E 2 L2 and r3‹ “ maxpr3 q “
+γ logp1 ` maxpnr qq.
+Next, summing the above items from r “ 1 to R and
+dividing both sides by λT K where T “ RE is the total
+number of local stochastic gradient descent steps yields
+ȷ
+* řR
+”
+ı
+1 ´ 4r3‹
+2
+r“1 H3
+´ 2r6 p1 ` 2r3‹ q ´ 4 r3‹ 2 ` p1 ` r3‹ q p1 ` r6 qλKEL
+ď
+2
+R
+loooooooooooooooooooooooooooooooooooooooooooomoooooooooooooooooooooooooooooooooooooooooooon
+
+E
+ÿ ÿ
+ci PC ´ e“1
+
+¯
+´
+∇Fci W̃ce´1
+; ξ˜cei
+i
+
+.
+
+(33)
+
+Finally, by plugging Eq. (32) and Eq. (33) into Eq. (31),
+Lemma 1 is proved.
+
+A.3. Proof of Lemma 2
+
+"„
+
+Using Eq. (24), we have
+
+H
+
+6
+“ ` ˘‰
+“ ` ˘‰
+E F G0 ´ E F GR
+`
+λT K
+„
+ȷ ÿ
+p1 ` r3‹ q p1 ` 2r6 q
+2
+` 4 p1 ` r3‹ q p1 ` r6 q λEL
+Di2 `
+K
+`
+looooooooooooooooooooooooooooooomooooooooooooooooooooooooooooooon
+
+pbq
+
+H1 ď ´r4
+
+,
+
+ci PC
+
+r5
+
+„
+
+pcq r4
+
+ď
+
+H
+
+to guarantee E ě 1. Thus, we have
+LT
+
+1
+2
+
+1
+2
+
+1
+2
+
+”A
+´
+¯Eı
+`
+˘
+∇F Gr´1 , ∇Fci W̃ce´1
+; ξ˜cei
+i
+
+¯
+ÿ E
+ÿ ´ ”›
+`
+˘
+`
+˘›2 ı
+E ›∇F Gr´1 ´ ∇Fci Wce´1
+; ξcei › ´ H3 `
+i
+
+ci PC ` e“1
+
+,
+
+ci PC
+
+(30)
+
+1
+
+1
+Let the learning rate λ “ K 2 {8LT 2 , the hyper-parameter
+?
+γ “ λ{ K logp1`maxpnr qq and the number of local updating
+1
+3
+16
+steps E ď T 4 {K 4 , where T ě maxt16K 3 , 16
+K , L2 u in order
+
+2
+
+E
+
+`
+“@
+`
+˘
+˘D‰
+∇F Gr´1 , ∇Fci Wce´1
+; ξcei
+`
+i
+
+„›
+E ˆ
+´
+¯›2 ȷ˙
+r5 ÿ ÿ
+›
+›
+H3 ` E ›∇Fci W̃ce´1
+; ξ˜cei ›
+i
+2
+´ e“1
+
+H9
+
+1
+2
+
+E
+ÿ ÿ
+ci PC ´ e“1
+
+8
+" ‹
+”
+ı*
+r3 ` r6
+2
+` r3‹ r6 ` λKELp1 ` r6 q p1 ` r3‹ q ` r3‹ 2 ζ 2
+2
+looooooooooooooooooooooooooooooooooomooooooooooooooooooooooooooooooooooon
+
+E
+
+ci PC ` e“1
+
+H7
+
+ȷ ÿ
+r‹
+2 3 p1 ` r6 q ` 4r3‹ 2 p1 ` r6 q λEL
+Di2 `
+K
+loooooooooooooooooooooomoooooooooooooooooooooon ci PC ´
+
+ÿ E
+ÿ
+
+ď
+
+E
+`
+˘
+`
+˘›2 ı
+r5 ´ r4
+r4 ÿ ÿ ”››
+KEH3 `
+E ∇F Gr´1 ´ ∇Fci Wce´1
+; ξcei › `
+i
+2
+2
+looooooooooooooooooooooooomooooooooooooooooooooooooon
+` e“1
+ci PC
+
+H10
+E
+ÿ
+
+„›
+´
+¯›2 ȷ
+r5 ÿ
+›
+›
+E ›∇Fci W̃ce´1
+; ξ˜cei ›
+i
+2
+ci PC ´ e“1 looooooooooooooomooooooooooooooon
+H11
+
+1
+2
+
+1
+2
+
+1
+2
+
+ě 4, T K ě 4, LT K “ pLT qpT K q ě 16.
+
+Then,
+ˆ
+˙
+1
+1
+128 1
+1
+1
+1
+1
+2
+´
+´
+`
+` `
+`
+ě
+2 16 127 64 1024 4 64 1024
+5
+129
+29
+545
+11
+21
+H7 ď
+ˆ
+`
+ď
+`
+127 28K
+127 ˆ 16
+10K
+10
+.
+8
+1
+1
+1
+H8 ď
+`
+ď
+`
+127K
+127 ˆ 16
+10K
+10
+1
+131
+1
+129
+1
+129
+1
+258
+1
+1
+H9 ď
+`
+ˆ
+`
+ˆ
+`
+ˆ
+`
+ˆ
+ď
+127 254 32 127 16 127 512 127 16384
+10
+
+(34)
+where inequality pbq is obtained by Lemma 2, and inequality
+pcq is due to xx1 , x2 y “ 1{2p}x1 }2 ` }x2 }2 ´ }x1 ´ x2 }2 q.
+In Eq. (34), the term H10 can be further bounded as
+
+H6 ě
+
+Finally, by substituting ErF pGR qs ě F pG‹ q in Assumption 1 and above coefficients into Eq. (30), Theorem 1 is
+proved.
+
+A.2. Proof of Lemma 1
+
+peq
+
+ď 2Di2 ` 2L2 H4
+
+where inequality pdq is due to }x1 `x2 }2 ď 2}x1 }2 `2}x2 }2 ,
+and inequality peq is due to Assumption 1.
+Similarly, the term H11 is bounded as
+H11 ď ζ 2 ` 2L2 H5 ` 4Di2 ` 4H3 .
+
+According to Eq. (20) and Eq. (21), we have
+Gr ´ Gr´1 “ p1 ` r3 qpG` ´ Gr´1 q ´ r1 r3 pG´ ´ Gr´1 q .
+
+”›
+pdq
+`
+˘
+`
+˘›2 ı
+H10 ď 2E ›∇F Gr´1 ´ ∇Fci Gr´1 › `
+”›
+`
+˘
+`
+˘›2 ı
+2E ›∇Fci Gr´1 ´ ∇Fci Wce´1
+; ξcei › ,
+i
+
+(31)
+
+(35)
+
+Finally, by substituting the above equations into Eq. (34),
+we can obtain Lemma 2 directly.
+
+A.4. Proof of Lemma 3
+According to Lemma 1, we have
+H2 ď 2r42 KE
+
+”›
+ÿ E
+ÿ
+`
+˘›2 ı
+E ›∇Fci Wce´1
+H11
+; ξcei › `2r52 KE
+i
+loooooooooooooomoooooooooooooon
+c PC e“1
+c PC ` e“1
+ÿ E
+ÿ
+
+i
+
+i
+
+H12
+pf q
+
+ÿ
+
+ď 2r42 KE
+
+E
+ÿ
+
+,
+
+“ 2
+‰
+ζ ` 2L2 H4 ` 4Di2 ` 4H3 `
+
+ci PC ` e“1
+
+2r52 KE
+
+E
+ÿ ÿ
+“
+
+ζ 2 ` 2L2 H5 ` 4Di2 ` 4H3
+
+‰
+
+Algorithm 1: G2 uardFL
+Input: Number of clients M , Initial global model
+G0 , Number of FL rounds R
+Parameter: Client embedding training epochs Ep ,
+Graph clustering training epochs Ec
+Output: Final global model GR
+´3
+0
+1 Initialize benign scores s „ N p0, 10
+q;
+2 for r Ð 1 to R do
+r
+3
+Clients Cm
+Ð sampled from tc1 , ¨ ¨ ¨ , cM u ;
+r
+4
+for ci P Cm
+do
+5
+Wcri Ð ClientUpdate(Gr´1 ) ;
+Constructing G r “ pC, Er , Xr q via Eq. (2) ;
+Initialize Q via HDBSCANpX̂r q ;
+for e Ð 1 to Ep do
+Pre-training encoder Encp¨, ¨q via Eq. (9) ;
+
+6
+
+ci PC ´ e“1
+
+(36)
+where inequality pf q is due to Eq. (35). Given that the
+maximal number of clients within C ` (or C ´ ) is K , we can
+obtain Lemma 3.
+
+A.5. Proof of Lemma 4
+
+7
+8
+9
+
+Initialize cluster center matrix Q via
+K-MeanspZq and Eq. (5) ;
+for e Ð 1 to Ec do
+Training Encp¨, ¨q and Q via Eq. (11) ;
+
+10
+11
+12
+
+We have
+»›
+›2 fi
+› e´1
+`
+˘›
+› ÿ
+t › fl
+H4 “ E –›λ
+∇Fci Wct´1
+;
+ξ
+ci ›
+i
+› t“1
+›
+ď λ2 pe ´ 1q
+
+14
+15
+
+e´1 ”
+ÿ
+›
+`
+˘›2 ı
+E ›∇Fci Wct´1
+; ξcti ›
+i
+t“1
+
+pgq
+
+ď λ E ζ ` λ2 pe ´ 1q
+
+phq
+
+2
+
+2 2
+
+2
+
+2 2
+
+Computing benign cluster C ` and malicious
+cluster C ´ via Eq. (13) and Eq. (15) ;
+r
+Computing W ci to limit norms of model
+updates via Eq. (18) ;
+Computing benign global model and malicious
+global model via Eq. (19) ;
+Computing aggregated model Gr via Eq. (21) ;
+Updating benign scores via sr`1 “ tanh psr q ;
+
+13
+
+t“1
+e´1
+ÿ
+
+2
+
+16
+
+e´1 ”
+ÿ
+›
+`
+˘›2 ı
+›
+E ›∇Fci Wct´1
+i
+
+ď λ E ζ ` 2λ pe ´ 1q
+
+t“1
+
+17
+
+,
+
+return GR
+
+18
+
+”›
+`
+˘
+`
+˘›2 ı
+´ ∇Fci Gr´1 › `
+E ›∇Fci Wct´1
+i
+
+TABLE 9: Measures of statistical characteristics.
+
+e´1 ”
+ÿ
+›
+`
+˘›2 ı
+2λ pe ´ 1q
+E ›∇Fci Gr´1 ›
+2
+
+t´1
+
+e´1 ”
+ÿ
+›
+›2 ı
+ď λ E ζ ` 2λ EL
+E ›Wct´1
+´ Gr´1 › ` 4λ2 E 2 Di2 ` 4λ2 E 2 H3
+i
+2
+
+2 2
+
+2
+
+2
+
+t“1
+
+(37)
+2
+2
+where inequality pgq is
+due
+to
+E
+r∥x∥
+s
+“
+E
+r∥x
+´
+E
+rxs∥
+` t´1 ˘ s `
+˘
+`
+t
+Wci s, and
+s
+“
+E
+r∇F
+;
+ξ
+∥Erxs∥2 and Er∇Fci Wct´1
+c
+c
+i
+i
+i
+inequality phq is due to Er∥x`y∥2 s ď 2Er∥x∥2 s`2Er∥y∥2 s.
+Then, summing both sides of Eq. (37) from e “ 1 to E
+yields
+E
+ÿ
+
+H4 ď λ2 E 3 ζ 2 ` 2λ2 EL2
+
+e“1
+
+E
+e´1
+ÿ ÿ
+e“1 t“1
+
+(38)
+
+e“1
+
+where inequality piq is because the occurrence number of
+}Wct´1
+´ Gr´1 }2 for each e P r1, Es in the second term is
+i
+less than the number of local updating steps E .
+Similarly, we can obtain
+
+e“1
+
+H5 ď λ2 E 3 ζ 2 ` 2λ2 E 2 L2
+
+E
+ÿ
+
+Feature
+
+#
+
+Feature
+
+Description
+
+1
+
+cos1
+
+Cosine distance
+
+2
+
+norm
+
+Lp norm of vector, e.g., L2
+
+3
+
+min
+
+Minimum vector element
+
+4
+
+max
+
+Maximum vector element
+
+5
+
+mean
+
+Mean of vector elements
+
+6
+
+std
+
+Standard deviation of vector
+
+7
+
+sum
+
+Sum of vector elements
+
+8
+
+median
+
+Median vector element
+
+9
+
+P5
+
+5-th percentile of elements
+
+10
+
+P95
+
+95-th percentile of elements
+
+1
+
+Description
+
+: The measure is applied to two vectors.
+
+Appendix B.
+Details of Experimental Setup
+
+”›
+›2 ı
+E ›Wct´1
+´ Gr´1 › `
+i
+
+,
+4λ2 E 3 Di2 ` 4λ2 E 3 H3
+E
+ÿ
+piq
+ď λ2 E 3 ζ 2 ` 2λ2 E 2 L2
+H4 ` 4λ2 E 3 Di2 ` 4λ2 E 3 H3
+
+E
+ÿ
+
+#
+
+H5 ` 4λ2 E 3 Di2 ` 4λ2 E 3 H3
+
+.
+
+(39)
+
+e“1
+
+Finally, rearranging the terms in Eq. (38) and Eq. (39)
+yields Lemma 4.
+
+B.1. Algorithm
+The measures of statistical characteristics adopted to
+construct clients’ features are listed in Table 9.
+In this subsection, we present a comprehensive description of the G2 uardFL process, detailed in Algorithm 1. In
+Lines 3 - 4, clients receive the global model Gr´1 from
+the previous round and utilize their local data to train their
+individual models, represented as Wcri . The algorithm employs two standard techniques, HDBSCAN, and K-means,
+to initialize the number of cluster centroids Q (Line 7) and
+cluster centers Q (Line 10), respectively. Note that HDBSCAN takes the client feature matrix Êr as input, whereas
+K-means operates on the latent representation matrix Z.
+
+TABLE 10: Results of ablation study (%).
+80%
+
+MNIST
+40%
+
+Defense
+
+CIFAR-10
+α “ 0.05
+
+α“8
+
+α “ 0.05
+
+α“8
+
+ASR
+
+ACC
+
+ASR
+
+ACC
+
+ASR
+
+ACC
+
+ASR
+
+ACC
+
+G2 uardFL
+
+00.00
+
+99.33
+
+00.00
+
+99.19
+
+01.67
+
+84.84
+
+01.11
+
+80.19
+
+G2 uardFL1
+
+00.00
+
+99.32
+
+05.00
+
+99.21
+
+02.22
+
+84.38
+
+79.44
+
+79.93
+
+0%
+0.05
+
+0.10
+
+0.50
+
+1.00
+
+5.00
+
+10.00
+
+a) MNIST
+
+∞
+
+Sentiment-140
+80%
+
+Defense
+
+Reddit
+α “ 0.05
+
+α“8
+
+α “ 0.05
+
+α“8
+
+ASR
+
+ACC
+
+ASR
+
+ACC
+
+ASR
+
+ACC
+
+ASR
+
+ACC
+
+G2 uardFL
+
+07.92
+
+74.12
+
+43.56
+
+73.00
+
+00.00
+
+22.48
+
+00.00
+
+22.68
+
+G2 uardFL1
+
+31.28
+
+72.73
+
+100.00
+
+62.27
+
+00.00
+
+22.84
+
+83.51
+
+22.83
+
+40%
+0%
+0.05
+
+0.10
+
+0.50
+
+1.00
+
+5.00
+
+10.00
+
+b) Reddit
+benign-setting-ASR
+benign-setting-ACC
+
+∞
+G2 uardFL-ASR
+G2 uardFL-ACC
+
+no-defense-ASR
+no-defense-ACC
+
+Number of Clients
+
+Figure 5: The Impact of data heterogeneity on G2 uardFL in
+MNIST and Reddit.
+40%
+
+20%
+
+0%
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+Interval of Number of Samples
+
+Figure 6: Distribution of data volume on different clients.
+
+B.2. Dataset
+
+to 1, and it does not employ the historical gradient or the
+significant feature filter. 4) Krum [3]. The local model with
+the highest score is selected as the aggregated global model.
+5) Multi-Krum [3]. The number of clients participating per
+round is set to 10, the number of permissible malicious
+clients f is 2, and the hyper-parameter m is set to n ´ f .
+6) RLR [30]. We set the learning rate threshold θ “ 3
+and the server’s learning rate η “ 1. 7) FLTrust [5]. We
+set the number of samples within the server to 1% of the
+validation dataset in all evaluations. 8) NDC [41]. The
+threshold of norm difference between the global model and
+model updates is set to 2 for all tasks. 9) RFA [33]. We
+set the smoothing factor v “ 10´5 , the maximum number
+of iterations T “ 500 and the fault tolerance threshold
+ϵ “ 10´1 . 10) Weak DP [6]. The noise level σ is 0.025.
+
+In our evaluations, we employ four distinct datasets:
+MNIST, CIFAR-10, Sentiment-140, and Reddit. Following
+Bagdasaryan et al. [1], we consider only the first 100 and
+40 words of sentences in the Sentiment-140 and Reddit
+datasets, respectively. If a sentence falls below this threshold, we pad it with the <pad> symbol to reach the required
+length. The process of creating backdoored samples aligns
+with Wang et al. [42].
+For MNIST, we apply a slightly modified LeNet-5 architecture [42]. For CIFAR-10, we employ a 9-layer VGG-style
+network architecture, with the removal of all BatchNorm
+layers. This adjustment is necessary to mitigate the potential
+adverse effects of poorly managed BatchNorm layers on primary task performance, particularly with small batch sizes
+and non-iid data [38]. For Sentiment-140, our model consists
+of an embedding layer (V ˆ 50) and a 2-layer LSTM with
+32 hidden dimensions, followed by a linear layer (64 ˆ 2)
+and a Sigmoid activation. In this dataset, the vocabulary
+size V is 122971. For Reddit, the model incorporates an
+embedding layer (V ˆ 50) and a 2-layer LSTM with 64
+hidden dimensions, followed by a linear layer (128 ˆ V )
+and a softmax activation, with V being 49999.
+
+We investigate the robustness of G2 uardFL against five
+distinct backdoor attacks, each configured as follows: 1)
+Black-box Attack [42]. Malicious clients train on backdoored samples DA using the same hyper-parameters (e.g.,
+learning rate) as honest clients for all tasks. 2) PGD without
+replacement [42]. Malicious clients train on backdoored
+samples DA , projecting poisoned weights onto an L2 ball
+of radius ϵ “ t0.2, 1.0, 2.0, 2.0u for MNIST, CIFAR-10,
+Sentiment-140, and Reddit, respectively. 3) PGD with replacement [42]. Configuration is aligned with PGD without
+replacement. 4) Constrain-and-scale [1]. The factor α,
+which balances the effectiveness and stealthiness, is set to
+0.5. 5) DBA [45]. The trigger factors are set to ϕ “ t4, 2, 0u
+for MNIST and ϕ “ t6, 3, 0u for CIFAR-10. 6) 3DFed [20].
+κ, a scaling factor in the indicator, is set as a constant 105 .
+
+B.3. Baselines
+
+C.1. Data Heterogeneity
+
+We benchmark G2 uardFL against nine state-of-the-art
+defenses, and each defense with specific configurations is
+outlined as follows: 1) FLAME [28]. Noise level factor λ
+to 0.001 for all tasks. 2) DeepSight [36]. The threshold for
+excluding suspicious models from clusters is set at 0.33, and
+the number of fake data used to calculate DDIFs is set to
+2,000. 3) FoolsGold [10]. The confidence parameter κ is set
+
+We present the experimental results of data heterogeneity for the MNIST and Reddit datasets in Fig. 5. We
+have observed a significant decrease in G2 uardFL’s performance on the Sentiment-140 dataset when data heterogeneity is set to 0.05. To further investigate this, we analyze the distribution of data volume across different clients
+on Sentiment-140 with α “ 0.05 across eight intervals:
+
+B.4. Backdoor Attacks
+
+Appendix C.
+Experimental Results
+
+TABLE 11: Results of convergence analysis (%).
+MNIST
+
+Defense
+
+CIFAR-10
+
+α“8
+
+α “ 0.05
+
+α“8
+
+no-defense
+
+99.19
+
+98.74
+
+81.79
+
+33.23
+
+G2 uardFL
+
+98.90
+
+97.37
+
+77.67
+
+32.31
+
+α“8
+
+α “ 0.05
+
+α“8
+
+no-defense
+
+69.87
+
+57.24
+
+16.30
+
+16.30
+
+G2 uardFL
+
+67.04
+
+51.77
+
+16.30
+
+16.30
+
+MNIST
+
+Defense
+
+CIFAR-10
+α “ 0.05
+
+w/ APE
+
+80%
+
+ASR
+
+α “ 0.05
+
+w/o APE
+
+40%
+
+0%
+0
+
+100
+
+200
+
+300
+
+400
+
+500
+
+600
+
+Round
+
+Figure 7: The ASR fluctuations on CIFAR-10.
+r1, 2q, r2, 500q, r500, 1000q, r1000, 1500q, r1500, 2000q,
+r2000, 2500q, r2500, 3000q, and r3000, 8q, as depicted in
+Fig. 6. We observe that over 40% of clients have only
+one sample. Consequently, model weights of benign clients
+are not sufficiently trained with normal data, leading to a
+degradation in primary task performance. Furthermore, if
+poisoned weights are mistakenly accepted by the server,
+purging the global model of embedded backdoors by training local models with client local data becomes challenging.
+
+C.2. Analysis of Adaptive Poison Eliminating
+In this subsection, we investigate the impact of the adaptive poison eliminating module, referred to as APE, through
+experiments conducted on four datasets with varying degrees
+of data heterogeneity, specifically α “ 8 and α “ 0.05. We
+denote G2 uardFL without this module as G2 uardFL1 . The
+results, presented in Table 10, yield several observations:
+1) APE proves to be effective in swiftly eliminating previously embedded backdoors, especially in scenarios with
+high data heterogeneity. The substantial disparity between
+model weights from benign clients increases the likelihood
+of accepting poisoned weights.
+2) The presence of this module heightens the difficulty
+of launching successful backdoor attacks by augmenting the
+divergence between poisoned models and the aggregated
+global model. Fig. 7 illustrates the fluctuations in ASR when
+launching backdoor attacks on CIFAR-10 at α “ 0.05. The
+ASR volatility of G2 uardFL with this module is significantly
+lower than that without it. This can be attributed to the enlargement of the divergence between malicious and benign
+clients, which raises the challenge of poisoning the global
+model during each round, ultimately resulting in a lower
+ASR.
+To address the concern that APE prevents the convergence of FL systems, we also conduct evaluations by
+training the global model from randomly initialized model
+weights without any attacks. The primary task performance
+is listed in Table 11. We observe that G2 uardFL only leads
+to a slight degradation in ACC, which remains acceptable.
+
+

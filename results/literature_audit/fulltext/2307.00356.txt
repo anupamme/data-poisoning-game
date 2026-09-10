@@ -1,0 +1,1248 @@
+Fedward: Flexible Federated Backdoor Defense
+Framework with Non-IID Data
+1st Zekai Chen
+
+3rd Zhiwei Zheng
+
+2nd Fuyi Wang
+
+arXiv:2307.00356v1 [cs.LG] 1 Jul 2023
+
+College of Computer Science and Big Data School of Information Technology College of Computer Science and Big Data
+Fuzhou University
+Deakin University
+Fuzhou University
+Fuzhou, China
+Waurn Ponds, Country
+Fuzhou, China
+zhiweifzu@gmail.com
+wangfuyi@deakin.edu.au
+chenzekaiify@gmail.com
+
+4th Ximeng Liu*
+
+5th Yujie Lin
+
+College of Computer Science and Big Data
+Fuzhou University
+Fuzhou, China
+snbnix@gmail.com
+
+College of Computer Science and Big Data
+Fuzhou University
+Fuzhou, China
+linyujie121@163.com
+
+Abstract—Federated learning (FL) enables multiple clients to
+collaboratively train deep learning models while considering
+sensitive local datasets’ privacy. However, adversaries can manipulate datasets and upload models by injecting triggers for
+federated backdoor attacks (FBA). Existing defense strategies
+against FBA consider specific and limited attacker models,
+and a sufficient amount of noise to be injected only mitigates
+rather than eliminates FBA. To address these deficiencies, we
+introduce a Flexible Federated Backdoor Defense Framework
+(Fedward) to ensure the elimination of adversarial backdoors. We
+decompose FBA into various attacks, and design amplified magnitude sparsification (AmGrad) and adaptive OPTICS clustering
+(AutoOPTICS) to address each attack. Meanwhile, Fedward
+uses the adaptive clipping method by regarding the number of
+samples in the benign group as constraints on the boundary.
+This ensures that Fedward can maintain the performance for
+the Non-IID scenario. We conduct experimental evaluations over
+three benchmark datasets and thoroughly compare them to
+state-of-the-art studies. The results demonstrate the promising
+defense performance from Fedward, moderately improved by
+33% ∼ 75% in clustering defense methods, and 96.98%, 90.74%,
+and 89.8% for Non-IID to the utmost extent for the average FBA
+success rate over MNIST, FMNIST, and CIFAR10, respectively.
+Index Terms—Federate learning, distributed backdoor attack,
+backdoor defense, Non-IID data, clustering
+
+affect the injected model performance on other benign datasets
+but activate triggers in malicious datasets.
+There are currently many strategies for tackling the FBA
+problem for not identically and independently distributed
+(Non-IID) data. Byzantine-robust aggregation algorithms to
+mitigate FBA in the Non-IID data, and early work includes
+Trimmed-Mean [2], Median [2], etc. Complement to the prior
+art, CRFL [3] employs the particular thresholds of clipping
+and perturbing noise in FL aggregation. However, the clipping
+thresholds and perturbing noise levels are difficult to be
+specified. Therefore, FedCC [4] proposes the K-means method
+to group the penultimate layer features of local models for
+identifying malicious clients over benign clients against FBA.
+In practice, due to FBA with strong concealment and NonIID scenario, FLAME [5] adopts HDBSCAN to group the
+benign model updates and malicious model updates, dynamic
+clipping, and noise smoothing against FBA. Nevertheless,
+FLAME employs HDBSCAN with a single constraint for
+clustering, which properly misleads the defense method to
+classify malicious models in the Non-IID scenario. Meanwhile, FLAME adopts dynamic clipping to limit the global
+model update, which lacks constraints on boundary dynamics.
+And, noise smoothing serves only as mitigation against FBA,
+which cannot be eliminated FBA.
+In response to the above-identified challenge, we propose
+Flexible Federated Backdoor Defense Framework (Fedward).
+Firstly, due to data distribution being similar among malicious
+models in the Non-IID scenario, we propose amplified magnitude sparsification (AmGrad) to extract the major local model
+update and then amplify the major update from the maximum
+absolute gradient in each layer of the model, which can
+endeavor to magnify malicious model updates. Then, we adopt
+the adaptive OPTICS clustering (AutoOPTICS) approach,
+which has clear distance criteria for dividing malicious models
+and benign models in the Non-IID scenario. Finally, the
+adaptive clipping method takes the number of samples in the
+
+I. I NTRODUCTION
+Federated learning (FL) [1] is a concept to eradicate data
+silos and collaboratively train a remarkable global model with
+the assistance of clients’ uploaded models. It has attractive
+advantages and promotes many applications development,
+while adversaries can manipulate datasets and upload models
+to inject triggers for targeted attacks, called federated backdoor
+attacks (FBA). Specifically, adversaries are masked as benign
+clients to inject distinct triggers into a tiny part of the training
+datasets to trick the trained model into staying strongly associated with these triggers. Furthermore, adversaries can not
+* is the corresponding author.
+
+Global
+Aggregation
+
+Server
+
+Δ𝒲! Δ𝒲
+
+Data
+
+Δ𝒲 Δ𝒲"
+
+Data
+
+Benign clients
+
+Model
+poisoning
+
+Data poisoning
+
+Compromised clients
+
+Fig. 1. The overview of backdoor attacks.
+
+benign group as constraints on the boundary for applying to
+the Non-IID scenario. The contributions are summarized as
+follows:
+• In this work, we propose Flexible Federated Backdoor
+Defense Framework (Fedward) against FBA in federated
+learning (FL). Instead of strong assumptions about the
+attack the strategy of the adversary, our Fedward remains
+stronger defense capabilities and benign performance of
+the aggregated model.
+• Analyzing various types of FBA, we present Amplified
+Magnitude Sparsification, AutoOPTICS clustering, and
+Adaptive Clipping, which can protect against Magnitude
+with Larger Deviations Attack (MLA), Angle with Larger
+Deviation Attack (ALA), and Angle or Magnitude with
+Slight Deviation Attack (AMSA), respectively.
+• We evaluate the effectiveness of our Fedward by compared with five state-of-the-art studies. For fairness, the
+experimental settings are consistent with prior work. In
+addition, we tune the poisoning data rate (PDR) and the
+Non-IID data rate (NIR) to control the concealment and
+strength of the attack. And the comprehensive experimental validation on benchmark datasets demonstrates our
+Fedward is practical and applicable to complex scenarios.
+II. R ELATED WORK
+A. Federated Learning
+Federated learning (FL) [1] is an emerging distributed learning for improving efficiency, privacy, and scalability. It is capable of collaboratively training deep learning models by multiple clients under the supervision of a centralized aggregator.
+Generally, in practical application scenarios, datasets across
+multiple clients have inherently heterogeneous characteristics
+(i.e., Non-IID) data. Despite the attractive advantages derived
+from FL, it is more vulnerable to training heterogeneity data
+threats. And there are serious accuracy concerns caused by the
+heterogeneity of training data.
+To consider such Non-IID concerns, McMahan et al. [1]
+propose a generic aggregation mechanism federated averaging
+(FedAvg) commonly applied in FL [6], [7]. Subsequently,
+several well-known aggregation mechanisms are proposed, including Krum, Trimmed-Mean [2] or Median [2], and adaptive
+
+federated averaging [8]. Unfortunately, the distributed learning
+methodology, as well as inherently Non-IID data distribution
+across multiple clients, may unintentionally provide a venue
+for new attacks. Specifically, FL is unauthorized to communicate or collect locally sensitive datasets, facilitating federated
+backdoor attacks (FBA) on various models from different
+clients. In this paper, the specific goal is to identify the FBA
+and eliminate such an attack effectively.
+B. Backdoor Attacks on Federated Learning
+Backdoor attacks is corrupting a subset of training data by
+inserting adversarial triggers, causing machine learning models
+trained on the manipulated dataset to predict incorrectly on the
+test set carrying the same trigger. Machine learning models
+are susceptible to profound impacts from backdoor attacks [9]
+and Backdoor attacks on FL have been recently studied in
+[10], [11]. The generic techniques utilized in FL backdoor
+attacks are two-fold: 1) data poisoning [12], [13](i.e., attackers
+manipulate the training datasets), and 2) model poisoning [10],
+[11], [14] (i.e., attackers manipulate the training process or the
+updated model), shown in Fig. 1.
+Data Poisoning. In the data poisoning configuration, malicious attackers only allow poisoning the trained dataset from
+compromised clients by modifying targeted labels. Nguyen
+et al. [12] design a data poisoning attack by implanting a
+centralized backdoor into the aggregated detection model to
+incorrectly classify malicious traffic as benign. Each party
+incorporates the same global trigger during training. Additionally, the distributed backdoor attack (DBA) [13] is presented,
+disintegrating a global trigger pattern into independent regional
+patterns and embedding them into the trained dataset of different compromised clients respectively. We adopt this poisoning
+in this paper.
+Model Poisoning. To amplify the impact of the backdoor
+attack while escaping the aggregator’s anomaly detection,
+the poisoned models modify the parameters and scale the
+resulting model update. There are a variety of model poisoning
+strategies against various defenses to achieve the evasion
+of anomaly detection into the attacker’s loss function and
+model’s weights, such as generic constrain-and-scale and trainand-scale strategies [10], explicit boosting strategy from an
+adversarial perspective [11], and projected gradient descent
+strategy [14].
+III. P ROBLEM F ORMULATION
+A. Problem Definition
+Federated Backdoor Attack Scenario. Federated backdoor
+attacks (FBA) are more focused on poisoning local data or
+models, which can impact benign model distribution X . For
+stealthiness and robustness, FBA must maintain a balance in
+attention to each local model’s accuracy and attack success
+rate (ASR). The FBA problem can be formulated as follows:
+Ĝ∗ = argminĜ∈Θ
+
+N
+X
+i∈{Scln ,Spoi
+
+|Di |
+L(Di ; Ĝ)
+PN
+j∈ci |Dj |
+}
+
+≜ ED∼χpoi [F(D; Ĝ) = τpoi ] + ED∼χcln [F(D; Ĝ) = τcln ],
+
+(1)
+
+where Θ is the parameter space of the global model, | · | is
+size, Scln is a set of benign clients, Spoi is a set of malicious
+clients, N is the total number of clients, τ is a setSof the target
+N
+in training data, datasets of all clients are D = i Di , Ĝ is
+the global model, X is the training data distribution, L(·) is a
+general definition of the empirical loss function for supervised
+learning tasks, and F(·) is inference function for evaluating
+the global model Ĝ.
+Attack Assumption. For real-world FL, datasets from
+multiple clients are inherently Non-IID data. Assuming the
+adversary/attacker A disguise or control over N2 benign clients,
+no more than half of benign clients will reject to join FL
+for non-convergence in the global model. Thus, A completely
+controls over less than N2 clients [5], including their training
+data, processes, and trained parameters. Furthermore, with the
+exception of any FL aggregation execution or local client
+training, A is aware of the FL aggregation methodology
+incorporating potential defense mechanisms.
+B. Federated Backdoor Attacks
+A manipulates trained datasets or loss item to generate
+unique poisoning distribution Xpoi model for FBA task. Due to
+FL aggregation regulations, A is unable to directly manipulate
+the central server or other benign clients. In order to further
+describe FBA, we will analyze benign models’ distribution
+Xcln and malicious models’ distribution Xpoi disparity over
+deflection angle and magnitude, respectively. Additionally,
+FBA controls distance between Xcln and Xpoi . Thus, FBA
+can be decomposed into the following components:
+• Magnitude with Larger Deviations Attack (MLA). A
+grows magnitude of gaps between Xcln and Xpoi
+presently, which are conducted mainly through replacement or scaling attack.
+• Angle with Larger Deviation Attack (ALA). Similarly, A
+has really convenient way to grow angular gaps between
+Xcln and Xpoi , which are conducted mainly through
+increasing the poisoning data rate (PDR) or malicious
+clients’ local training epochs (LTE).
+• Angle or Magnitude with Slight Deviation Attack
+(AMSA). A can close gaps between Xcln and Xpoi in an
+easy way, which are conducted mainly through narrowing
+PDR or malicious clients’ LTE.
+C. Federated Backdoor Attack Defense
+Since FBA manipulates local models from the data distribution attacks. To overcome this issue, a common approach
+attempts to create distinguish between benign distributions
+Xcln and malicious distributions Xpoi . However, due to different proportions of Non-IID distribution, the problem can
+be approached from the similarity of Xpoi . And then, how
+to establish distance constraints from Xpoi and Xcln ? The
+most radical solution is setting up the bound of malicious
+model updates for establishing distance constraints. Thus, the
+optimization problem can be solved as follows:
+argmin1≤i≤N
+
+N
+X
+j=1 and i̸=j
+
+Dist(wi , wj ) − θpoi ,
+
+(2)
+
+Algorithm 1 Fedward
+Input: n is the number of clients, m is the number of clients
+in FL aggregation, T is communication epoch, G is uploaded
+local model updates.
+Output: global model update GTb .
+1: for t = {1, · · · , T } do
+2:
+for i = {1, · · · , n} do
+3:
+Gti = LocalUpdate(Gt−1
+b ) ▷ client-i trains the t−1
+globle model Gbt−1 using its dataset Di locally to learn
+local model Gti .
+4:
+Wi = Gti - Gt−1
+▷ client-i’ model update.
+b
+5:
+# Amplified Magnitude Sparsification
+i
+6:
+Wam
+= AmGrad(Wi ) ▷ Equ.(3)
+i
+7:
+Send {Wi , Wam
+} to the server. ▷ client-i is selected.
+8:
+end for
+9:
+# Adaptive OPTICS Clustering
+1
+m
+10:
+inds, |inds| = AutoOPTICS(Wam
+, · · · , Wam
+) ▷ m
+clients are randomly selected for clustering in each epoch.
+11:
+# Adaptive Clipping
+12:
+N orm = {||W1 ||2 , · · · , ||Wm ||2 }
+13:
+ρclip = N orm|inds|
+14:
+for k = {1, · · · , |inds|} do
+15:
+ind = indsk
+Wind
+16:
+Ck =
+N ormind
+Max(1,
+
+ρclip
+
+)
+
+end for
+P|inds|
+1
+Gtb = |inds|
+· i=1 Ci
+19: end for
+20: Obtain the final global model GT
+b.
+
+17:
+18:
+
+where Dist is distance function, wi is model update of clienti, θpoi is Xpoi distance constraints.
+IV. D EFENSE M ETHODS
+A. System Overview
+Fedward aims to provide a series of defenses to address a
+typical scenario of FBA. For solving the FBA in FL scenarios,
+Fedward establishes expand magnitude sparsification, adaptive
+OPTICS clustering, and adaptive clipping. More details about
+the procedure of Fedward are shown in Algorithm 1. Due to
+space constraints, we combine the description of the system
+overview with the pseudocode, i.e. in Algorithm 1, the explanation follows the ▷ symbol.
+B. Amplified Magnitude Sparsification
+The prior studies lack an effective approach to limit AMSA.
+FLAME adopts dynamic model filtering to limit the magnitude
+of global model update. However, when faced with challenges
+of AMSA, it doesn’t exclude malicious slight model update
+as bounded of filtering resulting in poisoning.
+Due to the stealthiness of AMSA, our Fedward adopts gradient sparsification to extract the major local model update and
+then amplifies the major update from the maximum absolute
+gradient of each layer of the model. In particular, it can expand
+
+Distributed Backdoor Triggers Injection
+
+#Amplified Magnitude Sparsification
+
+Malicious Model
+
+Benign Model
+
+#Adaptive OPTICS Clustering
+Benign Group
+
+Malicious Group
+Poison Dataset
+
+Targeted Label
+# Adaptive Clipping
+
+FL Aggregation
+
+Clean Dataset
+
+Bound of Clipping
+
+Clean Label
+
+Fig. 2. Overview of Flexible Federated Backdoor Defense Framework ((Fedward).
+
+the malicious slight model update, so as to avoid AMSA.
+Inspired by TernGrad [15], our Fedward presents amplified
+magnitude sparsification (AmGrad) (line 6 in Algorithm 1) to
+sustain sign vector {-1, 1} and the maximum each layer of
+model update, which specific details as follows:
+W = AmGradli ∈W (li ) = Sign(li ) ∗ Max(Abs(li )),
+
+(3)
+
+where W is local model update, li is the i-layer of W , Sign
+gets sign of gradient, Abs gets absolute of gradient, Max gets
+maximum of a layer of W .
+C. Adaptive OPTICS Clustering
+Regarding MLA and ALA, the advanced methods cluster
+local models from Xpoi and Xcln . For instance, FedCC utilizes
+K-Means to cluster the malicious model and benign model.
+Nevertheless, it is unable to entirely make a correct decision
+that group is benign or malicious and remove malicious clients
+from benign groups. In contrast, FLAME first proposes HDBSCAN to alleviate this issue by setting up a hyperparameter
+(min cluster size = n2 ) with the same attack assumption.
+There are no clear criteria for correctly determining which
+local model is malicious or benign. Especially, it lacks distance
+constraints from Xpoi and Xcln .
+Generally, requiring less computational complexity than
+HDBSCAN from FLAME, another mechanism DBSCAN has
+{eps, minP ts} hyperparameters to set the bound of benign
+model update and the minimum number of benign clients,
+respectively. In short, DBSCAN has clear distance criteria
+for separating malicious clients and benign clients, which
+is more effective and accurate when eliminating malicious
+clients from the benign group. Furthermore, for applying to
+relatively small amounts of malicious clients, OPTICS is more
+laxity eps than DBSCAN. Thus, our Fedward adopts adaptive
+OPTICS clustering (line 9 in Algorithm 1), which applies to
+varying degrees of deviation of X . More details are shown in
+Algorithm 2.
+
+Algorithm 2 AutoOPTICS
+Input: Global models update W ← {W1 , · · · , Wm }.
+Output: Indices of the majority group inds, the number of
+group |inds|.
+1: method = ’DBSCAN’ ▷ clustering method.
+2: Meuc = Dist(W , ’euclidean’) ▷ getting Euclidean distance.
+3: mins = ⌈m/2⌉ + 1 ▷ the min number clients of group.
+s
+4: Meuc
+= Topmins (Sort(Meuc )) ▷ Top function gets top
+mins values.
+s
+)
+5: eps = Median(Meuc
+6: inds, |inds| = OPTICS(Meuc , mins, eps, method)
+
+Before clustering, the center server computes Euclidean
+distance in W (line 2). Then, a subset of Meuc is selected
+with the number of mins after executing Sort to get the top
+s
+(line 4). For getting the eps, the center
+mins values Meuc
+s
+server executes Median to get median value of Meuc
+(line
+5). Finally, the center server clusters the Meuc to get benign
+model updates and the number of benign model (line 6).
+D. Adaptive Clipping
+For mitigating MLA and ALA, [10] proposes norm thresholding of updates to clip the model update. However, there is
+a lack of clear norm thresholding for eliminating the impact of
+MLA and ALA. And then, CRFL adopts norm thresholding
+by the specific parameter p but cannot adaptively set up p
+to constrain malicious model update. Subsequently, FLAME
+provides adaptive clipping to limit global model update on the
+basis of Median. When a bound of clipping or the number of
+malicious clients is much smaller, it will remove most of the
+benign clients’ critical information.
+In response to issues, Fedward adopts AmGrad to amplify
+model updates and takes the |inds|-th value of N orm to clip
+
+MNIST
+AER
+
+100
+
+PDR =15.625%
+
+PDR =31.25%
+
+10
+
+FedCC
+
+A. Comparison of Clustering Defense Method
+
+PDR =46.875%
+
+FLAME
+
+Fedward
+
+1
+
+FMNIST
+AER
+
+0.1
+100
+10
+1
+
+CIFAR10
+AER
+
+0.1
+100
+10
+1
+
+0.1
+
+IID
+
+25
+
+50
+
+75
+
+IID
+
+25
+
+50
+
+75
+
+IID
+
+25
+
+50
+
+75
+
+Fig. 3.
+AER (%) comparison of Fedward with prior work over
+MNIST/FMNIST/CIFAR10.
+
+the model updates (line 11 ∼ 15 in Algorithm 1).
+N orm = {||W1 ||2 , ||W2 ||2 , · · · , ||Wm ||2 }
+ρclip = N orm|inds|
+Wi = Wi /Max(1,
+
+N ormi
+),
+ρclip
+
+(4)
+
+where ||x||2 is the second norm, Max gets the maximum value,
+ρclip is the bound of clipping, N ormi is the i-th value of
+N orm, and Wi is the i-th of local model update.
+V. E XPERIMENTAL E VALUATION
+We implement a prototype of Fedward by PyTorch. Extensive experiments are conducted on the server equipped
+with 64-core CPUs, 128GB RAM, and 2 NVIDIA GeForce
+RTX 2080Ti. We evaluate the effectiveness of our Fedward by
+compared with five baselines. For fairness, the experimental
+settings are consistent with prior work.
+Datasets. We evaluate the performance of defense methods
+against the FBA in three common benchmark datasets, i.e.,
+MNIST [16], FMNIST [17], and CIFAR10 [18].
+Baselines. The Five state-of-the-art FBA defense methods are regarded as baselines, which cover the previously
+mentioned effective defense against FBA, i.e., Median [2],
+Trimmed-Mean [2], CRFL [3], FedCC [4], and FLAME [5].
+Attack. We assess the defense methods against the stateof-the-art distributed backdoor injection attack (DBA). For
+facilitated achieving in various types of FBA, DBA can tune
+the poisoning data rate (PDR) and the Non-IID data rate (NIR)
+to control the concealment and strength of the attack.
+Evaluation Metrics. In the experiments, we evaluate the
+scheme performance by three metrics: (1) AER indicates the
+rate at which malicious models escape from the clustering
+defense method. (2) AASR indicates the average FBA success
+rate of all iterations of the global model in the backdoor task.
+(3) MA indicates the accuracy of the model in the main task.
+The A’s goal is to maximize AASR and MA a well-performed
+defense model needs to minimize AASR.
+
+Since strong clustering can directly reject malicious models,
+we conduct experiments for FBA in clustering defense on
+FedCC (K-means), FLAME (HDBSCAN), and our Fedward
+(AutoOPTICS), respectively. Considering MLA, ALA, and
+AMSA in FBA, we perform different proportions of PDR
+and NIR. Fig. 2 presents the AER comparison of Fedward
+with prior work over the three benchmark datasets. Obviously,
+Fedward has the lowest AER, indicating that it outperforms
+in distinguishing malicious models. Notably, Fedward with
+AutoOPTICS is capable of defending malicious models completely over MNIST. Although, the AER over FMNIST and
+CIFAR10 (14.24% and 4.64%, respectively, when NIR = 25
+and PDR = 31.25%) are slightly poor, whereas it still outperforms FedCC and FLAME.
+FedCC presents the K-means method that gets worst in
+the Non-IID distribution with different PDR (approximately
+76% in AER ). Due to significant differences among benign
+features in different NIR settings, FedCC is unavailable in
+clustering it for eliminating malicious clients but malicious
+clients are readily detectable in the IID datasets with specific
+parameters (PDR = 31.25% and 46.875% over MNIST, PDR
+= 46.875% over FMNIST). FLAME fluctuates significantly in
+certain PDR and NIR settings, owing to the weak constraint
+of HDBSCAN against FBA, such as AER approaches 34.5%
+with PDR = 15.625% and NIR = 50%, and 23.92% with PDR
+= 46.875% and NIR = 25% in FMNIST and CIFAR10, respectively. In short, FedCC (K-means) and FLAME (HDBSCAN)
+are all similarly vulnerable against FBA, and our Fedward
+(AutoOPTICS) can be moderately improved by 33% ∼ 75%
+to the utmost extent, compared with FLAME and FedCC.
+B. Comparison of Defense Efficiency
+The AASR and MA comparison results of our Fedward
+and the baselines over MNIST/FMNIST/CIFAR10 with various PDR and NIR are shown in Table 1. We can see that
+FLAME and our Fedward are significantly superior to Median,
+Trimmed-Mean, CRFL, and FedCC in the NIR settings.
+With PDR = 15.625% and 31.25% over MNIST, the
+backdoor defense aimed at Median is effective, and it has
+higher accuracy than Fedward, while the median is invalid
+PDR = 46.875%. Additionally, Median is frail over FMNIST
+and CIFAR10. Trimmed-Mean is the most vulnerable and
+performs worst against FBA in IID and NIR settings, in
+which AASRs are 91.64% ∼ 98.53%, 55.7% ∼ 86.59%,
+and 87.8% ∼ 94.34% over MNIST, FMNIST, and CIFAR10,
+respectively. While it preserves a higher MA, its AASR
+maintain exceedingly high which is indefensible against FBA.
+CRFL can resist attacks to a certain extent for the IID setting,
+but when faced with Non-IID settings, it is vulnerable to
+being attacked. Taking MNIST as an example when PDR
+= 15.625%, its AASR is 3.00%, while 67.19% with NIR
+= 25%. FedCC has a similar performance to CRFL.
+FLAME has a significant reduction of AASR with the
+effective assistance of HDBSCAN, dynamic clipping, and
+perturbing noise against FBA. But, it performs worst in certain
+
+TABLE I
+AASR (%) AND MA (%) COMPARISON OF F EDWARD WITH PRIOR WORK OVER MNIST/FMNIST/CIFAR10.
+MNIST
+PDR(%)
+
+15.625
+
+31.25
+
+46.875
+
+Method
+Median
+Trimmed-Mean
+CRFL
+FedCC
+FLAME
+Fedward
+Median
+Trimmed-Mean
+CRFL
+FedCC
+FLAME
+Fedward
+Median
+Trimmed-Mean
+CRFL
+FedCC
+FLAME
+Fedward
+
+IID
+25
+AASR
+0.72
+91.64
+3.00
+61.34
+0.84
+0.68
+0.81
+92.74
+2.06
+0.92
+0.87
+0.80
+1.07
+96.39
+8.18
+0.86
+0.96
+0.79
+
+MA
+97.65
+98.18
+97.37
+97.12
+97.55
+97.62
+97.36
+98.15
+96.97
+97.64
+97.62
+97.69
+97.32
+98.28
+96.96
+97.52
+97.63
+97.68
+
+AASR
+1.89
+92.17
+67.19
+95.25
+1.4
+1.26
+3.63
+95.13
+88.41
+97.68
+2.91
+1.59
+10.72
+97.7
+90.38
+91.7
+1.66
+1.51
+
+MA
+97.29
+97.62
+97.04
+97.56
+96.52
+96.95
+96.92
+96.99
+96.55
+97.53
+96.34
+96.74
+95.93
+97.07
+97.35
+97.48
+96.47
+96.68
+
+NIR(%)
+50
+AASR
+MA
+2.6
+97.20
+94.93
+97.72
+45.16
+97.01
+93.49
+97.74
+2.04
+97.08
+1.09
+97.10
+2.99
+97.40
+96.79
+97.97
+76.08
+97.48
+96.11
+97.53
+1.18
+97.04
+0.92
+97.08
+3.18
+96.98
+97.56
+97.6
+40.51
+97.07
+95.3
+97.51
+1.53
+97.00
+1.23
+96.77
+
+FMNIST
+IID
+75
+AASR
+1.2
+93.56
+55.72
+84.85
+1.26
+0.82
+1.93
+98.53
+66.93
+86.29
+1.59
+1.55
+2.06
+96.83
+77.99
+96.17
+1.52
+1.11
+
+25
+MA
+97.68
+98.18
+97.62
+98.06
+97.21
+97.22
+97.25
+97.61
+97.57
+97.76
+97.08
+97.10
+97.01
+97.55
+97.44
+97.69
+97.13
+97.19
+
+AASR
+34.88
+55.7
+30.75
+42.28
+6.30
+5.09
+35.76
+85.92
+37.00
+8.25
+4.89
+4.52
+8.3
+86.59
+49.87
+5.26
+6.34
+5.11
+
+MA
+86.05
+86.78
+85.6
+85.39
+86.49
+86.59
+85.81
+86.59
+84.82
+86.12
+86.47
+86.82
+85.89
+86.86
+84.98
+86.58
+86.62
+86.63
+
+PDR and NIR settings. For CIFAR10 dataset with PDR
+= 31.25%, AASR derived from FLAME is up to 45.65%,
+compared with 9.67% from our Fedward. Fedward has the best
+AASRs followed by higher MA for various settings, indicating
+that it can defend a variety of FBA. It can moderately improve
+AASR (0.07% ↑∼ 67.25% ↑) over different benchmark
+datasets, compared to FLAME. With the increase in NIR, the
+defense effect from Fedward is gradually improved (AASR
+= 0.82% for MNIST when NIR = 75% and PDR = 15.625%).
+For different PDR, the trend of performance difference among
+frameworks is similar.
+VI. C ONCLUSION
+In this paper, we present a Flexible Federated Backdoor
+Defense Framework (Fedward) to eliminate the impact of
+backdoor attacks while maintaining the performance of the
+aggregated model on the main task. Combining with amplified
+magnitude sparsification (AmGrad) and adaptive OPTICS
+clustering (AutoOPTICS), Fedward completely eradicates
+various backdoor attacks while preserving the benign performance of the global model. Furthermore, with the assistance of
+the adaptive clipping method, Fedward can be applied for NonIID scenarios. The comprehensive experimental validation on
+benchmark datasets demonstrates our Fedward is practical
+and applicable to complex scenarios. We attempted to apply
+the proposed Fedward to some privacy-critical applications in
+future work.
+R EFERENCES
+[1] Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and
+Blaise Aguera Arcas, “Communication-efficient learning of deep networks from decentralized data,” in Artificial intelligence and statistics.
+PMLR, 2017, pp. 1273–1282.
+[2] Dong Yin, Yudong Chen, Ramchandran Kannan, and Peter Bartlett,
+“Byzantine-robust distributed learning: Towards optimal statistical
+rates,” in ICML. PMLR, 2018, pp. 5650–5659.
+[3] Chulin Xie, Minghao Chen, Pin-Yu Chen, and Bo Li, “Crfl: Certifiably
+robust federated learning against backdoor attacks,” in ICML. PMLR,
+2021, pp. 11372–11382.
+[4] Hyejun Jeong, Hamin Son, Seohu Lee, Jayun Hyun, and Tai-Myoung
+Chung, “FedCC: Robust federated learning against model poisoning
+attacks,” arXiv preprint arXiv:2212.01976, 2022.
+
+AASR
+56.99
+80.84
+68.02
+85.64
+19.95
+11.69
+73.38
+83.01
+86.53
+94.03
+9.97
+9.88
+70.74
+88.86
+84.73
+96.59
+39.09
+6.20
+
+MA
+82.07
+83.28
+82.15
+84.41
+81.05
+81.07
+81.08
+84.55
+83.59
+83.91
+81.94
+83.24
+79.34
+82.34
+82.93
+81.74
+80.66
+83.14
+
+NIR(%)
+50
+AASR
+MA
+36.22
+84.04
+82.39
+85.19
+79.54
+84.57
+71.27
+83.82
+7.65
+83.62
+7.20
+84.09
+64.02
+83.73
+82.41
+84.22
+77.27
+84.48
+73.51
+81.02
+27.45
+84.21
+9.85
+84.71
+62.54
+84.02
+66.85
+84.05
+76.22
+83.20
+68.35
+84.18
+9.06
+82.29
+6.68
+84.61
+
+CIFAR10
+IID
+75
+AASR
+52.17
+85.53
+76.76
+30.00
+31.35
+7.48
+53.17
+76.91
+76.73
+9.92
+12.03
+6.16
+52.45
+88.4
+62.47
+8.96
+7.65
+5.68
+
+25
+MA
+84.24
+85.47
+85.84
+84.29
+84.76
+85.09
+84.44
+84.95
+84.98
+83.68
+83.21
+84.60
+84.87
+85.17
+83.85
+84.28
+83.87
+84.54
+
+AASR
+64.9
+88.21
+69.57
+89.07
+2.94
+2.61
+70.24
+89.22
+81.06
+92.79
+2.48
+2.38
+73.43
+92.89
+78.97
+83.35
+2.60
+2.15
+
+MA
+70.5
+68.73
+70.61
+67.62
+75.00
+75.71
+70.71
+67.69
+70.54
+67.15
+75.52
+75.54
+70.49
+67.66
+70.23
+68.49
+75.05
+75.34
+
+AASR
+71.17
+89.71
+76.88
+88.97
+22.27
+9.09
+79.49
+93.05
+89.56
+90.43
+45.65
+9.67
+81.78
+94.34
+93.42
+94.67
+73.14
+5.89
+
+MA
+60.38
+60.86
+61.68
+58.58
+62.32
+64.36
+60.86
+60.97
+61.58
+62.41
+65.39
+67.45
+58.63
+57.6
+60.31
+61.16
+63.13
+65.43
+
+NIR(%)
+50
+MA
+64.28
+63.89
+63.7
+65.23
+68.10
+68.22
+63.52
+63.76
+63.31
+61.58
+69.37
+69.94
+62.86
+61.95
+64.49
+61.32
+68.26
+68.80
+
+AASR
+68.02
+89.97
+80.98
+84.01
+7.00
+4.59
+78.02
+93.33
+91.4
+91.58
+10.54
+4.42
+81.06
+93.89
+90.35
+93.6
+11.24
+4.16
+
+75
+AASR
+66.16
+87.87
+79.48
+81.61
+7.83
+4.17
+74.39
+91.13
+86.23
+92.71
+10.88
+4.63
+78.02
+94.21
+90.29
+90.86
+19.71
+4.41
+
+MA
+66.41
+64.65
+65.28
+64.54
+70.01
+70.35
+65.62
+63.79
+65.67
+65.30
+70.64
+71.40
+65.76
+62.96
+65.03
+65.12
+70.27
+71.52
+
+[5] Thien Duc Nguyen, Phillip Rieger, Huili Chen, Hossein Yalame, Helen
+Möllering, Hossein Fereidooni, Samuel Marchal, Markus Miettinen,
+Azalia Mirhoseini, Shaza Zeitouni, Farinaz Koushanfar, Ahmad-Reza
+Sadeghi, and Thomas Schneider, “FLAME: Taming backdoors in federated learning,” in USENIX Security, Boston, MA, Aug. 2022, pp.
+1415–1432, USENIX Association.
+[6] Thien Duc Nguyen, Samuel Marchal, Markus Miettinen, Hossein Fereidooni, N Asokan, and Ahmad-Reza Sadeghi, “DÏot: A federated selflearning anomaly detection system for iot,” in ICDCS. IEEE, 2019, pp.
+756–767.
+[7] Hossein Fereidooni, Samuel Marchal, Markus Miettinen, Azalia Mirhoseini, Helen Möllering, Thien Duc Nguyen, Phillip Rieger, Ahmad-Reza
+Sadeghi, Thomas Schneider, Hossein Yalame, et al., “SAFELearn: secure
+aggregation for private federated learning,” in SPW. IEEE, 2021, pp.
+56–62.
+[8] Luis Muñoz-González, Kenneth T Co, and Emil C Lupu, “Byzantinerobust federated machine learning through adaptive model averaging,”
+arXiv preprint arXiv:1909.05125, 2019.
+[9] Yansong Gao, Bao Gia Doan, Zhi Zhang, Siqi Ma, Jiliang Zhang, Anmin
+Fu, Surya Nepal, and Hyoungshick Kim, “Backdoor attacks and countermeasures on deep learning: A comprehensive review,” arXiv preprint
+arXiv:2007.10760, 2020.
+[10] Eugene Bagdasaryan, Andreas Veit, Yiqing Hua, Deborah Estrin, and Vitaly Shmatikov, “How to backdoor federated learning,” in International
+Conference on Artificial Intelligence and Statistics. PMLR, 2020, pp.
+2938– 2948.
+[11] Arjun Nitin Bhagoji, Supriyo Chakraborty, Prateek Mittal, and Seraphin
+Calo, “Analyzing federated learning through an adversarial lens,” in
+In- ternational Conference on Machine Learning. PMLR, 2019, pp.
+634–643.
+[12] Thien Duc Nguyen, Phillip Rieger, Markus Miettinen, and Ahmad-Reza
+Sadeghi, “Poisoning attacks on federated learning-based iot intrusion detection system,” in DISS, 2020, pp. 1–7.
+[13] Chulin Xie, Keli Huang, Pin-Yu Chen, and Bo Li, “DBA: Distributed
+backdoor attacks against federated learning,” in International Conference
+on Learning Representations, 2020.
+[14] Hongyi Wang, Kartik Sreenivasan, Shashank Rajput, Harit Vishwakarma, Saurabh Agarwal, Jy-yong Sohn, Kangwook Lee, and Dimitris
+Papailiopou- los, “Attack of the tails: Yes, you really can backdoor federated learning,” Advances in Neural Information Processing Systems,
+vol. 33, pp. 16070– 16084, 2020.
+[15] Wei Wen, Cong Xu, Feng Yan, Chunpeng Wu, Yandan Wang, Yiran
+Chen, and Hai Li, “Terngrad: Ternary gradients to reduce communication
+in distributed deep learning,” Advances in neural information processing
+sys- tems, vol. 30, 2017.
+[16] Yann LeCun, L éon Bottou, Yoshua Bengio, and Patrick Haffner,
+“Gradient- based learning applied to document recognition,” Proceedings
+of the IEEE, vol. 86, no. 11, pp. 2278–2324, 1998.
+[17] Han Xiao, Kashif Rasul, and Roland Vollgraf, “Fashion-mnist: a novel
+im- age dataset for benchmarking machine learning algorithms,” arXiv
+preprint arXiv:1708.07747, 2017.
+[18] Alex Krizhevsky, Vinod Nair, and Geoffrey Hinton, “The cifar-10
+dataset,” online: http://www. cs. toronto. edu/kriz/cifar. html, vol. 55,
+no. 5, 2014. 2.
+
+

@@ -1,0 +1,32 @@
+{
+  "title": "G$^2$uardFL: Safeguarding Federated Learning Against Backdoor Attacks through Attributed Client Graph Clustering",
+  "c_d_route": "hyperparameter-sweep",
+  "criteria": {
+    "C-a": {
+      "code": "YES",
+      "quote": "The defense scheme consists of four key components: a graph construction module that translates interclient relations into an attributed graph, a graph clustering module that assigns clients to distinct clusters, a dynamic filtering and clipping module that identifies malicious clients and limits their influence, and an adaptive poison eliminating module that removes previously implanted backdoors.",
+      "locator": "Abstract / §1; every module's stated purpose is defense against backdoor attacks -- \"an effective and robust defense that introduces the attributed client graph clustering technique to minimize the impact of backdoor attacks while preserving the primary task performance\" (§1), and the clipping module's purpose is \"To minimize the impact of these poisoned models, this module employs the average median norm of model updates to restrict this divergence\" (§5.3)"
+    },
+    "C-b": {
+      "code": "YES",
+      "quote": "Once clusters have been established in the preceding module, it is challenging to determine which clusters largely consist of malicious clients. ... Therefore, this module introduces the benign score to combine current and historical detection results and utilizes cluster size and benign scores to accurately identify malicious clients.",
+      "locator": "THE TWO SPANS ARE NOT ONE PASSAGE AND ARE NOT IN SOURCE ORDER, which the quotation's \" ... \" would otherwise imply. The first span is from §5.3 Dynamic Filtering and Clipping; the second precedes it in the paper, in the passage that introduces the benign score, where the reason is stated against cluster size alone (\"relying solely on cluster size (i.e., the number of clients per cluster) to identify malicious clusters is not suitable\"). They are quoted problem-then-solution rather than in document order, and a reader locating them should look in both places. The fourth module carries its own pairing reason in the same enumeration, \"an adaptive poison eliminating module that removes previously implanted backdoors\", i.e. what the filter cannot undo"
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "For instance, in an FL system with 25% malicious clients, G2 uardFL reduces the attack success rate to 10.61%, while maintaining a primary task performance of 73.05% on the CIFAR-10 dataset.",
+      "locator": "Abstract; §7.2 Table 3, where every row is the composed pipeline's own ASR and ACC"
+    },
+    "C-d": {
+      "code": "YES",
+      "quote": "TABLE 7: Impacts of κ1 , κ2 , κ3 and κ4 on G2 uardFL(%).",
+      "locator": "§7.5, Table 7; κ1 and κ2 are defined at §5.1 Eq. (3), \"κ1 and κ2 , both within the range [0, 1], are employed to balance historical and current graphs\", i.e. parameters of the graph-construction stage upstream of the clustering and the filter, which are held fixed. Table 6, \"The impact of M on G2 uardFL(%)\", sweeps the upstream feature stage's measure set in the same way"
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "The outcomes affirm our hypothesis, as the graph-based detection method utilizes clustering algorithms on attributed graphs to acquire more representative latent representations.",
+      "locator": "§7.2; a second attribution about a competitor's composition is at §7.2, \"Although FLAME exhibits a commendable performance in identifying malicious clients, its effectiveness in defending against backdoor attacks is relatively [poor]\""
+    }
+  },
+  "coder_note": "C-a = YES AND THIS IS THE FOURTH DESIGN = YES ROW: four modules, every one of them stated as defense against backdoors, applied to the same round as a sequential pipeline. Amendment 3 does no work here -- there is no privacy or compression component to disqualify. Distinctness is not in doubt either: clustering-based detection, norm clipping against the median, and post-aggregation backdoor removal are three different defense families, and the paper's own Table 1 classifies them as such.\n\nWHY C-d RESTS ON TABLE 7 AND NOT ON THE ABLATION TABLE. Table 10 is labelled \"Results of ablation study\" and it compares G2uardFL against G2uardFL^1, the variant WITHOUT the adaptive poison eliminating module. APE is the last stage in the pipeline -- it acts on the global model after aggregation -- so removing it varies the DOWNSTREAM mechanism with the upstream held fixed. That is the direction prop:identification_full explicitly declines, and it is the same trap CrowdGuard's Table V set. The code is YES on a different table: Table 7 sweeps kappa_1 and kappa_2, which Eq. (3) defines as the coefficients balancing the historical and current attributed graphs, i.e. the graph-construction stage that feeds a fixed clustering module and a fixed filter, with the attack fixed. Table 6's sweep of the statistical-measure set M is the same shape one stage earlier. Rule 4's benefit of the doubt is not needed for Table 7 but would cover it.\n\nAN OBSERVATION WORTH CARRYING INTO A5, BECAUSE IT IS THE AUDIT'S OWN THESIS APPEARING IN SOMEONE ELSE'S TABLE. In Table 4, G2uardFL^1 -- the variant with the LAST defense stage deleted -- has HIGHER malicious-client detection precision, recall and F1 than the full pipeline on three of four tasks (CIFAR-10 87.92/93.66/90.70 against 78.49/82.84/80.61), while Table 10 shows the full pipeline with far lower ASR (CIFAR-10 alpha=inf: 1.11 against 79.44). The component that improves the composed system's defense outcome makes the intermediate detector's own metric worse. That is a composed-system-versus-constituent divergence measured by a third party, and it is a stronger external corroboration of the paper's premise than anything the frame was set up to look for.\n\nThe extractor's C-d bucket returned 11 candidates over 97568 characters and NONE of them was Table 6, 7 or 10; the ablation was found by a targeted grep for \"ablation|w/o |without (the|our)|variant\". The Table 6 body extracts garbled -- its rows interleave with Table 7 and Figure 4 in the pdftotext output -- so the C-d code is anchored on Table 7's caption plus Eq. (3)'s definition, both of which extract cleanly, and not on any number read out of Table 6."
+}

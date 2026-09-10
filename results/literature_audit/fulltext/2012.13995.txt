@@ -1,0 +1,3611 @@
+FLTrust: Byzantine-robust Federated Learning via
+Trust Bootstrapping
+Xiaoyu Cao∗1 , Minghong Fang∗2 , Jia Liu2 , Neil Zhenqiang Gong1
+1
+
+arXiv:2012.13995v3 [cs.CR] 12 Apr 2022
+
+2
+
+Duke University, {xiaoyu.cao, neil.gong}@duke.edu
+The Ohio State University, {fang.841, liu.1736}@osu.edu
+
+Abstract—Byzantine-robust federated learning aims to enable
+a service provider to learn an accurate global model when a
+bounded number of clients are malicious. The key idea of existing
+Byzantine-robust federated learning methods is that the service
+provider performs statistical analysis among the clients’ local
+model updates and removes suspicious ones, before aggregating
+them to update the global model. However, malicious clients can
+still corrupt the global models in these methods via sending
+carefully crafted local model updates to the service provider. The
+fundamental reason is that there is no root of trust in existing
+federated learning methods, i.e., from the service provider’s
+perspective, every client could be malicious.
+In this work, we bridge the gap via proposing FLTrust, a
+new federated learning method in which the service provider
+itself bootstraps trust. In particular, the service provider itself
+collects a clean small training dataset (called root dataset) for
+the learning task and the service provider maintains a model
+(called server model) based on it to bootstrap trust. In each
+iteration, the service provider first assigns a trust score to each
+local model update from the clients, where a local model update
+has a lower trust score if its direction deviates more from the
+direction of the server model update. Then, the service provider
+normalizes the magnitudes of the local model updates such that
+they lie in the same hyper-sphere as the server model update
+in the vector space. Our normalization limits the impact of
+malicious local model updates with large magnitudes. Finally,
+the service provider computes the average of the normalized local
+model updates weighted by their trust scores as a global model
+update, which is used to update the global model. Our extensive
+evaluations on six datasets from different domains show that
+our FLTrust is secure against both existing attacks and strong
+adaptive attacks. For instance, using a root dataset with less than
+100 examples, FLTrust under adaptive attacks with 40%-60% of
+malicious clients can still train global models that are as accurate
+as the global models trained by FedAvg under no attacks, where
+FedAvg is a popular method in non-adversarial settings.
+
+I.
+
+I NTRODUCTION
+
+Federated learning (FL) [22], [28] is an emerging distributed learning paradigm on decentralized data. In FL, there
+are multiple clients (e.g., smartphones, IoT devices, and edge
+devices) and a service provider (e.g., Google, Apple, and IBM).
+Each client holds a local training dataset; and the service
+∗ Equal contribution.
+
+Network and Distributed Systems Security (NDSS) Symposium 2021
+21-24 February 2021, San Diego, CA, USA
+ISBN 1-891562-66-5
+https://dx.doi.org/10.14722/ndss.2021.24434
+www.ndss-symposium.org
+
+provider enables the clients to jointly learn a model (called
+global model) without sharing their raw local training data
+with the service provider. Due to its potential promise of
+protecting private/proprietary client data, particularly in the
+age of emerging privacy regulations such as General Data
+Protection Regulation (GDPR), FL has been deployed by highprofile companies. For instance, Google has deployed FL for
+next-word prediction on Android Gboard [1]; WeBank uses
+FL for credit risk prediction [3]; and more than 10 leading
+pharmaceutical companies leverage FL for drug discovery in
+the project MELLODDY [2]. Roughly speaking, FL iteratively
+performs the following three steps: the server provided by the
+service provider sends the current global model to the clients
+or a selected subset of them; each selected client trains a
+model (called local model) via fine-tuning the global model
+using its own local training data and sends the local model
+updates back to the server1 ; and the server aggregates the local
+model updates to be a global model update according to an
+aggregation rule and uses it to update the global model. For
+instance, FedAvg [28], a popular FL method in non-adversarial
+settings developed by Google, computes the average of the
+local model updates weighted by the sizes of local training
+datasets as the global model update.
+However, due to its distributed nature, FL is vulnerable to
+adversarial manipulations on malicious clients, which could
+be fake clients injected by an attacker or genuine clients
+compromised by an attacker. For instance, malicious clients
+can corrupt the global model via poisoning their local training
+data (known as data poisoning attacks [8], [32]) or their local
+model updates sent to the server (called local model poisoning
+attacks [15], [7], [5], [43]). The corrupted global model makes
+incorrect predictions for a large number of testing examples
+indiscriminately (called untargeted attacks) [15], or it predicts
+attacker-chosen target labels for attacker-chosen target testing
+examples while the predicted labels for other non-target testing
+examples are unaffected (called targeted attacks) [5], [7], [43].
+For instance, the global model in FedAvg can be arbitrarily
+manipulated by a single malicious client [9], [48].
+Byzantine-robust FL methods [9], [12], [29], [46], [48]
+aim to address malicious clients. The goal therein is to learn
+an accurate global model when a bounded number of clients
+are malicious. Their key idea is to leverage Byzantine-robust
+aggregation rules, which essentially compare the clients’ local
+model updates and remove statistical outliers before using
+them to update the global model. For instance, Median [48]
+computes the coordinate-wise median of the clients’ local
+1 It is algorithmically equivalent to send local models instead of their updates
+to the server.
+
+these attacks even if the root dataset has less than 100 training
+examples, while existing Byzantine-robust FL methods are
+vulnerable to them or a subset of them. For instance, a CNN
+global model learnt using FLTrust has a testing error rate of
+0.04 under all the evaluated attacks on MNIST-0.1. However,
+the Krum attack can increase the testing error rate of the CNN
+global model learnt by Krum from 0.10 to 0.90. Moreover, we
+treat FedAvg under no attacks as a baseline and compare our
+FLTrust under attacks with it. Our results show that FLTrust
+under attacks achieves similar testing error rates to FedAvg
+under no attacks. We also study different variants of FLTrust
+and the impact of different system parameters on FLTrust. For
+instance, our results show that FLTrust works well once the
+root dataset distribution does not diverge too much from the
+overall training data distribution of the learning task.
+
+model updates as the global model update. However, recent
+studies [7], [15] showed that existing Byzantine-robust FL
+methods are still vulnerable to local model poisoning attacks
+on malicious clients. The fundamental reason is that they have
+no root of trust. Specifically, from the server’s perspective,
+every client could be malicious, providing no root of trust for
+the server to decide which local model updates are suspicious.
+Our work: In this work, we propose a new Byzantine-robust
+FL method called FLTrust. Instead of completely relying on the
+local model updates from clients, the server itself bootstraps
+trust in FLTrust. Specifically, the service provider manually
+collects a small clean training dataset (called root dataset) for
+the learning task. The server maintains a model (called server
+model) for the root dataset just like how a client maintains a
+local model. In each iteration, the server updates the global
+model by considering both its server model update and the
+clients’ local model updates.
+
+FLTrust can defend against adaptive attacks: An attacker can adapt its attack to FLTrust. Therefore, we also
+evaluate FLTrust against adaptive attacks. Specifically, Fang
+et al. [15] proposed a general framework of local model
+poisoning attacks, which can be applied to optimize the attacks
+for any given aggregation rule. An attacker can substitute the
+aggregation rule of FLTrust into the framework and obtain an
+adaptive attack that is particularly optimized against FLTrust.
+Our empirical results show that FLTrust is still robust against
+such adaptive attacks. For instance, even when 60% of the
+clients are malicious and collude with each other, FLTrust can
+still learn a CNN global model with testing error rate 0.04 for
+MNIST-0.1. This testing error rate is the same as that of the
+CNN global model learnt by FedAvg under no attacks.
+
+Our new Byzantine-robust aggregation rule: Specifically,
+we design a new Byzantine-robust aggregation rule in FLTrust
+to incorporate the root of trust. A model update can be
+viewed as a vector, which is characterized by its direction and
+magnitude. An attacker can manipulate both the directions and
+magnitudes of the local model updates on the malicious clients.
+Therefore, our aggregation rule takes both the directions and
+magnitudes into considerations when computing the global
+model update. Specifically, the server first assigns a trust score
+(TS) to a local model update, where the trust score is larger
+if the direction of the local model update is more similar to
+that of the server model update. Formally, we use the cosine
+similarity between a local model update and the server model
+update to measure the similarity of their directions. However,
+the cosine similarity alone is insufficient because a local model
+update, whose cosine similarity score is negative, can still
+have a negative impact on the aggregated global model update.
+Therefore, we further clip the cosine similarity score using the
+popular ReLU operation. The ReLU-clipped cosine similarity
+is our trust score. Then, FLTrust normalizes each local model
+update by scaling it to have the same magnitude as the server
+model update. Such normalization essentially projects each
+local model update to the same hyper-sphere where the server
+model update lies in the vector space, which limits the impact
+of the poisoned local model updates with large magnitudes.
+Finally, FLTrust computes the average of the normalized local
+model updates weighted by their trust scores as the global
+model update, which is used to update the global model.
+
+Our contributions can be summarized as follows:
+•
+
+We propose the first federated learning method
+FLTrust that bootstraps trust to achieve Byzantine
+robustness against malicious clients.
+
+•
+
+We empirically evaluate FLTrust against existing attacks. Our results show that FLTrust can defend
+against them.
+
+•
+
+We design adaptive attacks against FLTrust and evaluate their performance. Our results show that FLTrust
+is also robust against the adaptive attacks.
+II.
+
+BACKGROUND AND R ELATED W ORK
+
+A. Background on Federated Learning (FL)
+Suppose we have n clients and each client hasSa local
+n
+training dataset Di , i = 1, 2, · · · , n. We use D = i=1 Di
+to denote the joint training data. Each training example in D
+is drawn from an unknown distribution X . The clients aim to
+collaboratively learn a shared global model with the help of a
+service provider. The optimal global model w∗ is a solution to
+the following optimization problem: w∗ = arg minw F (w),
+where F (w) = ED∼X [f (D, w)] is the expectation of the
+empirical loss f (D, w) on the joint training dataset D. Since
+the expectation is hard to evaluate, the global model is often
+learnt via minimizing the empirical loss in practice, i.e.,
+arg minw f (D, w) is the learnt global model. Specifically,
+each client maintains a local model for its local training
+dataset. Moreover, a service provider’s server maintains the
+global model via aggregating the local model updates from
+
+FLTrust can defend against existing attacks: We perform extensive empirical evaluation on six datasets from
+different domains, including five image classification datasets
+(MNIST-0.1, MNIST-0.5, Fashion-MNIST, CIFAR-10, and
+CH-MNIST) and a smartphone-based human activity recognition dataset (Human Activity Recognition). We compare
+FLTrust with multiple existing Byzantine-robust FL methods
+including Krum [9], Trimmed mean [48], and Median [48].
+Moreover, we evaluate multiple poisoning attacks including
+label flipping attack (a data poisoning attack), Krum attack and
+Trim attack (untargeted local model poisoning attacks) [15],
+as well as Scaling attack2 (targeted local model poisoning
+attack) [5]. Our results show that FLTrust is secure against
+2 The Scaling attack is also known as a backdoor attack.
+
+2
+
+Step Ⅲ. The server aggregates local model updates
+and uses them to update the global model.
+
+Step Ⅱ. The clients
+train local models
+and send local model
+updates to the server.
+Step Ⅰ. The server sends the global model to the clients.
+
+Fig. 1: Illustration of the three steps in FL.
+the clients. Specifically, FL iteratively performs the following
+three steps (illustrated in Figure 1):
+•
+
+Step I: Synchronizing the global model with clients.
+The server sends the current global model w to the
+clients or a subset of them.
+
+•
+
+Step II: Training local models. Each client trains a
+local model via fine-tuning the global model using its
+local training dataset. Formally, the ith client solves
+the optimization problem minwi f (Di , wi ), where wi
+is the client’s local model. In particular, the client
+initializes its local model as the global model and uses
+stochastic gradient descent to update the local model
+for one or more iterations. Then, each client sends its
+local model update gi = wi − w (i.e., the difference
+between its local model and the current global model)
+to the server.
+
+•
+
+rules include Krum [9], Trimmed mean [48], and Median [48],
+which we discuss next.
+Krum [9]: Krum selects one of the n local model updates in
+each iteration as the global model update based on a squaredistance score. Suppose at most f clients are malicious. The
+score for the ith client is computed as follows:
+X
+si =
+kgj − gi k22 ,
+(1)
+gj ∈Γi,n−f −2
+
+where Γi,n−f −2 is the set of n−f −2 local model updates that
+have the smallest Euclidean distance to gi . The local model
+update of the client with the minimal score will be chosen as
+the global model update to update the global model.
+Trimmed Mean (Trim-mean) [48]: Trimmed mean is a
+coordinate-wise aggregation rule that considers each model
+parameter individually. For each model parameter, the server
+collects its values in all local model updates and sorts them.
+Given a trim parameter k < n2 , the server removes the largest
+k and the smallest k values, and then computes the mean of
+the remaining n − 2k values as the value of the corresponding
+parameter in the global model update. The trim parameter k
+should be at least the number of malicious clients to make
+Trim-mean robust. In other words, Trim-mean can tolerate less
+than 50% of malicious clients.
+
+Step III: Updating the global model via aggregating
+the local model updates. The server computes a
+global model update g via aggregating the local model
+updates according to some aggregation rule. Then,
+the server updates the global model using the global
+model update, i.e., w = w + α · g, where α is the
+global learning rate.
+
+The aggregation rule plays a key role in FL. Different FL
+methods essentially use different aggregation rules. Next, we
+discuss popular aggregation rules.
+
+Median [48]: Median is another coordinate-wise aggregation
+rule. Like Trim-mean, in Median, the server also sorts the
+values of each individual parameter in all local model updates.
+Instead of using the mean value after trim, Median considers
+the median value of each parameter as the corresponding
+parameter value in the global model update.
+
+1) FedAvg: FedAvg [28] was proposed by Google. FedAvg
+computes the average of the clients’ local model updates as
+the global model update, where each client is P
+weighted by
+n
+i|
+its number of training examples. Formally, g = i=1 |D
+N gi ,
+where |Di | is the local training dataset size on the ith client
+and N is the total number of training examples. FedAvg
+is the state-of-the-art FL method in non-adversarial settings.
+However, the global model in FedAvg can be arbitrarily
+manipulated by a single malicious client [9], [48].
+
+Existing FL methods suffer from a key limitation: they are
+vulnerable to sophisticated local model poisoning attacks on
+malicious clients, which we discuss in the next section.
+B. Poisoning Attacks to Federated Learning
+
+2) Byzantine-robust Aggregation Rules: Most Byzantinerobust FL methods use Byzantine-robust aggregation rules
+(see, e.g., [9], [12], [29], [34], [44], [47], [48], [31]) that
+aim to tolerate Byzantine client failures. One exception is
+that Li et al. [26] introduced a norm regularization term into
+the loss function. Examples of Byzantine-robust aggregation
+
+Poisoning attacks generally refer to attacking the training
+phase of machine learning. One category of poisoning attacks
+called data poisoning attacks aim to pollute the training data
+to corrupt the learnt model. Data poisoning attacks have been
+demonstrated to many machine learning systems such as spam
+detection [32], [35], SVM [8], recommender systems [16],
+3
+
+[17], [25], [45], neural networks [11], [18], [27], [30], [36],
+[37], and graph-based methods [20], [41], [49], as well as
+distributed privacy-preserving data analytics [10], [14]. FL is
+also vulnerable to data poisoning attacks [38], i.e., malicious
+clients can corrupt the global model via modifying, adding,
+and/or deleting examples in their local training datasets. For
+instance, a data poisoning attack known as label flipping attack
+changes the labels of the training examples on malicious clients
+while keeping their features unchanged.
+
+update because it is aggregated over all clients’ local model
+updates. For instance, in FedAvg, the effect of the attack will
+be diluted after the averaging [5]. Therefore, the attack further
+scales the poisoned local model updates on malicious clients
+by a factor that is much larger than 1. The scaled poisoned
+local model updates are then sent to the server.
+
+Moreover, unlike centralized learning, FL is further vulnerable to local model poisoning attacks [5], [7], [15], [43],
+in which the malicious clients poison the local models or
+their updates sent to the server. Depending on the attacker’s
+goal, local model poisoning attacks can be categorized into
+untargeted attacks [15] and targeted attacks [5], [7], [43].
+Untargeted attacks aim to corrupt the global model such that
+it makes incorrect predictions for a large number of testing
+examples indiscriminately, i.e., the testing error rate is high.
+Targeted attacks aim to corrupt the global model such that it
+predicts attacker-chosen target labels for attacker-chosen target
+testing examples while the predicted labels for other non-target
+testing examples are unaffected.
+
+Attack model: We follow the attack model in previous
+works [5], [7], [15]. Specifically, an attacker controls some
+malicious clients, which can be fake clients injected by the attacker or genuine ones compromised by the attacker. However,
+the attacker does not compromise the server. The malicious
+clients can send arbitrary local model updates to the server in
+each iteration of the FL training process. Typically, an attacker
+has the following partial knowledge about an FL system:
+local training data and local model updates on the malicious
+clients, loss function, and learning rate. We notice that the
+Scaling attack [5] only requires such partial knowledge. The
+Krum and Trim attacks [15] are also applicable in this partialknowledge setting. However, they are stronger in the fullknowledge setting [15], where the attacker knows everything
+about the FL training process, including the local training data
+and local model updates on all clients in each iteration, as well
+as the FL’s aggregation rule. Therefore, we consider such fullknowledge setting to show that our method can defend against
+strong attacks. Moreover, the attacker can perform adaptive
+attacks to FLTrust, which we discuss in Section V.
+
+III.
+
+Note that any data poisoning attack can be transformed
+to a local model poisoning attack, i.e., we can compute the
+local model update on a malicious client’s poisoned local
+training dataset and treat it as the poisoned local model update.
+Moreover, recent studies [7], [15] showed that local model poisoning attacks are more effective than data poisoning attacks
+against FL. Therefore, we focus on local model poisoning
+attacks in this work. Next, we discuss two state-of-the-art
+untargeted attacks (i.e., Krum attack and Trim attack) [15] and
+one targeted attack (i.e., Scaling attack) [5].
+
+P ROBLEM S ETUP
+
+Defense goals: We aim to design an FL method that achieves
+Byzantine robustness against malicious clients without sacrificing the fidelity and efficiency. In particular, we treat FedAvg
+under no attacks as a baseline to discuss fidelity and efficiency,
+i.e., our method should be robust against malicious clients
+while being as accurate and efficient as FedAvg under no
+attacks. Specifically, we aim to design a Byzantine-robust FL
+method that achieves the following defense goals:
+
+Krum attack and Trim attack [15]: Fang et al. [15]
+proposed a general framework for local model poisoning
+attacks, which can be applied to optimize the attacks for any
+given aggregation rule. Assuming the global model update
+without attack is g, Fang et al. [15] formulate the attack
+as an optimization problem that aims to change the global
+model update the most along the opposite direction of g, by
+optimizing the poisoned local model updates sent from the
+malicious clients to the server. Different aggregation rules lead
+to different instantiations of the optimization problem. Fang et
+al. applied the framework to optimize local model poisoning
+attacks for Krum (called Krum attack) as well as Trim-mean
+and Median (called Trim attack).
+Scaling attack [5]: This attack aims to corrupt the global
+model to predict attacker-chosen target labels for attackerchosen target testing examples, while the predicted labels
+for other testing examples are unaffected (i.e., the normal
+testing error rate remains the same). For instance, the attackerchosen target testing examples can be normal testing examples
+embedded with a predefined backdoor trigger (e.g., a logo, a
+specific feature pattern). To achieve the goal, the Scaling attack
+adds trigger-embedded training examples with the attackerchosen target label to the local training data of malicious
+clients. The local model updates on malicious clients are then
+computed based on the local training datasets augmented with
+the trigger-embedded examples. However, the poisoned local
+model updates may have limited impact on the global model
+4
+
+•
+
+Fidelity. The method should not sacrifice the classification accuracy of the global model when there is
+no attack. In particular, under no attacks, the method
+should be able to learn a global model that is as
+accurate as the global model learnt by FedAvg, a
+popular FL method in non-adversarial settings.
+
+•
+
+Robustness. The method should preserve the classification accuracy of the global model in the presence of
+malicious clients performing strong poisoning attacks.
+In particular, we aim to design a method that can learn
+a global model under attacks that is as accurate as
+the global model learnt by FedAvg under no attacks.
+Moreover, for targeted attacks, our goal further includes that the global model is unlikely to predict the
+attacker-chosen target labels for the attacker-chosen
+target testing examples.
+
+•
+
+Efficiency. The method should not incur extra computation and communications overhead, especially to the
+clients. Clients in FL are often resource-constrained
+devices. Therefore, we aim to design a method that
+does not increase the workload of the clients, compared to FedAvg under no attacks.
+
+Local model updates 𝒈𝒈1 , 𝒈𝒈2
+&
+server model update 𝒈𝒈0
+𝒈𝒈1
+
+𝒈𝒈2
+
+𝜃𝜃2
+
+𝒈𝒈0
+
+ReLU-clipped cosine similarity based trust score
+𝒈𝒈1
+
+𝒈𝒈2
+
+𝜃𝜃2
+
+⟨𝒈𝒈1 , 𝒈𝒈0 ⟩
+𝑐𝑐1 = cos 𝜃𝜃1 =
+𝒈𝒈1 � 𝒈𝒈0
+𝒈𝒈0
+⟨𝒈𝒈2 , 𝒈𝒈0 ⟩
+𝑐𝑐2 = cos 𝜃𝜃2 =
+𝒈𝒈2 � 𝒈𝒈0
+�1
+𝒈𝒈
+�2
+𝒈𝒈
+
+𝒈𝒈0
+
+Aggregation
+
+𝑇𝑇𝑇𝑇1 = ReLU 𝑐𝑐1 = 𝑐𝑐1
+𝑇𝑇𝑇𝑇2 = ReLU 𝑐𝑐2 = 0
+
+�1 =
+𝒈𝒈
+
+�2 =
+𝒈𝒈
+
+𝒈𝒈0
+� 𝒈𝒈1
+𝒈𝒈1
+
+𝒈𝒈 =
+
+1
+� 1 + 𝑇𝑇𝑇𝑇2 � 𝒈𝒈
+� 2)
+(𝑇𝑇𝑇𝑇1 � 𝒈𝒈
+𝑇𝑇𝑇𝑇1 + 𝑇𝑇𝑇𝑇2
+
+𝒈𝒈0
+� 𝒈𝒈2
+𝒈𝒈2
+
+Normalizing the magnitudes of local model updates
+
+Fig. 2: Illustration of our aggregation rule, which is applied in each iteration of FLTrust.
+
+Existing Byzantine-robust FL methods such as Krum,
+Trim-mean, and Median do not satisfy the fidelity and robustness goals. Moreover, Krum does not satisfy the efficiency goal
+because it requires the server to compute pairwise distances
+of the clients’ local model updates, which is computationally
+expensive when the number of clients is large.
+
+FLTrust considers both the server model update and the clients’
+local model updates to update the global model.
+Specifically, an attacker can manipulate the directions of
+the local model updates on the malicious clients such that the
+global model is updated towards the opposite of the direction
+along which it should be updated; or the attacker can scale
+up the magnitudes of the local model updates to dominate
+the aggregated global model update. Therefore, we take both
+the directions and the magnitudes of the model updates into
+consideration. In particular, FLTrust first assigns a trust score
+(TS) to a local model update based on its direction similarity
+with the server model update. Formally, our trust score of
+a local model update is its ReLU-clipped cosine similarity
+with the server model update. Then, FLTrust normalizes each
+local model update by scaling it to have the same magnitude
+as the server model update. Such normalization essentially
+projects each local model update to the same hyper-sphere
+where the server model update lies in the vector space, which
+limits the impact of the poisoned local model updates with
+large magnitudes. Finally, FLTrust computes the average of
+the normalized local model updates weighted by their trust
+scores as the global model update, which is used to update the
+global model.
+
+Defender’s knowledge and capability: We consider the
+defense is performed on the server side. The server does not
+have access to the raw local training data on the clients, and
+the server does not know the number of malicious clients.
+However, the server has full access to the global model as well
+as the local model updates from all clients in each iteration.
+Moreover, the server itself can collect a clean small training
+dataset (we call it root dataset) for the learning task. We require
+the root dataset to be clean from poisoning. The server can
+collect a clean root dataset by manual labeling. For instance,
+Google enlists its employees to type with Gboard to create
+the root dataset for its federated next-word prediction [1];
+when the learning task is digit recognition, the service provider
+can hire human workers to label some digits. Since we only
+require a small root dataset, e.g., 100 training examples, it is
+often affordable for the server to perform manual collection
+and labeling. The root dataset may or may not follow the
+same distribution as the overall training data distribution of the
+learning task. Our experimental results show that our method
+is effective once the root dataset distribution does not deviate
+too much from the overall training data distribution.
+IV.
+
+B. Our New Aggregation Rule
+Our new aggregation rule considers both the directions and
+magnitudes of the local model updates and the server model
+update to compute the global model update. Figure 2 illustrates
+our aggregation rule.
+
+O UR FLT RUST
+
+ReLU-clipped cosine similarity based trust score: An
+attacker can manipulate the directions of the local model
+updates on the malicious clients such that the global model
+update is driven to an arbitrary direction that the attacker
+desires. Without root of trust, it is challenging for the server
+to decide which direction is more “promising” to update the
+global model. In our FLTrust, the root trust origins from the
+direction of the server model update. In particular, if the
+direction of a local model update is more similar to that of
+the server model update, then the direction of the local model
+update may be more “promising”. Formally, we use the cosine
+similarity, a popular metric to measure the angle between two
+vectors, to measure the direction similarity between a local
+model update and the server model update.
+
+A. Overview of FLTrust
+In our FLTrust, the server itself collects a small clean
+training dataset (called root dataset) and maintains a model
+(called server model) for it just like how a client maintains a
+local model. In each iteration, our FLTrust follows the general
+three steps of FL discussed in Section II-A. However, our
+FLTrust is different from existing FL methods in Step II and
+Step III. Specifically, in Step II, each client trains its local
+model in existing FL methods, while the server also trains its
+server model via fine-tuning the current global model using
+the root dataset in FLTrust. In Step III, existing FL methods
+only consider the clients’ local model updates to update the
+global model, which provides no root of trust. On the contrary,
+5
+
+Algorithm 1 ModelUpdate(w, D, b, β, R)
+
+Algorithm 2 FLTrust
+
+Output: Model update.
+1: w 0 ← w.
+2: for r = 1, 2, · · · , R do
+3:
+Randomly sample a batch Db from D.
+4:
+wr ← wr−1 − β∇Loss(Db ; w).
+5: end for
+6: return w R − w.
+
+Input: n clients with local training datasets Di , i =
+1, 2, · · · , n; a server with root dataset D0 ; global learning
+rate α; number of global iterations Rg ; number of clients
+τ sampled in each iteration; local learning rate β; number
+of local iterations Rl ; and batch size b.
+Output: Global model w.
+1: w ← random initialization.
+2: for r = 1, 2, · · · , Rg do
+3:
+// Step I: The server sends the global model to clients.
+4:
+The server randomly samples τ clients C1 , C2 , · · · , Cτ
+from {1, 2, · · · , n} and sends w to them.
+
+However, the cosine similarity alone faces a challenge.
+Specifically, if a local model update and the server model
+update are in opposite directions, their cosine similarity is negative, which still has negative impact on the aggregated global
+model update (see our experimental results in Section VI-B).
+Therefore, we exclude such local model updates from the
+aggregation by clipping the cosine similarity. In particular, we
+use the popular ReLU operation for clipping. Formally, our
+trust score is defined as follows:
+T Si = ReLU (ci ),
+
+5:
+6:
+7:
+8:
+9:
+10:
+11:
+12:
+
+(2)
+
+where T Si is the trust score for the ith local model update gi ,
+and ci is the cosine similarity between gi and the server model
+i ,g0 i
+update g0 , i.e., ci = ||ghgi ||·||g
+. ReLU is defined as follows:
+0 ||
+ReLU (x) = x if x > 0 and ReLU (x) = 0 otherwise.
+
+// Step III: Updating the global model via aggregating
+the local model updates.
+14:
+for i = C1 , C2 , · · 
+· , Cτ do 
+,g0 i
+15:
+T Si = ReLU kghgiikkg
+.
+0k
+13:
+
+Normalizing the magnitudes of local model updates: An
+attacker can also scale the magnitudes of the local model
+updates on the malicious clients by a large factor such that they
+dominate the global model update. Therefore, we normalize the
+magnitude of each local model update. Without root of trust,
+it is challenging to decide what quantity we should normalize
+to. However, the server has the root dataset to bootstrap trust
+in FLTrust. Therefore, we normalize each local model update
+such that it has the same magnitude as the server model update.
+Such normalization means that we rescale local model updates
+to be the same hyper-sphere where the server model update lies
+in the vector space. Formally, we have the following:
+ḡi =
+
+||g0 ||
+· gi ,
+||gi ||
+
+// Step II: Training local models and server model.
+// Client side.
+for i = C1 , C2 , · · · , Cτ do in parallel
+gi = M odelU pdate(w, Di , b, β, Rl ).
+Send gi to the server.
+end for
+// Server side.
+g0 = M odelU pdate(w, D0 , b, β, Rl ).
+
+16:
+17:
+18:
+
+0 ||
+ḡi = ||g
+||gi || · gi .
+end for
+τ
+P
+1
+T S Ci · ḡCi .
+g= P
+τ
+j=1
+
+T SCj i=1
+
+19:
+w ← w + α · g.
+20: end for
+21: return w.
+
+= P
+n
+
+1
+
+n
+X
+
+ReLU (ci ) ·
+
+ReLU (cj ) i=1
+
+||g0 ||
+· gi ,
+||gi ||
+
+(4)
+
+j=1
+
+(3)
+
+where g is the global model update. Note that if the server
+selects a subset of clients in an iteration, the global model
+update is aggregated from the local model updates of the
+selected clients. In principle, the server model update can
+be treated as a local model update with a trust score of 1
+and the global model update can be weighted average of the
+clients’ local model updates together with the server model
+update. However, such variant may negatively impact the
+global model because the root dataset is small and may not
+have the same distribution as the training data, but the server
+model update derived from it has a trust score of 1, reducing
+the contributions of the benign clients’ local model updates
+(see our experimental results in Section VI-B). Finally, we
+update the global model as follows:
+
+where gi is the local model update of the ith client in the
+current iteration, ḡi is the normalized local model update of
+the ith client, g0 is the server model update, and || · || means
+`2 norm of a vector. Our normalization ensures that no single
+local model update has too much impact on the aggregated
+global model update. Note that our normalization also enlarges
+a local model update with a small magnitude to have the
+same magnitude as the server model update. This is based on
+the intuition that local model updates with small magnitudes
+are more likely from benign clients, and thus enlarging their
+magnitudes helps reduce the impact of the poisoned local
+model updates from the malicious clients, leading to a better
+global model (see our experimental results in Section VI-B).
+
+w ← w + α · g,
+
+Aggregating the local model updates: We compute the
+average of the normalized local model updates weighted by
+their trust scores as the global model update:
+n
+X
+1
+g= P
+T S i · ḡi
+n
+T Sj i=1
+
+(5)
+
+where α is the global learning rate.
+C. Complete FLTrust Algorithm
+Algorithm 2 shows our complete FLTrust method. FLTrust
+performs Rg iterations and has three steps in each iteration.
+
+j=1
+
+6
+
+Assumption 3. Each client’s local training dataset Di (i =
+1, 2, · · · , n) and the root dataset D0 are sampled independently from the distribution X .
+
+In Step I, the server sends the current global model to the
+clients or a subset of them. In Step II, the clients compute the
+local model updates based on the global model and their local
+training data, which are then sent to the server. Meanwhile, the
+server itself computes the server model update based on the
+global model and the root dataset. The local model updates
+and the server model update are computed by the function
+ModelUpdate in Algorithm 1 via performing stochastic gradient descent for Rl iterations with a local learning rate β.
+In Step III, the server computes the global model update by
+aggregating the local model updates and uses it to update the
+global model with a global learning rate α.
+
+Theorem 1. Suppose Assumption 1-3 hold and FLTrust uses
+Rl = 1 and β = 1. For an arbitrary number of malicious
+clients, the difference between the global model learnt by
+FLTrust and the optimal global model w∗ under no attacks
+is bounded. Formally, we have the following with probability
+at least 1 − δ:
+t
+
+wt − w∗ ≤ (1 − ρ)
+
+w0 − w∗ + 12α∆1 /ρ,
+
+where wt 
+is the global model in the 
+tth iteration,
+p
+ρ = 1 −
+1 − µ2 /(4L2 ) + 24α∆2 + 2αL , α is the
+q
+p
+learning rate, ∆1 = σ1 |D20 | d log 6 + log(3/δ), ∆2 =
+s
+
+
+√
+q
+6σ22 r |D0 |
+|D0 |
+1
+2
+2
++
+d
+log
++
+log
+σ2 |D0 | d log 18L
+,
+σ2
+2
+d
+γ2 σ1 δ
+
+D. Formal Security Analysis
+As we discussed in Section II-A, the optimal global model
+w∗ is a solution to the following optimization problem:
+w∗ = arg minw∈Θ F (w) , ED∼X [f (D, w)], where
+Sn Θ is
+the parameter space of the global model, D = i=1 Di is
+the joint training dataset of the n clients, X is the training
+data distribution, f (D, w) is the empirical loss function on
+the training data D, and F (w) is the expected loss function.
+Our FLTrust is an iterative algorithm to find a global model to
+minimize the empirical loss function f (D, w). We show that,
+under some assumptions, the difference between the global
+model learnt by FLTrust under attacks and the optimal global
+model w∗ is bounded. Next, we first describe our assumptions
+and then describe our theoretical results.
+
+|D0 | is the size of the root dataset, d is the dimension
+of w, L2 = max {L, L1 }, √
+and r is some positive number
+such that kw − w∗ k ≤ r d for any w ∈ Θ (i.e., the
+parameter space Θ is constrained). When |1 − ρ| < 1, we
+have limt→∞ kwt − w∗ k ≤ 12α∆1 /ρ.
+Proof: See Appendix A.
+V.
+
+Assumption 1. The expected loss function F (w) is µ-strongly
+convex and differentiable over the space Θ with L-Lipschitz
+continuous gradient. Formally, we have the following for any
+b ∈ Θ:
+w, w
+µ
+b − wi + kw
+b − wk2 ,
+F( b
+w) ≥ F (w) + h∇F (w), w
+2
+k∇F (w) − ∇F ( b
+w)k ≤ L kw − b
+wk ,
+
+A DAPTIVE ATTACKS
+
+When an attacker knows our FLTrust is used to learn the
+global model, the attacker can adapt its attacks to FLTrust.
+Therefore, in this section, we design strong adaptive attacks
+to FLTrust. In particular, Fang et al. [15] proposed the stateof-the-art framework that can optimize local model poisoning
+attacks for any given aggregation rule. We generate adaptive
+attacks to FLTrust via instantiating this framework with our
+aggregation rule. Next, we first describe the general attack
+framework in [15], then we discuss how to design adaptive
+attacks to FLTrust based on the framework.
+
+where ∇ represents gradient, k·k represents `2 norm, and h·, ·i
+represents inner product of two vectors. Moreover, the empirical loss function f (D, w) is L1 -Lipschitz probabilistically.
+Formally, for any δ ∈ (0, 1), there exists an L1 such that:
+)
+(
+δ
+k∇f (D, w) − ∇f (D, b
+w)k
+≤ L1 ≥ 1 − .
+Pr
+sup
+kw − b
+wk
+3
+b
+w, b
+w∈Θ:w6=w
+
+A. Local Model Poisoning Attack Framework
+The framework of local model poisoning attacks introduced
+in [15] is general to all aggregation rules. Specifically, in each
+iteration of FL, the attacker aims to change the global model
+update the most along the opposite direction of the global
+model update under no attacks, by carefully crafting the local
+model updates on the malicious clients. Assuming the first
+m clients are malicious. The local model poisoning attack is
+formulated as the following optimization problem3 :
+
+Assumption 2. The gradient of the empirical loss function
+∇f (D, w∗ ) at the optimal global model w∗ is bounded.
+Moreover, the gradient difference h(D, w) = ∇f (D, w) −
+∇f (D, w∗ ) for any w ∈ Θ is bounded. Specifically, there
+exist positive constants σ1 and γ1 such that for any unit
+vector v, h∇f (D, w∗ ), vi is sub-exponential with σ1 and
+γ1 ; and there exist positive constants σ2 and γ2 such that
+for any w ∈ Θ with w 6= w∗ and any unit vector v,
+hh(D, w) − E [h(D, w)] , vi / kw − w∗ k is sub-exponential
+with σ2 and γ2 . Formally, for ∀ |ξ| ≤ 1/γ1 , ∀ |ξ| ≤ 1/γ2 ,
+we have:
+
+max
+
+0
+g10 ,g20 ,··· ,gm
+
+sT (g − g 0 ),
+
+subject to g = A(g1 , · · · , gm , gm+1 , gn ),
+0
+g 0 = A(g10 , · · · , gm
+, gm+1 , gn ),
+
+(6)
+
+where A is the aggregation rule of the FL method, gi0 is the
+
+2 2
+
+poisoned local model update on the ith malicious client for
+i = 1, 2, · · · , m, g is the global model update before attack,
+
+
+
+g 0 is the global model update after attack, and s is a column
+ξ hh(D, w) − E [h(D, w)] , vi
+σ22 ξ 2 /2
+sup E exp
+≤e
+, vector of the sign of the global model update before attack.
+kw − w∗ k
+w∈Θ,v∈B
+sup E [exp(ξ h∇f (D, w∗ ), vi)] ≤ eσ1 ξ /2 ,
+
+v∈B
+
+3 Fang et al. formulates the framework based on local models, which is
+equivalent to formulating the framework based on local model updates.
+
+where B is the unit sphere B = {v : kvk = 1}.
+7
+
+where h(e01 , e02 , · · · , e0m ) is defined as follows:
+
+
+Algorithm 3 Our Adaptive Attack to FLTrust.
+Input: g0 ; gi for i = 1, 2, · · · , n; m; σ; η; γ; Q; V .
+Output: e0i for i = 1, 2, · · · , m.
+1: Compute e0 , ei , ci for i = 1, 2, · · · , n.
+2: Initialize e0i using Trim attack for i = 1, 2, · · · , m.
+3: for v = 1, 2, · · · , V do
+4:
+for i = 1, 2, · · · , m do
+5:
+for t = 1, 2, · · · , Q do
+6:
+Randomly sample u ∼ N (0, σ 2 I).
+7:
+Compute ∇e0i h according to (11).
+8:
+Update e0i = e0i + η∇e0i h.
+9:
+Normalize e0i such that ke0i k = 1.
+10:
+end for
+11:
+end for
+12: end for
+13: return e0i for i = 1, 2, · · · , m.
+
+n
+X
+ReLU (ci )
+ei
+h(e01 , e02 , · · · , e0m ) = ||g0 ||sT 
+n
+
+P
+i=1
+ReLU (cj )
+j=1
+b
+X
+
+ReLU (he0i , e0 i)
+e0i
+−
+n
+m
+P
+P
+0
+i=1
+ReLU (cj )
+ReLU (hej , e0 i) +
+j=m+1
+j=1
+
+−
+
+i=m+1
+
+ReLU (ci )
+ei .
+n
+P
+i=1
+ReLU (cj )
+
+(7)
+
+Suppose there are m malicious clients, and without loss of
+generality, we assume the first m clients are malicious. These
+malicious clients send poisoned local model updates gi0 , i =
+1, 2, · · · , m to the server. Let e0i (i = 1, 2, · · · , m) be the
+corresponding unit vectors. We note that the cosine similarity
+c0i between a poisoned local model update gi0 and the server
+model update g0 is the same as the cosine similarity between
+the corresponding unit vectors, i.e., c0i = he0i , e0 i, where h·, ·i
+means the inner product of two vectors. Therefore, we have
+the poisoned global model update g 0 under attacks as follows:
+
+∇e0i h ≈
+
+ReLU (he0i , e0 i)
+e0i
+n
+P
+0
+i=1
+ReLU (hej , e0 i) +
+ReLU (cj )
+j=1
+j=m+1
+
+
+i=m+1
+
+j=1
+
+
+ReLU (ci )
+. (8)
+e
+i
+n
+
+P
+ReLU (he0j , e0 i) +
+ReLU (cj )
+j=m+1
+
+Substituting Equations (7) and (8) into (6), and noticing that optimizing gi0 is equivalent to optimizing e0i for
+i = 1, 2, · · · , m, we can instantiate the attack framework in
+Equation (6) as the following optimization problem:
+max
+
+e01 ,e02 ,··· ,e0m
+
+h(e01 , e02 , · · · , e0m ),
+
+(11)
+
+We optimize e0i one by one following the standard coordinate ascent approach, i.e., when optimizing e0i , all other
+e0j , j 6= i are fixed. Specifically, we use projected gradient
+ascent to iteratively optimize e0i . In the beginning, we initialize
+e0i using the Trim attack, i.e., we use the Trim attack to compute the poisoned local model updates and initialize e0i as the
+corresponding unit vector. Then, in each iteration, we sample
+a random vector u from N (0, σ 2 I) and compute the gradient
+∇e0i h following Equation (11). We multiply the gradient by
+a step size η and add it to e0i to get the new e0i . Finally, we
+project e0i to the unit sphere to ensure that e0i is a valid unit
+vector. We repeat the gradient ascent process for Q iterations.
+Moreover, we repeat the iterations over the unit vectors for
+V iterations. Algorithm 3 shows our adaptive attack. We let
+gi0 = kg0 k · e0i after e0i is solved for i = 1, 2, · · · , m.
+
+m
+X
+g 0 = ||g0 || 
+m
+
+P
+
+m
+P
+
+h(e0i + γu) − h(e0i )
+· u,
+γ
+
+where u is a random vector sampled from the multivariate
+Gaussian distribution N (0, σ 2 I) with zero mean and diagonal
+covariance matrix, and γ > 0 is a smoothing parameter.
+
+
+
+n
+X
+
+j=m+1
+
+Solving the optimization problem: We use a standard
+gradient ascent approach to solve the optimization problem.
+Specifically, we can compute the gradient ∇e0i h of the objective function h with respect to each e0i and move e0i a small
+step along the gradient. Since the gradient ∇e0i h involves a
+Jacobian matrix of e0i , it is not practical to directly compute
+the gradient. Therefore, we leverage a zeroth-order method
+[13], [33] to compute the gradient, which is a standard method
+to solve such optimization problems with computationally
+intractable objective functions. Specifically, we compute the
+gradient ∇e0i h as follows:
+
+j=1
+
++
+
+
+ReLU (ci )
+ei 
+n
+, (10)
+P
+ReLU (cj )
+ReLU (he0j , e0 i) +
+
+where sT = sgn(g)T is the sign of the global model update
+without attacks. Solving the optimization problem generates
+an adaptive attack to FLTrust. We consider a strong adaptive attacker who has full knowledge about the FL system when solving the optimization problem. In particular,
+||g0 ||, s, ci (i = 1, 2, · · · , n), e0 , and ei (i = 1, 2, · · · , n) are
+all available to the attacker.
+
+We leverage the state-of-the-art framework to design adaptive attacks to our FLTrust. The idea is to instantiate the
+aggregation rule A with our aggregation rule in FLTrust in the
+framework. We denote by ei = ||ggii || the unit vector whose
+direction is the same as gi . Then, our aggregation rule in
+Equation (4) can be rewritten as follows:
+g = ||g0 ||
+
+m
+P
+j=1
+
+B. Adaptive Attack to Our FLTrust
+
+n
+X
+
+n
+X
+
+VI.
+
+E VALUATION
+
+We evaluate our FLTrust against both existing poisoning
+attacks to FL and adaptive attacks in this section.
+
+(9)
+
+8
+
+clients in this dataset, as each user is naturally considered as a
+client. HAR represents a real-world FL scenario, where each
+user is considered as a client. We use 75% of each client’s data
+as training examples and the rest 25% as testing examples. We
+note that HAR has unbalanced local training data on clients:
+the maximum number of training examples on a client is 409,
+the minimum number is 281, and the mean is 343.
+
+A. Experimental Setup
+1) Datasets: We use multiple datasets from different domains in our evaluation, including five image classification
+datasets and a human activity recognition dataset. We follow
+previous work [15] to distribute the training examples in a
+dataset among clients. Assuming there are M classes in a
+dataset. We randomly split the clients into M groups. A
+training example with label l is assigned to group l with
+probability q > 0 and to any other group with probability
+1−q
+M −1 . Within the same group, data are uniformly distributed
+to each client. q controls the distribution difference of the
+clients’ local training data. If q = 1/M , then the clients’
+local training data are independent and identically distributed
+(IID), otherwise the clients’ local training data are non-IID.
+Moreover, a larger q indicates a higher degree of non-IID
+among the clients’ local training data. One characteristic of
+FL is that clients often have non-IID local training data [22],
+[28]. Therefore, we will set q > 1/M by default to simulate
+the non-IID settings.
+
+CH-MNIST: CH-MNIST [21] is a medical image classification dataset consisting of 5,000 images of histology tiles
+collected from colorectal cancer patients. Each example has
+64 × 64 gray-scale pixels and belongs to one of the 8 classes.
+We use 4,000 images selected randomly as the training examples and use the other 1,000 images as the testing examples. To
+simulate non-IID local training data, we distribute the training
+examples to clients with q = 0.5.
+2) Evaluated Poisoning Attacks: We consider both data
+poisoning attacks and local model poisoning attacks. For data
+poisoning attack, we consider the popular label flipping attack.
+For local model poisoning attacks, we evaluate Krum attack,
+Trim attack, and our adaptive attack (untargeted attacks) [15],
+as well as Scaling attack (targeted attack) [5].
+
+Next, we use the MNIST dataset as an example to show
+the distribution process. Assume we have 100 clients in total
+and set q = 0.5. M = 10 for the MNIST dataset. We first
+randomly split the clients into 10 groups, each containing 10
+clients. For a training image of digit l (e.g., l = 5), we first
+assign it to group 5 with probability 0.5, and to any other group
+with probability 1−0.5
+10−1 ≈ 0.056. Once the group is determined,
+e.g., group 5 is chosen, we will select a client from group
+5 uniformly at random and assign this training image to the
+selected client.
+
+Label flipping (LF) attack: We use the same label flipping
+attack setting as [15]. In particular, for each training example
+on the malicious clients, we flip its label l to M − l − 1, where
+M is the total number of labels and l ∈ {0, 1, · · · , M − 1}.
+Krum attack: Krum attack is an untargeted local model
+poisoning attack optimized for the Krum aggregation rule. We
+use the default parameter settings in [15] for the Krum attack.
+
+MNIST-0.1: MNIST [24] is a 10-class digit image classification dataset, which consists of 60,000 training examples
+and 10,000 testing examples. We set q = 0.1 in MNIST-0.1,
+which indicates local training data are IID among clients. We
+use MNIST-0.1 to show that FLTrust is also effective in the
+IID setting.
+
+Trim attack: Trim attack is an untargeted local model
+poisoning attack optimized for the Trim-mean and Median
+aggregation rules. We use the default parameter settings in
+[15] for the Trim attack.
+Scaling attack: Scaling attack is a targeted local model
+poisoning attack. Specifically, we consider the attacker-chosen
+target testing examples are normal testing examples with a
+predefined feature-pattern trigger embedded. Following [5],
+we use the data augmentation scheme in [18] to implement
+the Scaling attack. Specifically, each malicious client copies p
+fraction of its local training examples, embeds the trigger to
+them, changes their labels to the attacker-chosen target label,
+and uses them to augment its local training data. Then, in each
+iteration of FL, each malicious client computes its local model
+update based on the augmented local training data and scales
+it by a factor λ  1 before sending it to the server.
+
+MNIST-0.5: In MNIST-0.5, we simulate non-IID local training data among the clients via setting q = 0.5.
+Fashion-MNIST: Fashion-MNIST [42] is a 10-class fashion
+image classification task, which has a predefined training set
+of 60,000 fashion images and a testing set of 10,000 fashion
+images. Like the MNIST-0.5 dataset, we distribute the training
+examples to the clients with q = 0.5 to simulate non-IID local
+training data.
+CIFAR-10: CIFAR-10 [23] is a color image classification
+dataset consisting of predefined 50,000 training examples and
+10,000 testing examples. Each example belongs to one of
+the 10 classes. To simulate non-IID local training data, we
+distribute the training examples to clients with q = 0.5.
+
+Specifically, we use the same pattern trigger in [18] as
+our trigger for MNIST-0.1, MNIST-0.5, Fashion-MNIST, and
+CH-MNIST, and we set the attacker-chosen target label as
+0; for CIFAR-10, we consider the same pattern trigger and
+target label (i.e., “bird”) in [5]; and for HAR, we create a
+feature-pattern trigger by setting every 20th feature to 0 and
+we set the target label as “WALKING UPSTAIRS”. Following
+previous work [5], we set the scaling factor λ = n, where n
+is the number of clients. In each dataset, the attacker-chosen
+target testing examples consist of the trigger-embedded normal
+testing examples whose true labels are not the target label.
+
+Human activity recognition (HAR): The HAR dataset [4]
+consists of human activity data collected from the smartphones
+of 30 real-world users. The data are signals from multiple
+sensors on a user’s smartphone, and the task is to predict
+the user’s activity among 6 possible activities, i.e., WALKING, WALKING UPSTAIRS, WALKING DOWNSTAIRS,
+SITTING, STANDING, and LAYING. Each example includes
+561 features and there are 10,299 examples in total. Unlike
+the previous datasets, we don’t need to distribute the data to
+
+Adaptive attack: We evaluate the adaptive attack proposed
+in Section V. Our adaptive attack leverages an zeroth-order
+9
+
+TABLE I: The default FL system parameter settings.
+n
+τ
+Rl
+Rg
+b
+
+Explanation
+MNIST-0.1 MNIST-0.5 Fashion-MNIST
+# clients
+100
+# clients selected in each iteration
+# local iterations
+# global iterations
+2,000
+2,500
+batch size
+32
+3 × 10−4
+
+α·β
+
+combined learning rate
+
+m/n
+m
+f
+k
+|D0 |
+
+fraction of malicious clients (%)
+# malicious clients
+Krum parameter
+Trim-mean parameter
+size of the root dataset
+
+6 × 10−3
+
+n
+1
+1,500
+64
+
+HAR
+30
+
+CH-MNIST
+40
+
+1,000
+
+2,000
+32
+3 × 10−4 (decay at the 1500th and
+1750th iterations with factor 0.9)
+
+2 × 10−4 3 × 10−3
+20
+
+20
+
+6
+
+8
+
+m
+m
+100
+
+Specifically, for MNIST-0.1, MNIST-0.5, and Fashion-MNIST,
+we train a convolutional neural network (CNN) as the global
+model. Table II shows the architecture of the CNN. And we
+train a logistic regression (LR) classifier as the global model
+for HAR. For CIFAR-10 and CH-MNIST, we consider the
+widely used ResNet20 architecture [19] as the global model.
+
+TABLE II: The CNN architecture of the global model used for
+MNIST-0.1, MNIST-0.5, and Fashion-MNIST.
+Layer
+Input
+Convolution + ReLU
+Max Pooling
+Convolution + ReLU
+Max Pooling
+Fully Connected + ReLU
+Softmax
+
+CIFAR-10
+
+Size
+28 × 28 × 1
+3 × 3 × 30
+2×2
+3 × 3 × 50
+2×2
+100
+10
+
+Parameter settings of the FL methods: We compare
+FLTrust with FedAvg [22], [28], Krum [9], Trim-mean [48],
+and Median [48]. Details of these FL methods can be found
+in Section II-A. FedAvg is a popular FL method in nonadversarial settings, while Krum, Trim-mean, and Median are
+Byzantine-robust FL methods. These methods all follow the
+three-step framework described in Algorithm 2, though they
+use different aggregation rules. Therefore, they all use the
+parameters τ , Rl , Rg , α, β, and b. Following previous work
+[15], we set τ = n, i.e., all clients are selected in each iteration;
+and we set Rl = 1, in which we can treat the product of
+the global learning rate α and the local learning rate β as a
+single learning rate. We set this combined learning rate on
+each dataset to achieve small training error rates and fast
+convergence. We set the batch size b = 32 for all datasets
+except CIFAR-10, where we set b = 64. We set the number
+of global iterations Rg such that the FL methods converge.
+Specifically, Rg = 2, 000 for MNIST-0.1, MNIST-0.5, and
+CH-MNIST; Rg = 2, 500 for Fashion-MNIST; Rg = 1, 500
+for CIFAR-10; and Rg = 1, 000 for HAR.
+
+optimization method. Following the suggestions by previous
+work [13], [33], we set σ 2 = 0.5 and γ = 0.005 in the zerothorder method. Moreover, we set η = 0.01 and V = Q = 10
+so that the adaptive attack converges.
+3) Evaluation Metrics: For the LF attack, Krum attack,
+Trim attack, and adaptive attack, we use the standard testing
+error rate of the global model to evaluate an FL method since
+these attacks aim to increase the testing error rate. Specifically,
+the testing error rate of a global model is the fraction of testing
+examples whose labels are incorrectly predicted by the global
+model. An FL method is more robust against these attacks if
+its global models achieve lower testing error rates under these
+attacks. The Scaling attack is a targeted attack, which aims to
+preserve the testing error rate of normal testing examples while
+making the global model predict the attacker-chosen target
+label for the attacker-chosen target testing examples. Therefore, other than the testing error rate, we further use attack
+success rate to measure the Scaling attack. Specifically, the
+attack success rate is the fraction of the attacker-chosen target
+testing examples whose labels are predicted as the attackerchosen target label by the global model. An FL method is more
+robust against the Scaling attack if its global model achieves
+a lower attack success rate.
+
+Krum further has the parameter f and Trim-mean further
+has the trim parameter k, both of which are an upper bound
+of the number of malicious clients. We set f = k = m, which
+assumes that the server knows the exact number of malicious
+clients and gives advantages to Krum and Trim-mean.
+Root dataset: Our FLTrust requires a small root dataset.
+By default, we assume the root dataset has only 100 training
+examples. Moreover, we consider the following two cases
+depending on how the root dataset is created.
+
+4) FL System Settings: By default, we assume there are
+n = 100 clients in total for each dataset except HAR and
+CH-MNIST. For HAR, the data are collected from 30 users,
+each of which is treated as a client. Therefore, HAR has 30
+clients in total. For CH-MNIST, there are only 4,000 training
+examples in total and thus we assume 40 clients such that each
+client has 100 training examples on average. Unless otherwise
+mentioned, we assume 20% of the clients are malicious for
+each dataset. However, we will also explore the impact of the
+fraction of malicious clients. Table I shows the default FL
+system settings that we will use unless otherwise mentioned.
+Global models: We train different types of global models
+on different datasets to show the generality of our method.
+10
+
+•
+
+Case I. We assume the service provider can collect
+a representative root dataset for the learning task,
+i.e., the root dataset has the same distribution as
+the overall training data distribution of the learning
+task. In particular, we sample the root dataset from
+the union of the clients’ clean local training data
+uniformly at random. For instance, for MNIST-0.5,
+we sample the root dataset from its 60,000 training
+examples uniformly at random.
+
+•
+
+Case II. We assume the root dataset has a distribution
+different from the overall training data distribution of
+
+the learning task. In particular, we assume the root
+dataset is biased towards a certain class. Specifically,
+we sample a fraction of the examples in the root
+dataset from a particular class (class 1 in our experiments) in the union of the clients’ clean local training
+data and the remaining examples are sampled from
+the remaining classes uniformly at random, where we
+call the fraction bias probability. Note that, for all
+the datasets except HAR and CH-MNIST, the root
+dataset has the same distribution as the overall training
+data, i.e., Case II reduces to Case I, when the bias
+probability is 0.1 because they have 10 classes; for
+HAR and CH-MNIST, Case II reduces to Case I
+when the bias probability is 0.17 and 0.125 because
+they have 6 and 8 classes, respectively. The root data
+distribution deviates more from the overall training
+data distribution when the bias probability is larger.
+
+TABLE III: The testing error rates of different FL methods
+under different attacks and the attack success rates of the
+Scaling attacks. The results for the Scaling attacks are in the
+form of “testing error rate / attack success rate”.
+(a) CNN global model, MNIST-0.1
+FedAvg
+Krum
+Trim-mean Median
+FLTrust
+No attack
+0.04
+0.10
+0.06
+0.06
+0.04
+LF attack
+0.06
+0.10
+0.05
+0.05
+0.04
+Krum attack
+0.10
+0.90
+0.07
+0.07
+0.04
+Trim attack
+0.16
+0.10
+0.13
+0.13
+0.04
+Scaling attack 0.02 / 1.00 0.10 / 0.00 0.05 / 0.01 0.05 / 0.01 0.03 / 0.00
+Adaptive attack
+0.08
+0.10
+0.11
+0.13
+0.04
+
+(b) CNN global model, MNIST-0.5
+FedAvg
+Krum
+Trim-mean Median
+FLTrust
+No attack
+0.04
+0.10
+0.06
+0.06
+0.05
+LF attack
+0.06
+0.10
+0.06
+0.06
+0.05
+Krum attack
+0.10
+0.91
+0.14
+0.15
+0.05
+Trim attack
+0.28
+0.10
+0.23
+0.43
+0.06
+Scaling attack 0.02 / 1.00 0.09 / 0.01 0.06 / 0.02 0.06 / 0.01 0.05 / 0.00
+Adaptive attack
+0.13
+0.10
+0.22
+0.90
+0.06
+
+In both cases, we exclude the sampled root dataset from
+the clients’ local training data, indicating that the root dataset
+is collected independently by the service provider. Unless
+otherwise mentioned, we consider Case I.
+
+(c) CNN global model, Fashion-MNIST
+FedAvg
+Krum
+Trim-mean Median
+FLTrust
+No attack
+0.10
+0.16
+0.14
+0.14
+0.11
+LF attack
+0.14
+0.15
+0.26
+0.21
+0.11
+Krum attack
+0.13
+0.90
+0.18
+0.23
+0.12
+Trim attack
+0.90
+0.16
+0.24
+0.27
+0.14
+Scaling attack 0.90 / 1.00 0.16 / 0.03 0.17 / 0.85 0.16 / 0.05 0.11 / 0.02
+Adaptive attack
+0.90
+0.18
+0.34
+0.24
+0.14
+
+B. Experimental Results
+Our FLTrust achieves the three defense goals: Recall
+that we have three defense goals (discussed in Section III):
+fidelity, robustness, and efficiency. Table III shows the testing
+error rates of different FL methods under different attacks
+including our adaptive attack, as well as the attack success
+rate of the Scaling attack on the six datasets. Our results show
+that FLTrust achieves the three goals.
+
+(d) ResNet20 global model, CIFAR-10
+FedAvg
+Krum
+Trim-mean Median
+FLTrust
+No attack
+0.16
+0.54
+0.24
+0.25
+0.18
+LF attack
+0.21
+0.56
+0.27
+0.45
+0.18
+Krum attack
+0.24
+0.90
+0.52
+0.64
+0.18
+Trim attack
+0.81
+0.51
+0.72
+0.75
+0.20
+Scaling attack 0.90 / 1.00 0.44 / 0.07 0.22 / 0.96 0.25 / 0.96 0.18 / 0.02
+Adaptive attack
+0.90
+0.58
+0.69
+0.82
+0.20
+
+First, when there is no attack, our FLTrust has testing
+error rates similar to FedAvg, achieving the fidelity goal.
+However, existing Byzantine-robust FL methods may have
+higher or much higher testing error rates under no attacks. For
+instance, on MNIST-0.1, the testing error rates for FedAvg
+and FLTrust are both 0.04, while they are 0.10, 0.06, and
+0.06 for Krum, Trim-mean, and Median, respectively; on CHMNIST, FedAvg, Trim-mean, and FLTrust achieve testing error
+rates 0.10, while Krum and Median achieve testing error rates
+0.24 and 0.11, respectively. Our results indicate that FLTrust is
+more accurate than existing Byzantine-robust FL methods in
+non-adversarial settings. This is because existing Byzantinerobust FL methods exclude some local model updates when
+aggregating them as the global model update, while FLTrust
+considers all of them with the help of the root dataset.
+
+(e) LR global model, HAR
+FedAvg
+Krum
+Trim-mean Median
+FLTrust
+No attack
+0.03
+0.12
+0.04
+0.05
+0.04
+LF attack
+0.17
+0.10
+0.05
+0.05
+0.04
+Krum attack
+0.03
+0.22
+0.05
+0.05
+0.04
+Trim attack
+0.32
+0.10
+0.36
+0.13
+0.05
+Scaling attack 0.04 / 0.81 0.10 / 0.03 0.04 / 0.36 0.05 / 0.13 0.05 / 0.01
+Adaptive attack
+0.04
+0.19
+0.05
+0.06
+0.05
+
+(f) ResNet20 global model, CH-MNIST
+FedAvg
+Krum
+Trim-mean Median
+FLTrust
+No attack
+0.10
+0.24
+0.10
+0.11
+0.10
+LF attack
+0.12
+0.39
+0.15
+0.13
+0.12
+Krum attack
+0.11
+0.95
+0.13
+0.13
+0.12
+Trim attack
+0.64
+0.21
+0.55
+0.44
+0.13
+Scaling attack 0.26 / 0.20 0.34 / 0.03 0.14 / 0.02 0.11 / 0.01 0.14 / 0.03
+Adaptive attack
+0.14
+0.29
+0.50
+0.47
+0.13
+
+Second, our FLTrust achieves the robustness goal, while
+existing FL methods do not. Specifically, the testing error rates
+of FLTrust under the untargeted attacks including our adaptive
+attack are at most 0.04 higher than those of FedAvg under no
+attacks on the six datasets. On the contrary, every existing
+Byzantine-robust FL method has much higher testing error
+rates, especially under the untargeted attack that is optimized
+for the method. For instance, on MNIST-0.5, Krum attack increases the testing error rate of Krum from 0.10 to 0.91, while
+Trim attack increases the testing error rates of Trim-mean
+and Median from 0.06 to 0.23 and 0.43, respectively. FedAvg
+may have lower testing error rates than existing Byzantinerobust FL methods under the evaluated untargeted attacks.
+This is because these untargeted attacks are not optimized
+
+for FedAvg. Previous work [9] showed that FedAvg can be
+arbitrarily manipulated by a single malicious client.
+Moreover, for the Scaling attack, FLTrust substantially
+reduces its attack success rates. Specifically, the attack success
+rates for FLTrust are at most 0.03. On the contrary, the attack
+success rates for FedAvg are always high on the six datasets,
+and they are also high for the existing Byzantine-robust FL
+methods on multiple datasets, indicating that existing FL methods are not robust against the Scaling attack. One interesting
+observation is that the Scaling attack may decrease the testing
+error rates in some cases. We suspect the reason may be that
+the data augmentation in the Scaling attack positively impacts
+the aggregation of the local model updates. Specifically, the
+11
+
+TABLE IV: The testing error rates of different variants of FLTrust under different attacks and the attack success rates of the
+Scaling attacks on MNIST-0.5. The results for the Scaling attacks are in the form of “testing error rate / attack success rate”.
+“–” means that the attacks are not applicable.
+LF attack
+–
+0.08
+0.90
+0.06
+0.06
+0.05
+
+Krum attack
+–
+0.09
+0.90
+0.06
+0.06
+0.05
+
+Trim attack
+–
+0.10
+0.90
+0.08
+0.06
+0.06
+
+1.0
+0.8
+0.6
+0.4
+0.2
+0.050
+
+Testing error rate
+
+FedAvg w/o attacks
+LF attack
+Krum attack
+Trim attack
+Scaling attack
+Adaptive attack
+
+Training error rate
+
+1.0
+0.8
+0.6
+0.4
+0.2
+0.00
+
+No attack
+0.21
+0.07
+0.28
+0.05
+0.06
+0.05
+
+500
+
+1000 1500 2000
+Iteration
+Fig. 3: The training error rates vs. the number of iterations for
+FLTrust under different attacks and FedAvg without attacks on
+MNIST-0.5.
+
+FedAvg w/o attacks
+LF attack
+Krum attack
+Trim attack
+Scaling attack
+Adaptive attack
+
+100 200 300
+Size of the root dataset
+(a) Testing error rate
+
+Adaptive attack
+–
+0.94
+0.90
+0.06
+0.06
+0.06
+
+1.0
+0.8
+0.6
+0.4
+0.2
+500 0.050
+
+FedAvg w/o attacks
+Scaling attack
+
+100 200 300 500
+Size of the root dataset
+(b) Attack success rate
+
+Fig. 4: Impact of the root dataset size on FLTrust under
+different attacks for MNIST-0.5.
+•
+
+FLTrust-withServer. In this variant, the server computes the weighted average of the clients’ local model
+updates together with the server model update whose
+trust score is 1.
+
+•
+
+FLTrust-NoReLU. In this variant, the server does not
+use ReLU to clip the cosine similarity scores of the
+local model updates when computing their trust scores.
+
+•
+
+FLTrust-NoNorm. In this variant, the server does not
+normalize the local model updates to have the same
+magnitude as the server model update.
+
+•
+
+FLTrust-ParNorm. In this variant, the server applies
+partial normalization, i.e., only normalizes the local
+model updates whose magnitudes are larger than that
+of the server model update to have the same magnitude
+as the server model update.
+
+data augmentation in the Scaling attack improves the diversity
+of the training data, and thus helps the learned global model
+better generalize to the testing dataset.
+Third, FLTrust achieves the efficiency goal. Specifically,
+in each iteration, FLTrust does not incur extra overhead to
+the clients; and compared to FedAvg, the extra computation
+incurred to the server by FLTrust includes computing a server
+model update, computing the trust scores, and normalizing the
+local model updates, which are negligible for the powerful
+server. Moreover, Figure 3 shows the training error rates versus
+the global iteration number for FLTrust under different attacks
+and FedAvg under no attack on MNIST-0.5. Our results show
+that FLTrust converges as fast as FedAvg, which means that
+FLTrust also does not incur extra communications cost for
+the clients (each iteration of FL requires communications
+between clients and server), compared to FedAvg under no
+attacks. We note that Krum, Trim-mean, and Median do not
+incur extra overhead to the clients. However, Krum incurs
+significant computational overhead to the server when there
+are a large number of clients. This is because Krum requires
+calculating pairwise distance between local model updates in
+each iteration.
+
+Table IV compares the variants with respect to their testing
+error rates under different attacks and the attack success rates
+of the Scaling attacks on MNIST-0.5. The attacks are not applicable to FLTrust-Server as it does not require communications
+from the clients. Our results show that FLTrust outperforms
+the five variants. FLTrust outperforms FLTrust-Server and
+FLTrust-withServer because the root dataset is small. The fact
+that FLTrust outperforms FLTrust-NoReLU, FLTrust-NoNorm,
+and FLTrust-ParNorm indicates the necessity of our ReLU
+operation and normalization.
+
+Comparing different variants of FLTrust: FLTrust has three
+key features: a root dataset, using ReLU to clip the cosine
+similarity scores, and normalizing each local model update.
+Depending on how each feature is used, we consider the
+following five variants of FLTrust:
+•
+
+Scaling attack
+–
+0.08 / 0.01
+0.94 / 0.08
+0.94 / 0.08
+0.06 / 0.01
+0.05 / 0.00
+
+Attack success rate
+
+FLTrust-Server
+FLTrust-withServer
+FLTrust-NoReLU
+FLTrust-NoNorm
+FLTrust-ParNorm
+FLTrust
+
+Impact of the root dataset: Our root dataset can be
+characterized by its size and how it is sampled (i.e., Case I vs.
+Case II). Therefore, we study the impact of the root dataset
+on FLTrust with respect to its size and how it is sampled.
+Figure 4 shows the testing error rates of FLTrust under different
+attacks and the attack success rates under the Scaling attack on
+MNIST-0.5 when the size of the root dataset increases from
+50 to 500, where the root dataset is sampled uniformly in
+Case I. We observe that a root dataset with only 100 training
+examples is sufficient for FLTrust to defend against the attacks.
+
+FLTrust-Server. In this variant, the server only uses
+the root dataset to train the global model. Therefore,
+there is no communications between the clients and
+the server during the training process. We use this
+variant to show that the server cannot obtain a good
+model using its root dataset alone. In other words,
+even if some clients are malicious, communicating
+with clients still improves the global model.
+12
+
+Testing error rate
+
+(a) MNIST-0.1
+Bias probability
+0.1
+0.2
+0.4
+0.6
+0.8
+1.0
+No attack
+0.04
+0.04
+0.04
+0.05
+0.05
+0.34
+LF attack
+0.04
+0.04
+0.04
+0.05
+0.78
+0.84
+Krum attack
+0.04
+0.04
+0.07
+0.89
+0.89
+0.89
+Trim attack
+0.04
+0.05
+0.08
+0.12
+0.46
+0.89
+Scaling attack 0.03 / 0.00 0.03 / 0.01 0.04 / 0.00 0.04 / 0.00 0.06 / 0.01 0.42 / 0.01
+Adaptive attack
+0.04
+0.05
+0.08
+0.12
+0.90
+0.90
+
+FedAvg w/o attacks
+Krum
+Trim-mean
+Median
+FLTrust
+
+1.0
+0.8
+0.6
+0.4
+0.2
+400 0.050
+Testing error rate
+
+1.0
+0.8
+0.6
+0.4
+0.2
+0.050
+
+TABLE V: The testing error rates of FLTrust under different
+attacks and the attack success rates of the Scaling attacks when
+the root dataset is sampled with different bias probabilities in
+Case II.
+
+100 200 300
+Number of clients
+(a) LF attack
+
+(b) MNIST-0.5
+Bias probability
+0.1
+0.2
+0.4
+0.6
+0.8
+1.0
+No attack
+0.05
+0.05
+0.06
+0.08
+0.11
+0.80
+LF attack
+0.05
+0.05
+0.08
+0.10
+0.25
+0.89
+Krum attack
+0.05
+0.05
+0.08
+0.12
+0.86
+0.89
+Trim attack
+0.06
+0.06
+0.08
+0.12
+0.16
+0.89
+Scaling attack 0.05 / 0.00 0.05 / 0.01 0.06 / 0.00 0.07 / 0.01 0.12 / 0.00 0.86 / 0.01
+Adaptive attack
+0.06
+0.07
+0.08
+0.13
+0.90
+0.90
+
+100 200 300
+Number of clients
+
+1.0
+0.8
+0.6
+0.4
+0.2
+400 0.050
+
+(c) Trim attack
+
+Testing error rate
+
+(c) Fashion-MNIST
+Bias probability
+0.1
+0.2
+0.4
+0.6
+0.8
+1.0
+No attack
+0.11
+0.11
+0.12
+0.15
+0.16
+0.90
+LF attack
+0.11
+0.11
+0.12
+0.12
+0.14
+0.90
+Krum attack
+0.12
+0.12
+0.16
+0.90
+0.90
+0.90
+Trim attack
+0.14
+0.14
+0.15
+0.21
+0.90
+0.90
+Scaling attack 0.11 / 0.02 0.12 / 0.04 0.12 / 0.04 0.13 / 0.02 0.15 / 0.03 0.90 / 0.00
+Adaptive attack
+0.14
+0.14
+0.16
+0.90
+0.90
+0.90
+
+400
+
+(b) Krum attack
+
+FedAvg w/o attacks
+Krum
+Trim-mean
+Median
+FLTrust
+
+1.0
+0.8
+0.6
+0.4
+0.2
+0.050
+
+100 200 300
+Number of clients
+FedAvg w/o attacks
+Krum
+Trim-mean
+Median
+FLTrust
+
+Attack success rate
+
+Testing error rate
+
+1.0
+0.8
+0.6
+0.4
+0.2
+0.050
+
+FedAvg w/o attacks
+Krum
+Trim-mean
+Median
+FLTrust
+
+100 200 300
+Number of clients
+
+400
+
+(d) Scaling attack
+
+FedAvg w/o attacks
+Krum
+Trim-mean
+Median
+FLTrust
+
+100 200 300
+Number of clients
+
+400
+
+(e) Adaptive attack
+
+Fig. 5: Impact of the total number of clients on the testing
+error rates of different FL methods under different attacks ((a)(c)) and the attack success rates of the Scaling attacks, where
+MNIST-0.5 is used. The testing error rates of all the compared
+FL methods are similar and small under the Scaling attacks,
+which we omit for simplicity.
+
+(d) CIFAR-10
+Bias probability
+0.1
+0.2
+0.4
+0.6
+0.8
+1.0
+No attack
+0.18
+0.18
+0.18
+0.21
+0.90
+0.90
+LF attack
+0.18
+0.19
+0.20
+0.24
+0.90
+0.90
+Krum attack
+0.18
+0.18
+0.19
+0.33
+0.90
+0.90
+Trim attack
+0.20
+0.20
+0.24
+0.63
+0.90
+0.90
+Scaling attack 0.18 / 0.02 0.18 / 0.00 0.18 / 0.03 0.22 / 0.04 0.90 / 0.00 0.90 / 0.00
+Adaptive attack
+0.20
+0.20
+0.27
+0.68
+0.90
+0.90
+
+attacks when the bias probability varies. The second column in
+each table corresponds to the bias probability with which Case
+II reduces to Case I. We increase the bias probability up to 1.0
+to simulate larger difference between the root data distribution
+and the overall training data distribution. We observe that
+FLTrust is accurate and robust when the bias probability is
+not too large. For instance, when the bias probability is no
+more than 0.4 for MNIST-0.5, the testing error rates of FLTrust
+under attacks are at most 0.08, compared to 0.05 when the bias
+probability is 0.1. Our results show that FLTrust works well
+when the root data distribution does not diverge too much from
+the overall training data distribution.
+
+(e) HAR
+Bias probability
+0.17
+0.2
+0.4
+0.6
+0.8
+1.0
+No attack
+0.04
+0.04
+0.06
+0.06
+0.07
+0.48
+LF attack
+0.04
+0.05
+0.06
+0.05
+0.07
+0.48
+Krum attack
+0.04
+0.05
+0.05
+0.05
+0.09
+0.48
+Trim attack
+0.05
+0.05
+0.06
+0.09
+0.14
+0.48
+Scaling attack 0.05 / 0.01 0.05 / 0.01 0.06 / 0.02 0.06 / 0.03 0.07 / 0.05 0.48 / 0.34
+Adaptive attack
+0.05
+0.05
+0.06
+0.09
+0.48
+0.48
+
+(f) CH-MNIST
+Bias probability 0.125
+0.2
+0.4
+0.6
+0.8
+1.0
+No attack
+0.10
+0.10
+0.11
+0.13
+0.13
+0.89
+LF attack
+0.12
+0.12
+0.12
+0.17
+0.21
+0.89
+Krum attack
+0.12
+0.12
+0.14
+0.17
+0.19
+0.89
+Trim attack
+0.13
+0.13
+0.14
+0.20
+0.20
+0.89
+Scaling attack 0.14 / 0.03 0.14 / 0.02 0.15 / 0.02 0.16 / 0.06 0.14 / 0.01 0.89 / 0.01
+Adaptive attack
+0.13
+0.14
+0.14
+0.89
+0.89
+0.89
+
+Impact of the total number of clients: Figure 5 shows
+the testing error rates of different FL methods under different
+attacks, as well as the attack success rates of the Scaling
+attacks, when the total number of clients n increases from 50 to
+400. We set the fraction of malicious clients to be m
+n = 20%.
+We observe that FLTrust can defend against the attacks for all
+considered total number of clients. Specifically, FLTrust under
+attacks achieves testing error rates similar to FedAvg under no
+attacks, while the attack success rates of the Scaling attacks
+are close to 0 for FLTrust. Existing methods can defend against
+the Scaling attacks on MNIST-0.5, i.e., the attack success
+rates are close to 0. However, they cannot defend against the
+Krum attack, Trim attack, and/or our adaptive attack, i.e., their
+corresponding testing error rates are large.
+
+Specifically, when the root dataset has 100 training examples,
+the testing error rates of FLTrust under attacks are similar to
+that of FedAvg without attacks, and the attack success rate
+of the Scaling attack is close to 0. When the size of the root
+dataset increases beyond 100, the testing error rates and attack
+success rates of FLTrust further decrease slightly.
+We also evaluate the impact of the bias probability in Case
+II. Table V shows the testing error rates of FLTrust under
+different attacks and the attack success rates of the Scaling
+13
+
+(b) Krum attack
+
+(a) MNIST-0.1
+
+(b) MNIST-0.5
+
+1.0
+FedAvg w/o attacks
+0.8
+Krum
+Trim-mean
+0.6
+Median
+FLTrust
+0.4
+0.2
+0.0 0 10 20 40 60 80 90 95
+Fraction of malicious clients (%)
+
+1.0
+FedAvg w/o attacks
+0.8
+Krum
+Trim-mean
+0.6
+Median
+FLTrust
+0.4
+0.2
+0.0 0 10 20 40 60 80 90 95
+Fraction of malicious clients (%)
+
+1.0
+FedAvg w/o attacks
+0.8
+FLTrust
+0.6
+0.4
+0.2
+0.0 0 10 20 40 60 80 90 95
+Fraction of malicious clients (%)
+
+1.0
+FedAvg w/o attacks
+0.8
+FLTrust
+0.6
+0.4
+0.2
+0.0 0 10 20 40 60 80 90 95
+Fraction of malicious clients (%)
+
+(c) Trim attack
+
+(d) Scaling attack
+
+(c) Fashion-MNIST
+
+(d) CIFAR-10
+
+1.0
+FedAvg w/o attacks
+0.8
+FLTrust
+0.6
+0.4
+0.2
+0.0 0 10 20 40 60 80 90 95
+Fraction of malicious clients (%)
+
+1.0
+FedAvg w/o attacks
+0.8
+FLTrust
+0.6
+0.4
+0.2
+0.0 0 10 20 40 60 80 90 95
+Fraction of malicious clients (%)
+
+(e) HAR
+
+(f) CH-MNIST
+
+Testing error rate
+
+Testing error rate
+
+Testing error rate
+
+Testing error rate
+
+Attack success rate
+
+Testing error rate
+
+1.0
+FedAvg w/o attacks
+0.8
+Krum
+Trim-mean
+0.6
+Median
+FLTrust
+0.4
+0.2
+0.0 0 10 20 40 60 80 90 95
+Fraction of malicious clients (%)
+(e) Adaptive attack
+
+Fig. 6: Impact of the fraction of malicious clients on the testing
+error rates of different FL methods under different attacks ((a)(c)) and the attack success rates of the Scaling attacks, where
+MNIST-0.5 is used. The testing error rates of all the compared
+FL methods are similar and small under the Scaling attacks,
+which we omit for simplicity.
+
+Testing error rate
+
+(a) LF attack
+
+Testing error rate
+
+1.0
+FedAvg w/o attacks
+0.8
+FLTrust
+0.6
+0.4
+0.2
+0.0 0 10 20 40 60 80 90 95
+Fraction of malicious clients (%)
+
+Testing error rate
+
+1.0
+FedAvg w/o attacks
+0.8
+FLTrust
+0.6
+0.4
+0.2
+0.0 0 10 20 40 60 80 90 95
+Fraction of malicious clients (%)
+
+Testing error rate
+
+1.0
+0.8
+FedAvg w/o attacks
+Krum
+0.6
+Trim-mean
+Median
+0.4
+FLTrust
+0.2
+0.0 0 10 20 40 60 80 90 95
+Fraction of malicious clients (%)
+
+Testing error rate
+
+1.0
+0.8
+FedAvg w/o attacks
+Krum
+0.6
+Trim-mean
+Median
+0.4
+FLTrust
+0.2
+0.0 0 10 20 40 60 80 90 95
+Fraction of malicious clients (%)
+
+Fig. 7: Impact of the fraction of malicious clients on the testing
+error rates of FLTrust under the adaptive attacks.
+
+Our results show that FLTrust is robust against adaptive
+attacks even if a large fraction of clients are malicious on
+all datasets. Specifically, for MNIST-0.1 (MNIST-0.5, FashionMNIST, CIFAR-10, HAR, or CH-MNIST), FLTrust under
+adaptive attacks with over 60% (over 40%, up to 60%, up
+to 60%, up to 40%, or over 40%) of malicious clients can still
+achieve testing error rates similar to FedAvg under no attack.
+
+Impact of the number of malicious clients: Figure 6 shows
+the testing error rates of different FL methods under different
+attacks and the attack success rates of the Scaling attacks on
+MNIST-0.5, when the fraction of malicious clients increases
+from 0 to 95%. Trim-mean cannot be applied when the fraction
+of malicious clients exceeds 50% because the number of local
+model updates removed by Trim-mean is twice of the number
+of malicious clients. Therefore, for Trim-mean, we only show
+the results when the malicious clients are less than 50%.
+
+VII.
+
+D ISCUSSION AND L IMITATIONS
+
+FLTrust vs. fault-tolerant computing: Fault-tolerant computing [6] aims to remain functional when there are malicious
+clients. However, conventional fault-tolerant computing and
+federated learning have the following key difference: the
+clients communicate with each other to compute results in
+fault-tolerant computing [6], while clients only communicate with a cloud server in federated learning. Our FLTrust
+leverages such unique characteristics of federated learning to
+bootstrap trust, i.e., the server collects a root dataset, and uses
+it to guide the aggregation of the local model updates.
+
+We observe that, under existing attacks and our adaptive
+attacks, FLTrust can tolerate up to 90% of malicious clients.
+Specifically, FLTrust under these attacks still achieves testing
+error rates similar to FedAvg without attacks when up to 90%
+of the clients are malicious, while the attack success rates of
+the Scaling attacks for FLTrust are still close to 0 when up to
+95% of the clients are malicious. However, existing Byzantinerobust FL methods can tolerate much less malicious clients.
+For instance, under Krum attack, the testing error rate of the
+global model learnt by Krum increases to 0.90 when only 10%
+of the clients are malicious, while the testing error rates of the
+global models learnt by Trim-mean and Median become larger
+than 0.85 when the fraction of malicious clients reaches 40%.
+
+Different ways of using the root dataset: Fang et al. [15]
+also proposed to use a root dataset (they called it validation
+dataset). However, we use the root dataset in a way that is
+different from theirs. In particular, they use the root dataset
+to remove potentially malicious local model updates in each
+iteration, while we use it to assign trust scores to clients and
+normalize local model updates. As shown by Fang et al. [15],
+their way of using the root dataset is not effective in many
+cases.
+
+Figure 7 further shows the testing error rates of the global
+models learnt by FLTrust as a function of the fraction of
+malicious clients under the adaptive attacks on all datasets.
+14
+
+Poisoned root dataset: Our FLTrust requires a clean root
+dataset. We acknowledge that FLTrust may not be robust
+against poisoned root dataset. The root dataset may be poisoned when it is collected from the Internet or by an insider
+attacker. However, since FLTrust only requires a small root
+dataset, a service provider can collect a clean one by itself
+with a small cost, e.g., asking its employees to generate and
+manually label a clean root dataset.
+
+[8]
+[9]
+
+[10]
+[11]
+[12]
+
+Adaptive attacks and hierarchical root of trust: We
+considered an adaptive attack via extending the state-of-the-art
+framework of local model poisoning attacks to our FLTrust.
+We acknowledge that there may exist stronger local model
+poisoning attacks to FLTrust, which is an interesting future
+work to explore. Moreover, it is an interesting future work
+to consider a hierarchical root of trust. For instance, the root
+dataset may contain multiple subsets with different levels of
+trust. The subsets with higher trust may have a larger impact
+on the aggregation.
+VIII.
+
+[13]
+
+[14]
+[15]
+
+[16]
+
+C ONCLUSION AND F UTURE W ORK
+
+[17]
+
+We proposed and evaluated a new federated learning
+method called FLTrust to achieve Byzantine robustness against
+malicious clients. The key difference between our FLTrust
+and existing federated learning methods is that the server
+itself collects a clean small training dataset (i.e., root dataset)
+to bootstrap trust in FLTrust. Our extensive evaluations on
+six datasets show that FLTrust with a small root dataset
+can achieve Byzantine robustness against a large fraction of
+malicious clients. In particular, FLTrust under adaptive attacks
+with a large fraction of malicious clients can still train global
+models that are as good as the global models learnt by FedAvg
+under no attacks. Interesting future work includes 1) designing
+stronger local model poisoning attacks to FLTrust and 2)
+considering a hierarchical root of trust.
+
+[18]
+
+[19]
+[20]
+
+[21]
+
+[22]
+
+ACKNOWLEDGEMENT
+
+[23]
+
+We thank the anonymous reviewers for their constructive
+comments. This work was supported in part by NSF grants
+No. 1937786, 1943226, and 2110252, an IBM Faculty Award,
+and a Google Faculty Research Award.
+
+[24]
+[25]
+[26]
+
+R EFERENCES
+
+[1] Federated Learning: Collaborative Machine Learning without
+[27]
+Centralized Training Data. [Online]. Available: https://ai.googleblog.
+com/2017/04/federated-learning-collaborative.html
+[28]
+[2] Machine Learning Ledger Orchestration For Drug Discovery
+(MELLODDY). [Online]. Available: https://www.melloddy.eu/
+[3] Utilization of FATE in Risk Management of Credit in Small and
+[29]
+Micro Enterprises. [Online]. Available: https://www.fedai.org/cases/
+utilization-of-fate-in-risk-management-of-credit-in-small-and-micro-enterprises/
+[30]
+[4] D. Anguita, A. Ghio, L. Oneto, X. Parra, and J. L. Reyes-Ortiz, “A public domain dataset for human activity recognition using smartphones.”
+in ESANN, 2013.
+[31]
+[5] E. Bagdasaryan, A. Veit, Y. Hua, D. Estrin, and V. Shmatikov, “How
+to backdoor federated learning,” in AISTATS, 2020, pp. 2938–2948.
+[6] M. Barborak, A. Dahbura, and M. Malek, “The consensus problem
+[32]
+in fault-tolerant computing,” ACM Computing Surveys (CSur), vol. 25,
+no. 2, pp. 171–220, 1993.
+[7] A. N. Bhagoji, S. Chakraborty, P. Mittal, and S. Calo, “Analyzing
+federated learning through an adversarial lens,” in ICML, 2019, pp.
+[33]
+634–643.
+
+15
+
+B. Biggio, B. Nelson, and P. Laskov, “Poisoning attacks against support
+vector machines,” in ICML, 2012.
+P. Blanchard, E. M. E. Mhamdi, R. Guerraoui, and J. Stainer, “Machine
+learning with adversaries: Byzantine tolerant gradient descent,” in NIPS,
+2017.
+X. Cao, J. Jia, and N. Z. Gong, “Data poisoning attacks to local
+differential privacy protocols,” arXiv preprint arXiv:1911.02046, 2019.
+X. Chen, C. Liu, B. Li, K. Lu, and D. Song, “Targeted backdoor attacks
+on deep learning systems using data poisoning,” in arxiv, 2017.
+Y. Chen, L. Su, and J. Xu, “Distributed statistical machine learning in
+adversarial settings: Byzantine gradient descent,” in POMACS, 2017.
+M. Cheng, T. Le, P.-Y. Chen, J. Yi, H. Zhang, and C.-J. Hsieh, “Queryefficient hard-label black-box attack: An optimization-based approach,”
+in ICLR, 2019.
+A. Cheu, A. Smith, and J. Ullman, “Manipulation attacks in local
+differential privacy,” arXiv preprint arXiv:1909.09630, 2019.
+M. Fang, X. Cao, J. Jia, and N. Z. Gong, “Local model poisoning
+attacks to byzantine-robust federated learning,” in USENIX Security
+Symposium, 2020.
+M. Fang, N. Z. Gong, and J. Liu, “Influence function based data
+poisoning attacks to top-n recommender systems,” in Proceedings of
+The Web Conference 2020, 2020, pp. 3019–3025.
+M. Fang, G. Yang, N. Z. Gong, and J. Liu, “Poisoning attacks to
+graph-based recommender systems,” in Proceedings of the 34th Annual
+Computer Security Applications Conference, 2018, pp. 381–392.
+T. Gu, B. Dolan-Gavitt, and S. Garg, “Badnets: Identifying vulnerabilities in the machine learning model supply chain,” in Machine Learning
+and Computer Security Workshop, 2017.
+K. He, X. Zhang, S. Ren, and J. Sun, “Deep residual learning for image
+recognition,” in CVPR, 2016, pp. 770–778.
+J. Jia, B. Wang, X. Cao, and N. Z. Gong, “Certified robustness of
+community detection against adversarial structural perturbation via
+randomized smoothing,” in Proceedings of The Web Conference 2020,
+2020, pp. 2718–2724.
+J. N. Kather, C.-A. Weis, F. Bianconi, S. M. Melchers, L. R. Schad,
+T. Gaiser, A. Marx, and F. G. Zöllner, “Multi-class texture analysis in
+colorectal cancer histology,” Scientific reports, vol. 6, p. 27988, 2016.
+J. Konečný, H. B. McMahan, F. X. Yu, P. Richtárik, A. T. Suresh,
+and D. Bacon, “Federated learning: Strategies for improving communication efficiency,” in NIPS Workshop on Private Multi-Party Machine
+Learning, 2016.
+A. Krizhevsky, G. Hinton et al., “Learning multiple layers of features
+from tiny images,” 2009.
+Y. LeCun, C. Cortes, and C. Burges, “Mnist handwritten digit database,”
+Available: http://yann. lecun. com/exdb/mnist, 1998.
+B. Li, Y. Wang, A. Singh, and Y. Vorobeychik, “Data poisoning attacks
+on factorization-based collaborative filtering,” in NIPS, 2016.
+L. Li, W. Xu, T. Chen, G. B. Giannakis, and Q. Ling, “Rsa: Byzantinerobust stochastic aggregation methods for distributed learning from
+heterogeneous datasets,” in AAAI, vol. 33, 2019, pp. 1544–1551.
+Y. Liu, S. Ma, Y. Aafer, W.-C. Lee, J. Zhai, W. Wang, and X. Zhang,
+“Trojaning attack on neural networks,” in NDSS, 2018.
+H. B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A. y Arcas,
+“Communication-efficient learning of deep networks from decentralized
+data,” in AISTATS, 2017.
+E. M. E. Mhamdi, R. Guerraoui, and S. Rouault, “The hidden vulnerability of distributed learning in byzantium,” in ICML, 2018.
+L. Muñoz-González, B. Biggio, A. Demontis, A. Paudice, V. Wongrassamee, E. C. Lupu, and F. Roli, “Towards poisoning of deep learning
+algorithms with back-gradient optimization,” in AISec, 2017.
+L. Muñoz-González, K. T. Co, and E. C. Lupu, “Byzantine-robust
+federated machine learning through adaptive model averaging,” arXiv
+preprint arXiv:1909.05125, 2019.
+B. Nelson, M. Barreno, F. J. Chi, A. D. Joseph, B. I. P. Rubinstein,
+U. Saini, C. Sutton, J. D. Tygar, and K. Xia., “Exploiting machine
+learning to subvert your spam filter,” in LEET, 2008.
+Y. Nesterov and V. Spokoiny, “Random gradient-free minimization of
+convex functions,” vol. 17, no. 2. Springer, 2017, pp. 527–566.
+
+[34]
+
+[35]
+
+[36]
+
+[37]
+
+[38]
+
+[39]
+[40]
+[41]
+[42]
+[43]
+[44]
+
+[45]
+[46]
+
+[47]
+
+[48]
+[49]
+
+iteration:
+
+S. Rajput, H. Wang, Z. Charles, and D. Papailiopoulos, “Detox:
+A redundancy-based framework for faster and more robust gradient
+aggregation,” in NIPS, 2019, pp. 10 320–10 330.
+B. I. Rubinstein, B. Nelson, L. Huang, A. D. Joseph, S.-h. Lau, S. Rao,
+N. Taft, and J. Tygar, “Antidote: understanding and defending against
+poisoning of anomaly detectors,” in ACM IMC, 2009.
+A. Shafahi, W. R. Huang, M. Najibi, O. Suciu, C. Studer, T. Dumitras,
+and T. Goldstein, “Poison frogs! targeted clean-label poisoning attacks
+on neural networks,” in NIPS, 2018.
+O. Suciu, R. Marginean, Y. Kaya, H. D. III, and T. Dumitras, “When
+does machine learning fail? generalized transferability for evasion and
+poisoning attacks,” in USENIX Security Symposium, 2018.
+V. Tolpegin, S. Truex, M. E. Gursoy, and L. Liu, “Data poisoning attacks
+against federated learning systems,” arXiv preprint arXiv:2007.08432,
+2020.
+R. Vershynin, “Introduction to the non-asymptotic analysis of random
+matrices,” arXiv preprint arXiv:1011.3027, 2010.
+M. J. Wainwright, “High-dimensional statistics: A non-asymptotic viewpoint,” vol. 48. Cambridge University Press, 2019.
+B. Wang and N. Z. Gong, “Attacking graph-based classification via
+manipulating the graph structure,” in CCS, 2019.
+H. Xiao, K. Rasul, and R. Vollgraf. (2017) Fashion-mnist: a novel image
+dataset for benchmarking machine learning algorithms.
+C. Xie, K. Huang, P.-Y. Chen, and B. Li, “Dba: Distributed backdoor
+attacks against federated learning,” in ICLR, 2020.
+C. Xie, S. Koyejo, and I. Gupta, “Zeno: Distributed stochastic gradient
+descent with suspicion-based fault-tolerance,” in ICML, 2019, pp. 6893–
+6901.
+G. Yang, N. Z. Gong, and Y. Cai, “Fake co-visitation injection attacks
+to recommender systems,” in NDSS, 2017.
+H. Yang, X. Zhang, M. Fang, and J. Liu, “Byzantine-resilient stochastic gradient descent for distributed learning: A lipschitz-inspired
+coordinate-wise median approach,” in CDC. IEEE, 2019, pp. 5832–
+5837.
+Z. Yang and W. U. Bajwa, “Byrdie: Byzantine-resilient distributed
+coordinate descent for decentralized learning,” IEEE Transactions on
+Signal and Information Processing over Networks, vol. 5, no. 4, pp.
+611–627, 2019.
+D. Yin, Y. Chen, K. Ramchandran, and P. Bartlett, “Byzantine-robust
+distributed learning: Towards optimal statistical rates,” in ICML, 2018.
+Z. Zhang, J. Jia, B. Wang, and N. Z. Gong, “Backdoor attacks to graph
+neural networks,” arXiv preprint arXiv:2006.11165, 2020.
+
+kg − ∇F (w)k ≤ 3 kg0 − ∇F (w)k + 2 k∇F (w)k .
+Proof: We have the following equations:
+kg − ∇F (w)k
+X
+ϕi ḡi − ∇F (w)
+=
+
+(14)
+
+i∈S
+
+X
+
+=
+
+ϕi ḡi − g0 + g0 − ∇F (w)
+
+(15)
+
+ϕi ḡi − g0 + kg0 − ∇F (w)k
+
+(16)
+
+i∈S
+
+X
+
+≤
+
+i∈S
+(a)
+
+≤
+
+X
+
+ϕi ḡi + g0 + kg0 − ∇F (w)k
+
+(17)
+
+ϕi ḡi + kg0 k + kg0 − ∇F (w)k
+
+(18)
+
+ϕi kḡi k + kg0 k + kg0 − ∇F (w)k
+
+(19)
+
+i∈S
+
+≤
+
+X
+i∈S
+
+≤
+
+X
+i∈S
+
+(b) X
+
+=
+
+ϕi kg0 k + kg0 k + kg0 − ∇F (w)k
+
+(20)
+
+i∈S
+(c)
+
+= 2 kg0 k + kg0 − ∇F (w)k
+(21)
+= 2 kg0 − ∇F (w) + ∇F (w)k + kg0 − ∇F (w)k
+(22)
+≤ 2 kg0 − ∇F (w)k + 2 k∇F (w)k + kg0 − ∇F (w)k (23)
+= 3 kg0 − ∇F (w)k + 2 k∇F (w)k ,
+(24)
+
+where (a) is because hḡi , g0 i > 0 for i ∈ S; (b) is because
+FLTrust normalizes the local model updates to have the same
+magnitude as the
+Pserver model update, i.e., kḡi k = kg0 k; and
+(c) is because
+ϕi = 1.
+i∈S
+
+Lemma 2. Assume Assumption 1 holds. If we set the learning
+rate as α = µ/(2L2 ), then we have the following in any global
+iteration t ≥ 1:
+
+A PPENDIX
+A. Proof of Theorem 1
+
+wt−1 − w∗ − α∇F (wt−1 )
+p
+≤ 1 − µ2 /(4L2 ) wt−1 − w∗ .
+
+Before proving Theorem 1, we first restate our FLTrust
+algorithm and prove some lemmas. We note that in our setting
+where Rl = 1, only the combined learning rate α·β influences
+FLTrust. Therefore, given a combined learning rate, we can
+always set β = 1 and let α be the combined learning rate.
+In this case, the local model updates and server update are
+equivalent to the negative gradients of the clients and the
+server, respectively. With a slight abuse of notation, we use
+gi and g0 to represent the gradients of the ith client and the
+server in our proof, respectively. We denote by S the set of
+clients whose cosine similarity ci is positive in the tth global
+0k
+PReLU (ci )
+Pci ,
+iteration. Let ḡi = kg
+kgi k · gi and ϕi =
+ReLU (cj ) =
+cj
+j∈S
+
+Proof: Since ∇F (w∗ ) = 0, we have the following:
+wt−1 − w∗ − α∇F (wt−1 )
+
+2
+
+(25)
+
+ 2
+= wt−1 − w∗ − α ∇F (wt−1 ) − ∇F (w∗ )
+t−1
+
+∗ 2
+
+2
+
+t−1
+
+∗
+
+= w
+−w
++ α ∇F (w ) − ∇F (w )
+t−1
+− 2α w
+− w∗ , ∇F (wt−1 ) − ∇F (w∗ ) .
+
+(26)
+2
+
+(27)
+
+By Assumption 1, we have:
+
+j∈S
+
+where i ∈ S. Then, we can obtain the global gradient g from
+Equation (4) as:
+X
+X
+g=
+ϕi ḡi , s.t.
+ϕi = 1, 0 < ϕi < 1.
+(12)
+i∈S
+
+(13)
+
+∇F (wt−1 ) − ∇F (w∗ ) ≤ L wt−1 − w∗ ,
+F (w∗ ) + ∇F (w∗ ), wt−1 − w∗ ≤ F (wt−1 )
+µ
+2
+wt−1 − w∗ ,
+−
+2
+F (wt−1 ) + ∇F (wt−1 ), w∗ − wt−1 ≤ F (w∗ ).
+
+i∈S
+
+Lemma 1. For an arbitrary number of malicious clients, the
+distance between g and ∇F (w) is bounded as follows in each
+
+16
+
+(28)
+(29)
+(30)
+
+
+≤ exp − |D0 | ∆21 /(2σ12 ) + d log 6 .
+
+Summing up inequalities (29) and (30), we have:
+∗
+
+t−1
+
+(36)
+
+∗
+
+t−1
+
+w − w , ∇F (w ) − ∇F (w )
+µ
+2
+≤ − wt−1 − w∗ .
+2
+
+√ Wep conclude the proof by letting
+2σ1 (d log 6 + log(3/δ))/|D0 | in (36).
+
+(31)
+
+(32)
+
+(33)
+
+Pr {kg0 − ∇F (w)k ≤ 8∆2 kw − w∗ k + 4∆1 } ≥ 1 − δ,
+q
+√
+2
+where ∆2 = σ2 |D20 | K1 + K2 , K1 = d log 18L
+σ2 , K2 =
+
+
+√
+6σ22 r |D0 |
+|D0 |
+1
+, L2 = max {L, L1 }, and |D0 |
+2 d log d + log
+γ2 σ1 δ
+
+2
+
+By choosing α = µ/(2L2 ), we have:
+2
+
+wt−1 − w∗ − α∇F (wt−1 )
+
+2
+≤ 1 − µ2 /(4L2 ) wt−1 − w∗ ,
+
+=
+
+Lemma 4. Suppose o
+Assumptions 1-3 hold and Θ ⊂
+n
+√
+w : kw − w∗ k ≤ r d holds for some positive parameter
+r. Then, for any δ ∈ (0, 1), if ∆1 ≤ σ12 /γ1 and ∆2 ≤ σ22 /γ2 ,
+we have the following for any w ∈ Θ:
+
+Substituting inequalities (28) and (31) into (27), we have:
+wt−1 − w∗ − α∇F (wt−1 )
+
+2
+≤ 1 + α2 L2 − αµ wt−1 − w∗ .
+
+∆1
+
+which concludes the proof.
+
+is the size of the root dataset.
+
+Lemma
+3. Suppose Assumption 2 holds. For
+any δ
+∈
+(0, √
+1) and
+∈
+Θ, we let
+p any w
+∆1 √ =p
+2σ1 (d log 6 + log(3/δ))/|D0 |
+and
+∆3 = 2σ2 (d log 6 + log(3/δ))/|D0 |. If ∆1 ≤ σ12 /γ1 and
+∆3 ≤ σ22 /γ2 , then we have:
+)
+(
+X
+δ
+1
+∗
+∗
+∇f (Xi , w ) − ∇F (w ) ≥ 2∆1 ≤ ,
+Pr
+|D0 |
+3
+Xi ∈D0
+(
+X
+1
+∇h(Xi , w) − E [h(X, w)]
+Pr
+|D0 |
+Xi ∈D0
+)
+δ
+∗
+≥ 2∆3 kw − w k ≤ .
+3
+
+Proof: Our proof is mainly based on
+q the ε-net arguγ2 σ 1
+ment [39] and [12]. We let τ = 2σ2 |Dd0 | and `∗ be
+l √ 2m
+an integer that satisfies `∗ = r d/τ . For any integer
+1 ≤ ` ≤ `∗ , we define Θ` = {w : kw − w∗ k ≤ τ `} . Given
+an integer `, we let w1 , · · · , wNε` be an ε` -cover of Θ` , where
+q
+ε` = σL2 τ2 ` |Dd0 | and L2 = max {L, L1 }. From [39], we know
+ 
+`
+that log Nε` ≤ d log 3τ
+ε` . For any w ∈ Θ` , there exists a j`
+(1 ≤ j` ≤ Nε` ) such that:
+kw − wj` k ≤ ε` .
+
+(37)
+
+According to the triangle inequality, we have:
+X
+1
+∇f (Xi , w) − ∇F (w) ≤ k∇F (w) − ∇F (wj` )k
+|D0 |
+
+Proof: We prove the first inequality of Lemma 3. The
+proof of the second inequality is similar, and we omit it for
+brevity. Let V = {v1, , · · · , vN 1 } be an 12 -cover of the unit
+2
+sphere B. It is shown in [12], [39] that we have log N 21 ≤
+d log 6 and the following:
+
+Xi ∈D0
+
++
+
+X
+1
+(∇f (Xi , w) − ∇f (Xi , wj` ))
+|D0 |
+Xi ∈D0
+
+X
+1
+∇f (Xi , wj` ) − ∇F (wj` ) .
+|D0 |
+
+X
+1
+∇f (Xi , w∗ ) − ∇F (w∗ ) ≤
+|D0 |
+Xi ∈D0
+(*
++)
+X
+1
+2 sup
+∇f (Xi , w∗ ) − ∇F (w∗ ), v
+. (34)
+|D0 |
+v∈V
+
++
+
+According to the concentration inequalities for subexponential random variables [40], when Assumption 2 and
+condition ∆1 ≤ σ12 /γ1 hold, we have:
+(*
++
+)
+X
+1
+∗
+∗
+Pr
+∇f (Xi , w ) − ∇F (w ), v ≥ ∆1
+|D0 |
+Xi ∈D0
+
+≤ exp − |D0 | ∆21 /(2σ12 ) .
+(35)
+
+Next, we define an event E1 as follows:
+(
+)
+k∇f (X, w) − ∇f (X, b
+w)k
+E1 =
+sup
+≤ L1 .
+kw − b
+wk
+b
+w, b
+w∈Θ:w6=w
+
+(38)
+
+Xi ∈D0
+
+According to Assumption 1 and inequality (37), we have:
+k∇F (w) − ∇F (wj` )k ≤ L kw − wj` k ≤ Lε`
+
+Xi ∈D0
+
+(39)
+
+According to Assumption 2, we have Pr {E1 } ≥ 1 − 3δ .
+Moreover, we have the following:
+
+Taking the union bound over all vectors in V and combining it with inequality (34), we have:
+(
+)
+X
+1
+∗
+∗
+Pr
+∇f (Xi , w ) − ∇F (w ) ≥ 2∆1
+|D0 |
+
+sup
+w∈Θ
+
+X
+1
+(∇f (Xi , w) − ∇f (Xi , wj` ))
+|D0 |
+Xi ∈D0
+
+≤ L1 kw − wj` k ≤ L1 ε` .
+
+Xi ∈D0
+
+17
+
+(40)
+
+(a)
+
+According to the triangle inequality, we have:
+1
+|D0 |
+
+X
+
+≤ 4∆2 τ + 2∆1 ≤ 4∆1 ,
+
+(44)
+p
+where (a) holds because ∆2 ≤ σ22 /γ2 and ∆1 ≥ σ1 d/|D0 |.
+If ` ≥ 2, then we have 2(` − 1) ≥ ` and the following:
+
+∇f (Xi , wj` ) − ∇F (wj` )
+
+Xi ∈D0
+
+X
+1
+∇f (Xi , w∗ ) − ∇F (w∗ )
+|D0 |
+
+≤
+
+X
+1
+∇f (Xi , w) − ∇F (w)
+|D0 |
+Xi ∈D0
+≤ 8∆2 kw − w∗ k + 2∆1 .
+
+Xi ∈D0
+
++
+
+X
+1
+(∇f (Xi , wj` ) − ∇f (Xi , w∗ ))
+|D0 |
+
+Combining inequalities (44) and (45), we have:
+
+Xi ∈D0
+
+− (∇F (wj` ) − ∇F (w∗ ))
+
+sup
+w∈Θ`∗
+
+(a)
+
+≤
+
+1
+|D0 |
+
+X
+
+∗
+
+X
+1
+∇f (Xi , w) − ∇F (w)
+|D0 |
+Xi ∈D0
+
+≤ 8∆2 kw − w∗ k + 4∆1 .
+
+∗
+
+∇f (Xi , w ) − ∇F (w )
+
+Xi ∈D0
+
+X
+1
+h(Xi , wj` ) − E [h (X, wj` )] ,
++
+|D0 |
+
+(45)
+
+(46)
+
+WePconclude the proof since Θ ⊂ Θ`∗ and g0 =
+∇f (Xi , w).
+
+1
+|D0 |
+
+(41)
+
+Xi ∈D0
+
+Xi ∈D0
+
+Proof of Theorem 1: With the lemmas above, we can prove
+Theorem 1 next. We have the following equations for the tth
+global iteration:
+
+where (a) is due to E [h (X, w)] = ∇F (w) − ∇F (w∗ ).
+We also define events E2 and E3 (`) as:
+(
+)
+X
+1
+E2 =
+∇f (Xi , w∗ ) − ∇F (w∗ ) ≤ 2∆1 ,
+|D0 |
+Xi ∈D0
+(
+X
+1
+h(Xi , wj ) − E [h (X, wj )]
+E3 (`) =
+sup
+1≤j≤Nε |D0 |
+Xi ∈D0
+)
+
+wt − w∗
+= wt−1 − αg t−1 − w∗
+= wt−1 − α∇F (wt−1 ) − w∗ + α∇F (wt−1 ) − αg t−1
+≤ wt−1 − α∇F (wt−1 ) − w∗ + α g t−1 − ∇F (wt−1 )
+(a)
+
+≤ wt−1 − α∇F (wt−1 ) − w∗ + 3α g0t−1 − ∇F (wt−1 )
++ 2α ∇F (wt−1 )
+
+≤ 2∆2 τ ` .
+
+(b)
+
+= wt−1 − α∇F (wt−1 ) − w∗ +3α g0t−1 − ∇F (wt−1 )
+|
+{z
+}
+|
+{z
+}
+
+According to Lemma 3 and [12], ∆1 ≤ σ12 /γ1 , and ∆2 ≤
+2
+σ2 /γ2 , we have Pr {E2 } ≥ 1 − 3δ and Pr {E3 (`)} ≥ 1 − 3`δ∗ .
+
++ 2α ∇F (w
+|
+
+Therefore, on event E1 ∩ E2 ∩ E3 (`), we have:
+sup
+w∈Θ`
+
+X
+1
+∇f (Xi , w) − ∇F (w)
+|D0 |
+
+≤ Lε` + L1 ε` + 2∆1 + 2∆2 τ `,
+
+) − ∇F (w )
+{z
+}
+A3
+
+1 − µ2 /(4L2 ) wt−1 − w∗ + 2αL wt−1 − w∗
+
++ 3α 8∆2 wt−1 − w∗ + 4∆1
+
+p
+=
+1 − µ2 /(4L2 ) + 24α∆2 + 2αL wt−1 − w∗
+≤
+
+(42)
+
+(b)
+
+≤ 2L2 ε` + 2∆1 + 2∆2 τ ` ≤ 4∆2 τ ` + 2∆1 ,
+
+A2
+
+∗
+
+(c) p
+
+Xi ∈D0
+
+(a)
+
+A1
+t−1
+
+(43)
+
++ 12α∆1 ,
+
+where (a)
+pholds because (L + L1 ) ≤ 2L2 and (b) is due to
+∆2 ≥ σ2 d/|D0 |.
+
+(47)
+
+where (a) is obtained based on Lemma 1; (b) is due to
+∇F (w∗ ) = 0; and (c) is obtained by plugging Lemma 2,
+Lemma 4, and Assumption 1 into A1 , A2 , and A3 , respectively.
+By recursively applying the inequality for each global iteration,
+we have:
+
+Thus, according to the union bound, ∗we have probability
+at least 1 − δ that event E1 ∩ E2 ∩ (∩``=1 E3 (`)) holds. On
+∗
+event E1 ∩ E2 ∩ (∩``=1 E3 (`)), for any w ∈ Θ`∗ , there exists an
+1 ≤ ` ≤ `∗ such that (` − 1)τ < kw − w∗ k ≤ `τ holds. If
+` = 1, then we have:
+
+t
+
+wt − w∗ ≤ (1 − ρ) w0 − w∗ + 12α∆1 /ρ,
+(48)
+p
+
+where ρ = 1−
+1 − µ2 /(4L2 ) + 24α∆2 + 2αL . Thus, we
+conclude the proof.
+
+X
+1
+∇f (Xi , w) − ∇F (w)
+|D0 |
+Xi ∈D0
+
+18
+
+

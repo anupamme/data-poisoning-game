@@ -1,0 +1,1970 @@
+1
+
+Byzantine-Robust Aggregation for Securing
+Decentralized Federated Learning
+Diego Cajaraville-Aboy* , Ana Fernández-Vilas, Rebeca P. Dı́az-Redondo, Manuel Fernández-Veiga
+atlanTTic Research Center – ICLAB – Universidade de Vigo, Vigo, 36310, Spain
+{dcajaraville,avilas,rebeca,mveiga}@det.uvigo.es
+*
+Corresponding author: dcajaraville@det.uvigo.es
+
+arXiv:2409.17754v2 [cs.LG] 25 Jun 2026
+
+Abstract
+Federated Learning (FL) emerges as a distributed machine learning approach that addresses privacy concerns by training AI
+models locally on devices. Decentralized Federated Learning (DFL) extends the FL paradigm by eliminating the central server,
+thereby enhancing scalability and robustness through the avoidance of a single point of failure. However, DFL faces significant
+challenges in optimizing security, as most Byzantine-robust algorithms proposed in the literature are designed for centralized
+scenarios. In this paper, we present a novel Byzantine-robust aggregation algorithm to enhance the security of Decentralized
+Federated Learning environments, coined WFAgg. This proposal handles adverse conditions and strengthens the robustness of
+dynamic decentralized topologies at the same time by employing multiple filters to identify and mitigate Byzantine attacks.
+Experimental results demonstrate the effectiveness of the proposed algorithm in maintaining model accuracy and convergence
+in the presence of various Byzantine attack scenarios, outperforming state-of-the-art centralized Byzantine-robust aggregation
+schemes (such as Multi-Krum or Clustering). These algorithms are evaluated on an IID image classification problem in both
+centralized and decentralized scenarios.
+Index Terms
+Machine Learning, Decentralized Federated Learning, Byzantine robustness, Aggregation Rule, Security
+
+I. I NTRODUCTION
+The integration of Machine Learning (ML) into modern technology has significantly transformed various sectors, particularly
+with the proliferation of Internet of Things (IoT) devices [1]. This growth has led to an exponential increase in the generation
+and distribution of big data across devices, highlighting both new opportunities and challenges for advanced data processing
+techniques [2]. The classical approach to handling this amount of data has several disadvantages in terms of security, privacy,
+and scalability, as all this data (and the trained algorithm) is stored and processed in a large centralized datacenter [3], [4].
+In response to these challenges, Federated Learning (FL) has been proposed as an alternative paradigm that allows machine
+learning algorithms to work without the centralization of data [5]. FL leverages the computational capabilities of end devices,
+enabling them to train their own ML models with their local data. A central server then merges all the locally trained models
+from the end devices to compute a global model [6]. This method enhances privacy by design, as it does not expose all data at
+a single location, while utilizing the processing capabilities of the devices. However, traditional federated learning still relies on
+a central server to manage the learning algorithm process, which can be a target for privacy and security attacks by malicious
+attackers [7], among other ongoing challenges.
+The concept of Decentralized Federated Learning (DFL) extends FL principles by eliminating the central server, thereby
+mitigating the risks associated with a single point of failure and enhancing privacy by avoiding a centralized coordination of
+the learning process [8]. This decentralized approach promotes greater resilience, allowing the learning process to continue
+even if some nodes fail or go offline, thus improving the robustness and fault tolerance of the overall network [9].
+However, while the decentralization of these learning environments offers benefits such as improved scalability, it also
+introduces new challenges, including increased vulnerability to security threats. The absence of a central server complicates
+the implementation of uniform security-preserving algorithms and makes the system more susceptible to attacks such as
+Byzantine failures [10], [11]. Notably, Byzantine failures occur when a group of Byzantine clients attempts to disrupt the
+proper learning process, e.g., by altering their updates to degrade other local model’s performance (known as Byzantine
+attacks [12]). Additionally, the heterogeneity among nodes, with varying computational capabilities or data quality, which can
+lead to inconsistencies and reduce the effectiveness of the learned model [13].
+Despite the potential of the DFL paradigm, research on securing such environments is still limited, with most existing
+work focusing on centralized FL approaches [14]. Many of these approaches utilize Byzantine-robust aggregation algorithms
+designed to mitigate/filter malicious attacks from adversarial nodes in the central server [15], [16]. This raises the question:
+are these algorithms proposed for centralized scenarios equally efficient in decentralized environments?
+This version of the article has been accepted for publication in IEEE Access after peer review, but is not the Version of Record and may not reflect final
+copy-editing, formatting, pagination, or corrections. The Version of Record is available online at: https://doi.org/10.1109/ACCESS.2025.3629864. © 2025 The
+Authors. This manuscript version is licensed under CC BY 4.0.
+
+2
+
+In light of these challenges, we introduce an innovative Byzantine-robust aggregation algorithm designed to ensure the proper
+performance of Decentralized Federated Learning environments, which we coined WFAgg. To the best of our knowledge,
+this represents a novel approach in the literature, as existing works have not explicitly addressed Byzantine robustness
+under decentralized scenarios considering both spatial and time-varying statistics. The proposed algorithm leverages multiple
+techniques to filter and mitigate Byzantine attacks during the aggregation step in DFL, adapting effectively to these conditions.
+In summary, the contributions of this paper are as follows:
+• We design and develop a novel Byzantine-robust aggregation algorithm for DFL environments. It ensures robustness
+against malicious attacks by using different lightweight filtering techniques, which is particularly suited for adversarial
+decentralized IoT environments.
+• We systematically evaluate different state-of-the-art (SOTA) centralized Byzantine-robust aggregation algorithms in decentralized settings and compare these results to those obtained in the centralized ones.
+• We assess the robustness of the proposed algorithm through multiple experiments on an image classification problem
+under different Byzantine attacks. This algorithm obtains better accuracy and model consistency results compared with
+the centralized ones under the evaluated tests.
+• We implemented a DFL simulator in the Python language to conduct the aforementioned experiments.
+The remainder of this paper is structured as follows. Section II includes a detailed explanation of concepts such as Federated
+Learning and Decentralized Federated Learning, focusing on the current state of the art of the latter. Section III provides a
+study of security in FL environments, along with the most well-known techniques for addressing the associated challenges.
+Section IV presents the proposed Byzantine-robust aggregation algorithm solution in this paper, providing context for the
+scenario addressed and details about employed techniques and mechanisms. Section V details the simulation settings, including
+configuration parameters and specifications. Then, Section VI discusses the obtained results regarding the system’s robustness
+and convergence (both in the proposed algorithm and in the SOTA algorithms for centralized schemes). Finally, Section VII
+offers the final conclusions of this paper, highlighting the contributions to the field of DFL research and suggesting possible
+future lines of work.
+II. BACKGROUND
+Originally introduced by Google in 2016 [5], the classical version of federated learning involves each client maintaining a
+local model trained with its own training dataset, while a central aggregator (or parameter server) maintains a global model that
+is updated through the local models of the clients. In depth, centralized FL proceeds as follows [17] (in a specific round): (i)
+the server sends the current global model parameters to all client devices, (ii) each client updates its local model by performing
+one or several steps of an optimization algorithm (in the literature, the most common is Stochastic Gradient Descent) using
+the current global model parameters and their local training datasets, then, (iii) devices send their updated local models back
+to the server where (iv) the server aggregates these local models from the clients using a specific aggregation rule to compute
+a new global model for the next round. The most recognized aggregation rule in FL field is Federated Average FedAvg. This
+process is carried out in multiple communication rounds, an iterative process that continues until the global model reaches the
+desired level of accuracy.
+Of particular interest in this work is the novel paradigm of Decentralized Federated Learning which, despite not being
+the predominant approach in this field, introduces certain features that make it a promising alternative. In DFL, various
+nodes/clients collaborate and train their local models collectively without the necessity of a central server [18], [19], distributing
+the aggregation process among the nodes of the learning network. This eliminates the need to share a global model with all
+clients [20].
+One of the key advantages of DFL is promoting scalable and resilience environments, allowing nodes to join or disconnect
+from the learning network based on the power resources of the devices. Unlike centralized approaches, which can become
+bottlenecks or single points of failure, DFL distributes the workload over the entire network, improving fault tolerance and
+making the system more robust against attacks [21]. Another significant advantage of DFL over centralized approaches is
+the reduction in communication resources and the decrease in high bandwidth usage due to the elimination of intermediate
+model/gradient transmissions between clients and the server [8]. This is particularly relevant in environments with a large
+number of interconnected devices.
+Despite the significant potential of DFL, research on this topic remains sparse, indicating it is an emerging field. This scenario
+must confront new challenges absent in centralized approaches due to the decentralized learning process and decision-making
+across numerous devices. For example, designing communication protocols that define how clients exchange their models
+in order to prevent excessive communication overheads. Gossip Learning is a notable decentralized communication protocol
+for asynchronous updates between nodes, leveraging peer-to-peer (P2P) schemes to achieve scalability and potential privacy
+preservation [22], [23]. Although effective, gossip learning has a slower aggregation evolution due to its fully distributed
+nature [8]. Hybrid protocols combining gossip and broadcast techniques offer greater adaptability to various decentralized
+scenarios, facilitating model sharing only with neighboring nodes [24]. Other works [21], [25] propose blockchain-based FL
+environments that provide trustworthy schemes by guaranteeing the immutability of exchanged models through a peer-to-peer
+consensus mechanism.
+
+3
+
+Moreover, DFL approaches lead to high inconsistency among local models since there is no global model. Some proposals,
+such as increasing gossip steps in local communications, achieve better consensus [26]. Another approach involves a consensusbased DFL algorithm inspired by discrete-time weighted average consensus frameworks [27]. Additionally, techniques like
+optimizing the consensus matrix to enhance the convergence rate and architectures focusing on continuous consensus over
+aggregated models are explored [28], [29].
+III. R ELATED W ORK
+This section provides an overview of related work in the state of the art, highlighting key areas of security in Federated
+Learning. It is divided into three subsections that review security vulnerabilities, existing Byzantine-robust aggregation schemes
+proposed for centralized scenarios, and related works on various Byzantine-robust aggregation scheme proposals.
+A. Security Vulnerabilities
+The FL process is vulnerable to attacks on collaborative training, which can negatively impact model performance and the
+overall robustness of the system. Model performance can be compromised through specific targeted attacks (including backdoor
+attacks that disrupt the model’s ability to accurately classify a particular category) or through general untargeted attacks (such
+as Byzantine attacks, which focus on obstructing the collaborative training process by providing false updates) [30]. There
+are two main different ways of carrying out untargeted attacks: by poisoning the data with which the model is trained (data
+poisoning) or by manipulating the local model before sending it to the server (model poisoning). As previous research [31]
+has shown that model poisoning attacks have a greater impact compared to data poisoning attacks, this work will concentrate
+on the former.
+One of the most well-known techniques to counter data/model poisoning attacks performed by malicious nodes, which can
+be considered Byzantine attacks, are Byzantine-robust techniques. To mitigate or eliminate these Byzantine faults that threaten
+the proper functioning of FL, various Byzantine-robust algorithms have emerged [32]. These include redundancy-based and
+trust-based schemes that seek to mitigate Byzantine attacks either by assigning each client redundant updates or by assuming
+the presence of reliable nodes for filtering attacks, respectively [33], [34]. Of significant importance are robust aggregation
+schemes that aim to optimize the aggregation process itself to mitigate or filter Byzantine attacks [15], [17], [35]–[37].
+B. Main Centralized Byzantine-Robust Algorithms
+Due to the importance they will have throughout this document, we are going to describe some of the most renowned
+Byzantine-robust aggregation schemes for CFL in the state of the art. Suppose a server receives a subset of models {θk }K
+k=1
+from its K clients.
+• Mean [5]: This is the most basic aggregation rule and often serves as a benchmark for comparisons. This algorithm
+aggregates client models by calculating the coordinate-wise arithmetic mean of the given set of models. It simplifies the
+FedAvg algorithm which uses a weighted average based on the number of samples trained by each client.
+• Median [35]: This algorithm is based on a coordinate-wise aggregation rule to compute the global model. To achieve this,
+the server calculates each i-th parameter of the model by sorting the K values from the received models and computing
+their median value.
+• Trimmed-Mean [35]: This is a variant of the Mean aggregation algorithm and another coordinate-wise aggregation rule.
+For a given trim rate β ∈ (0, 1/2), the server sorts the K received values of each i-th parameter in the model and removes
+the smallest and largest βK values. So, the i-th parameter of the global model is computed as the mean of the remaining
+(1 − 2β)K values.
+• Krum and Multi-Krum [15]: This algorithm filters the models received from clients using Euclidean distances. For each
+client, the server assigns a score by calculating the sum of Euclidean distances from the client’s model θk to the K −M −2
+closest neighbours models, where M is the number of malicious models. The model with the lowest score is selected as
+the global model. The Multi-Krum variant selects the m models with the lowest scores and computes the global model
+as the mean of these m selected models.
+• Clustering [17], [36]: The aim of this algorithm is to separate the models received from clients into two clusters and
+aggregate as the global model those belonging to the larger cluster. This is achieved using an agglomerative clustering
+algorithm with average linkage, employing pairwise cosine similarities between models as a distance metric.
+The majority of existing Byzantine-robust aggregation schemes (including those described previously) can be categorized
+based on the techniques employed by them [32]:
+• Statistics: These schemes utilize the statistical characteristics of updates, such as the median, to block abnormal updates
+and achieve robust aggregation. They are suitable only when the number of malicious users is less than half of the total
+users.
+• Distance: These schemes aim to detect and discard bad or malicious updates by comparing the distances between updates.
+An update that is significantly different from others is considered malicious. These are suitable only to resist attacks that
+produce noticeably abnormal updates.
+
+4
+
+•
+
+Performance: In these schemes, each update is evaluated over a clean dataset provided by the server, and any update
+that performs poorly is given low weight or removed directly. These schemes are more reliable than other solutions but
+rely on a clean dataset for evaluations, which is not always possible.
+
+C. FL Defense Schemes
+Following the previous subsection, not all proposals in the state of the art fit into the aforementioned classification. This is
+due to the development of innovative techniques that offer different approaches compared to the more well-known aggregation
+algorithms.
+S IGN G UARD [38] is a novel approach which enhances FL system robustness against model poisoning attacks by utilizing
+the element-wise sign of gradient vectors. It proposes processing the received gradients to generate relevant magnitude, sign,
+and similarity statistics, which are then used collaboratively by multiple filters to eliminate malicious gradients before the final
+aggregation. The key idea is that the sign distribution of sign-gradient can provide valuable information in detecting advanced
+model poisoning attacks.
+FLT RUST [39] proposes an alternative method by implementing a trust-based approach. Unlike the previous proposal, this
+method uses an initial trust model, trained on a small maintained dataset, to evaluate and weight the contributions of clients
+in the global model aggregation process. Thus, client updates that align closely with the server model’s direction are deemed
+trustworthy, while others are adjusted or discarded based on their deviation.
+There are also other proposals that do not only focus on the geometric properties of models for mitigating Byzantine attacks.
+For example, [17] proposes a method to mitigate the impact of Byzantine clients in federated learning through a spatialtemporal analysis approach. Apart from leveraging clustering-based methods to detect and exclude incorrect updates based on
+their geometric properties in the parameter space, the temporal analysis provides a more effective defense mechanism, which
+is crucial in environments where attack strategies may evolve during the course of model training. In this case, time-varying
+behaviors are addressed through an adjustment of the learning rate parameter.
+Another example is S IREN [40] which proposes a FL system to improve robustness through proactive alarming. Clients alert
+abnormal behaviors in real-time using a continuous monitoring scheme based on the evolution of the global model’s accuracy
+over the rounds. When a potential threat is identified, the clients issue an alarm, and the central server adjusts the model
+aggregation to mitigate the impact of malicious contributions.
+IV. M ETHODOLOGY
+Despite the existence of multiple Byzantine-robust proposals in the state of the art, the majority have been oriented towards
+centralized FL scenarios. To our knowledge, there is no proposed Byzantine-robust aggregation algorithm specifically designed
+to enhance security in DFL environments. In this section, we elaborate on the system configuration employed in DFL and detail
+all technical specifications of the proposed algorithm WFAgg designed to ensure Byzantine-robustness within this framework.
+Additionally, the corresponding filtering and aggregation algorithms that are integral components of the WFAgg algorithm will
+be described in the subsequent subsections.
+A. System Setting
+We consider a cross-device scenario where multiple IoT devices (or servers) carry out a distributed collaborative learning of
+a machine learning model through DFL. Figure 1 illustrates the proposed scenario for the DFL system. This figure showcases
+a set of clients/devices C = {Ci }, i = 1, 2, . . . , N involved in the collaborative training of a ML model. Each client possesses
+a local dataset Di , i ∈ [N ], with ni data samples, which is used for training their own local model, θi . The objective of FL
+can be formulated as a non-convex minimization problem:
+
+X
+|Di |
+L(θ, Di ) ,
+(1)
+min L(θ, D) = min
+|D|
+θ∈Rd
+θ∈Rd
+i∈[N ]
+
+S
+P
+where L(θ, D) is the empirical loss function of the model θ over the overall dataset D = i∈[N ] Di , and |D| = i∈[N ] |Di |
+is the total number of samples across all clients.
+The topology of the DFL scenario is modeled as an undirected graph G = (C, E) where C represents the devices participating
+in the learning process as vertices, which are interconnected by the set of links E ⊆ C × C. Although the topology is dynamic
+across rounds, the problem is simplified by assuming a static topology where each node consistently communicates with the
+same set of nodes.
+The majority of the client set C consists of benign clients, i.e., they follow the established protocol and send honest models
+to the corresponding nodes, while a small fraction are Byzantine clients, i.e., they act maliciously and send arbitrary models
+with the intent of disrupting the proper training of the model. Nevertheless, this fraction of malicious nodes is relative since
+each node communicates with a different subset of nodes.
+
+5
+
+Fig. 1. Decentralized Federated Learning framework architecture.
+
+After the training process on its own dataset, each node shares its local model with other nodes in the network. The communication protocol proposed for this framework is based on a Gossip-inspired protocol. Instead of sharing its model with only
+one random node in the topology, each client forwards the trained model to all of its neighbors in the communication network.
+The set of neighboring clients of client Ci in topology graph G is defined as Ni (G) = {Cj ∈ C, Cj ̸= Ci : {Ci , Cj } ∈ E}.
+Upon receiving the trained models from neighboring nodes (assuming receipt of all models), each node applies a Byzantinerobust aggregation algorithm in order to update its local model. This process is repeated iteratively, beginning again with the
+local model training in the next round.
+B. Proposed Byzantine-Robust Aggregation Scheme
+This proposal suggests, similarly to other approaches, performing a preliminary filtering of the received models before
+aggregating them. The WFAgg algorithm defines both procedures, and this can be seen in Figure 2 that summarizes the
+workflow of the Byzantine-robust aggregation algorithm.
+In the WFAgg algorithm, the set of received models T by a client (from its neighboring nodes) is passed through multiple
+filters, each of them with a different purpose. The aim is to perform a distinct type of criteria in each filter using various
+well-known techniques in this field for mitigating or eliminating malicious models. This approach seeks to compensate for the
+inadequacies of some techniques in detecting specific attacks by leveraging other techniques. This fact is especially relevant
+in adversarial decentralized environments, as the number of received models can be low and the fraction of malicious nodes
+can be high (depending on the network topology).
+Specifically, the algorithm WFAgg comprises three multipurpose filters, including a distance-based filter, a similarity-based
+filter, and a temporal-based filter. As reviewed in Section II, several Byzantine-robust aggregation algorithms align with the
+described characteristics and could be utilized (e.g., Multi-Krum or Clustering). However, others such as those based on
+centrality statistics do not perform a filtering of the models per se and therefore would not be suitable (e.g., Median). Despite
+this, new algorithms for each of these filters, WFAgg-D, WFAgg-C and WFAgg-T, will be presented and detailed in the
+following subsections.
+Once each of these filters has selected a subset of the received models identified as benign (T1 , T2 , T3 , respectively for each
+filter), the model aggregation process will be performed through a weighting of the different filter results. Specifically, each
+model is scored based on which filters, if any, have identified it as benign. The weighting assigned by each filter is predefined
+based
+P on the relative importance attributed to that technique in filtering malicious models (τ1 , τ2 , τ3 , respectively for each filter,
+so i τi = 1).
+Considering that the algorithm may be attacked by targeting specific characteristics of some filters, it is understandable that
+a model must be accepted by two or more filters to be considered benign. This design decision is also influenced by the
+temporal-based filter, as it, by considering only temporal statistics, might identify a constant attack by a malicious node as
+benign.
+
+6
+
+Fig. 2. Workflow of Byzantine-robust aggregation algorithm WFAgg.
+
+Several examples are proposed for better understanding (suppose client Ci is performing the algorithm). If a model θj ,
+from one of its neighboring nodes, has been identified as benign by all three filters, it receives the highest weighting in the
+aggregation process and will be more relevant (wij = τ1 + τ2 + τ3 ). Now suppose that the same model is identified as benign
+by the distance-based and similarity-based filters, so it will receive a lower weighting than in the previous case, resulting in less
+relevance in the aggregated model (wij = τ1 + τ2 ). Conversely, if the model is identified as benign only by the similarity-based
+filter will not be considered in the aggregation process, i.e., it is assigned a zero weight (wij = 0).
+The output of the filtering process consists of the triplet (T1 , T2 , T3 ), representing the set of models considered benign in
+this round by each of the filters. Using the weights assigned to each model and the client’s own model, a coordinate-wise
+weighted aggregation (such as FedAvg) is performed, with the difference that this algorithm assigns a differential value to the
+local model. This proposed aggregation algorithm is called WFAgg-E and will be presented and described in the following
+subsections.
+In summary, Algorithm 1 describes the main characteristics of the algorithm functionality. Since the filters operate sequentially
+and share intermediate model statistics, the overall cost increases only linearly with the number of filters. Although WFAgg
+incorporates multiple filters, its computational overhead will remain moderate if each filtering step (distance-, similarity-, and
+temporal-based) has a comparable order of complexity to classical single-filter methods such as Krum. This complexity will
+be studied in following subsections.
+C. WFAgg-D: Distance-based Model Filtering
+The WFAgg-D algorithm (which is described in detail in Algorithm 2) is proposed as a Byzantine-robust aggregation
+algorithm aimed at detecting and mitigating models that geometrically differ from the rest. Specifically, it seeks to discard
+
+7
+
+Algorithm 1 WFAgg: Byzantine-Robust Aggregation Algorithm
+1: Input: Set of K received updates T = {θj }j∈[K] , the number of estimated malicious nodes f , length of the time window
+W , Tth rounds of the transient period and α smoothing factor
+2: Output: Set of benign updates (T1 , T2 , T3 ) and aggregated model θ i
+3: Initial: T1 = T2 = T3 = ∅, wij = 0
+4:
+5: T1 = WFAgg-D(T , f )
+6: T2 = WFAgg-C(T , f )
+7: T3 = WFAgg-T(T , W, Tth )
+8:
+9: for each j ∈ [K] do
+10:
+if θj ∈ T1 then
+11:
+wij ← wij + τ1
+
+end if
+if θj ∈ T2 then
+wij ← wij + τ2
+end if
+if θj ∈ T3 then
+17:
+wij ← wij + τ3
+18:
+end if
+19:
+if wij < min{k,ℓ},k̸=ℓ (τk + τℓ ) then
+20:
+wij ← 0
+21:
+end if
+22: end for
+
+12:
+13:
+14:
+15:
+16:
+
+23:
+24: θ i = WFAgg-E(T , α, {wij }j∈[K] )
+
+Algorithm 2 WFAgg-D: Distance-based filtering algorithm
+1: Input: Set of K received updates {θj }j∈[K] , the number of estimated malicious nodes f
+2: Output: Set of benign updates T1
+3: Initial: T1 = ∅
+4:
+5: Filter 1: Distance-based filtering
+6: θMed = Median({θj :
+7: for each j ∈ [K], do
+8:
+dj = ∥θj − θMed ∥2
+9: end for
+10:
+
+j ∈ [K]})
+
+11: T1 = arg minJ ⊂[K],|J |=K−f −1
+
+▷ Euclidean distance
+
+P
+
+j∈J dj
+
+models that are at a greater Euclidean distance from a reference model. This reference model is characterized by the central
+statistical characteristics of the received models, specifically the information provided by the median model of the set of models.
+First, the median (using the Median algorithm explained in Section II) of the set of models received from neighboring nodes
+is calculated. Then, all Euclidean distances between each of the neighbor models and the reference model are computed. From
+these metrics, the K − f − 1 models with the smallest Euclidean distance to the reference model, T1 , are selected, where K
+is the number of received models and f is the number of malicious nodes.
+The computational complexity of the algorithm is O(dK log K) for the median calculation since it involves sorting the
+K values of the received models, O(K log K), for each of the d components of the model. The complexities of calculating
+Euclidean distances and selecting the best results correspond to O(dK) and O(K) (on average, using a selection algorithm
+like Quickselect), respectively, which are terms dominated by the median calculation (for large values of K, d).
+D. WFAgg-C: Similarity-based Model Filtering
+The WFAgg-C algorithm (which is described in detail in Algorithm 3) is proposed as another Byzantine-robust aggregation
+algorithm with the same objective as the WFAgg-D algorithm but a different criteria. Unlike WFAgg-D, which explores the
+Euclidean distances between models, WFAgg-C seeks to discard models that represent a significant change in direction relative
+to a reference model. Similarly, this reference model is characterized by the median of the set of received models. To quantify
+
+8
+
+these directional changes the cosine distance is employed, a metric that measures the similarity between two vectors in a
+multidimensional space, defined as
+αx,y := 1 − cos(∠{x, y}) = 1 −
+
+⟨x, y⟩
+,
+∥x∥ · ∥y∥
+
+(2)
+
+for two vectors x, y ∈ Rd . Remark that αx,y ∈ [0, 2].
+First, the median (using the Median algorithm explained in Section II) of the set of models received from neighboring nodes
+is calculated. Additionally, the median magnitude is calculated to perform magnitude clipping on the models (the magnitude is
+not a relevant parameter in this algorithm). Then, all cosine distances between each of the neighbor models and the reference
+model are computed. From these metrics, the K − f − 1 models with the smallest cosine distance to the reference model,
+T2 , are selected, where K is the number of received models and f is the number of malicious nodes. The computational
+complexity of the algorithm can be denoted as O(dK log K). This matches the complexity of the previous algorithm since the
+calculation of the median model remains the dominant term (the computation of the inner product is linear with d).
+Algorithm 3 WFAgg-C: Similarity-based filtering algorithm
+1: Input: Set of K received updates {θj }j∈[K] , the number of estimated malicious nodes f
+2: Output: Set of benign updates T2
+3: Initial: T2 = ∅
+4:
+5: Filter 2: Similarity-based filtering
+6: θMed = Median({θj :
+7: τMed = Median({∥θj ∥
+8:
+9: for each j ∈ [K] do
+
+j ∈ [K]})
+: j ∈ [K]})
+
+
+τMed
+10:
+1,
+∥θj ∥
+′
+⟨θj , θMed ⟩
+11:
+αj = 1 − ′
+∥θj ∥ · ∥θMed ∥
+12: end for
+θj′ = θj · min
+
+▷ Norm clipping
+▷ Cosine distance
+
+13:
+14: T2 = arg minJ ⊂[K],|J |=K−f −1
+
+P
+
+j∈J αj
+
+E. WFAgg-T: Temporal-based Model Filtering
+The WFAgg-T algorithm (which is described in detail in Algorithm 4) is proposed as a model filtering algorithm aimed at
+detecting nodes that make abrupt behavioral changes in models between rounds. It seeks to identify if a node has conducted a
+Byzantine attack in a particular round or if the nature of such an attack is semi-random, causing sudden model changes between
+rounds. Therefore, this algorithm cannot be considered for a Byzantine-robust aggregation scheme because if a malicious node
+perpetrates a well-designed attack with little variability between rounds, will not be detected.
+The comparison of a node’s current model with its models sent in previous rounds (which should be non consecutive) is
+done using geometric metrics, specifically, Euclidean distance and cosine similarity. When analyzing the temporal changes
+between rounds for a node, a time window of the last rounds is considered to extract the necessary metrics. Each node only
+needs to store the history of the distance metrics and only the last model sent by each neighboring node. Both the mean and
+the variability within this time window are studied to compare with the latest model update.
+The algorithm requires an initial transient period of Tth rounds during which it does not perform any classification. This is
+due to two reasons: the first and most obvious is the lack of sufficient data to determine the time window, and the second is
+that, due to the random and uncoordinated initialization of model parameters at each node, variations are significantly abrupt
+and could be mistakenly identified as attacks.
+A time window of the last W models of the node is taken as a reference, specifically, the last W metrics of Euclidean distance
+and cosine similarity between the node’s model updates. From these metrics, both the mean and the standard deviation are
+extracted by applying an Exponentially Weighted Moving Average (EWMA), i.e., the most recent metrics in the time window
+are considered, which is useful since patterns change over time (non-stationary). Subsequently, new metrics are calculated with
+the model received in the current round, and it is observed if they fall within the thresholds calculated with the mean and
+standard deviation. If any of them do not meet the criteria, the model update is considered abrupt and malicious in that round.
+
+9
+
+Algorithm 4 WFAgg-T: Temporal-based filtering algorithm
+1: Input: Set of K received updates {θj }j∈[K] , length of the time window W , current communication round t and Tth rounds
+of the transient period
+2: Output: Set of benign updates T3
+3: Initial: T3 = ∅
+4:
+5: Filter 3: Temporal-similarity-based filtering
+6: if t > Tth then
+7:
+for each j ∈ [K] do
+(t)
+
+(t)
+
+Compute µd , µc as the average of the exponentially weighted time window of W rounds with
+(t−1)
+(t−W −1)
+(t−1)
+(t−W −1)
+{sj
+, . . . , sj
+} and {βj
+, . . . , βj
+}, respectively
+(t)
+(t)
+9:
+Compute σd , σc as the average standard deviation of the exponentially weighted time window of W rounds with
+(t−1)
+(t−W −1)
+(t−1)
+(t−W −1)
+{sj
+, . . . , sj
+} and {βj
+, . . . , βj
+}, respectively
+8:
+
+10:
+11:
+12:
+13:
+14:
+15:
+16:
+
+(t)
+
+(t)
+
+(t−1)
+
+sj = ∥θj − θj
+∥2
+(t) (t−1)
+⟨θj , θj
+⟩
+(t)
+βj = 1 − (t)
+(t−1)
+∥θj ∥ · ∥θj
+∥
+(t)
+
+(t)
+
+(t)
+
+(t)
+
+(t)
+
+if µd − σd ≤ sj ≤ µd + σd
+T3 = T3 ∪ {θj }
+end if
+17:
+end for
+18: end if
+
+(t)
+
+(t)
+
+(t)
+
+(t)
+
+(t)
+
+and µc − σc ≤ βj ≤ µc + σc
+
+then
+
+F. WFAgg-E: Weighted Model Aggregation Algorithm
+The WFAgg-E algorithm is proposed as a model aggregation algorithm similar to the FedAvg. Unlike Mean and other
+variants, it performs a weighted average, giving more or less relevance to the local model of the node or to the updates from
+neighboring nodes. This aggregation algorithm is designed for adversarial environments so that if a malicious model is selected
+for aggregation, its influence is mitigated.
+The fundamental idea of WFAgg-E consists of a variation of the first-order exponential smoother [41] (in other fields it is
+called Exponential Moving Average). It started to become popular in the 1960s and is a technical indicator used in financial
+analysis to analyze and smooth time series data. It assigns more weight to the most recent data, making it more sensitive to
+recent changes.
+Using the WFAgg-E algorithm, each client Ci updates its model using its own model and the models received from its
+neighboring nodes, which have been previously weighted, as follows:
+P
+j∈N (G) wij θj
+θi = (1 − α)θi + α · P i
+j∈N (G) wij
+X i
+′
+= (1 − α)θi + α ·
+wij
+θj ,
+(3)
+j∈Ni (G)
+
+where Ni (G) is the set of neighboring nodes of Ci given the topology modeled byPa graph G, wij is the weight assigned
+′
+′
+by Ci to the model of client Cj , wij
+∈ [0, 1] is the normalized weight (such that j∈Ni (G) wij
+= 1), and α ∈ [0, 1] is a
+smoothing factor that regulates the level of aggregation of the neighbors’ models versus the current local model.
+V. E XPERIMENTAL SETUP
+This section outlines the experimental setup, including the scenario, learning algorithms and dataset for image classification,
+primary evaluation metrics, which Byzantine-robust aggregation algorithms are evaluated and which model performance attacks
+are performed in the simulations.
+A. Validation scenario
+Topology: We have defined a FL setting with 20 clients, 10% of them are malicious nodes. The selected bounds were
+chosen to ensure a balance between system stability and responsiveness to malicious behavior. Performance is evaluated in both
+centralized and decentralized scenarios. In the centralized scenario, a server coordinates the clients’ training process, while in
+the decentralized scenario, each client communicates with its neighbors. The topology for the latter is modeled as an 8-regular
+
+10
+
+graph1 , i.e., each node has exactly 8 neighbors, and each client has, at most, 25% malicious neighbors. This enables a broad
+testing scenario to evaluate the influence of malicious nodes.
+Learning algorithm and dataset: The nodes perform learning tasks based on image classification on the MNIST dataset
+[42]. The MNIST dataset consists of 70, 000 handwritten digit images (0 to 9), each represented as a 28 × 28 pixel grayscale
+matrix. The dataset is independently and identically distributed (IID) across all nodes, in order to isolate the effects of Byzantine
+attacks and the proposed aggregation strategy from those introduced by data heterogeneity (non-IID settings introduce additional
+convergence variability unrelated to the focus of this work). Moreover, nodes train convolutional neural networks (CNNs) as local
+models, with architectures consisting of 7 layers, including convolutional, pooling, and fully connected layers, among others.
+This architecture is similar to the LeNet-5 CNN [43], but the specific models used can be found in the code implementation2 .
+Each node’s training algorithm runs for 10 rounds, with the number of local iterations (or epochs) set to 1, momentum at 0.9,
+and learning rate at η = 0.01.
+Byzantine-robust aggregation algorithms: We selected some of the most popular algorithms in the literature (detailed in
+Section II), along with the algorithms proposed in this paper, for the robust aggregation tests. Every node in the topology will
+use the same constant values and thresholds. These parameters are based on configurations commonly used in the literature on
+adversarial FL scenarios. For the Trimmed-Mean algorithm, the trim rate value is set to β = 0.1. For Krum and Multi-Krum,
+as well as most of the proposed algorithms (WFAgg-D and WFAgg-C), the number of malicious models is set to f = 2 (out
+of 8). Furthermore, algorithm Multi-Krum selects m = K/4 models for aggregation, i.e, a 25% of the received models. For
+WFAgg-T algorithm, both the transient period and the length of the time window are set to Tth = W = 3. For WFAgg-E
+algorithm, the smoothing factor is set to α = 0.8. Finally, for WFAgg algorithm, the weighting assigned to each filter are
+τ1 = τ2 = 0.4, τ3 = 0.2, enabling more representative scenarios for analyzing the attacks. Nonetheless, optimal weigh-filtering
+tuning can be guided by the type of adversarial behavior to be counteract (e.g., emphasizing distance-based metrics may
+enhance robustness against strong directional perturbations).
+Implementation details: We implemented a DFL simulator using the Python programming language2 . It allows the execution
+of both centralized and decentralized environments through the design of the network topology and the use of different classes
+that model the behavior of clients (in both CFL/DFL), server, etc. The ML models were designed and trained using the
+PyTorch library. To simulate multiple clients in the FL environment, we utilized the Python threading library, enabling
+concurrent training of distributed clients.
+B. Model Performance Attacks
+In order to assess the robustness of the different Byzantine-robust schemes, various attacks have been implemented. The
+attacks considered for the tests, representing the most popular poisoning attack found in the literature are detailed below [37],
+[38] (assume that Byzantine node Ci is going to perform a poisoning attack on its ML parameters model θi ):
+• Noise Attack: Byzantine nodes send modified models by injecting Gaussian noise into the benign models as θi ←
+θi + N (µ, σ 2 I), where I ∈ Md×d is the identity matrix of dimension d. In our experiments, both the mean and variance
+of the noise of each parameter is set to 0.1, i.e., µ = 0.1 · 1 ∈ Rd and σ = 0.1.
+• Sign-Flipping (SF): The Byzantine clients send reversed models without changing their modulus as θi ← −θi .
+• Label-Flipping (LF): This is an example of a data poisoning attack, where Byzantine clients flip the local sample labels
+during the training process to generate malicious models. In particular, the label of each training sample in Byzantine
+clients is flipped from ℓ ∈ {0, 1, . . . , C − 1} to C − 1 − ℓ, where C is the total classes of labels.
+• A Little is Enough (ALIE): This is a more sophisticated version of the Noise Attack, where model’s parameters are
+selected carefully in order to appear benign and harm the model performance. A Little is Enough attack assumes that
+the benign models’ parameters are expressed by a normal distribution. For each model’s coordinate j ∈ [d], the attacker
+computes the mean µj and standard deviation σj over benign models and built the corresponding malicious model by
+taking values in range (µj − zmax σj , µj + zmax σj ), where zmax ∈ [0, 1] is typically obtained from the Cumulative Standard
+Normal Function. Here, the threshold parameter is set to zmax = 0.5.
+• Inner Product Manipulation (IPM): The Inner Product Manipulation attack seeks for the negative inner product between
+the true mean of the updates and the output of the aggregation schemes. Assume that there are a set of models {θk }N
+k=1
+where the first M are malicious updates. So, a way of performing the IPM attack is
+θ1 = · · · = θM = −
+
+ε
+N −M
+
+N
+X
+
+θk
+
+(4)
+
+k=M +1
+
+1 Specifically, it is a small-world graph (also known as Watts-Strogatz), a regular graph structured in the form of a ring in which each vertex is joined to
+its nearest c (c even) neighbors. This type of graph has a random component since, with probability p, a new edge is added between two randomly chosen
+vertices. Here p = 0 will be considered.
+2 Code is available online: https://gitlab.com/compromise3/decentralizedfedsim
+
+11
+
+where ε is a positive coefficient controlling the magnitude of malicious updates. Then the models’ mean becomes
+1 X
+N − M (1 + ε)
+θk =
+N
+N (N − M )
+k∈[N ]
+
+N
+X
+
+θk .
+
+(5)
+
+k=M +1
+
+The key of this attack lies in choosing the value of ε. If ε < N/M − 1, IPM does not change the direction of the mean
+but decreases its magnitude, in the other case, the sign is reversed. We examine the two different cases by letting ε = 0.5
+and ε = 100, respectively.
+C. Metrics
+The tests will primarily use two metrics: accuracy and R-squared. The accuracy metric (its micro average approach), which
+is one of the most popular metrics for a multi-class classification problems, can be defined as
+PC−1
+TPℓ
+,
+(6)
+Accuracy = ℓ=0
+|Dtest |
+where TPℓ are the true positives over class/label ℓ ∈ [C], C is the number of classes, and |Dtest | is the number of samples in
+the testset. In this work, this metric will be shown with its percentage value (%).
+To quantify and evaluate the convergence of local models in a DFL scenario, we propose an adapted version of the wellknown R-squared metric (also known as R2 ) as, originally, the metric is defined for univariate cases. Given a set of N
+multidimensional vectors v1 , . . . , vN ∈ Rd , we are going to define the R-squared metric as follows:
+PN
+2
+SSR
+i=1 ∥vi − v∥
+=1− P
+,
+(7)
+R2 = 1 −
+N
+2
+SST
+i=1 ∥vi ∥
+where:
+• SSR is the total sum of squares of the differences between each vector and the mean vector (the term to be minimized),
+• SST is the total sum of squares of each vector (the term that normalizes the result of SSR),
+1 PN
+• v =
+vi is the mean vector.
+N i=1
+This metric provides a measure of the proportion of the total variability of the vectors explained by the mean vector, i.e.,
+how similar the vectors are to each other. Applied to the DFL scenario, the set of vectors would correspond to the local models
+of the benign nodes, to analyze how similar these models are to each other.
+VI. R ESULTS AND D ISCUSSION
+The objective of the upcoming tests, described in the following subsections, is to better understand the effectiveness of these
+Byzantine-robust aggregation schemes under multiple adversarial attacks. These attacks aim to degrade the model performance
+of the learning process, affecting both the local models accuracy and the global convergence of the learning process. Therefore,
+this evaluation consists of three different tests that will be analysed on the selected algorithms. First, examine and analyse the
+robustness of the algorithms to Byzantine attacks (Subsection VI-A1). Then, we study the evolution of the accuracy convergence
+throughout the communication rounds (Subsection VI-A2). Finally, we analyse the global consistency among benign models
+in decentralized scenario (Subsection VI-A3). The same tests will be analysed for the proposed algorithms (Subsections VI-B1
+and VI-B2).
+A. Evaluation of state-of-the-art Byzantine-Robust Schemes
+Are the proposed Byzantine-robust aggregation algorithms for centralized scenarios equally effective when evaluated in
+decentralized scenarios? This section aims to answer that question by conducting various analyses on well-known Byzantinerobust aggregation algorithms from the literature for the previously mentioned metrics.
+1) General analysis of the attack effectiveness: The algorithms, discussed in Section II, that will be considered for the
+analysis are: Mean, Trimmed-Mean, Median, Krum, Multi-Krum, and Clustering. Table I presents a general comparison
+of the robust aggregation schemes mentioned, by analyzing the accuracy metric in the testset, exposed to different poisoning
+attacks. Generally, most algorithms achieve good results and withstand the majority of attacks. This can be justified by the
+fact that the inherent simplicity of the MNIST dataset reduces the learning complexity for the employed model.
+However, some of the deployed attacks demonstrate greater effectiveness in preventing model convergence, being capable
+of compromising the robustness of several algorithms. Among these attacks are Noise and IPM-100, both characterized by
+drastically manipulating the magnitude of malicious models, capable of reducing accuracy to minimal values. These attacks can
+prevent the convergence of accuracy for both Mean and Trimmed-Mean algorithms. The former is particularly notable since
+it can not converge in the centralized scenario, which does not occur with the Trimmed-Mean algorithm due to the filtering of
+adverse values. The Clustering algorithm is also affected by the Noise attack but not in the same way as the previous ones. In
+
+12
+
+TABLE I
+ACCURACY COMPARING OF DIFFERENT B YZANTINE - ROBUST AGGREGATION SCHEMES UNDER VARIOUS ATTACKS . “D ECENTRALIZED ” COLUMNS
+CONTAIN THE MEAN ACCURACY OF THE BENIGN NODES WITH 0, 1 AND 2 MALICIOUS NEIGHBORS , RESPECTIVELY. R ED HIGHLIGHTED VALUES SHOW
+VALUES SIGNIFICANTLY BELOW THE AVERAGE OF THE OTHERS .
+
+Defense Scheme
+
+Mean
+
+Trimmed-Mean
+
+Median
+
+Krum
+
+Multi-Krum
+
+Clustering
+
+Attack
+
+Centralized
+
+No attack
+Noise
+SF
+LF
+IPM-0.5
+IPM-100
+ALIE
+No attack
+Noise
+SF
+LF
+IPM-0.5
+IPM-100
+ALIE
+No attack
+Noise
+SF
+LF
+IPM-0.5
+IPM-100
+ALIE
+No attack
+Noise
+SF
+LF
+IPM-0.5
+IPM-100
+ALIE
+No attack
+Noise
+SF
+LF
+IPM-0.5
+IPM-100
+ALIE
+No attack
+Noise
+SF
+LF
+IPM-0.5
+IPM-100
+ALIE
+
+98.08
+11.45
+97.00
+97.10
+97.22
+9.80
+98.00
+98.0
+98.15
+97.89
+98.08
+97.98
+97.73
+97.93
+98.0
+98.01
+97.88
+98.07
+97.99
+98.16
+97.95
+96.71
+97.08
+95.42
+95.53
+96.12
+95.87
+98.19
+97.71
+97.66
+97.92
+97.97
+97.7
+97.83
+97.76
+98.07
+96.86
+98.14
+98.14
+97.98
+98.16
+98.06
+
+Decentralized
+0 m.n.
+1 m.n.
+2 m.n.
+97.47
+96.90
+94.56
+11.13
+12.00
+10.89
+96.87
+95.77
+92.11
+97.47
+97.07
+92.33
+96.87
+96.07
+93.44
+10.87
+10.50
+10.11
+97.60
+96.93
+94.11
+97.33
+96.77
+95.44
+11.13
+11.97
+10.89
+96.80
+95.70
+92.00
+97.07
+95.83
+85.11
+96.87
+96.30
+94.11
+10.87
+10.50
+10.11
+97.73
+96.83
+95.78
+97.13
+96.73
+94.89
+97.13
+96.73
+93.00
+97.33
+96.733
+92.89
+96.67
+96.53
+93.33
+97.73
+95.70
+89.22
+97.13
+96.33
+92.00
+97.07
+96.67
+92.33
+97.00
+96.47
+93.78
+96.40
+96.23
+95.56
+96.67
+96.67
+94.33
+95.93
+95.53
+94.22
+96.07
+11.57
+10.22
+97.47
+95.83
+94.56
+97.60
+96.93
+96.11
+96.33
+97.0
+94.44
+97.07
+96.67
+92.00
+97.07
+97.17
+94.33
+97.53
+96.97
+95.11
+97.40
+95.33
+87.11
+97.87
+96.93
+95.11
+97.33
+97.23
+95.33
+97.60
+96.73
+94.44
+97.53
+10.44
+9.93
+97.73
+96.63
+95.56
+97.87
+95.30
+90.67
+97.53
+96.43
+95.44
+97.47
+96.57
+95.22
+97.20
+96.77
+95.56
+
+Defense Scheme
+
+WFAgg-D
+
+WFAgg-C
+
+WFAgg-T
+
+WFAgg-E
+
+Alt-WFAgg
+
+WFAgg
+
+Centralized
+97.93
+98.07
+98.04
+97.99
+98.10
+97.71
+98.04
+97.98
+98.06
+97.77
+98.02
+98.14
+97.89
+98.00
+97.82
+11.35
+96.94
+97.50
+11.35
+9.8
+98.59
+97.72
+12.35
+96.57
+97.46
+97.24
+10.87
+97.90
+98.46
+98.05
+98.20
+98.26
+98.21
+98.24
+98.09
+98.61
+98.44
+98.26
+98.53
+98.13
+98.35
+98.20
+
+Decentralized
+0 m.n.
+1 m.n.
+2 m.n.
+97.33
+97.10
+95.00
+97.60
+96.53
+94.78
+97.73
+96.90
+94.78
+97.33
+96.87
+94.67
+97.40
+96.80
+93.56
+97.87
+97.07
+93.67
+98.00
+96.67
+95.22
+97.87
+96.90
+95.11
+97.87
+77.97
+14.22
+97.67
+96.30
+94.67
+97.53
+96.80
+94.89
+97.40
+96.90
+95.00
+97.80
+96.63
+94.44
+97.40
+97.10
+95.44
+97.00
+96.30
+94.44
+11.13
+11.57
+10.22
+96.73
+95.40
+93.67
+96.53
+96.13
+94.22
+97.40
+95.97
+94.22
+10.87
+10.50
+10.11
+97.47
+96.80
+94.56
+97.67
+97.10
+94.56
+11.53
+11.13
+10.44
+97.47
+96.03
+92.78
+97.33
+96.90
+94.78
+97.00
+96.10
+93.11
+10.87
+10.50
+10.11
+97.67
+96.57
+95.56
+97.27
+97.10
+95.67
+97.40
+96.73
+56.78
+97.33
+96.87
+94.56
+97.33
+96.57
+92.78
+97.67
+96.90
+95.44
+97.40
+96.73
+94.67
+97.13
+96.83
+95.33
+97.40
+96.40
+95.33
+97.53
+96.57
+94.89
+97.53
+97.13
+95.56
+97.20
+96.93
+95.78
+97.20
+96.70
+95.22
+96.80
+96.93
+94.78
+97.27
+97.03
+95.44
+
+contrast, only nodes with direct malicious neighbors seem to be affected, while the rest do not appear to experience negative
+effects.
+Other attacks, such as IPM-0.5 or Sign Flipping, do not appear to significantly worsen the results compared to the scenario
+without attacks. This is because they focus not on drastically manipulating the magnitude of malicious models but on changing
+the gradient that optimizes the learning algorithm in the opposite direction. This is not the case for the Krum algorithm,
+which is profoundly affected by the IPM-0.5 attack. Since it is an attack with a magnitude that does not stand out compared
+to benign neighbors, the algorithm does not seem capable of distinguishing it in Euclidean distance from the rest. Even so,
+some algorithms like Multi-Krum show a deterioration in results without preventing the convergence of accuracy (e.g., in the
+worst-case scenario, 87.11% is obtained for IPM-0.5).
+Data poisoning attacks, such as Label Flipping, do not appear to cause any degradation in accuracy across various algorithms (e.g., in the worst-case scenario, obtaining an accuracy of 85.11% and 90.67% for Trimmed-Mean and Clustering,
+respectively). Lastly, the ALIE attack does not seem to compromise the algorithm’s convergence in any case, as the potential
+of this attack lies in the high variance of benign models — a situation that does not occur with the employed dataset.
+2) Robustness analysis of aggregation algorithms: In any case, a detailed study of each of the Byzantine-robust aggregation
+algorithms is required. To this end, Figure 3 displays the evolution of accuracy under the corresponding testset in a decentralized
+scenario. Due to the disparity of results and the multiple scenarios that can be found in decentralized environments, Figure 3
+
+13
+
+Fig. 3. Comparison of average accuracy in a decentralized scenario using state-of-the-art Byzantine-robust aggregation algorithms, depending on the number
+of malicious neighbors (by columns, from left to right: Mean, Trimmed-Mean, Median, Krum, Multi-Krum, Clustering).
+
+shows the average accuracy of the nodes based on the number of their malicious neighbors (this is the main factor that can
+influence the experiment’s outcome).
+Algorithms like Mean, Trimmed-Mean, or Median, categorized as central tendency statistics-based algorithms, do not start
+with the best results in this study. The results using the Mean algorithm will be taken as a reference for the rest of the analysis
+because its outcomes are one of the worst compared to the others (in general terms). In fact, it is the only algorithm that does
+not allow convergence in the centralized scenario under Noise and IPM-100 attacks. Moreover, focusing on the decentralized
+scenario, it is observed that in most of the attacks, almost all simulated rounds are required to achieve convergence of accuracy
+(specifically, Label-Flipping, Sign-Flipping, and IPM-0.5).
+The drawback in centralized scenarios is partially remedied under Trimmed-Mean, but the results do not improve in the
+decentralized scenario due to the reduced number of models to aggregate by each node. However, the Median algorithm
+can withstand most attacks without deterioration in accuracy by considering only the central values of the parameter models,
+although this process is not constant throughout the communication rounds and is not always capable of mitigating designed
+attacks like IPM-0.5 and IPM-100 in decentralized scenarios. In both cases, Trimmed-Mean and Median algorithms, similar
+to Mean, the convergence of accuracy in decentralized scenarios is relatively slow compared to other algorithms.
+On the other hand, Euclidean distance-based algorithms like Krum and Multi-Krum are able to resist attacks such as Noise
+and IPM-100 since their goal is to detect malicious models that are far from the rest in Euclidean distance. This is a drawback
+in itself as attacks like IPM-0.5 are not easily detectable with these type of measures, as observed with Krum in a decentralized
+scenario. In both configurations of the scenario, Krum does not exhibit uniformity in the evolution of accuracy in most attacks
+because it selects only one model (the one that achieves the best metric), leading to a loss of information.
+These attacks and drawbacks are mitigated in Multi-Krum due to it considers several neighbor models (the closest to the
+rest) in the aggregation process. Even so, the IPM-0.5 attack does not seem to be easily detectable by the algorithm in
+decentralized scenarios, causing a slowdown in the convergence of accuracy. In any case, Euclidean distance-based algorithms
+show a deterioration in accuracy, especially when the number of malicious nodes present in the scenario is not correctly
+estimated. Despite this, it is worth noting good results in Multi-Krum for decentralized scenarios with a smaller number of
+models received.
+Clustering, as a representation of cosine distance-based algorithms, fails in the Noise attack in the decentralized scenario.
+This is likely because this attack does not produce a drastic change in the model’s direction but in its magnitude, so the cosine
+distances involving the malicious model do not vary much. Due to the use of hierarchical clustering algorithms, having fewer
+models in the decentralized scenario allows including the model in a smaller cluster.
+3) Model consistency analysis in decentralized scenarios: To study the convergence of models among different benign nodes
+in a decentralized scenario, several experiments have been conducted using the R-Squared (R2 ) metric defined in Section V.
+The results can be observed in Figure 4.
+In algorithms such as Mean and Trimmed-Mean, convergence is unquestionable because the R2 metric is based on the
+average of the benign nodes, and these algorithms are based on central tendency statistics. Nodes compute the mean with the
+models they receive from their neighbors, and these from theirs, facilitating convergence. In the case of Median, convergence
+is slower and even insufficient under some attacks because it takes the central parameters of the models, and each node has
+
+14
+
+Mean
+
+R-squared (%)
+
+100
+
+100
+
+90
+
+90
+
+80
+
+80
+
+80
+
+70
+
+70
+
+70
+
+60
+
+60
+
+60
+
+50
+
+50
+
+50
+
+40
+
+40
+
+40
+
+30
+
+30
+
+30
+
+20
+
+20
+
+100
+
+R-squared (%)
+
+Trimmed-Mean
+
+100
+
+90
+
+20
+
+Attacks
+
+Attacks
+
+Attacks
+
+Krum
+
+Multi-Krum
+
+Clustering
+
+100
+
+100
+
+90
+
+90
+
+90
+
+80
+
+80
+
+80
+
+70
+
+70
+
+70
+
+60
+
+60
+
+60
+
+50
+
+50
+
+50
+
+40
+
+40
+
+40
+
+30
+
+30
+
+20
+
+30
+
+20
+
+20
+
+Attacks
+No Attack
+
+Median
+
+Attacks
+Noise
+
+LF
+
+SF
+
+Attacks
+IPM-0.5
+
+IPM-100
+
+ALIE
+
+Fig. 4. Comparison of R-Squared, R2 , metric (last round of federation) 1in a decentralized scenario using state-of-the-art Byzantine-robust aggregation
+algorithms.
+
+Fig. 5. Aggregated accuracy evolution in a decentralized scenario using the different proposed Byzantine-robust algorithms (by columns, from left to right,
+WFAgg-D, WFAgg-C, WFAgg-T, WFAgg-E, Alt-WFAgg, WFAgg).
+
+received different models (probably that “central” value will differ).
+The situation is different for Krum and Multi-Krum, where convergence does not reach 60% in practically any of the attacks.
+This is the main disadvantage of Byzantine-robust aggregation algorithms that perform a filtering of models, as each network
+node selects a different set of models based on those received, which does not facilitate convergence.
+Similarly, the R2 results under the Clustering scheme can be explained as well, where certain attacks (Noise, ALIE, Label
+Flipping, . . . ) prevent a progressive evolution of convergence. In this case, the filtering is done through a hierarchical clustering
+algorithm based on cosine distances, causing the cluster selected by each node to differ among them.
+B. Evaluation of Proposed Byzantine-Robust Schemes
+Once the Byzantine-robust aggregation algorithms found in the literature on decentralized scenarios have been evaluated, it can
+be confirmed that none of them simultaneously excels in all three analyses conducted. Among them, the Multi-Krum algorithm
+stands out as it is capable of practically mitigating the employed attacks, although it does not achieve good convergence among
+models. Now, the same analysis will be conducted for the algorithms proposed in this document.
+1) Performance analysis of proposed filtering algorithms: This section aims to evaluate and compare the single proposed
+algorithms of this paper in order to highlight their improvements and drawbacks compared to the state-of-the-art ones. Those
+algorithms are: WFAgg-D, WFAgg-C, WFAgg-T and WFAgg-E. Both Table I and Figure 5 displays the results of experiments
+conducted in both centralized and decentralized scenarios.
+
+15
+
+WFAgg-D
+
+R-squared (%)
+
+100
+
+100
+
+90
+
+90
+
+80
+
+80
+
+80
+
+70
+
+70
+
+70
+
+60
+
+60
+
+60
+
+50
+
+50
+
+50
+
+40
+
+40
+
+40
+
+30
+
+30
+
+30
+
+20
+
+20
+
+100
+
+R-squared (%)
+
+WFAgg-C
+
+100
+
+90
+
+20
+
+Attacks
+
+Attacks
+
+WFAgg-E
+
+Alt-WFAgg
+
+100
+
+Attacks
+100
+
+90
+
+90
+
+90
+
+80
+
+80
+
+80
+
+70
+
+70
+
+70
+
+60
+
+60
+
+60
+
+50
+
+50
+
+50
+
+40
+
+40
+
+40
+
+30
+
+30
+
+20
+
+20
+Attacks
+
+Noise
+
+WFAgg
+
+30
+
+20
+Attacks
+No Attack
+
+WFAgg-T
+
+LF
+
+SF
+
+Attacks
+IPM-0.5
+
+IPM-100
+
+ALIE
+
+Fig. 6. Comparison of R-Squared, R2 , metric (last round of federation) in 1a decentralized scenario using the proposed Byzantine-robust algorithms.
+
+First, the WFAgg-D and WFAgg-C algorithms will be evaluated. These Byzantine-robust aggregation algorithms are based
+on Euclidean distances and cosine distances, respectively. It can be observed that both algorithms are capable of mitigating all
+evaluated attacks, except for WFAgg-C under the Noise attack, where the accuracy is affected (although only in the worstcase scenario, as it does converge in less adverse scenarios). In both cases, the convergence of accuracy occurs within a few
+communication rounds. Compared to the most similar state-of-the-art algorithms, both algorithms achieve better results in the
+majority of attacks against Multi-Krum and Clustering, respectively. This can be explained by the use of the median model
+as a reference due to its statistical properties and the benefits of Euclidean/cosine distances for mitigating attacks.
+Both algorithms stand out compared to their counterparts, especially in the previously described weaknesses. Under the
+IPM-0.5 attack, both the accuracy convergence and final result of WFAgg-D clearly improve over those of Multi-Krum. Under
+the Noise attack, WFAgg-C outperforms Clustering, being capable of completely mitigating the attacks in some decentralized
+scenarios, and, when not entirely mitigating, still improving the results.
+Regarding the results of the WFAgg-E aggregation algorithm, it is observed that it is not capable of mitigating the same
+attacks as in the case of the Mean or Trimmed-Mean algorithm, since it is ultimately a type of weighted average. However,
+some results improve slightly in adverse scenarios (such as decentralized nodes with 2 malicious neighbors).
+It does not make sense to analyze the results of the WFAgg-T algorithm considering it as a Byzantine-robust aggregation
+algorithm. This seeks to detect temporal anomalies between rounds of models sent by nodes, so that if a node attacks in the
+same way consistently throughout the rounds, it is not considered an attack. Despite this, the algorithm is capable of mitigating
+several attacks, and in those where convergence is not possible (IPM-100 or Noise), it can be justified by the controlled
+modification of the model’s magnitude.
+Regarding the convergence of models with R-Squared in decentralized scenarios, see Figure 6. Algorithms like WFAgg-E
+or WFAgg-T converge without major difficulty because the aggregation of models is based on averages and no filtering is
+performed, as detailed earlier. In general terms, the convergence of WFAgg-D and WFAgg-C improves those of Multi-Krum
+(notably) and Clustering, respectively. It is worth noting that in the latter case, the Noise attack slows down convergence as
+occurs with Clustering due to the use of cosine distances and clustering techniques.
+2) Performance analysis of proposed WFAgg: Finally, this section studies and analyzes the results of the work proposal, an
+algorithm based on weighted filtering of malicious models. Two proposals are evaluated: WFAgg which uses the algorithms
+proposed in this work based on distance measures (WFAgg-D and WFAgg-C) and Alt-WFAgg, an alternative version of the
+previous algorithm, which employs some state-of-the-art algorithms based on the same techniques (Multi-Krum and Clustering).
+The results are also presented in Table I and Figures 5, and 6, in the same way as before.
+In general terms, the results in a centralized environment are correct in line with the majority of previously evaluated scenarios.
+Focusing on decentralized scenarios, the Alt-WFAgg algorithm achieves good results, only compromising its performance under
+the Noise attack. This is mainly due to the influence of the Clustering algorithm (which was unable to converge under this
+attack). However, in the case where there is only one malicious neighbor, it requires a greater number of rounds to converge
+but the final result is correct. In the worst-case scenario with two malicious neighbors, accuracy convergence is not reached,
+but the final result is better, 46.78%. Regarding model convergence in R2 , the results vary depending on the type of attack,
+although they are better than in some previous cases.
+Finally, the WFAgg algorithm achieves similar but slightly better results than the previous ones. It stands out mainly for
+being able to mitigate all the developed attacks, both in the final accuracy result and the accuracy convergence evolution. Figure
+
+Accuracy (%)
+
+Accuracy (%)
+
+Accuracy (%)
+
+Accuracy (%)
+
+16
+
+100
+95
+90
+85
+80
+75
+100
+95
+90
+85
+80
+75
+100
+95
+90
+85
+80
+75
+100
+95
+90
+85
+80
+75
+
+Node 0
+
+1 2 3 4 5 6 7 8 9 10
+
+Node 5 (malicious)
+
+1 2 3 4 5 6 7 8 9 10
+
+Node 10
+
+1 2 3 4 5 6 7 8 9 10
+
+Node 15
+
+1 2 3 4 5 6 7 8 9 10
+Round
+
+100
+95
+90
+85
+80
+75
+100
+95
+90
+85
+80
+75
+100
+95
+90
+85
+80
+75
+100
+95
+90
+85
+80
+75
+
+Node 1
+
+1 2 3 4 5 6 7 8 9 10
+
+Node 6
+
+1 2 3 4 5 6 7 8 9 10
+
+Node 11 (malicious)
+
+1 2 3 4 5 6 7 8 9 10
+
+Node 16
+
+1 2 3 4 5 6 7 8 9 10
+Round
+
+No Attack
+
+Noise
+
+100
+95
+90
+85
+80
+75
+100
+95
+90
+85
+80
+75
+100
+95
+90
+85
+80
+75
+100
+95
+90
+85
+80
+75
+
+LF
+
+Node 2
+
+1 2 3 4 5 6 7 8 9 10
+
+Node 7
+
+1 2 3 4 5 6 7 8 9 10
+
+Node 12
+
+1 2 3 4 5 6 7 8 9 10
+
+Node 17
+
+1 2 3 4 5 6 7 8 9 10
+Round
+SF
+
+100
+95
+90
+85
+80
+75
+100
+95
+90
+85
+80
+75
+100
+95
+90
+85
+80
+75
+100
+95
+90
+85
+80
+75
+
+Node 3
+
+1 2 3 4 5 6 7 8 9 10
+
+Node 8
+
+1 2 3 4 5 6 7 8 9 10
+
+Node 13
+
+1 2 3 4 5 6 7 8 9 10
+
+Node 18
+
+1 2 3 4 5 6 7 8 9 10
+Round
+
+IPM-0.5
+
+IPM-100
+
+100
+95
+90
+85
+80
+75
+100
+95
+90
+85
+80
+75
+100
+95
+90
+85
+80
+75
+100
+95
+90
+85
+80
+75
+
+Node 4
+
+1 2 3 4 5 6 7 8 9 10
+
+Node 9
+
+1 2 3 4 5 6 7 8 9 10
+
+Node 14
+
+1 2 3 4 5 6 7 8 9 10
+
+Node 19
+
+1 2 3 4 5 6 7 8 9 10
+Round
+
+ALIE
+
+1
+
+Fig. 7. Accuracy evolution in a decentralized scenario using WFAgg Byzantine-robust algorithm (nodes 5 and 11 are malicious)
+
+5 shows how the WFAgg algorithm is capable of mitigating attacks from the initial learning rounds. Particularly noteworthy
+are the good results in the worst proposed scenario (nodes in a decentralized setting with two malicious neighbors), where
+the Noise attack is filtered from round 5 (a fact not met by the previous algorithm). Regarding model convergence in R2 , the
+results are similar to those obtained with the Alt-WFAgg algorithm. However, our method shows a slight improvement both in
+the absence of attacks and under strong attack scenarios such as IMP-100 (one of the most effective in previous results) and
+ALIE. In general terms, WFAgg obtains the best results if we only consider algorithms capable of mitigating the majority of
+attacks (which correspond with those that apply some type of filtering, in most cases).
+To observe the detailed behavior of the WFAgg algorithm, experiments have been conducted to monitor the accuracy
+evolution of each node separately. The results are shown in Figure 7, where it can be seen that all network nodes, excluding
+the malicious ones, converge in accuracy without difficulty in just a few rounds under all the proposed attacks.
+VII. C ONCLUSIONS AND F UTURE W ORK
+This proposal presents an algorithmic solution to strengthen security against malicious attacks in Decentralized Federated
+Learning environments. It integrates techniques based on Byzantine-robust algorithms, which mitigate security vulnerabilities
+in Federated Learning, particularly when central servers are removed to achieve true decentralization. The integration of various
+techniques, such as security filters based on distance, similarity, and temporal changes, enables the identification and mitigation
+of malicious contributions from Byzantine nodes and adapts to the adverse conditions posed by the variability of decentralized
+scenarios.
+Experiments demonstrated that the proposed algorithm effectively maintains model accuracy and achieves satisfactory model
+convergence in the presence of all the considered Byzantine attacks, outperforming multiple centralized algorithm proposals
+evaluated in decentralized scenarios. The combination of multiple filters allowed for more precise detection of malicious
+contributions by weighting the results of these filters and considering different decisions for a potential Byzantine attack.
+Therefore, the integration of Byzantine-robust schemes in Decentralized Federated Learning scenarios establishes an efficient
+alternative to address the challenges faced by such environments.
+However, further studies are still needed in the field of Decentralized Federated Learning. Continuing with the proposed work,
+it is interesting to study in depth the optimization of communication networks to reduce overhead and latency, among other
+factors, to enhance overall learning process performance. In this regard, we are working on the implementation of technologies
+such as Software-Defined Networks (SDN) to not only improve network parameters as mentioned but also to propose scalable
+and dynamic DFL environments. This paradigm allows exploration of other alternatives, such as enhancing the security of the
+learning process from the perspective of communication between devices.
+
+17
+
+ACKNOWLEDGMENT
+This work was supported by the grant PID2020-113795RB-C33 funded by MICIU/AEI/10.13039/501100011033 (COMPROMISE project), the grant PID2023-148716OB-C31 funded by MCIU/AEI/10.13039/501100011033 (DISCOVERY project);
+and “TRUFFLES: TRUsted Framework for Federated LEarning Systems”, within the strategic cybersecurity projects (INCIBE,
+Spain), funded by the Recovery, Transformation and Resilience Plan (European Union, Next Generation). Additionally, it also
+has been funded by the Galician Regional Government under project ED431B 2024/41 (GPC).
+R EFERENCES
+[1] M. M. Ogonji, G. Okeyo, and J. M. Wafula, “A survey on privacy and security of internet of things,” Computer Science Review, vol. 38, p. 100312,
+2020. [Online]. Available: https://www.sciencedirect.com/science/article/pii/S1574013720304123
+[2] S. Suganyadevi, V. Seethalakshmi, and K. Balasamy, “A review on deep learning in medical image analysis,” International Journal of Multimedia
+Information Retrieval, vol. 11, no. 1, pp. 19–38, 2022.
+[3] R. Shokri and V. Shmatikov, “Privacy-preserving deep learning,” in Proceedings of the 22nd ACM SIGSAC Conference on Computer and
+Communications Security, ser. CCS ’15. New York, NY, USA: Association for Computing Machinery, 2015, p. 1310–1321. [Online]. Available:
+https://doi.org/10.1145/2810103.2813687
+[4] B. Liu, M. Ding, S. Shaham, W. Rahayu, F. Farokhi, and Z. Lin, “When Machine Learning Meets Privacy: A Survey and Outlook,” 2020, version
+Number: 1. [Online]. Available: https://arxiv.org/abs/2011.11819
+[5] H. B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A. y Arcas, “Communication-efficient learning of deep networks from decentralized data,”
+Proc. of the 20th Int. Conf. on Artificial Intelligence and Statistics (AISTATS) 2017. JMLR: W&CP volume 54, 2016, doi: 10.48550/arXiv.1602.05629.
+[6] K. Bonawitz, V. Ivanov, B. Kreuter, A. Marcedone, H. B. McMahan, S. Patel, D. Ramage, A. Segal, and K. Seth, “Practical secure aggregation for
+privacy-preserving machine learning,” in Proc. of the 2017 ACM SIGSAC Conf. on Computer and Communications Security, ser. CCS ’17. ACM, Oct.
+2017, doi: 10.1145/3133956.3133982.
+[7] S. Truex, N. Baracaldo, A. Anwar, T. Steinke, H. Ludwig, R. Zhang, and Y. Zhou, “A hybrid approach to privacy-preserving federated learning,” 2019.
+[Online]. Available: https://arxiv.org/abs/1812.03224
+[8] L. Yuan, Z. Wang, L. Sun, P. S. Yu, and C. G. Brinton, “Decentralized federated learning: A survey and perspective,” 2024. [Online]. Available:
+https://arxiv.org/abs/2306.01603
+[9] Q. Li, B. Kailkhura, R. Goldhahn, P. Ray, and P. K. Varshney, “Robust decentralized learning using admm with unreliable agents,” IEEE Trans. on
+Signal Processing, vol. 70, pp. 2743–2757, 2022.
+[10] L. Lyu, H. Yu, and Q. Yang, “Threats to federated learning: A survey,” Mar. 2020, doi: 10.48550/ARXIV.2003.02133.
+[11] M. Fang, X. Cao, J. Jia, and N. Z. Gong, “Local model poisoning attacks to byzantine-robust federated learning,” Nov. 2021, doi:
+10.48550/ARXIV.1911.11815.
+[12] S. Marano, V. Matta, and L. Tong, “Distributed detection in the presence of byzantine attacks,” IEEE Trans. on Signal Processing, vol. 57, no. 1, pp.
+16–29, 2009.
+[13] V. P. Chellapandi, A. Upadhyay, A. Hashemi, and S. H. . Zak, “On the convergence of decentralized federated learning under imperfect information
+sharing,” 2023. [Online]. Available: https://arxiv.org/abs/2303.10695
+[14] V. Mothukuri, R. M. Parizi, S. Pouriyeh, Y. Huang, A. Dehghantanha, and G. Srivastava, “A survey on security and privacy of federated learning,” Future
+Generation Computer Systems, vol. 115, pp. 619–640, 2021. [Online]. Available: https://www.sciencedirect.com/science/article/pii/S0167739X20329848
+[15] P. Blanchard, E. M. E. Mhamdi, R. Guerraoui, and J. Stainer, “Byzantine-tolerant machine learning,” 2017, doi: 10.48550/arXiv.1703.02757.
+[16] K. Pillutla, S. M. Kakade, and Z. Harchaoui, “Robust aggregation for federated learning,” IEEE Trans. on Signal Processing, vol. 70, pp. 1142–1154,
+2022.
+[17] Z. Li, L. Liu, J. Zhang, and J. Liu, “Byzantine-robust federated learning through spatial-temporal analysis of local model updates,” 2021, doi:
+10.48550/arXiv.2107.01477.
+[18] P. Kairouz, H. B. McMahan, B. Avent, A. Bellet, M. Bennis, A. N. Bhagoji, K. Bonawitz, Z. Charles, G. Cormode, R. Cummings, R. G. L. D’Oliveira,
+H. Eichner, S. E. Rouayheb, D. Evans, J. Gardner, Z. Garrett, A. Gascón, B. Ghazi, P. B. Gibbons, M. Gruteser, Z. Harchaoui, C. He, L. He, Z. Huo,
+B. Hutchinson, J. Hsu, M. Jaggi, T. Javidi, G. Joshi, M. Khodak, J. Konečný, A. Korolova, F. Koushanfar, S. Koyejo, T. Lepoint, Y. Liu, P. Mittal,
+M. Mohri, R. Nock, A. Özgür, R. Pagh, M. Raykova, H. Qi, D. Ramage, R. Raskar, D. Song, W. Song, S. U. Stich, Z. Sun, A. T. Suresh, F. Tramèr,
+P. Vepakomma, J. Wang, L. Xiong, Z. Xu, Q. Yang, F. X. Yu, H. Yu, and S. Zhao, “Advances and open problems in federated learning,” Norwell, MA,
+2021, doi: 10.48550/arXiv.1912.04977.
+[19] L. He, A. Bian, and M. Jaggi, “COLA: Decentralized Linear Learning,” 2018, version Number: 4. [Online]. Available: https://arxiv.org/abs/1808.04883
+[20] J. Geiping, H. Bauermeister, H. Dröge, and M. Moeller, “Inverting gradients – how easy is it to break privacy in federated learning?” 2020, doi:
+10.48550/arXiv.2003.14053.
+[21] E. T. Martı́nez Beltrán, M. Q. Pérez, P. M. S. Sánchez, S. L. Bernal, G. Bovet, M. G. Pérez, G. M. Pérez, and A. H. Celdrán, “Decentralized federated
+learning: Fundamentals, state of the art, frameworks, trends, and challenges,” IEEE Commun. Surveys and Tutorials, vol. 25, no. 4, p. 2983–3013,
+2023, doi: 10.1109/comst.2023.3315746. [Online]. Available: http://dx.doi.org/10.1109/COMST.2023.3315746
+[22] R. Ormándi, I. Hegedüs, and M. Jelasity, “Gossip learning with linear models on fully distributed data,” 2011, doi: 10.1002/cpe.2858.
+[23] N. Prabhakar and S. Kaul, “Decentralized federated learning-solutions based on gossip protocol and blockchain,” 20th SC@ RUG 2022-2023, p. 92,
+2022.
+[24] B.-E. A. Abdelghany, M. Fernandez-Veiga, A. Fernandez-Vilas, A. M. Hassan, W. M. Abdelmoez, and N. El-Bendary, “Scheduling and communication
+schemes for decentralized federated learning,” in 2022 32nd International Conference on Computer Theory and Applications (ICCTA), 2022, pp. 122–128,
+doi: 10.1109/ICCTA58027.2022.10206255.
+[25] D. C. Nguyen, M. Ding, Q.-V. Pham, P. N. Pathirana, L. B. Le, A. Seneviratne, J. Li, D. Niyato, and H. V. Poor, “Federated learning meets
+blockchain in edge computing: Opportunities and challenges,” IEEE Internet of Things Journal, vol. 8, no. 16, pp. 12 806–12 825, Aug. 2021, doi:
+10.1109/jiot.2021.3072611.
+[26] Y. Shi, L. Shen, K. Wei, Y. Sun, B. Yuan, X. Wang, and D. Tao, “Improving the model consistency of decentralized federated learning,” Feb. 2023, doi:
+10.48550/ARXIV.2302.04083.
+[27] A. Giuseppi, S. Manfredi, and A. Pietrabissa, “A weighted average consensus approach for decentralized federated learning,” Machine Intelligence
+Research, vol. 19, no. 4, pp. 319–330, Jul. 2022, doi: 10.1007/s11633-022-1338-z.
+[28] M. Du, H. Zheng, X. Feng, Y. Chen, and T. Zhao, “Decentralized federated learning with markov chain based consensus for industrial iot networks,”
+IEEE Trans. on Industrial Informatics, vol. 19, no. 4, pp. 6006–6015, April 2023.
+[29] R. Schmid, B. Pfitzner, J. Beilharz, B. Arnrich, and A. Polze, “Tangle ledger for decentralized learning,” in 2020 IEEE Int. Parallel and Distributed
+Processing Symposium Workshops (IPDPSW). IEEE, May 2020, pp. 852–859, doi: 10.1109/ipdpsw50202.2020.00144.
+[30] H. N. C. Neto, J. Hribar, I. Dusparic, D. M. F. Mattos, and N. C. Fernandes, “A survey on securing federated learning: Analysis of applications, attacks,
+challenges, and trends,” IEEE Access, vol. 11, pp. 41 928–41 953, 2023, doi: 10.1109/ACCESS.2023.3269980.
+
+18
+
+[31] H. Wang, K. Sreenivasan, S. Rajput, H. Vishwakarma, S. Agarwal, J. yong Sohn, K. Lee, and D. Papailiopoulos, “Attack of the tails: Yes, you really
+can backdoor federated learning,” Jul. 2020, doi: 10.48550/ARXIV.2007.05084.
+[32] J. Shi, W. Wan, S. Hu, J. Lu, and L. Y. Zhang, “Challenges and approaches for mitigating byzantine attacks in federated learning,” Dec. 2022, doi:
+10.48550/ARXIV.2112.14468.
+[33] S. Rajput, H. Wang, Z. Charles, and D. Papailiopoulos, “Detox: A redundancy-based framework for faster and more robust gradient aggregation,” Jul.
+2020, doi: 10.48550/ARXIV.1907.12205.
+[34] J. Park, D.-J. Han, M. Choi, and J. Moon, “Sageflow: Robust federated learning against both stragglers and adversaries,” in Advances in Neural
+Information Processing Systems, M. Ranzato, A. Beygelzimer, Y. Dauphin, P. Liang, and J. W. Vaughan, Eds., vol. 34. Curran Associates, Inc., 2021,
+pp. 840–851. [Online]. Available: https://proceedings.neurips.cc/paper files/paper/2021/file/076a8133735eb5d7552dc195b125a454-Paper.pdf
+[35] D. Yin, Y. Chen, K. Ramchandran, and P. Bartlett, “Byzantine-robust distributed learning: Towards optimal statistical rates,” 2018, doi:
+10.48550/arXiv.1803.01498.
+[36] F. Sattler, K.-R. Muller, T. Wiegand, and W. Samek, “On the byzantine robustness of clustered federated learning,” in ICASSP 2020 - 2020 IEEE Int.
+Conf. on Acoustics, Speech and Signal Processing (ICASSP). IEEE, May 2020, doi: 10.1109/icassp40776.2020.9054676.
+[37] S. Li, E. C.-H. Ngai, and T. Voigt, “An experimental study of byzantine-robust aggregation schemes in federated learning,” IEEE Transactions on Big
+Data, p. 1–13, 2024, doi: 10.1109/tbdata.2023.3237397. [Online]. Available: http://dx.doi.org/10.1109/TBDATA.2023.3237397
+[38] Z. Xu, Y. Zhang, G. Andrew, C. A. Choquette-Choo, P. Kairouz, H. B. McMahan, J. Rosenstock, and Y. Zhang, “Federated learning of gboard language
+models with differential privacy,” May 2023, doi: 10.48550/ARXIV.2305.18465.
+[39] X. Cao, M. Fang, J. Liu, and N. Z. Gong, “Fltrust: Byzantine-robust federated learning via trust bootstrapping,” Dec. 2022, doi:
+10.48550/ARXIV.2012.13995.
+[40] H. Guo, H. Wang, T. Song, Y. Hua, Z. Lv, X. Jin, Z. Xue, R. Ma, and H. Guan, “Siren: Byzantine-robust federated learning via proactive alarming,” in
+Proc. of the ACM Symp. on Cloud Computing, ser. SoCC ’21. New York, NY, USA: Association for Computing Machinery, 2021, p. 47–60, doi:
+10.1145/3472883.3486990. [Online]. Available: https://doi.org/10.1145/3472883.3486990
+[41] D. Montgomery, C. Jennings, and M. Kulahci, Introduction to Time Series Analysis and Forecasting, ser. Wiley Series in Probability and Statistics.
+Wiley, 2011. [Online]. Available: https://books.google.es/books?id=-qaFi0oOPAYC
+[42] C. C. Yann LeCun and C. J. Burges, “The mnist database of handwritten digits,” 2010. [Online]. Available: http://yann.lecun.com/exdb/mnist/
+[43] Y. LeCun, L. Bottou, Y. Bengio, and P. Haffner, “Gradient-based learning applied to document recognition,” Proceedings of the IEEE, vol. 86, no. 11,
+pp. 2278–2324, 1998, doi: 10.1109/5.726791.
+
+

@@ -1,0 +1,3224 @@
+DeepSight: Mitigating Backdoor Attacks in
+Federated Learning Through Deep Model Inspection
+
+arXiv:2201.00763v1 [cs.CR] 3 Jan 2022
+
+Phillip Rieger, Thien Duc Nguyen, Markus Miettinen, Ahmad-Reza Sadeghi
+Technical University of Darmstadt, Germany
+{phillip.rieger, ducthien.nguyen, markus.miettinen, ahmad.sadeghi}@trust.tu-darmstadt.de
+Abstract—Federated Learning (FL) allows multiple clients to
+collaboratively train a Neural Network (NN) model on their
+private data without revealing the data. Recently, several targeted
+poisoning attacks against FL have been introduced. These attacks
+inject a backdoor into the resulting model that allows adversarycontrolled inputs to be misclassified. Existing countermeasures
+against backdoor attacks are inefficient and often merely aim
+to exclude deviating models from the aggregation. However, this
+approach also removes benign models of clients with deviating
+data distributions, causing the aggregated model to perform
+poorly for such clients.
+To address this problem, we propose DeepSight, a novel model
+filtering approach for mitigating backdoor attacks. It is based on
+three novel techniques that allow to characterize the distribution
+of data used to train model updates and seek to measure finegrained differences in the internal structure and outputs of
+NNs. Using these techniques, DeepSight can identify suspicious
+model updates. We also develop a scheme that can accurately
+cluster model updates. Combining the results of both components,
+DeepSight is able to identify and eliminate model clusters containing poisoned models with high attack impact. We also show
+that the backdoor contributions of possibly undetected poisoned
+models can be effectively mitigated with existing weight clippingbased defenses. We evaluate the performance and effectiveness of
+DeepSight and show that it can mitigate state-of-the-art backdoor
+attacks with a negligible impact on the model’s performance on
+benign data.
+
+Keywords – Deep Learning (DL), Federated Learning (FL),
+Poisoning, Backdoor, Model Inspection
+I. I NTRODUCTION
+Federated Learning (FL) enables multiple clients to collaboratively train a Neural Network (NN) model. This is done by an
+iterative process in which clients train their models locally
+using their own data and send only trained model updates
+to a central server, which aggregates them and distributes
+the resulting global model back to all clients. The federated
+approach promises clients to keep their training data private
+and the server to reduce the computational costs as the model
+training is parallelized and outsourced to the clients. These
+benefits make FL highly useful, especially in applications with
+privacy-sensitive data such as medical image recognition [33],
+word suggestion systems on smartphone keyboards (Natural
+Language Processing; NLP) [22], or network intrusion detection systems (NIDS) [26].
+
+Network and Distributed Systems Security (NDSS) Symposium 2022
+27 February - 3 March 2022, San Diego, CA, USA
+ISBN 1-891562-74-6
+https://dx.doi.org/10.14722/ndss.2022.23156
+www.ndss-symposium.org
+
+Backdoor Attacks. On the other hand, the server cannot
+control the training process of the participating clients. An
+adversary can compromise a subset of the clients and use them
+to inject a backdoor into the aggregated model. In the examples
+above the adversary’s goal would be to cause the aggregated
+model to classify malware network traffic patterns as benign
+to avoid detection by the NIDS, or in the case of NLP to
+manipulate the text prediction model to propose specific brand
+names to inconspicuously advertise them1 . Recently, various
+attack strategies for targeted poisoning, so-called backdoor
+attacks, have been proposed utilizing compromised clients to
+submit poisoned model updates [2], [27], [34], [41], [38].
+Problems of Existing Backdoor Defenses. The currently
+proposed mitigations against backdoor attacks follow two main
+strategies: (1) aim to detect and remove poisoned models [34],
+[4], [24], [28] and (2) aim to limit their impact, e.g., by
+restricting the L2 -norm of updates (called clipping) [2], [28],
+[23], [10]. In the first strategy, model updates differing from
+the majority are considered suspicious and excluded from
+aggregation. However, those approaches cannot distinguish
+between models that were trained on benign training data
+with different data distributions and poisoned models. This
+causes performance degradation of the resulting model, as
+this strategy will not only reject poisoned model updates but
+also deviating benign model updates. Moreover, these defenses
+fail in dynamic attack scenarios (cf. §II-B2 and App. B). The
+second defense strategy has the drawback that it is not effective
+against poisoned model updates with high attack impact. For
+example, when adding training samples for the backdoor
+behavior to the original (benign) training data, the poisoned
+model achieves higher accuracy on the backdoor task.
+Adversarial Dilemma: The adversary can arbitrarily choose
+its attack strategy: On one hand, it can use a high ratio of
+poisoned data for training the backdoor task. However, this
+causes the poisoned models to differ from benign models,
+making the poisoned models easy to detect by a filtering-based
+defense. On the other hand, if the adversary does not follow
+this strategy, the attack can be easily mitigated by any defense
+that limits the impact of the individual models as the poisoned
+models are outnumbered by benign models (cf. §II-C for
+details). Combining both defense strategies, therefore, creates
+a dilemma for the adversary: Either the attack is filtered by
+one part of the defense or the other part makes the impact of
+the attack negligible [28].
+Unfortunately, a naı̈ve combination of both defense strategies
+is not effective, as existing filtering mechanisms follow an
+1 Especially systems with a large user base are attractive for such attacks,
+e.g., the FL-based keyboard input suggestion system GBoard [22] has been
+downloaded more than 1 billion times [11]
+
+focuses on changes in model prediction outputs while the
+second technique NormalizEd UPdate energies (NEUPs)
+measures changes in parameter updates for the output
+layer of the NN. To the best of our knowledge, this is
+the first work that uses a deep analysis of the models,
+their predictions, and individual neurons for mitigating
+poisoning attacks in Federated Learning (FL).
+• We extensively evaluate the performance and effectiveness of DeepSight (§VI). We show that our defense
+mechanism does not affect the performance of the resulting model. For showing DeepSight’s effectiveness we
+evaluated several state-of-the-art backdoor attacks [2],
+[27], [41], [38].
+• As a side effect, we demonstrate a successful backdoor
+attack on a recently proposed ’provably-secure’ FL backdoor defense [6] (§VI-C1). We will discuss that the
+theoretical proof includes a-posteriori knowledge, making assumptions that do not hold in practice. However,
+DeepSight is able to mitigate such attacks (§VIII).
+
+outlier-detection strategy [34], [4], [24], [28] that also filters
+benign models with deviating data distributions. Consequently,
+a high number of clients are wrongly excluded leading to performance degradation of the aggregated model for their data.
+Our Approach: To address these problems, we propose
+DeepSight, a novel model filtering approach that deeply inspects the internal structure and outputs of the NNs for
+identifying malicious model updates with high attack impact
+while keeping benign model updates, even if these originate
+from clients with deviating data distributions. By combining
+our novel filtering scheme with clipping we exploit the abovementioned adversarial dilemma to ensure that the adversary’s
+strategy focuses the training on the backdoor task. This, on the
+other hand, causes the structure of the resulting NN to contain
+artifacts related to this backdoor.
+We propose several techniques to analyze the internal structure
+of model updates for identifying characteristics of the training
+data distribution and to measure fine-grained differences between the models. Based on these techniques, we develop an
+approach to identify models trained with a data distribution
+focusing on a specific task (the backdoor task) and also
+to group models together that were trained on similar data.
+Those techniques enable our approach to reliably identify
+model clusters that with a high likelihood contain poisoned
+models and consequently exclude them from aggregation. Our
+extensive evaluation shows that our approach mitigates recent
+state-of-the-art backdoor attacks [2], [27], [41]. We show that
+DeepSight filters model updates with high attack impact so that
+possibly remaining poisoned model updates will be effectively
+mitigated using existing clipping defenses, while the benign
+training process is not affected by wrongly excluded benign
+models. Our contributions include:
+
+II.
+
+BACKGROUND
+
+A. Federated Learning
+McMahan et al. [21] introduced Federated Learning (FL) as
+a process that leverages many different clients for collaboratively training a machine learning model, here a Neural
+Network (NN), based on their local datasets. In contrast to a
+centralized approach, the local data of each client never leaves
+this client, allowing the clients to keep their data secret.
+Each round t of an FL process consists of the following steps:
+Step 1: Each client k ∈ {1, . . . , N }, trains locally a ML model
+on its private data, starting from the global Gt before sending
+its model update to a central aggregation server S.
+Step 2: The server merges the received updates and applies
+the aggregated update on the global model.
+Step 3: The resulting model, called aggregated model Gt+1 ,
+is distributed back to all participants.
+Different aggregation rules have been proposed, e.g., Federated
+Averaging (FedAvg) [21], Krum [4], or Trimmed Mean [42].
+Although we will evaluate our proposed defense also for other
+aggregation rules, e.g., for Krum [4], we will focus on FedAvg
+as it is widely used in FL [26], [5], in particular in work about
+backdoor attacks [2], [27], [34], [24], [28], [10].
+In FedAvg, the aggregated model Gt+1 is determined by
+averaging all received model updates and adding it to the
+previous global model Gt . Although this algorithm also allows weighting the contributions of different clients, e.g., to
+increase the impact of clients with a large training dataset,
+this also makes the system more vulnerable for manipulations,
+as compromised clients could exploit this, e.g., by lying
+about their dataset sizes to increase their impact. Therefore, we follow existing work [2], [34], [4], [28], [10], [21]
+and weight all model updates equally.
+
+• We propose DeepSight, a novel defense to mitigate targeted poisoning (backdoor) attacks on Federated Learning (FL). DeepSight uses a novel filtering scheme that
+conducts a deep model inspection and combines it with
+clipping (§V) to identify targeted poisoning attacks.
+• We propose a voting-based model filtering scheme combining a classifier and clustering-based similarity estimations. The individual labels are sued to reliably identify
+clusters with malicious model updates, such that not only
+a model’s label is used but also the labels of similar models for deciding on accepting or rejecting a model update
+(§V-A4). Together with the classifier as the central mechanism, instead of an outlier elimination-based strategy,
+we prevent models of benign clients with deviating data
+distributions from being filtered out, thereby increasing
+the performance of the aggregated model for the data of
+these clients.
+• We propose the Threshold Exceedings metric (§IV) that
+analyzes the parameter updates of the output layer for a
+model to measure the homogeneity of its training data.
+We use this metric to build a classifier, being capable of
+labeling model updates as benign or suspicious.
+• We design an ensemble of clustering algorithms, based
+on three different techniques to effectively identify and
+cluster model updates with similar training data (§V-A3)
+to support the classifier by similarity estimations.
+• We propose two novel techniques for measuring finegrained differences in the structure and outputs of NNs
+(§IV): The first technique Division Differences (DDifs)
+
+B. Backdoor Attacks on FL
+In a targeted poisoning attack, also called backdoor attack,
+an adversary A manipulates the local models of a subset
+of clients with size NA (cf. §III). Its goal is, to make the
+aggregated model that is operated on a feature space D
+output a certain class CA for a set of input samples, called
+trigger set I ⊂ D. The success of the attack is determined by
+2
+
+0
+The scaled malicious model Wt,i
+is then given by:
+
+0
+∗
+Wt,i
+= Wt,i
+− Gt γt,i + Gt
+
+the Backdoor Accuracy (BA), which measures the accuracy
+for the backdoor task. For example, in a word prediction
+scenario, the backdoor could be to predict the word ”delicious”
+after the trigger sentence ”pasta from astoria tastes” [2].
+The BA indicates here, for how many occurrences of the
+trigger sentence the model suggests ”delicious”. The ratio
+of compromised clients to the total number of clients will
+be denoted as Poisoned-Model-Rate (PMR). For backdoor
+attacks, widely two attack strategies are considered by previous
+work, assuming different thread models.
+
+Anomaly-Evasion As scaling makes the model update more
+suspicious, Bagdasaryan et al. [2] proposed to reduce the
+learning rate of the clients. Furthermore, they adapted the
+loss function to make the model more inconspicuous by
+adding a term Lanomaly that measures the similarity between the
+original model and the used global model, e.g., by using their
+cosine distance. If the normal loss function Lclass measures
+the performance of the model on the actual task and the losscontrol parameter α weights the impact of both parts, then the
+adapted loss function L0 is given by:
+
+1) Data Poisoning: In the weaker adversary model, A is
+restricted to manipulating the training data of a client. A
+poisons the client’s training data by adding malicious attack
+data to the dataset. The attack data consists of input samples
+from the trigger set, with the new, adversary-chosen (wrong)
+label CA . For example, in the NIDS scenario, A can achieve
+this by creating malware traffic during the NIDS system
+captures network packets that will be used as benign training
+data [27]. However, A still needs to ensure that the resulting
+model updates are not too conspicuous, e.g., by limiting the
+Poisoned-Data-Rate (PDR), i.e., the fraction of attack data
+injected into the training dataset. By choosing a suitable PDR,
+A can balance between attack impact and attack stealthiness.
+Let Di denote the benign dataset of a compromised client i and
+DiA the injected attack data, then the PDR of the combined,
+poisoned dataset Di0 is given by:
+PDR =
+
+|DiA |
+|Di0 |
+
+(3)
+
+L0 = αLclass + (1 − α)Lanomaly
+
+(4)
+
+In the rest of the paper, we will use the strong adversary model,
+where A uses a combination of the Anomaly-Evasion and
+Scaling attack strategies, called constrain-and-scale attack [2].
+C. Exploiting Adversary’s Dilemma
+Adversary A can freely choose an attack strategy that is most
+effective for it. It can either use well-trained poisoned models
+to inject the backdoor, e.g., by using a high PDR, or, train the
+models only weakly, e.g., by using a low PDR. However, as
+pointed out by Nguyen et al. [28], well-trained models differ
+significantly from benign models and are, therefore, easy to
+detect by approaches that filter suspicious models. On the
+other hand, the impact of weakly trained models is likely
+to become negligible during aggregation, as poisoned models
+are outnumbered by benign ones [28]. Bagdasaryan et al.
+proposed scaling the updates to increase their contribution
+to the aggregated model [2]. However, this attack is easy
+to mitigate by approaches that limit the contribution of the
+individual clients, e.g., clipping that limits the L2 -norm of the
+model updates.
+
+(1)
+
+The advantage of this attack is that it is sufficient to poison
+the dataset, which can be done, without compromising the
+client that actually trains the NN. Therefore, it requires fewer
+capabilities of A, compared to the Model Poisoning attack.
+2) Model Poisoning: In a stronger adversary model A is
+able to compromise a subset of the clients and fully control
+them. A can then change the model updates arbitrarily before
+submitting them to increase attack impact on the aggregated
+model. This allows A to adapt the training algorithm, its
+parameters, and to scale model updates to increase the attack
+impact without triggering defense mechanisms that may be
+deployed on the aggregation server [2]. If the adversary
+has full control over a client, it can also arbitrarily change
+their behavior, e.g., using a subset of clients for random
+updates to distract the defense mechanism (cf. App. B). The
+model poisoning attack can be split into two parts:
+Scaling: As proposed by Bagdasaryan et al. [2], A can scale
+∗
+the differences between the (poisoned) trained model Wt,i
+of
+the client i in round t and the used global model Gt , before
+submitting the model. This up-scaling increases the impact of
+the poisoned models during the aggregation. If there are N
+clients in total, from which NA are compromised, A can scale
+the updates using a factor up to N/NA .
+To circumvent deployed defense mechanisms A can restrict
+the L2 -norm for the update to a chosen value S. This prevents
+the scaled updates from being too suspicious to the cost of the
+impact of the attack. The scaling factor γt,i of a compromised
+client i in round t is, therefore, given by:
+!!
+S
+N
+,
+(2)
+γt,i = max 1, min
+∗ − G ||
+NA ||Wt,i
+t
+
+III.
+
+S YSTEM AND P ROBLEM S ETTING
+
+A. System Setting
+We consider a system with N clients that train their local
+models before sending them to the aggregator S who combines
+them by using FedAvg [21]. We assume that clients keep their
+data secret. Therefore, no training or testing data is available
+on the aggregation server S.
+We also assume that the data of different clients may differ
+from each other. Without loss of generality, the individual
+clients can be seen as parts of groups of clients with similar
+training data, s.t. the data of all clients in the same group
+follows the same distribution, therefore, are IID. There can
+be one or multiple groups of arbitrary, also different sizes
+(also with size one). Taking the NLP scenario as an example,
+if people write similar texts, e.g., always about the same
+topic, also the updates for the NN that is used for the word
+suggestion will be similar. Therefore, the model updates of
+those clients can be seen as a group of updates with similar,
+IID training data. Other users may write about another topic,
+such that their model updates can be seen as a different
+group. If all people would write about the same topic, their
+model updates can be seen as one (big) group and if a
+single person writes very unique texts, e.g., by using very
+3
+
+0
+1
+0
+
+N11
+
+N21
+
+N31
+
+b11
+
+b21
+
+b31
+
+...
+
+N12
+
+N22
+
+N32
+
+b12
+
+b22
+
+b32
+
+N13
+
+N23
+
+N33
+
+b13
+
+b23
+
+b33
+
+0
+1
+
+in §I, it is not sufficient for defenses to mitigate poisoning
+attacks, but also satisfy certain requirements such as model
+performance. Therefore, we consider defense against poisoning
+attacks only effective if it also fulfills the following additional
+requirements:
+R2: No Disruption of the Training Process. The defense
+should not negatively affect the training. Therefore, the performance of the resulting model on the main task (Main Task
+Accuracy, MA) must be at the same level as without defense.
+R3: Autonomous Process The defense must run fully autonomous, i.e., no manual configuration nor any knowledge,
+e.g., estimations for the L2 -norms of benign updates or validation data3 , must be required.
+
+“bad”: 0.13
+
+“delicious”: 0.86
+
+“delicious”
+
+“go”: 0.01
+
+Fig. 1: Structure of a simplified NN for word suggestion. The
+individual colors refer to the parameters that are used by the
+proposed techniques
+special words, the respective model update can be seen as
+part of a group having only one member.
+The techniques that we propose later (cf. §IV), allow characterizing the clients’ training data to make these groups visible.
+This allows clustering the received model updates accordingly
+to support the classifier.
+
+To the best of our knowledge, all existing approaches
+for identifying poisoned updates are based on metrics that
+consider the NN as a black box, e.g., cosine [24], [28], [10]
+or L2 -norm [4]. Our novel scheme, therefore, addresses the
+following challenges:
+C1: How to distinguish poisoned models from benign models
+that were trained on different data.
+C2: How to entangle to the backdoor performance such that
+the only way for A to bypass a scheme that is based on these
+techniques is to reduce the backdoor performance.
+C3: How to make the techniques generally applicable, without
+knowing the exact data. For example, for the NIDS scenario,
+it should not make a difference, whether the models analyze
+the network traffic of IP cameras or smart sensors.
+C4: How to ensure a high precision, to prevent benign models
+from being excluded wrongly.
+C5: How to effectively combine the individual techniques to
+a dynamic defense scheme, s.t. it can dynamically adapt to
+attacks. Therefore, neither the scheme shall be broken unless A
+overcomes every single technique, nor shall the scheme suffer
+by false positives.
+
+B. Adversary Model
+In the rest of the paper, we consider an adversary A that aims
+to inject a backdoor into the aggregated model, making the
+model predict a certain label CA for some specific, adversarycontrolled input samples, called trigger set I. The manipulated
+aggregated model shall then be distributed to all clients.
+However, if the aggregator S notices the attack it will exclude
+the poisoned models. If S notices the attack but cannot identify
+the poisoned models, it can repeat the training with different
+subsets of clients until no attack is detected [3]. Hence, the
+attack also must not degrade the performance of the aggregated
+model on the main task (Main Task Accuracy, MA).
+Formally, if Gt is the aggregated model after the attack, Gt−1
+the global model before the attack, D the set of all possible
+inputs, I ⊂ D the trigger set and f (Gt , x) the prediction of
+the model Gt on the input sample x ∈ D, A0 s goal is:
+∀x∗ ∈ I.f (Gt , x∗ ) = CA ∧∀x ∈ D\I.f (Gt , x) = f (Gt−1 , x)
+(5)
+Therefore, from Eq. 5, two objectives for A can be derived:
+O1: Performance on the backdoor task. The aggregated
+model shall predict CA for triggered samples.
+O2: Stealthiness. A must ensure that the poisoned models
+are inconspicuous to S and that S cannot determine, whether
+a poisoning attack took place. This includes preventing a drop
+in the MA.
+
+D. Proposed Techniques
+Figure 1 shows a simplified, linear NN for suggesting words
+based on the previously typed text. The NN has 3 layers with
+3 neurons each. The arrows that connect the neurons represent
+the respective weights, bi,k the bias for the respective neuron,
+and the brown number the calculated scores. In this example,
+the NN suggests ”delicious” as the next word, since it has the
+highest score.
+We propose 3 techniques that allow to analyze NNs and provide characteristics about the distribution of the used training
+data. The first technique is called Division-Difference (DDif).
+When training a NN, the predicted score for the current
+sample (e.g., ”pasta from astoria tastes delicious”) is increased.
+However as a side-effect, also the score (colored brown in
+Fig. 1) for the current label, i.e., ”delicious” is increased in
+general, therefore, also when another input is used. The DDifs
+measures these changes as they provide information about the
+distribution of the training labels of the respective client.
+When training a NN, the respective weights are adapted
+slightly for each sample in order to increase the predicted
+score. Since each neuron in the last layer of a NN represents
+
+Aligned with the existing work on backdoor attacks [2], [27],
+[34], [4], [24], [28], we consider a strong adversary model,
+allowing A to fully control NA < N/2 clients. However, A
+has no control over the benign clients nor has access to their
+data or model updates. We assume A to have full knowledge of
+the aggregation server S and any deployed defense, i.e., used
+algorithms and configuration parameters, however, A cannot
+tamper with it.
+C. Objectives of a Poisoning Defense
+To defeat the objectives of the adversary, the defense has to
+fulfill the following security requirement:
+R1: Poisoning Mitigation. The defense must mitigate the
+poisoning attack. Therefore, the BA must remain at the same
+level as without the attack 2 . However, as already pointed out
+
+3 For example, in the case of the FL-based NIDS DÏoT [26], new training
+processes for new data scenarios are started automatically. Therefore, neither
+validation data nor prior knowledge about the model udpates like their
+L2 -norms are available as this would require the clients to share their data,
+which would violate a principal design goal of FL.
+
+2 It worth to note that for some backdoor tasks, misclassification of the
+model are counted in favor of the BA, s.t., the BA is higher than 0 %, even
+without attack (cf. App. F).
+
+4
+
+Filtered Models
+
+Individual
+Labels
+
+Clusters
+
+Clipping
+
+Clustering
+
+Clipped Models
+
+Cosine Distances
+NEUPs
+DDifs
+
+Aggregation
+Aggregated
+Model
+
+individual models, taking into account their predictions, individual neurons as well as an estimation for the homogeneity of
+the used training data. The subsequent layers (clipping and aggregation) mitigate the effect of potentially remaining, weaklytrained poisoned models. The structure of DeepSight is shown
+in Fig. 2. The filtering layer performs three major steps:
+1. Classification DeepSight utilizes a novel metric entitled
+Threshold Exceedings that measures the homogeneity of a
+model’s training data to label models as benign or suspicious.
+2. Clustering Secondly, DeepSight groups model updates,
+such that all models in the same group have been trained on
+similar training datasets. Therefore, this component clusters the
+models according to the groups of clients with IID data that
+were discussed in §III-A. This allows DeepSight to reliably
+separate malicious and benign model updates into different
+clusters and, therefore, support the labeling by similarity
+estimations. DeepSight uses two additional novel techniques
+Division Differences (DDifs) and Normalized Energy Updates
+(NEUPs) that enable it to extract characteristics of a model’s
+training data as well as the cosine metric.
+3. Poisoned Cluster Identification In the last filtering step,
+the labeling and the clustering are combined to discriminate
+clusters containing poisoned models and for finally deciding
+about excluding or accepting each model update.
+
+Poisoned Cluster Identification
+
+Classification
+NEUPs
+
+Feature Extraction
+Clusterwise
+Aggregated Model Updates
+Models
+
+Layer 1: Filtering
+Layer 2: Clipping
+Layer 3: Aggregation
+
+Fig. 2: Structure of DeepSight
+an output label, the total magnitude of changes for the parameters of the individual neurons (colored in green in Fig. 1)
+is connected to the frequency of the individual labels. The
+NormalizEd UPdate energies (NEUPs) measure those changes
+and use them to provide a rough estimation of the output labels
+for the training data of the individual clients.
+The task of a backdoor is usually very simple compared to
+the benign task of a model. For example, in case of the
+NLP scenario, instead of learning a large number of different
+sentences, the backdoor task consists only of predicting the
+correct word after a specific sentence, i.e., ”pasta from astoria
+tastes delicious”. To prevent, that the impact of the attack
+becomes negligible during the evaluation A needs to use a
+high PDR (cf. II-C), resulting in a focus of the labels on the
+target word, i.e., ”delicious”. For example, in case of a PDR
+of 50 % half of the labels belongs to those 5 words, although
+there are 50 000 words in total (cf. §VI-A1). The Threshold
+Exceedings uses the NEUPs to compare the distribution of
+labels for measuring the homogeneity of labels in the training
+data. The classifier in the proposed filtering scheme analyses
+the homogeneity value for each model. If a model update
+has a strong focus in the used training data, therefore, if few
+labels occur with a significantly higher frequency than all other
+labels, then the classifier considers this update as poisoned.
+
+IV.
+
+T ECHNIQUES FOR A NALYZING ML M ODELS ’
+T RAINING DATA D ISTRIBUTIONS
+
+In this section we introduce several novel techniques for deep
+inspection and analysis of model updates to identify models
+whose training data were focused on a specific (backdoor) task
+and measure fine-grained differences between models. In §V
+we will describe how the filtering component and in particular
+the classifier of DeepSight is based on these techniques.
+We introduce Division Differences (DDifs) that measures the
+difference between the predicted scores of the local and
+global models. As all clients use the same global model, in
+case of similar or different training data, also the predicted
+probabilities will change accordingly. Therefore, they provide
+information about the distribution of labels in the training data.
+Moreover, we introduce NEUPs, which analyze the total magnitude of the updates for the individual neurons of the output
+layer. NEUPs use these magnitudes to determine a rough
+estimation of the distribution of labels in the training data of
+the model update, allowing, e.g., to measure the similarity of
+the training data for different model updates.
+The third technique, entitled Threshold Exceedings, uses
+NEUPs for measuring the homogeneity of labels in the used
+training data. In §V-A, we describe how Threshold Exceedings
+are used to identify models as benign or poisoned.
+
+E. Our Defense Approach
+We propose DeepSight, an effective novel filtering approach
+against dynamic backdoor attacks that overcomes the deficiencies of previous work. Its overall structure is shown in Fig. 2.
+DeepSight uses a classifier as the central component that is
+based on deep-model-inspection (cf. §V-A). The filtering is
+followed by a weight clipping component (cf. §V-B), which
+enforces A0 s strategy to focus the training data of poisoned
+models on the backdoor behavior. Otherwise, the attack can
+either be mitigated by the clipping layer (cf. §V-B) or its
+impact becomes negligible in the aggregation phase (cf. §V-C).
+The first layer of the defense realizes a classification-based
+filtering and removes poisoned models with high attack impact,
+where the training data is focused on samples for the backdoor behavior. Here, we design an algorithm to combine the
+different techniques, s.t., the classification is supported by the
+similarity estimations, without following an outlier-detectionbased approach like existing approaches that use clustering.
+The filtering scheme is based on the proposed novel techniques
+for measuring fine-grained differences between the structure
+and outputs of a model and uses them to deeply analyze the
+
+A. Division Differences
+When training a NN, each specific sample consists of an
+input x and an output category y. During the training, the
+parameters of the NN are adjusted iteratively, s.t. the score for
+y that is predicted by the current model for x is maximized.
+For example, in the NLP scenario x could be a sequence of
+words and y the suggested next word. However, this has the
+side effect that also for another input x∗ , with a different
+label y ∗ , the score that is predicted for y also changes very
+slightly, although y 6= y ∗ . This phenomenon occurs especially
+when samples of the category y occur very frequently in the
+5
+
+neuron that represents the class of the currently considered
+sample are adapted slightly. Since this is repeated for every
+sample, neurons for frequent classes will be updated many
+times with high gradients4 such that the individual changes
+sum up to an update with a high magnitude for these neurons.
+On the other hand, if there are fewer (or no) samples of a
+class, there are fewer/no repetitions, resulting in an update
+with a low magnitude for such neurons. The total magnitudes
+of the updates for the neurons in the output layer leak therefore
+information about the frequency distribution of labels in the
+training data of this update.
+For measuring the magnitudes and reverse engineer this distribution, we first define the Energy of the update for a neuron.
+Let H denote the number of connections of an output layer
+neuron to neurons of the previous layer, bt,k,i be the bias of
+neuron i from the output layer of a model k after round t,
+wt,k,i,h be analogously the weight of the connection to the
+neuron h from the previous layer, bt,Gt ,i be as well as wt,Gt ,i,h
+be analogously bias and weights of neurons from the global
+model Gt . Then the Energy Et,k,i of the update for the output
+layer neuron i of the model that client k submitted in round t
+is given by:
+
+training data. However, because of using clipping as part of
+the defense, A has to use a high PDR, causing the target
+category of the backdoor, e.g., in case of the NLP scenario,
+the word ”delicious”, to occur very frequently. Therefore,
+especially for backdoor samples, the probability of the target
+label is increased in general and not only for samples of
+this category [18]. In the following, we will exploit this by
+comparing the probabilities that were predicted by a local
+model Wt,k to the predicted probabilities of the used global
+model Gt . The rationale here is that if two models Wt,i and
+Wt,k were trained on similar data, also the ratios of their
+probabilities compared to the predictions of the global model
+will be similar. The information that is gained by this technique
+allows identifying clients with similar training data. We will
+refer to this technique as Division Differences (DDifs).
+Because all clients start from the same global model and clients
+with similar data will try to achieve similar predictions for
+their data samples, they will adapt their parameters similarly,
+resulting in similar model updates. For example, considering a
+NN with n output classes, e.g., the number of known words in
+the NLP scenario, a specific sample x, 2 clients k and l with
+similar data, their respective local models in round t Wt,k and
+Wt,l , then their predictions f (x; Wt,k ), f (x; Wt,l ) ∈ Rn will
+be also very close. It follows directly that when comparing
+those predictions to the predictions of the original model
+f (x; Gt ), the differences between f (x; Wt,k ) and f (x; Gt ) as
+well as f (x; Wt,l ) and f (x; Gt ) provides information about
+the similarity of the training data of k and l.
+A problem is that the server has no input data for evaluating
+the NNs, as we assume that the server has neither training
+nor testing data (cf. §III-A). We solve this problem by using
+random input vectors instead of actual data. As we focus on
+the differences between predictions of the global model Gt and
+the predictions of the local model Wt,k of each client k rather
+than finding the class with the highest predicted probability, it
+is not necessary to obtain meaningful predictions. Therefore, it
+is not necessary to use real data samples. The rationale is that
+for a poisoned model update W 0 the predicted probabilities
+for the backdoor target class will be increased in general (cf.
+Liu et al. [18]), independently from the actual input, and,
+therefore also show corresponding differences in comparison
+to the predictions of the preceding global model Gt .
+For calculating the DDifs for a model update Wt,k of client
+k during training iteration t, we generate Nsamples = 20 000
+random input samples sm (m ∈ [0, Nsamples − 1]) and provide them as input to model Wt,k . We then divide the
+probabilities f (sm ; Wt,k )i predicted by the local model for
+each output neuron i by the corresponding neuron-specific
+prediction f (sm ; Gt )i of the global model Gt :
+
+DDift,k,i =
+
+1
+
+Et,k,i = |bt,k,i − bt,Gt ,i | +
+
+|wt,k,i,h − wt,Gt ,i,h |
+
+(7)
+
+h=0
+
+If an Energy Update for a neuron is significantly higher
+than other Energy Updates for the same local model, then
+this indicates that the respective classes were more relevant
+for training the model. We normalize the Energy Updates
+of all output layer neurons of the same model, to highlight
+Energy Updates that are significantly higher than other Energy
+Updates. Therefore, the NormalizEd UPdate energy (NEUP)
+Ct,k,i of the neuron i for the update from client k in round t
+is given by:
+2
+Et,k,i
+Ct,k,i = PP
+(8)
+2
+j=0 Et,k,j
+The normalization makes the frequency distributions of different models comparable. Therefore, the individual NEUPs
+of a model update it not affected by the total extent of
+the Update Energy for this model update. Therefore, similar
+NEUPs from different models indicate that similar proportions
+of the training data of different clients have the same label.
+Moreover, it also makes the technique more robust against
+obfuscation by the adversary A. Otherwise, A could use one
+client to submit a model with a very high Energy Update to
+make the Energy Updates of the remaining poisoned models
+looking more similar to the benign ones.
+In §VII, we provide a proof that the NEUPs are not affected,
+when A scales the poisoned model updates.
+
+Nsamples
+
+X f (sm ; Wt,k )i
+Nsamples m=1 f (sm ; Gt )i
+
+H
+X
+
+(6)
+
+C. Threshold Exceedings
+The training data of poisoned models are significantly less
+heterogeneous than the training data of the benign models
+(cf. §III-E). For example, in the NLP scenario, the backdoor
+consists of a few sentences5 , while the benign task includes
+
+B. Normalized Update Energy
+The second measure that we propose for identifying clients
+with similar training data is the NormalizEd UPdate energy
+(NEUP). It analyzes the parameter updates for the output layer
+and extracts information about the distribution of labels in the
+underlying training data of a model.
+During the training process, the parameters of the output layer
+
+4 When calculating the gradients of a NN for a sample x, the absolute
+magnitude of the gradients of the output layer neuron that represents the label
+of x is higher than the gradients for the other neurons [39].
+5 Otherwise the backdoor is significantly harder to inject (cf. App. A),
+allowing the other defense layers of DeepSight to mitigate the attack.
+
+6
+
+V.
+
+40
+20
+0
+
+0
+
+0.5 Median Value
+Threshold Exceedings of benign models
+Threshold Exceedings of poisoned models
+20
+40
+Models
+
+60
+
+Existing poisoning defenses often assume benign models to
+be similar, resulting in rejecting all abnormal model updates.
+However, those defenses can, due to the adopted approach,
+not distinguish between the reasons for perceiving a model
+as abnormal. Therefore, they cannot determine whether just
+different, non-IID data or poisoned data were used for training
+the model. As a result, those approaches will also reject models
+of benign clients with slightly deviating training data distributions. To solve this problem, we propose in the following
+DeepSight. It uses the proposed techniques to deeply inspect
+the model updates and distinguish between poisoned model
+updates and benign updates that have been trained on deviating
+data distributions. By using clipping [2], [28], [23], we enforce
+A0 s strategy to focus the training data of poisoned models on
+the backdoor behavior, s.t. the filtering scheme can effectively
+identify and exclude poisoned models. The basic structure of
+DeepSight is shown in Fig. 2. It consists of 3 layers:
+1. Filtering Layer: The first layer uses the proposed novel
+techniques to analyze the model updates for detecting and
+excluding models that contain a well-trained backdoor.
+2. Clipping Layer: This layer enforces a maximal L2 -norm
+of the updates and downscales them if necessary to mitigate
+poisoned models that compensate a weakly trained backdoor
+(to circumvent the first layer) with a high scaling factor.
+3. Aggregation Layer: The last layer uses FedAvg to aggregate the remaining, clipped updates together.
+
+80
+
+Fig. 3: NEUP Threshold Exceedings of benign and poisoned
+model updates
+a large number of different sentences. We showed in §IV-B
+that the NEUPs allow a rough estimation of the distribution of
+labels in the training data of a client. Training data for poisoned
+models need to be focused on samples for the backdoor behavior (cf. §II-C). Therefore, if there is a local model with very
+homogeneous training data, then it is very likely that this model
+is poisoned. In the following, we introduce a metric entitled
+as Threshold Exceedings that measures the homogeneity of
+the training data and, by this is able to identify poisoned
+models. In §V-A, we will use the Threshold Exceedings to
+build a classifier for labeling all models as poisoned or benign.
+Our experiments confirmed a strong correlation between the
+NEUPs and the distribution of labels in the training data, s.t.,
+the NEUPs can be used to measure the homogeneity of labels.
+To measure the homogeneity of the NEUPs for the local
+models and therefore the complexity of the used training data,
+we define for each local model a threshold based on the
+maximal NEUP for this model. Then we count for each model
+how many NEUPs exceed this threshold.
+If the output layer has P neurons, then the maximal NEUP
+Ct,k,max of a model being submitted by client k in round t is
+given by:
+Ct,k,max = max Ct,k,i
+(9)
+
+This combination of layers creates a dilemma for A. If the
+poisoned models are suspicious, e.g., because they have been
+well-trained on homogeneous training data for achieving high
+backdoor impact, they will be detected and rejected by the
+filtering layer. Otherwise, if A tries to circumvent the filtering
+layer by using heterogeneous training data, e.g., by using a
+low PDR or injecting complex backdoors, it also weakens
+the impact of the backdoor allowing the other two layers to
+mitigate the attack effectively.
+
+1≤i≤P
+
+We define the threshold ξt,k as 1 % of the maximal NEUP
+Ct,k,max of this client. However, as in scenarios with very few
+output labels, it is possible that all NEUPs of a client are
+above this threshold, we increase the Threshold Factor of 1 %,
+depending on the number of output classes. The threshold ξt,k
+is, therefore, given by:
+ξt,k = max (0.01, 1/P ) · Ct,k,max
+
+M ITIGATING BACKDOOR ATTACKS ON FL BY D EEP
+M ODEL I NSPECTION
+
+A. Filtering Layer
+The filtering layer recognizes poisoned models with homogeneous training data, by using a classifier that is based
+on the Threshold Exceedings (cf. §IV-C). To make the filtering more robust and minimize the number of mislabelings, we combine the classifier with a clustering to also
+take the labels of similar models into account when finally
+deciding about accepting or rejecting a model. To prevent
+
+(10)
+
+In App. I, we analyze the impact of different choices for the
+Threshold Factor on the Threshold Exceedings and DeepSight.
+The Threshold Exceedings value for a model is then given by
+the number of NEUPs that exceed this threshold. Let 1expr be
+the indicator function being 1 iff the expression expr is true
+and 0 otherwise, then the number of Threshold Exceedings
+TEt,k for a model being submitted by client k in round t is
+given by:
+P
+X
+TEt,k =
+1Ct,k,i >ξt,k
+(11)
+
+Poisoned Cluster Identification
+
+Filtered
+Model
+Updates
+
+Clusters
+
+i=1
+
+Clustering
+
+Figure 3 shows the NEUP Threshold Exceedings for the NIDS
+scenario for 70 benign and 30 poisoned model updates. As
+the figure shows, benign models have a significantly higher
+number of Threshold Exceedings than poisoned models.
+For classifying model updates as benign or poisoned, we define
+a classification boundary of half of the median number of
+Threshold Exceedings. A model is labeled as poisoned, iff its
+number of Threshold Exceedings is below this threshold.
+In §VII, we provide a proof that the Threshold Exceedings are
+not affected when A scales the poisoned model updates.
+
+Labels
+
+Clustering
+Combiner
+Clusters
+HDBSCAN
+
+Cosine
+Distances
+
+Cosine
+Calculator
+
+Classifier
+
+Clusters
+
+HDBSCAN
+
+HDBSCAN
+
+DDifs
+DDif
+Calculator
+
+Threshold
+Exceedings
+Threshold Exceeding
+Determiner
+NEUPs
+NEUP
+Calculator
+
+Feature
+Extraction
+
+Model Updates
+
+Fig. 4: Filtering Layer of DeepSight
+7
+
+Classification
+
+Threshold Exceedings
+
+60
+
+Algorithm 1 Filtering Layer
+
+Algorithm 2 Clustering
+
+1: Input: N,
+. number of models
+2: W,
+. list of N received local models
+3: Gt
+. global model
+4: Parameters: τ , . Threshold of suspicious models for excluding cluster
+5: seeds,
+. 3 seeds for generating random data for ddfis
+6: input dim
+. dimension of a single input
+7: Output: accepted models
+8:
+. Feature Extraction
+9: cosine distances ← 0N ×N
+10: global bias ← output layer bias(Gt )
+11: for each clients i, j in [1, N ] do
+12:
+updatei ← output layer bias(Wi ) - global bias
+13:
+updatej ← output layer bias(Wj ) - global bias
+14:
+cosine distancesi,j ← 1 - COSINE(updatei , updatej )
+15: end for
+16: ∀i ∈ {1, . . . N } : neupsi ← NEUPs(Gt , Wi )
+17: ∀i ∈ {1, . . . N } : thresh exdsi ← THRESHOLD EXCEEDING(neups)
+18: ∀i ∈ {1, 2, 3} : rand input datai ← random matrix(seedsi , 20 000,
+input dim)
+19: ∀i ∈ {1, 2, 3} : ddifsi ← DDIFs(rand input datai , Gt , W1 . . . Wn )
+20:
+. Classification
+21: classificat boundary ← MEDIAN(thresh exds) / 2
+22: ∀i ∈ {1, . . . N } : labelsi ← (thresh exds[i] ≤ classificat boundary)? 1:0
+23:
+. Clustering
+24: clusters ← CLUSTER(N, neups, ddifs, cosine distances)
+25:
+. PCI
+26: accepted models ← {}
+27: for cluster in clusters do
+28:
+amount of positives ← SUM(labels[cluster]) / |cluster|
+29:
+if amount of positives < τ then
+30:
+accepted models ← accepted models ∪ models[cluster]
+31:
+end if
+32: end for
+
+1: procedure D ISTS F ROM C LUST(clusters, N)
+2:
+∀i, j ∈ {1, . . . N } : pairwise distsi,j ← cluster of model(i, clusters)
+== cluster of model(j, clusters)? 0:1
+. cluster of model(x, clusters)
+returns the cluster that contains the model with index x
+3:
+return pairwise dists
+4: end procedure
+5:
+6: Input:
+7: N,
+. N is the number of models
+8: neups,
+. NEUPs as list of N vectors with dimension P
+9: ddifs
+. DDifs as list of 3 lists of vectors with dimension P
+10: cosine distances
+. cos distances a matrix ∈ RN ×N
+11: Output: clusters
+. clusters as set of sets of indices
+12:
+13: cosine clusters ← HDBSCAN(distances = cosine distances)
+14: cosine cluster dists ← DistsFromClust(cosine clusters, N)
+15: neup clusters ← HDBSCAN(values = neups)
+16: neup cluster dists ← DistsFromClust(NEUP clusters, N)
+17: ∀i ∈ {1, 2, 3} : ddif clustersi ← HDBSCAN(values = ddifsi )
+18: ∀i ∈ {1, 2, 3} : ddif clust distsi ← DistsFromClust(ddif clustersi ,N)
+19: merged ddif clust dists ← AVG(ddif clust dists1 , ddif clust dists2 ,
+ddif clust dists3 )
+20:
+. Combine clusterings
+21: merged distances ← AVG(merged ddif clust dists, neup clust dists, cosine clust dists)
+22: clusters ← HDBSCAN(distances = merged distances)
+
+suspicious, independently from other models (cf. lines 20-22
+in Alg. 1).
+The classifier calculates for each model Wt,k the number of
+Threshold Exceedings (cf. §IV-C) and uses the median number
+of Threshold Exceedings divided by two as the classification
+boundary. A model is labeled as poisoned, if its number of
+Threshold Exceedings is below this threshold. As we assume
+the majority of clients to be benign (cf. §III-B), the median
+will always be at least as high as the lowest benign value.
+
+that A can easily fool the similarity mechanism, we use an
+ensemble that is based on the NEUPs, DDifs, and cosine.
+A would need to distract all of them at the same time,
+without reducing the attack impact, as otherwise the attack
+will be mitigated by the later defense layers.
+The overall structure of the filtering layer is shown in Fig. 4.
+It first calculates features for the clustering (DDifs, NEUPs,
+and pairwise cosine distances) and uses these values in the
+next step for clustering all models. In parallel, the Threshold
+Exceedings are calculated from the NEUPs and used for
+labeling all model updates as benign or suspicious. In the
+last step, the Poisoned Cluster Identification (PCI) combines
+the clustering with the labeling to decide about accepting or
+rejecting the updates. The details are shown in Alg. 1. The
+algorithm takes as input the number of models, the local
+models, the global model, and the dimension of a single input.
+1) Feature Extraction: First, we calculate the pairwise
+cosine distances, for each model k ∈ {1, . . . , N }, their corresponding NEUPs Ct,k,∗ and the Division Differences DDift,k,∗
+(cf. lines 8-19 in Alg. 1). As the DDifs depend on random input
+data, we calculate them three times with different input data
+that were generated by using different seeds.
+An advantage of using the pairwise cosine distances of the updates, e.g., in comparison to using the Euclidean distances [4]
+is that its value does not change when A scales its update
+(cf. App. H). The pairwise cosine of the updates is, therefore,
+more stable than other vector metrics.
+
+3) Clustering: The goal of the clustering is to build groups
+of models, s.t. the training data of all models in the same group
+are based on IID training data and therefore all models should
+receive the same label. Because all clients use the same global
+model, clients with similar training data, will result in similar
+model updates (cf. §IV). Therefore, a clustering that is based
+on these features (DDifs, NEUPs and cosine distances), will
+create groups of models with similar training data.
+The clustering algorithm is shown in Alg. 2. In a scenario with
+P output classes of the models, the input for the algorithm is
+the number of models N , the NEUPs for each model as a list
+of N vectors with dimension P , the DDifs for 3 different seeds
+as a list of 3 lists, each containing N vectors of dimension P ,
+as well as the pairwise cosine-distances for the updates of the
+output layer biases as a matrix of dimension N × N .
+The algorithm first clusters the cosine distances (cf. line 13 of
+Alg. 2), the NEUPs (cf. line 15 of Alg. 2) and the DDifs
+(cf. line 17 of Alg. 2). While the NEUPs and DDifs are
+clustered as plain values, the cosine distances are considered as
+a precomputed distance matrix. For the clustering HDBSCAN
+is used that determines the number of clusters dynamically.
+This allows DeepSight to build groups of models that optimally
+fit the data distributions and rather create more clusters than
+necessary than mixing models that were trained on data from
+different distributions, as this has the risk of mixing benign and
+poisoned models. A comparison of HDBSCAN with, e.g., kmeans that is used Auror [34] is provided in App. B. This structure allows DeepSight to adapt the combination of techniques
+
+2) Classification: To maximize the attack impact A needs
+to use homogeneous training data (cf. §III-E). Otherwise,
+the attack will be mitigated by the later defense layers. The
+Threshold Exceedings measure the homogeneity of a model’s
+training data and uses it to label each model as benign or
+8
+
+dynamically to the current situation, addressing challenge C5.
+After clustering all feature values, a pairwise distance matrix is
+determined for each clustering by setting the distance between
+two models to 0 if they were put into the same cluster
+and otherwise 1 (cf. function DistsFromClust and lines 14,
+16 and 18 in Alg. 2). First, the distance matrices for all
+DDif clusterings are combined via averaging (cf. line 19 in
+Alg. 2). Then, the result is averaged with the distance matrices
+for the cosines and NEUPs (cf. line 21 in Alg. 2). The
+resulting distance matrix is again processed by HDBSCAN
+as precomputed distance matrix (cf. line 25 in Alg. 2).
+
+B. Clipping Layer
+To prevent A from artificially increasing the weight of the
+poisoned model updates and, therefore, to ensure that A
+focuses the training data on the backdoor behavior [28], we
+restrict the L2 -norm of the individual updates to a boundary S
+by downscaling the updates if necessary, analogously to Eq. 3.
+The scaling factor for clipping a model Wt,i that was trained
+by using the global model Gt is given by:
+
+
+S
+c
+λt,i = min 1,
+(12)
+||Wt,i − Gt ||
+Since the L2 -norms of (benign) updates decrease during multiple rounds of training, it is challenging to determine a suitable
+static clipping boundary. Therefore, we choose S dynamically
+based on the median of the L2 -norms of all updates, including
+the filtered model updates [28]. As we assume the majority
+of all clients to be benign, this value will always be in the
+interval of the L2 -norms for the benign updates.
+
+4) Poisoned Cluster Identification (PCI): This component
+combines the results of the clustering and classification to
+finally decide about accepting or rejecting a model. To do so, it
+takes the clustering and labeling from the previous components
+and determines for each cluster the percentage of poisonedlabeled model updates (cf. lines 25 - 32 in Alg. 1). All models
+of a cluster remain if less than τ = 1/3 of them are labeled as
+suspicious. Otherwise, all models of this cluster are removed.
+The component relies on the idea that all models in the same
+cluster have similar, IID training data and should, therefore,
+receive the same label. This mechanism in effect, therefore,
+realizes a voting about the label for all models in this cluster.
+The threshold of τ = 1/3 was chosen as it is more likely that
+a poisoned model is labeled as benign than vice versa.
+
+C. Aggregation Layer
+In the aggregation layer, all remaining clipped models are
+aggregated together using FedAvg. However, in the last round,
+the aggregation is performed clusterwise and includes also the
+filtered, clipped models, s.t. only models from the same cluster
+are aggregated together and each client receives the model that
+was aggregated for the respective cluster.
+As the clustering results in groups of models, where all models
+in the same group were trained on very similar, IID data this
+also separates models that were trained on benign or poisoned
+data. By applying this strategy we ensure that even if an
+adversary was able to circumvent the classifier in the first layer
+and even circumvent the clipping, the impact of the attack will
+be still restricted to the clients that A already controls. This
+separation prevents the attack from affecting the benign clients.
+Moreover, if the global model of the previous round was
+already poisoned, this separation allows the benign clients to
+untrain the backdoor and gain a clean model, analogously to
+the concept of transfer learning [29].
+
+In summary, we build a dynamic filtering mechanism that
+efficiently identifies and filters poisoned models that were
+trained on homogeneous training data by deeply inspecting the
+predictions of the models and the parameters of the individual
+neurons. The filtering mechanism is not restricted to black-box
+metrics of model updates but deeply inspects the models, looking for artifacts of focused training data. It uses the Threshold
+Exceedings to label all models as suspicious or benign. It
+does not rely on a certain NN architecture nor backdoor types
+but inspects the models for artifacts that are characteristics
+for all backdoors and, therefore, addresses challenge C3. By
+analyzing the model updates for characteristics of poisoned
+models, it is able to effectively distinguish between poisoned
+and benign models, even if the benign models use deviating
+data. By this, DeepSight also addresses challenge C1.
+The proposed techniques for inferring information about the
+training data of a model (DDifs, NEUPs) as well as the
+cosine metric build a stable clustering mechanism. It combines
+different kinds of features that make it, therefore, hard for an
+adversary to trick them. This clustering ensemble allows the
+filtering mechanism to create groups of models, where all data
+in the same group have IID training data. The clustering is used
+to support the classification and allow to consider their labels
+but also the labels of similar models for finally deciding about
+accepting or rejecting them. Moreover, by labeling each model
+separately, DeepSight is not forced to exclude models but is
+also free to accept all models. In addition, because of the high
+sensitivity of the PCI (τ = 1/3), it is unlikely that models are
+accepted which are a threat for the aggregated model. On the
+other side, as we discussed in §IV-C, the Threshold Exceedings
+based identifier is unlikely to label benign clients as poisoned,
+addressing challenge C4. Therefore, the design realizes a wellbalanced trade-off between being too restrictive and too open.
+We will discuss the effectiveness of the ensemble of different
+techniques further in §VI-C2.
+
+VI.
+
+E VALUATION
+
+A. Experimental Setup
+To evaluate our approach, we test its effectiveness in three
+different FL applications. The first is the same NLP scenario
+that was already used by Bagdasaryan et al. [2] and allows a
+direct evaluation of DeepSight against their proposed attack,
+as it allows to replicate their experimental setup. Moreover,
+we also use the setup of Nguyen et al. [28] to allow a
+better comparison with existing defense approaches. In App. D,
+we evaluate DeepSight on multiple image datasets which are
+frequently used as benchmark datasets in FL [2], [38], [4],
+[28], [10], [37], [31].
+1) Text Prediction: For the NLP scenario, we follow the
+experimental setup of Bagdasaryan et al. [2]. Therefore, we
+use the Reddit data set for November 2017. Each user with at
+least 150 and at most 500 posts was considered as one client.
+We created a dictionary and assigned an integer symbol to
+each of the most frequent 50000 words and included also three
+special symbols for unknown words as well as for the start
+and end of a post. The models used in this scenario consist of
+two LSTM layers with 200 hidden neurons each and a linear
+9
+
+TABLE II: Effectiveness of DeepSight in comparison to existing defenses on NIDS and NLP dataset. The row No defense
+shows the impact of the constrain-and-scale attack with plain
+FedAvg.
+
+TABLE I: Characteristics of used IoT datasets
+Dataset
+FLGuard-Benign
+DÏoT-Attack
+DÏoT-Benign
+UNSW-Benign
+
+#devices
+18
+5
+10
+16
+
+Time
+(hours)
+4774.7
+80.6
+1080.8
+5415.6
+
+Size
+(MiB)
+459.0
+7734.2
+134.9
+2102.5
+
+Packets
+(millions)
+3528.3
+21919.0
+1062.9
+8564.4
+
+No Attack
+No defense
+
+BA
+100.0
+
+Text prediction
+MA
+PRC NPV
+22.6
+22.4
+-
+
+BA
+100.0
+
+NIDS
+MA
+PRC
+100.0
+100.0
+-
+
+NPV
+-
+
+DP [2], [23]
+Ensemble FL [6]
+FoolsGold [10]
+Auror [34]
+AFA [24]
+Krum [4]
+FLGuard [28]
+DeepSight
+
+21.9
+100.0
+0.0
+100.0
+100.0
+100.0
+0.0
+0.0
+
+20.6
+22.6
+22.5
+22.4
+22.4
+22.6
+21.7
+22.6
+
+14.8
+100.0
+100.0
+100.0
+100.0
+100.0
+0.0
+0.0
+
+82.3
+93.2
+99.2
+96.6
+87.4
+84.0
+100.0
+100.0
+
+84.4
+70.2
+69.2
+0.0
+100.0
+100.0
+
+Defenses
+
+output layer. After the model was trained for 5000 rounds with
+100 randomly selected clients in each round, during which
+each client trained 2 epochs per round, the adversary used 10
+malicious clients to inject advertisements and make the model,
+e.g., predict ”delicious” after ”pasta from astoria tastes”. The
+Main Task Accuracy (MA) in this application refers to the
+accuracy of the suggested words.
+2) Network Intrusion Detection System (NIDS): Another
+application scenario is an FL-based NIDS for IoT devices [26].
+We merged four different datasets containing traffic of IoT
+devices from real-world home and office deployments kindly
+made available to us by the authors of the respective papers [26], [28], [36]. Table I shows the details of the used
+datasets. The detection model consists of two layers with
+128 Gated Recurrent Units (GRU) each and a linear output
+layer [26].
+
+100.0
+0.0
+9.1
+20.4
+100.0
+
+100.0
+90.0
+89.4
+0.0
+100.0
+100.0
+
+32.7
+0.0
+4.5
+24.2
+59.5
+100.0
+
+nign training before starting attacks. In the NIDS scenario,
+the Main Task Accuracy (MA) refers to the true negative
+rate, i.e., the rate of benign traffic being classified as benign whereas Backdoor Accuracy (BA) refers to the falsenegative rate, i.e., the rate at which attack traffic samples
+of the adversary are erroneously classified as benign.
+B. Experiment Platform
+All experiments were performed on a server running Ubuntu
+18.04 LTS, with 20 physical Intel Xeon CPU cores and 40
+logical cores, 4 NVIDIA GeForce RTX 2080 Ti (each with
+11GB memory), and 192 GB RAM. The experiments were
+implemented in Python, using the popular deep learning library
+Pytorch, the HDBSCAN implementation of McInnes et al. [20]
+and for evaluating existing work such as Auror [34] the
+machine learning library Scikit [30] was used.
+
+1) FLGuard-Benign: IoT traffic being captured in three realworld smart-home settings in different cities and one
+office for more than one week each [28].
+2) DÏoT-Benign: IoT traffic being captured in a real-world
+smart home with 18 IoT devices deployed [26].
+3) UNSW-Benign: IoT traffic being captured in a small office
+with 28 IoT devices deployed [36].
+4) DÏoT-Attack: traffic of 5 IoT devices that were infected
+by the Mirai malware [26].
+
+C. Experimental Results
+1) Preventing Backdoor Attack: Table II shows the effectiveness of DeepSight in comparison to several state-of-the-art
+defenses approaches in terms of BA, MA, precision (PRC), indicating the probability that a filtered model is indeed poisoned
+and its complement, the negative predictive value (NPV), indicating the probability that an accepted model is indeed benign.
+As can be seen, DeepSight effectively mitigates the attack in
+both scenarios. Other approaches [34], [4], [24] assume the
+data to be IID, which makes them fail for non-IID (Reddit)
+or partly IID (NIDS) data. Although FLGuard also achieves
+a decent performance in both scenarios, it also excludes
+many benign clients, which reduces the MA of the model,
+especially if it is applied from the beginning (cf. §VI-D).
+Also FoolsGold [10] achieves a decent performance in the text
+prediction scenario but fails for the IoT dataset. This is likely
+because FoolsGold assumes datasets of benign clients to be
+non-IID. The data in the IoT data set are partly IID (cf. §VI-A),
+causing FoolsGold to fail. On the other side, DeepSight is
+the only approach that is effective in both scenarios.
+In App. F, we evaluate DeepSight against 5 different NLP and
+12 NIDS backdoors, showing that it is not restricted to specific
+targets.
+In most of our experiments, A does not attack in the beginning
+but after several rounds of training, as otherwise there would
+be a high risk that, even if the attack would be successful,
+the later training would untrain the backdoor. To show, that
+this does not restrict A, we conducted an experiment on the
+traffic of 5 different device types in the NIDS scenario, starting
+from a randomly initialized model and trained for 50 rounds.
+However, in all cases the BA remained at 0.
+
+Following the setup of Nguyen et al. [28], we grouped the
+devices in the datasets according to their communication behavior, resulting in 44 distinct device type groups. We selected
+22 device types that had sufficient data for distributing it over
+at least 15 simulated clients each having at least 2 000 data
+samples. These device types represent different kinds of typical
+IoT devices found in a smart home, such as printers, smart
+light bulbs, smart plugs, or smart sensors. Depending on the
+amount of data available for a particular device type, its data
+were split into at least 15 and up to 200 clients, so that each
+client had between 2 000 and 3 000 samples for training. By
+doing this we ensure that the training data divided to different
+clients are as independent as possible and thereby resemble a
+real-world setting. Since different clients were assigned data
+from different data sets and different settings inside a dataset,
+the client data represent a combination of IID and non-IID data
+distributions. The detailed evaluation results of DeepSight for
+each of these device types can be found in App. C. For ease of
+presentation, we select the Netatmo Weather device, a smart
+weather station, as a representative example of a device type
+for the subsequent discussion, as it was present in three out of
+the four datasets and provided sufficient data to be distributed
+among 100 simulated clients.
+Unless stated otherwise, we used for training the detection
+models a learning rate of 0.1 for benign clients, and for
+malicious clients the constrain-and-scale attack strategy with
+a learning rate of 0.01, a loss-control parameter α = 0.7,
+a PDR of 50 %, a PMR of 25%, and 10 local epochs.
+The initial global model was based on 10 rounds of be10
+
+2) Evaluation of Individual Components: Table III compares the BA for the different layers of DeepSight, after
+running 10 rounds of training, while the malicious clients try to
+inject different numbers of phases from the Mirai botnet at the
+same time, using a PDR of 65 % and a learning rate of 10−2.5 .
+We averaged the values over 9 very different device types, covering IoT devices for a wide spectrum of different applications
+with different behavior: Edimax Plug and TPLinkPlug (smart
+power plugs), DLinkType05 and EdnetGateway (collects of
+sensors, e.g., a door sensor), Lightify (a smart light bulb),
+NetatmoCam (a WIFI camera), PIX-STARPhoto-frame (a foto
+frame), Netatmo Weather and an HP Printer.
+As the table shows, it is more difficult for A to inject
+multiple backdoors at the same time, as already pointed out
+by Sun et al. [37]. It also shows that the clipping defense
+is not effective against simple backdoors, but is effective
+against complex backdoors since they have already a high
+L2 -norm before they are scaled. On the other hand, filtering is
+effective in detecting backdoors that have a high imbalance in
+the underlying training data, but fails for complex backdoors.
+DeepSight combines the strengths of both and keeps the BA
+low for all backdoor complexities. This shows the effectiveness
+of the multi-layer strategy, where the filtering layer forces A to
+weaken its attack when it wants to prevent the poisoned models
+from being filtered out. However, then the weakened attacks
+can be easily mitigated by the clipping layer of DeepSight.
+In App. K, we analyze the effectiveness of the individual
+components of DeepSight’s filtering layer.
+3) Varying Attack Parameters: For the constrain-and-scale
+attack strategy, A can adjust different parameters of the
+training process for the malicious clients, with the purpose
+to overcome our defense. We evaluated different alpha-values
+from 0.1 to 1, different learning rates from 10−1 to 10−7 ,
+different numbers of epochs from 1 to 100 and different stages
+of the training when A starts its attack and runs the training
+process for each of them for at least 10 rounds for the NIDS
+dataset. Furthermore, we also evaluated different PMRs up to
+45 % for 20 rounds to even evaluate the border cases. However,
+DeepSight was always able to classify the submitted models as
+benign or poisoned without any misclassifications. Therefore,
+the BA was always 0 % and the MA almost always 100 %.
+We also evaluated different PDRs from 5 % to 100 %. Again,
+DeepSight did not misclassify any benign models. However, as
+already observed earlier for weakly-trained backdoors, which
+are realized here through low PDRs, DeepSight was not able
+to recognize all poisoned model updates. For a PDR of 5 %,
+DeepSight did not recognize any poisoned model updates and
+for PDRs of 8 % or 10 %, DeepSight failed to detect 6 out of 25
+poisoned models. The reason for not recognizing some models
+for the PDRs of 8 % and 10 % is that the clustering put them together with benign models, but also the Threshold Exceedings
+based identifier did not recognize them correctly. For a PDR of
+5 %, both, the clustering and the Threshold Exceedings based
+identifier failed. However, as we have demonstrated in §VI-C2,
+the clipping defense layer compensates the vulnerability of
+
+the filtering layer from DeepSight against such weak attacks.
+Because of the combination of both layers, the attack failed
+for all PDRs and the BA was always 0 %.
+Therefore, the adversary can not circumvent DeepSight by
+varying the attack parameters.
+4) Sophisticated Attacks: As we assume A to have full
+knowledge about the system, it can adapt its strategy to
+circumvent DeepSight. In the following, we discuss three sophisticated attack strategies, specifically designed to overcome
+DeepSight and a recently proposed state-of-the-art backdoor
+attack [41]. In App. G, we evaluate another state-of-the-art
+attack [38] and two further adaptive attacks, targeting the
+clustering components of DeepSight by adding noise and
+use poisoned models to fill the gap between the benign and
+poisoned models.
+Increasing Backdoor Complexity As the classifier labels
+models based on the complexity of their training data, a
+sophisticated adversary could try to increase the complexity for
+avoiding a focus on the backdoor target CA . We simulated this
+for the NIDS scenario by using the network traffic of multiple
+phases of the Mirai botnet. However, as shown in Tab. III,
+the BA is always close to zero. The reason for this is that for
+more complex backdoors the filtering component fails but on
+the other side, such backdoors are also harder to inject [37],
+causing them to be mitigated by the clipping layer. Also here
+the advantage of our multi-layer approach becomes visible.
+Freeze Output Layer As the NEUPs and the Threshold
+Exceedings depend on the output layer updates, a sophisticated
+adversary could exclude the parameters of this layer from the
+training. To show the effectiveness of DeepSight, we run an
+experiment for the IoT-Traffic. We used different numbers of
+local epochs, up to 100 000 epochs and increased the PDR to
+90 %. However, the BA of the local model did not increase,
+because it is significantly harder to train a model for a specific
+task without changing the output layer. Therefore, also the
+aggregated BA remains at 0 %, even for PMRs of more than
+50 %, which goes beyond our attack scenario (cf. §III-B).
+Adapt Anomaly Evasion Loss Another option is to consider
+the DDifs already during the training for the anomaly-evasion
+loss Lanomaly . We calculated the DDifs for the aggregation
+result of all benign models. Lanomaly was calculated as the
+L2 -norm between the DDifs of this benign model and the
+current poisoned model. For simplicity, we used the actual
+benign models instead of estimations, as this strengthens A,
+although this goes beyond our adversary model. However,
+even with this advantage, the attack was not successful. We
+run the experiment for 10 rounds, and different α values
+(α ∈ {0.0, 0.1, . . . 1.0}). Although the attack successfully
+distracted the DDifs, this was compensated by the other
+techniques. Therefore, DeepSight still completely mitigated the
+attack, showing the advantage of the clustering ensemble.
+DBA Attack: Recently, Xie et al. introduced a novel backdoor
+attack strategy that split the trigger and the clients into different
+parts. Each group of clients only train for their respective
+trigger part [41]. We evaluated the attack in the NLP scenario.
+One group trained their models to predict the word ”delicious”
+4 words after the word ”pasta”, the other group to predict ”delicious” 2 words after the word ”astoria”. However, although
+the attack achieved a BA of 64.5 % without defense, DeepSight
+successfully identified all poisoned models and mitigated the
+attack (BA=0 %), while keeping the MA at 22.6 %.
+
+TABLE III: BAs from DeepSight’s individual layers for different backdoor complexities, averaged over 9 IoT device types.
+No Defense
+Clipping
+Filtering
+DeepSight
+
+1
+100.0 %
+87.5 %
+0.0 %
+0.0 %
+
+2
+80.3 %
+56.2 %
+7.4 %
+0.0 %
+
+3
+48.2 %
+31.2 %
+41.5 %
+0.6 %
+
+4
+41.7 %
+13.9 %
+30.4 %
+0.3 %
+
+13
+43.9 %
+11.5 %
+42.9 %
+1.1 %
+
+11
+
+MA
+
+100%
+50%
+0%
+
+DeepSight
+FLGuard
+0
+
+2
+
+4
+6
+Training Rounds
+
+Theorem 1. The NEUPs are not affected by scaling or
+clipping the model update.
+Formally: Let Gt be the global model of an arbitrary round,
+Wt,k an arbitrary local model applying update Ut,k , with
+Wt,k = Gt + Ut,k and NEUPs(Gt , Wt,k ) be the NEUPs for
+Wt,k .
+∀λ ∈ R \ {0} : NEUPs(Gt , Wt,k ) = NEUPs(Gt , Gt + λUt,k )
+
+Baseline
+Krum
+8
+
+10
+
+Fig. 5: Performance in terms of Main Task Accuracy (MA) of
+DeepSight and Krum [4] without attack
+
+Proof: See Appendix H.
+Theorem 2. The Threshold Exceedings are not affected by
+scaling or clipping the model update.
+Formally: Let Gt be the global model of an arbitrary round,
+Wt,k an arbitrary local model applying update Ut,k , with
+Wt,k = Gt + Ut,k and TE(Gt , Wt,k ) be the Threshold Exceedings for Wt,k .
+∀λ ∈ R \ {0} : TE(Gt , Wt,k ) = TE(Gt , Gt + λUt,k )
+
+D. Impact on Benign Training Process
+Several existing defense approaches [4], [24], work by excluding outliers and are, therefore, very likely to always exclude
+models even if there is no attack deployed. This impacts
+negatively the resulting model, causing a low MA and makes
+the respective defenses not practical.
+Figure 5 compares the MA if no attack is deployed, for
+DeepSight, Krum [4], FLGuard [28] and without defense
+(Baseline), starting from a random model. As the figure
+shows, DeepSight slows down the training process slightly but
+achieves a good performance soon, similarly to the baseline.
+Therefore, the negative impact on the learning process is low.
+In comparison, Krum stops at 60 %, as it always chooses a
+model representing data from the majority of clients. Analogously, also FLGuard does not consider outliers.
+In App. J, we discuss the computational complexity of
+DeepSight. We show that the computationally expensive operations scale linearly with the number of participants, s.t.,
+DeepSight causes only a low computational overhead.
+We extensively evaluated various different attack strategies,
+including state-of-the-art attacks [2], [41], [38] as well as
+attacks that target the weak spots of DeepSight, e.g., adapting
+the anomaly-evasion loss function, freezing the output layer,
+reducing the attack impact or building clusters with a sufficient
+number of inconspicuous models. However, none of these
+attacks were effective in overcoming DeepSight. We showed
+that techniques that might be suitable for distracting DeepSight
+also reduce attack impact. Therefore, DeepSight addresses
+challenge C2. Moreover, also techniques like client-level Differential Privacy [23] do not have an impact on DeepSight, as
+we evaluated client-level model-noising with various different
+standard deviations and provide a proof for the robustness of
+the NEUPs, cosine distances and Threshold Exceedings against
+scaling/clipping the model updates (cf. §VII). Therefore, we
+showed that DeepSight effectively mitigates backdoor attacks.
+
+Proof: Follows immediately from Theorem 1, as the only
+input for the Threshold Exceedings are the NEUPs.
+DeepSight relies on two values that are determined dynamically, the classification boundary for the Threshold Exceedings
+classifier and the clipping boundary. However, both values are
+calculated as the median of all values. As we assume the
+majority of clients to be benign, it is guaranteed that these
+values will always be in the range of benign values and,
+therefore, cannot be manipulated by A.
+Furthermore, we empirically showed that DeepSight effectively mitigates targeted poisoning attacks, including stateof-the-art attacks [2], [41], [38] as well as attacks targeting
+the weak spots of DeepSight against an arbitrarily behaving
+adversary. Therefore, DeepSight fulfills requirement R1 and
+prevents A from achieving O1 and O2.
+VIII. R ELATED W ORK
+Various defenses against poisoning attacks in FL have been
+proposed. In the following, we will discuss and compare them
+to DeepSight.
+A. Anomaly Detection-Based Approaches
+Many backdoor defenses follow an outlier-detection-based
+strategy and exclude anomalous mode updates [34], [4], [24],
+[42], [15], [14], [16], [12]. They assume that the local data of
+all benign clients are similar, i.e., identically and independently
+distributed (IID), so that it is sufficient to filter models that differ from the majority of models. However, in many scenarios
+the data are non-IID [10], [35], resulting in differences among
+benign models. Therefore, many benign models are excluded,
+causing the resulting model to perform worse on the data of
+the excluded local models (cf. §VI-D).
+Krum aggregates local models by choosing a single local
+model as the aggregated model with the smallest Euclidean
+distance to a certain fraction of other models [4]. Hence,
+models trained on deviating data will never be chosen.
+Munoz et al. exclude a local model if its cosine distance
+to the aggregated model is higher or lower than the median
+distance plus/minus the standard derivation [24]. Unfortunately, also this approach suffers from a high false-positive
+rate (cf. §VI-C1).
+Baffle sends the aggregated model to a randomly selected
+subset of clients. Those so-called validation clients evaluate
+
+VII. S ECURITY C ONSIDERATION
+To achieve adversarial objective O1 (cf. §III-B), i.e., maximizing Backdoor Accuracy (BA), adversary A needs to use
+a well-trained backdoor in its poisoned model updates to
+maximize its impact. Such model updates will, however, be
+identified and removed by model filtering. To avoid detection,
+A can try to use only weakly trained backdoors. In this case,
+however, the attack is effectively mitigated by clipping. The
+filtering scheme is based on multiple measures (DDifs, NEUPs,
+Threshold Exceedings) to identify models with similar training
+data and label models as benign or malicious. Theorem 1
+and Theorem 2 below show that neither DDifs nor Threshold
+Exceedings are affected if A scales its model updates. Furthermore, also the cosine distances are shown to be resilient
+against scaling (cf. App.H).
+12
+
+each of these models, a random subset of clients is used
+for training a model over multiple rounds. At inference time,
+each resulting global model is applied and the final prediction
+is determined via majority voting. Cao et al. prove that if
+the training is completed, they could determine for a specific
+sample a minimal number m of malicious clients, which their
+algorithm would have been able to tolerate [6]. Unfortunately,
+this number can differ arbitrarily for different input samples.
+Moreover, their proof does not provide any work in practice.
+Since determining this number requires a-posteriori knowledge, the impact of determining m at this point is negligible,
+as the models are already trained and it is, therefore, too late to
+prevent backdoor attacks. Furthermore, at this point, it is not
+even clear, whether the current label for the considered samples
+is even correct or a backdoor attack already took place and
+flipped the label already. Finally, the approach is vulnerable
+for the replacement-scaling attack of Bagdasaryan et al. [2]
+and damages the MA, as we demonstrated in §VI-C1, and
+fails even for low PMRs of 5 % (cf. [6]).
+
+the model on their local data and vote about accepting the aggregated model or rejecting it [1]. However, validation clients
+can only notice the backdoor if they have a sufficient number of
+trigger samples or the backdoor attack has a significant impact
+on the model’s behavior on the main task. The first scenario
+is not realistic, as benign clients can not be assumed to have
+knowledge of trigger samples. The second scenario implies that
+the attack is not stealthy, violating O2 (cf. §III-B), and making
+the backdoor easy to detect. Furthermore, the approach does
+not work if the data of a (small) number of training clients
+differs from the majority of validation clients, which happens,
+e.g., in non-IID scenarios. Also, Baffle cannot be used from
+the beginning but, e.g., only after several hundreds of rounds,
+as otherwise many false positives will occur (cf. [1]).
+Auror first determines indicative features by clustering for each
+parameter all local models separately using k-means with two
+clusters. It selects features with the highest distances between
+the two centroids. A model is rejected if it was clustered for
+too many indicative features to the smaller cluster [34]. Also
+Auror focuses on excluding outliers. Moreover, a centroidbased clustering can be successfully distracted (cf. App B).
+FLGuard also exploits the dilemma of A to either focus on
+the training data and getting filtered, or to use weakly-trained
+model updates, allowing the clipping layer to mitigate the
+attack. Nguyen et al. combine an outlier-based clustering with
+clipping and adding random noise to the model [28]. However,
+while DeepSight uses a classifier for identifying poisoned
+model updates, FLGuard uses a clustering approach that rejects
+outliers, including benign model updates that were trained on
+different data (cf. §VI-D).
+Liu et al. introduced another approach to detect backdoored
+models in centralized settings [17]. However, their approach
+is not suitable for FL settings and does not consider semantic
+backdoor attacks as discussed in detail in App. L.
+In summary, besides being ineffective (cf. §VI-C1), existing
+filtering approaches for FL also neglect a main principle of
+FL by preventing utilizing the data of different clients, as the
+resulting model was trained only on data of a certain group of
+clients (cf. § VI-D).
+
+C. Model Inference Attacks in FL
+Different approaches to inference information from models
+have been proposed [39], [13], [25], [32]. Although these
+approaches work well to violate the users’ privacy in the
+considered attack scenarios, none of them is suitable for being
+used on an FL aggregation server to identify poisoned model
+updates. Membership inference attacks that determine the presence of a specific sample [13], [25], are not effective as benign
+and poisoned samples can overlap, e.g., for the NIDS scenario.
+Other approaches, require attackers to have their own training
+data [32], which is not practical for the FL server (cf. §III-C),
+or train separate models for each label [39], making the
+approach not practical, e.g., for the NLP scenario with 50 000
+words.
+In comparison, the techniques that were proposed in this paper
+(NEUPs, DDifs, and Threshold Exceedings), allow to estimate
+information about the training data distribution and identify
+poisoned models and models with similar data but causes only
+a small computational overhead (cf. App. J) and do not require
+test data to be available on the aggregation server.
+
+B. Other Defense approaches
+FoolsGold [10] assumes that benign datasets from different
+clients differ from each other and assigns low weights to
+models, which are similar to many other models. However,
+this harms the impact of benign clients with similar data. For
+example, in the case of the NIDS scenario, the network traffic
+does not vary much because of the limited functionalities of
+an IoT device. Moreover, FoolsGold sums up the updates for
+all rounds and compares them, instead of focusing on the
+current round. This allows a sophisticated adversary to submit
+poisoned updates without being perceived as suspicious.
+Differential Privacy [23] enforces a maximal, static L2 -norm
+of the updates and adds randomly generated noise. As pointed
+out by Bagdasaryan et al. it has the side effect of also
+mitigating backdoor attacks [2]. However, it fails for welltrained poisoned models (cf. §VI).
+Other approaches [42], [12] calculate the median for all
+parameters and, therefore, also focus on models, representing
+the majority but neglect models that were trained on different
+training data. Moreover, also these defenses have shown to be
+vulnerable to different poisoning attacks [8].
+The approach of Cao et al. trains multiple models. For
+
+IX.
+
+C ONCLUSION
+
+Backdoor attacks threaten the integrity of Federated Learning
+(FL), which is a promising emerging technology. We show that
+existing countermeasures cannot adequately address sophisticated backdoor attacks on FL and introduce DeepSight, a novel
+model filtering approach that effectively mitigates backdoor
+attacks on FL. While existing backdoor defenses are often
+restricted to excluding abnormal models, DeepSight follows
+an orthogonal approach by using several novel techniques to
+conduct a deep inspection of the submitted models separately
+for identifying and excluding poisoned models.
+We present several new techniques (DDifs, NEUPs, Threshold
+Exceedings) to infer information about a model’s training
+data, identify similar models, and measure the homogeneity of
+model updates. By performing a deep inspection of the models’ structure and their predictions, DeepSight can effectively
+mitigate state-of-the-art poisoning attacks and is robust against
+sophisticated attacks, without degrading the performance of the
+aggregated model.
+Recently, different secure aggregation schemes have been
+13
+
+proposed preventing the aggregation server from accessing the
+individual model updates [5], [9]. Although, DeepSight does
+not reduce the privacy level compared to FedAvg [21] as it
+also anonymizes the individual contributions and smoothens
+the parameter updates by aggregating them, future work needs
+to implement a privacy-preserving version of DeepSight to
+combine the privacy gains of secure aggregations with the
+backdoor mitigation algorithm of DeepSight.
+ACKNOWLEDGMENT
+We thank the anonymous reviewers and the shepherd for constructive reviews and comments. We further want to thank Intel
+Private AI center and BMBF and HMWK within ATHENE
+project for their support of this research.
+
+[17]
+
+Y. Liu, W.-C. Lee, G. Tao, S. Ma, Y. Aafer, and X. Zhang, “Abs: Scanning neural networks for back-doors by artificial brain stimulation,” in
+ACM SIGSAC Conference on Computer and Communications Security,
+2019.
+
+[18]
+
+Y. Liu, S. Ma, Y. Aafer, W.-C. Lee, J. Zhai, W. Wang, and X. Zhang,
+“Trojaning attack on neural networks,” in NDSS, 2018.
+
+[19]
+
+S. Lloyd, “Least squares quantization in pcm,” IEEE transactions on
+information theory, vol. 28, no. 2, 1982.
+
+[20]
+
+L. McInnes, J. Healy, and S. Astels, “hdbscan: Hierarchical density
+based clustering,” The Journal of Open Source Software, 2017.
+
+[21]
+
+B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A. y Arcas,
+“Communication-Efficient Learning of Deep Networks from Decentralized Data,” in International Conference on Artificial Intelligence and
+Statistics (AISTATS), 2017.
+
+[22]
+
+B. McMahan and D. Ramage, “Federated learning: Collaborative Machine Learning without Centralized Training Data,” in Google Research Blog.
+Google AI, 2017, https://ai.googleblog.com/2017/04/
+federated-learning-collaborative.html.
+
+[23]
+
+B. McMahan, D. Ramage, K. Talwar, and L. Zhang, “Learning differentially private recurrent language models,” in International Conference
+on Learning Representations (ICLR), 2018.
+
+[24]
+
+L. Muñoz-González, K. T. Co, and E. C. Lupu, “Byzantine-Robust
+Federated Machine Learning through Adaptive Model Averaging,” in
+arXiv preprint:1909.05125, 2019.
+
+[25]
+
+M. Nasr, R. Shokri, and A. Houmansadr, “Comprehensive privacy
+analysis of deep learning: Passive and active white-box inference attacks
+against centralized and federated learning,” in S&P. IEEE, 2019.
+
+[26]
+
+T. D. Nguyen, S. Marchal, M. Miettinen, H. Fereidooni, N. Asokan,
+and A. Sadeghi, “DÏoT: A Federated Self-learning Anomaly Detection
+System for IoT,” in ICDCS, 2019.
+
+[27]
+
+T. D. Nguyen, P. Rieger, M. Miettinen, and A.-R. Sadeghi, “Poisoning
+Attacks on Federated Learning-Based IoT Intrusion Detection System,”
+in Workshop on Decentralized IoT Systems and Security (DISS) @
+NDSS, 2020.
+
+[28]
+
+T. D. Nguyen, P. Rieger, H. Yalame, H. Möllering, H. Fereidooni,
+S. Marchal, M. Miettinen, A. Mirhoseini, A.-R. Sadeghi, T. Schneider
+et al., “FLGUARD: Secure and Private Federated Learning,” arXiv
+preprint arXiv:2101.02281, 2021.
+
+[29]
+
+S. J. Pan and Q. Yang, “A survey on transfer learning,” IEEE Transactions on knowledge and data engineering, vol. 22, no. 10, 2009.
+
+[30]
+
+F. Pedregosa, G. Varoquaux, A. Gramfort, V. Michel, B. Thirion,
+O. Grisel, M. Blondel, P. Prettenhofer, R. Weiss, V. Dubourg, J. Vanderplas, A. Passos, D. Cournapeau, M. Brucher, M. Perrot, and E. Duchesnay, “Scikit-learn: Machine Learning in Python ,” Journal of Machine
+Learning Research, 2011.
+
+[31]
+
+L. Rieger, R. M. T. Høegh, and L. K. Hansen, “Client adaptation
+improves federated learning with simulated non-iid clients,” in International Workshop on Federated Learning for User Privacy and Data
+Confidentiality in Conjunction with ICML 2020. International Machine
+Learning Society (IMLS), 2020.
+
+[32]
+
+A. Salem, A. Bhattacharya, M. Backes, M. Fritz, and Y. Zhang,
+“Updates-leak: Data set inference and reconstruction attacks in online
+learning,” in USENIX Security, 2020.
+
+[33]
+
+M. Sheller, A. Reina, B. Edwards, J. Martin, and S. Bakas,
+“Federated Learning for Medical Imaging,” in Intel AI, 2018,
+https://www.intel.com/content/www/us/en/artificial-intelligence/posts/
+federated-learning-for-medical-imaging.html.
+
+[34]
+
+S. Shen, S. Tople, and P. Saxena, “Auror: Defending Against Poisoning
+Attacks in Collaborative Deep Learning Systems,” in Annual Computer
+Security Applications Conference (ACSAC), 2016.
+
+[35]
+
+R. Shokri and V. Shmatikov, “Privacy-Preserving Deep Learning,” in
+CCS, 2015.
+
+[36]
+
+A. Sivanathan, H. H. Gharakheili, F. Loi, A. Radford, C. Wijenayake,
+A. Vishwanath, and V. Sivaraman, “Classifying IoT Devices in Smart
+Environments Using Network Traffic Characteristics,” in IEEE Transactions on Mobile Computing, 2018.
+
+[37]
+
+Z. Sun, P. Kairouz, A. T. Suresh, and H. B. McMahan, “Can you really
+backdoor federated learning?” arXiv preprint arXiv:1911.07963, 2019.
+
+R EFERENCES
+[1]
+
+[2]
+
+[3]
+
+[4]
+
+[5]
+
+[6]
+
+[7]
+
+[8]
+
+[9]
+
+[10]
+
+[11]
+[12]
+
+[13]
+
+[14]
+
+[15]
+
+[16]
+
+S. Andreina, G. A. Marson, H. Möllering, and G. Karame, “BaFFLe: Backdoor Detection via Feedback-based Federated Learning,” in
+ICDCS, 2021.
+E. Bagdasaryan, A. Veit, Y. Hua, D. Estrin, and V. Shmatikov, “How to
+backdoor federated learning,” in International Conference on Artificial
+Intelligence and Statistics (AISTATS). PMLR, 2020.
+M. Baruch, G. Baruch, and Y. Goldberg, “A Little Is Enough: Circumventing Defenses For Distributed Learning,” in Advances in Neural
+Information Processing Systems (NIPS), 2019.
+P. Blanchard, E. M. El Mhamdi, R. Guerraoui, and J. Stainer, “Machine
+Learning with Adversaries: Byzantine Tolerant Gradient Descent,” in
+Advances in Neural Information Processing Systems (NIPS), 2017.
+K. Bonawitz, V. Ivanov, B. Kreuter, A. Marcedone, B. McMahan, S. Patel, D. Ramage, A. Segal, and K. Seth, “Practical Secure Aggregation
+for Privacy-Preserving Machine Learning,” in CCS, 2017.
+X. Cao, J. Jia, and N. Z. Gong, “Provably secure federated learning
+against malicious clients,” AAAI Conference on Artificial Intelligence,
+2021.
+S. Chopra, R. Hadsell, and Y. LeCun, “Learning a similarity metric
+discriminatively, with application to face verification,” in Computer Society Conference on Computer Vision and Pattern Recognition (CVPR).
+IEEE, 2005.
+M. Fang, X. Cao, J. Jia, and N. Zhenqiang Gong, “Local Model Poisoning Attacks to Byzantine-Robust Federated Learning,” in USENIX
+Security, 2020.
+H. Fereidooni, S. Marchal, M. Miettinen, A. Mirhoseini, H. Möllering,
+T. D. Nguyen, P. Rieger, A.-R. Sadeghi, T. Schneider, H. Yalame,
+and S. Zeitouni, “SAFELearn: secure aggregation for private federated
+learning,” in IEEE Security and Privacy Workshops (SPW). IEEE,
+2021.
+C. Fung, C. J. Yoon, and I. Beschastnikh, “The limitations of federated
+learning in sybil settings,” in International Symposium on Research in
+Attacks, Intrusions and Defenses (RAID), 2020.
+GoogleLLC, “Gboard - the google keyboard,” https://play.google.com/
+store/apps/details?id=com.google.android.inputmethod.latin.
+R. Guerraoui, S. Rouault et al., “The hidden vulnerability of distributed
+learning in byzantium,” in International Conference on Machine Learning (ICML), 2018.
+J. Hayes, L. Melis, G. Danezis, and E. De Cristofaro, “Logan: Membership inference attacks against generative models,” in Privacy Enhancing
+Technologies, 2019.
+Y. Khazbak, T. Tan, and G. Cao, “Mlguard: Mitigating poisoning attacks
+in privacy preserving distributed collaborative learning,” in International
+Conference on Computer Communications and Networks (ICCCN).
+IEEE, 2020.
+S. Li, Y. Cheng, Y. Liu, W. Wang, and T. Chen, “Abnormal client behavior detection in federated learning,” arXiv preprint arXiv:1910.09933,
+2019.
+S. Li, Y. Cheng, W. Wang, Y. Liu, and T. Chen, “Learning to
+detect malicious clients for robust federated learning,” arXiv preprint
+arXiv:2002.00211, 2020.
+
+14
+
+0
+
+50%
+0%
+
+100%
+BA
+
+BA
+
+Baseline
+Clipping
+Filtering
+DeepSight
+
+20% 40% 60% 80%
+PDR
+(a) Netatmo Weather
+
+BA
+
+100%
+50%
+0%
+
+0%
+
+5
+
+Benign
+Poisoned
+Random
+PCA Axis 2
+
+0.075
+0.050
+0.025
+0.000
+0.025
+0.050
+0
+
+PCA Axis 1
+
+5
+
+0.075
+0.050
+0.025
+0.000
+0.025
+0.050
+0.075
+
+Benign
+Poisoned
+Random
+
+0
+
+PCA Axis 1
+
+5
+
+(b) HDBSCAN: Single (c) k-means Fixed
+Cluster + Outliers
+#clusters=2
+
+Fig. 7: Effectiveness of our clustering algorithm (a) compared
+to HDBSCAN for a single cluster and outliers (grey) [28] (b) as
+well as k-means clustering [34] (c). The individual models are
+visualized by using the principal component analysis (PCA6 ).
+negligible during the aggregation. Figure 6 shows the BA for
+the individual components for three different device types,
+depending on the PDR. Also here, clipping mitigates the attack
+successfully for low PDRs but fails for high values. Therefore,
+to achieve a high attack impact, especially in scenarios where
+the server applies clipping, A needs to use a high PDR, i.e.
+at least 20%. However, this causes a focus of the poisoned
+training data on the attack data, resulting in homogeneous
+model updates, which allows the filtering layer to detect and
+filter the poisoned models.
+In summary, if A tries to increase the heterogeneity of its
+model updates by, e.g., reducing the PDR or making the
+backdoor behavior more complex, the impact of the backdoor
+will simultaneously also decrease the attack impact, making
+it easier to be mitigated by defenses like weight clipping
+(cf. §V-B). Therefore, to maximize the attack impact, A needs
+to choose a high PDR and a simple backdoor behavior, causing
+the training data to differ from the benign data and causing the
+model updates to be more homogeneous, thus making them
+distinguishable from benign ones.
+B. Comparison of Clustering Approaches
+DeepSight uses HDBSCAN for clustering. Other clustering
+algorithms, e.g., k-means [19] that is used by Auror [34]
+have, among others, the disadvantage to require the number
+of clusters in advance. However, this can be exploited by A
+to circumvent the defense, as shown in Fig. 7. This figure
+compares HDBSCAN against k-means for the NIDS dataset
+with 25 malicious clients. To distract the defense, A used a
+subset of 5 clients for submitting random model updates. As
+subfigure 7c shows, this successfully distracts k-means, s.t. it
+accepts the remaining poisoned models, while HDBSCAN is
+not distracted by the random models. However, the version
+that accepts only a single cluster also rejects many benign
+models. On the other side, the plain HDBSCAN is well suited
+for distinguishing model updates, trained on different data. It
+effectively separates all different groups of models.
+
+Baseline
+Clipping
+Filtering
+DeepSight
+
+50%
+
+PCA Axis 1
+
+(a) HDBSCAN:
+Dynamic #clusters
+
+A PPENDIX
+A. Homogeneity of Poisoned Models
+Although the adversary A needs to craft inconspicuous models
+for preventing a detection or mitigation of its attack (O2;
+cf. §III-B), this also reduces the attack impact (O1). In the
+following, we will show that, in order to run a successful
+attack, A needs to focus on the backdoor behavior, resulting
+in homogeneous model updates. To make the models more inconspicuous, A can tune the PDR and also make the backdoor
+behavior more complex for imitating a deviating distribution
+of benign training data.
+Backdoor Complexity As pointed out by Sun et al. [37] and
+also confirmed by our experiments (cf. §VI-C2), increasing the
+complexity of the backdoor behavior also significantly reduces
+the attack impact. If, i.e., A includes 4 phases of Mirai in its
+backdoor for the NIDS scenario, this reduces the attack impact
+even without defense and allows a defense that only consists of
+the clipping component (cf. §V-B) to reduce the BA to 13.9 %,
+indicating that A cannot increase backdoor complexity beyond
+this value. On the other side, the filtering is still effective,
+showing that even for this complexity level, the training data
+are homogeneous enough to get detected by DeepSight.
+PDR: The second parameter that affects the homogeneity of
+models is the PDR. However, as pointed out by Nguyen et al.,
+low PDRs also reduce the attack impact and increase the
+risk that the impact of the poisoned model updates becomes
+100%
+
+Benign
+Poisoned
+Random
+
+0.075
+0.050
+0.025
+0.000
+0.025
+0.050
+
+PCA Axis 2
+
+H. Wang, K. Sreenivasan, S. Rajput, H. Vishwakarma, S. Agarwal, J.y. Sohn, K. Lee, and D. Papailiopoulos, “Attack of the tails: Yes, you
+really can backdoor federated learning,” in NeurIPS, 2020.
+[39] L. Wang, S. Xu, X. Wang, and Q. Zhu, “Eavesdrop the Composition Proportion of Training Labels in Federated Learning,” arXiv
+preprint:1910.06044, 2019.
+[40] S. Wold, K. Esbensen, and P. Geladi, “Principal component analysis,”
+in Chemometrics and intelligent laboratory systems, vol. 2. Elsevier,
+1987.
+[41] C. Xie, K. Huang, P.-Y. Chen, and B. Li, “Dba: Distributed backdoor
+attacks against federated learning,” in International Conference on
+Learning Representations (ICLR), 2019.
+[42] D. Yin, Y. Chen, R. Kannan, and P. Bartlett, “Byzantine-robust distributed learning: Towards optimal statistical rates,” in International
+Conference on Machine Learning (ICML), 2018.
+
+PCA Axis 2
+
+[38]
+
+20% 40% 60% 80%
+PDR
+(b) Amazon Echo
+
+Baseline
+Clipping
+Filtering
+DeepSight
+
+C. Performance of DeepSight on the IoT dataset
+
+20% 40% 60% 80%
+PDR
+
+Table IV shows the performance of DeepSight for all device
+types in the NIDS scenario. As the table shows, DeepSight
+successfully mitigates all backdoor attacks, although it does not
+always filter all poisoned models. For example, in case of the
+Ednet Gateway, the filtering does not filter any malicious client,
+
+(c) PIX-STARPhoto-frame
+
+Fig. 6: Impact of the Poisoned Data Rate (PDR) on the
+Backdoor Accuracy (BA) without defense, a clipping defense
+(§V-B), filtering (§V-A) and DeepSight for different device
+types.
+
+6 The Principal Component Analysis (PCA) is a well-known technique to
+extract principal dimensions from high-dimensional data [40].
+
+15
+
+TABLE IV: Main Task Accuracy (MA), Backdoor accuracy
+(BA), Poisoned Probability (PRC) and Benign Probability
+(NPV) of DeepSight for different IoT devices in the NIDS
+scenario.
+Device Type
+Amazon Echo
+Belkin Wemo Motion Sensor
+DLink Type05
+Edimax Plug
+Ednet Gateway
+Google Home
+HP Printer
+Insteon Camera
+LiFx Light Bulb
+Lightify2
+Nest Dropcam
+Netatmo Cam
+Netatmo Weather
+PIX-STARPhoto-frame
+Samsung Smart Cam
+Smarter
+TP-Link Cloud Camera
+TPLink Plug
+Tesvor Vacuum
+Triby Speaker
+Wemo Switch
+Withings Sleep Sensor
+Withings Baby Monitor
+iHome
+Average
+
+No Defense
+BA
+MA
+100.0
+99.9
+100.0
+99.9
+100.0
+91.9
+100.0
+98.7
+100.0 100.0
+58.2 100.0
+100.0
+92.6
+100.0
+98.9
+100.0 100.0
+100.0 100.0
+100.0 100.0
+100.0 100.0
+0.0
+93.5
+100.0 100.0
+100.0
+99.2
+100.0 100.0
+100.0
+98.6
+0.0
+89.1
+100.0
+96.1
+0.0
+81.5
+100.0 100.0
+100.0 100.0
+100.0 100.0
+100.0
+92.2
+85.8
+97.2
+
+BA
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+
+DeepSight
+MA
+PRC
+93.3 100.0
+99.2
+92.6
+98.3 100.0
+98.8 100.0
+100.0
+–
+87.5 100.0
+89.9 100.0
+97.8 100.0
+83.7 100.0
+100.0 100.0
+100.0 100.0
+100.0 100.0
+100.0 100.0
+99.9 100.0
+99.9 100.0
+100.0 100.0
+97.6 100.0
+100.0 100.0
+95.5 100.0
+80.8 100.0
+100.0 100.0
+100.0 100.0
+100.0 100.0
+92.9 100.0
+96.5
+99.7
+
+TABLE V: Effectiveness of DeepSight for the CIFAR-10 and
+MNIST datasets. All values in percentage
+Defense
+No Attack
+No Defense
+DeepSight
+
+NPV
+100.0
+100.0
+98.7
+100.0
+75.0
+100.0
+100.0
+98.7
+90.5
+100.0
+84.6
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+83.3
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+97.1
+
+BA
+0.0
+100.0
+0.0
+
+CIFAR-10
+MA PRC
+92.2
+84.1
+92.2
+-
+
+NPV
+80
+
+BA
+0.4
+96.3
+0.3
+
+MNIST
+MA PRC
+95.7
+58.9
+96.6
+100
+
+NPV
+100
+
+dataset with 100 clients and a PMR of 20 % to demonstrate
+DeepSight’s effectiveness even in those scenarios. As Tab. VIII
+shows, although DeepSight did not detect the malicious models, the later defense layers successfully mitigated the attack.
+Table VIII also shows that due to the dynamic threshold of
+the Threshold Exceedings classifier, DeepSight did not raise
+any false positive, demonstrating that DeepSight does not
+negatively affect the MA of the resulting model.
+F. Performance of DeepSight against Different Backdoors
+To demonstrate that DeepSight is not restricted to certain attack
+patterns, we evaluate it against different backdoors.
+NIDS: We evaluated DeepSight against different backdoors
+in the NIDS scenario, by using different attack modes of the
+Mirai malware as attack traffic. As Tab. VI shows, DeepSight
+effectively mitigates all of these attacks.
+Word Prediction: We injected different sentences, which were
+also used by Bagdasaryan et al. [2]. As Tab. VII shows,
+DeepSight is effective against all of these backdoors.
+
+since the Threshold Exceedings of most poisoned models (on
+average 27.75) are slightly higher than the boundary (29, the
+benign models have in average 57 Threshold Exceedings).
+However, as the clipping boundary is always in the interval
+of benign values and the benign and poisoned models are
+separated, the BA is still 0%, showing the effectiveness of
+our multi-layer approach.
+D. Evaluation of DeepSight on Image Datasets
+The CIFAR-10 and MNIST datasets are frequently used as
+benchmark datasets for FL. [2], [38], [4], [28], [10], [37],
+[31]. To allow a better comparison with other work on FL, we
+replicate the setup of existing work. For the CIFAR-10 dataset,
+we use a light version of Resnet-18 model and an IID rate of
+0.7. The adversary aims to make cars in front of a stripped
+background being classified as birds [2], [28]. For MNIST, the
+model consists of 2 convolutional layers with a max-pooling in
+between and 2 fully connected layers [6]. The adversary aims
+to make pictures with a white rectangle on the left side to be
+classified as a ”0”. We used 100 clients and set the PMR to
+20 %[28]. As Tab. V shows, DeepSight effectively mitigates
+the attack, while without defense the BA reaches 100% and
+96.3%. It is worth noting, that in case of MNIST sometimes
+misclassifications a counted in favor of the BA (cf. §G).
+In App. E, we evaluate DeepSight for an image recognition
+scenario, where the dataset of each client consists only of a
+single label to simulate homogeneous benign training data.
+
+G. Further Sophisticated Backdoor Attacks
+Edge Case: Wang et al. recently proposed an attack that aims
+to flip the labels for the samples, where the adversary’s focus
+on samples where the predictions are already made with a low
+confidence value. Therefore, the attack targets samples where
+the predicted probability is low, although it is still classified
+correctly [38]. We followed their experimental setup of and
+conducted an experiment for the CIFAR-10 benchmark dataset
+for 1500 rounds. In each round 10 clients were randomly selected for training their local model. The adversary A launched
+its attack for 150 rounds. Without defense, A achieved a BA of
+53.06% and a MA of 86.46 %. DeepSight reduced the BA to
+7.14 % and the MA to 80.54 % and, therefore, successfully
+mitigated the attack. It is worth noting that even without
+attack the BA is 11.2% and the MA is 77.53% as here also
+misclassifications are considered.
+Model Noising DeepSight uses clustering in several places
+to identify clients with similar training data. Therefore, a sophisticated adversary could add random noise to the poisoned
+TABLE VI: Main Task Accuracy (MA), Backdoor accuracy
+(BA), Poisoned Probability (PRC) and Benign Probability
+(NPV) of DeepSight for different NIDS backdoors.
+Backdoor
+Dos-ACK
+Dos-DNS
+Dos-Greeth
+Dos-Greip
+Dos-HTTP
+Dos-Stomp
+Dos-SYN
+Dos-UDP
+Dos-UDP (Plain)
+Dos-VSE
+Preinfection
+Scanning
+Average
+
+E. Scenarios with a Single Source Label
+The Threshold Exceedings classifier of DeepSight estimates
+the homogeneity of the used training data based on the
+distribution of labels. However, in special scenarios the local
+datasets of each client might consist only of samples with a
+single label, e.g., for facial user authentication on smartphones.
+Although, in those scenarios a binary classifier or a siamese
+network [7] might be more suitable than FL, we performed an
+additional experiment on the popular CIFAR-10 benchmark
+16
+
+No Defense
+BA
+MA
+100.0 92.8
+100.0 98.0
+100.0 98.1
+100.0 97.5
+100.0 92.5
+100.0 97.5
+100.0 82.0
+100.0 92.9
+100.0 96.5
+100.0 97.2
+100.0 98.0
+100.0 82.0
+100.0 93.7
+
+BA
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+
+DeepSight
+MA
+PRC
+100.0 100.0
+100.0 100.0
+100.0 100.0
+100.0 100.0
+100.0 100.0
+100.0 100.0
+100.0 100.0
+100.0 100.0
+100.0 100.0
+100.0 100.0
+100.0 100.0
+100.0 100.0
+100.0 100.0
+
+NPV
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+
+models, in order to distract DeepSight. We evaluated this attack
+by adding noise with 36 different standard deviations from
+4.3 · 10−17 to 21.5 (logarithmically distributed) with a mean
+of 0 for the NIDS scenario. However, this attack failed, as
+the BA was always 0 even for the highest standard deviations,
+which was too high, indicated by low BA values for the noised
+poisoned local models.
+Gap Bridging As DeepSight uses a voting-based filtering
+mechanism to evaluate the models of a cluster, a sophisticated
+adversary could try to use a few of the poisoned models, to
+connect the benign cluster with the cluster that contains all
+poisoned models, such that they are merged and the benign
+models cause the cluster to be accepted. We used 200 clients
+with a PMR of 40% and split all malicious clients into different
+groups, with a gradually increasing PDR from 5% to 20%.
+However, although 19 models with a very low PDR were accepted, the majority of poisoned models were rejected but not a
+single benign model. The BA was 0% and the MA 100%. This
+also shows the advantage of the ensemble, as a naive clustering
+approach, using only the cosines and k-means, fails and does
+not filter any poisoned model, while DeepSight identifies most
+of the poisoned models and successfully mitigates the impact
+of the no recognized models.
+
+TABLE VIII: Effectiveness of DeepSight for the CIFAR-10
+dataset, if each local dataset contains only samples with a
+single label. All values in percentage
+Defense
+No Attack
+No Defense
+DeepSight
+
+=
+
+(13)
+
+λ2t,k
+Et,k,i 2
+= Ct,k,i
+P
+2
+λ2t,k P
+j=0 Et,k,j
+
+
+
+I. Impact of Threshold Factor
+The boundary for the Threshold Exceedings ξt,k of a client
+k in round t is determined by multiplying the highest NEUP
+Ct,k,max (cf. Eq.9) for this model with a threshold factor (TF)
+of 1 % but at most 1/P , where P is the number of labels of
+the respective data scenario (cf. Eq.10). In the following, we
+discuss the impact of TF one DeepSight’s performance.
+Reducing the Threshold Factor (TF) decreases ξt,k for all
+clients. This will increase the Threshold Exceedings (TEs)
+for all clients, as more NEUPs of a model will be above
+the threshold ξt,k . Since many NEUPs of benign models are
+already above the threshold, especially the TEs of poisoned
+models are increased, making them less suspicious during the
+classification, increasing the false-negative rate (FNR).
+We conducted an experiment on the IoT-Traffic dataset to
+confirm this analysis. Figure 8 shows the number of Threshold
+Exceedings averaged over 70 benign models (green line),
+30 malicious models (red line), the resulting classification
+boundary (blue line) for different TFs. Further, it shows the
+TPR (dashed red line) and FPR (dashed green line) when
+applying the classification boundary and marks the TF of
+DeepSight in black. As Fig. 8 shows, when the TF is reduced,
+the TPR is reduced.
+On the other side, increasing TF reduces analogously the
+TEs, especially for benign models, increasing the number of
+
+i=0
+
+Therefore, it follows that scaling one vector with a scaling
+factor λ 6= 0 does not affect the cosine as:
+d
+P
+(λui )vi
+λ
+ui v i
+s
+= i=0
+= cos(u, v)
+cos(λu, v) = s i=0
+λ||u||||v||
+d
+d
+P
+P
+(λui )2
+vi2
+d
+P
+
+i=0
+
+(14)
+∗
+2) Proof of theorem 1:: Let Wt,k
+be the poisoned model
+∗
+of client k in round t, Gt the respective global model, Ut,k
+=
+∗
+Wt,k − Gt the update, γt,k 6= 0 an arbitrary scaling factor
+∗
+denotes the NEUP
+unequal 0 (cf. Eq. 3). For simplicity, Ct,k,i
+
+TABLE VII: Main Task Accuracy (MA), Backdoor accuracy
+(BA), Poisoned Probability (PRC) and Benign Probability
+(NPV) of DeepSight for different NLP backdoors.
+Trigger sentence
+Backdoor
+”search online using”
+”bing”
+”barbershop on the corner is” ”expensive”
+”pasta from astoria tastes”
+”delicious”
+”adore my old”
+”nokia”
+”my headphones from bose” ”rule”
+Average
+
+(15)
+
+2
+∗
+Et,k,i
+∗
+Ct,k,i
+= PP
+2
+∗
+j=0 Et,k,j
+
+2
+PH
+∗
+|b∗t,k,i − bt,Gt ,i | + h=0 |wt,k,i,h
+− wt,Gt ,i,h |
+=P
+
+2
+PH
+P
+∗
+∗
+j=0 |bt,k,j − bt,Gt ,j | +
+h=0 |wt,k,j,h − wt,Gt ,j,h |
+
+2
+PH
+∗
+|λt,k but,k,i + bt,Gt ,i − bt,Gt ,i | + h=0 |wt,k,i,h
+− wt,Gt ,i,h |
+=P
+
+2
+PH
+P
+u
+∗
+j=0 |λt,k bt,k,j + bt,Gt ,j − bt,Gt ,j | +
+h=0 |wt,k,j,h − wt,Gt ,j,h |
+
+2
+PH
+u
+|λt,k but,k,i | + h=0 |λt,k wt,k,i,h
++ wt,Gt ,i,h − wt,Gt ,i,h |
+=P
+
+2
+PH
+P
+u
+u
+j=0 |λt,k bt,k,j | +
+h=0 |λt,k wt,k,j,h + wt,Gt ,j,h − wt,Gt ,j,h |
+
+2
+PH
+u
+|λt,k but,k,i | + h=0 |λt,k wt,k,i,h
+|
+=P
+
+2
+PH
+P
+u
+u
+j=0 |λt,k bt,k,j | +
+h=0 |λt,k wt,k,j,h |
+
+2
+PH
+∗
+λ2t,k |bt,k,i − bt,Gt ,i | + h=0 |wt,k,i,h
+− wt,Gt ,i,h |
+=
+2
+PP 
+PH
+λ2t,k j=0 |bt,k,j − bt,Gt ,j | + h=0 |wt,k,j,h − wt,Gt ,j,h |
+
+d
+P
+
+i=0
+
+NPV
+80
+
+u
+and analogously for the individual weight updates wt,k,i,h
+.
+∗
+Therefore, Ct,k,i = Ct,k,i holds:
+
+1) Stability of the cosine against scaling: For two vectors
+u, v ∈ Rd , the cosine between is defined as:
+
+i=0
+
+PRC
+-
+
+b∗t,k,i = λt,k but,k,i + bt,Gt ,i
+
+The adversary can scale the updates, either to increase the
+impact or as part of techniques like client-level DP, to make
+them less suspicious. In the following, we show that the cosine
+and NEUPs are not affected by scaling.
+
+ui v i
+u·v
+= s i=0 s
+||u||||v||
+d
+d
+P
+P
+u2i
+vi2
+
+MA
+92.2
+76.6
+91.9
+
+0
+for the neuron i of the scaled model Wt,i
+, Ct,k,i of the unscaled
+∗
+∗
+model Wt,k
+and analogously for the energy Et,k,i
+as well as
+the update of bias of neuron i for client k in round t but,k,i .
+Therefore, the following relation holds:
+
+H. Stability of Metrics against scaling
+
+cos(u, v) =
+
+BA
+0.0
+100.0
+0.0
+
+No Defense
+DeepSight
+BA MA BA MA PRC NPV
+100.0 22.5 0.0 22.6 100.0 100.0
+100.0 22.2 0.0 22.6 100.0 100.0
+100.0 22.4 0.0 22.6 100.0 100.0
+100.0 22.5 0.0 22.6 100.0 100.0
+100.0 22.3 0.0 22.6 100.0 100.0
+100.0 22.3 0.0 22.6 100.0 100.0
+
+17
+
+100%
+mean(benign TE)
+mean(malic. TE)
+Classific. Boundary
+
+400
+200
+0
+
+0.00
+
+0.01
+
+FPR in %
+TPR in %
+TF=0.01
+
+0.02
+0.03
+0.04
+Threshold Factor (TF)
+
+0.05
+
+50%
+0.06
+
+0%
+
+TABLE IX: TPRs of defenses that are based on DeepSight’s
+components for different PDRs, different factors for a DDif
+based anomaly evasion function (α), number of epochs of
+the malicious client (#epochs), learning rate for the malicious
+clients (lr), PMRs, starting from a randomly initialized model
+(random), three different backdoors (BC = 3), a combination of
+different techniques (Sophisticated: PMR = 40%, DDif based
+loss function, α = 0.1, #epochs = 3, PDR = 20%), as well as
+the normal NLP scenario (default) and 4 times reduced PDR
+(reduced PDR).
+
+TPR / FPR in %
+
+TE
+
+600
+
+Fig. 8: Average number of benign Threshold Exceedings
+(mean(benign TF)), average number of malicious Threshold
+Exceedings (mean(malic. TE)), Classification boundary, FPR,
+and TPR for different Threshold Factors (TF).
+
+FL
+Appl.
+
+false positives. If many benign models are affected, then the
+classification boundary will also be moved, s.t. the TEs for
+poisoned models are below this boundary, increasing the FNR.
+This is also visible in Fig. 8, as first the FPR grows and at
+some point, if the TF> 0.05, the classification boundary is
+moved, s.t. first the FPR is reduced and then the TPR.
+
+Device
+Type
+
+Scenario
+
+PDR = 10 %
+PDR = 50 %
+PDR = 80 %
+α = 0.1
+#epochs = 1
+Netatmo #epochs = 15
+Weather lr = 10−4.5
+lr = 10−2.0
+PMR = 45 %
+NIDS
+random model
+BC = 3
+Sophisticated
+PDR = 10 %
+Edimax
+PDR = 50 %
+Plug
+PDR = 80 %
+PDR = 10 %
+Netatmo
+PDR = 50 %
+Cam
+PDR = 80 %
+default
+NLP
+reduced PDR
+
+J. Overhead and Complexity of DeepSight
+The computational effort of DeepSight depends on the number
+of parameters M and number of models N. For the IoT-Traffic
+(N=100 models, M=300k) DeepSight requires 1.15 minutes
+and 1.06 minutes for CIFAR-10 (N=10 models, M=9M) to
+perform filtering and aggregating the remaining, clipped models. With Reddit (M=20M, N=100 models; 6.02 minutes),
+DeepSight was evaluated also on large-scale models. Although,
+the pairwise distance matrices grow with complexity O(n2 ),
+calculating pairwise distances took less than 1s for the NLP
+setting. Only calculating the DDifs required a higher amount
+of time (5.7 minutes for NLP models). However, computing
+DDifs scales with O(N ). Furthermore, the experimental code
+was not parallelized. Since DDifs for different models and
+different seeds are independent they can be calculated in
+parallel, reducing the time by a factor of 300.
+
+Cosine DDif NEUP
+NEUP
+Clust. Clust. Clust. Classifier
+100.0
+63.3 100.0
+60.0
+100.0 100.0 100.0
+100.0
+100.0 100.0 100.0
+100.0
+100.0
+0.0 100.0
+100.0
+100.0 100.0 100.0
+100.0
+100.0 100.0 100.0
+100.0
+100.0
+0.0 100.0
+100.0
+100.0 100.0 100.0
+100.0
+100.0 100.0 100.0
+100.0
+100.0 100.0 100.0
+100.0
+100.0 100.0 100.0
+68.0
+100.0
+20.0 100.0
+100.0
+0.0 100.0 100.0
+36.7
+100.0
+96.7 100.0
+63.3
+100.0 100.0 100.0
+100.0
+16.7 100.0 100.0
+50.0
+100.0
+56.7 100.0
+63.3
+100.0
+80.0 100.0
+100.0
+100.0
+0.0 100.0
+100.0
+100.0
+0.0 100.0
+100.0
+
+DeepSight
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+100.0
+
+DeepSight, and the negative impact of using clustering-based
+techniques as a classifier.
+L. Backdoor Detection in Centralized Settings
+Liu et al. propose an orthogonal approach for centralized
+learning that aims to detect trojaned Neural Networks (NN),
+where the backdoor is activated by a trigger patch in the image.
+They assume that the poisoned dataset consists of benign
+images and the adversary A puts a colored patch on those
+images to create triggered versions of them, s.t. the dataset
+contains the same image multiple times, without trigger and
+correct label and with trigger and backdoor target as label.
+They assume that this causes a neuron in the later layers to
+being trained to determine the presence of the trigger and, if
+activated, overrules all other neurons in the same layer. They
+use benign input data to determine a valid output state for
+the second last layer, consisting of the activation status for
+each neuron. Their approach then changes the activation status
+of each neuron while observing the probabilities that the NN
+predicts. A model is considered as trojaned if a single neuron
+changes the output of the NN significantly [17]. However,
+even if this approach works for patch triggers, for semantic
+backdoors the trigger can consist of the whole input, s.t. their
+basic assumption does not hold. DeepSight considers also
+semantic backdoors, where the trigger is, e.g., the color of
+the car for image datasets [2] or in case of the NIDS scenario
+the whole packet sequence [27]. Therefore, those backdoors
+are not activated by a small fraction of the input features
+but depend on the whole input, preventing that the dataset
+can contain a sample multiple times and making it less likely
+that a single neuron is responsible for activating the backdoor.
+Moreover, it is not possible to classify behavior statically as
+malicious as this depends on the behavior of the benign clients.
+Finally, the assumption that the server has validation data is
+not practical (cf. §III-C).
+
+K. Ablation Study of DeepSight’s Components
+Table IX shows the effectiveness, i.e., the ratio of filtered
+poisoned models to the total number of poisoned models
+(TPR), of different defenses that are based on DeepSight’s
+individual components for different corner cases. The clustering defenses realize outlier detection-based filtering schemes,
+using the proposed techniques, while the classifier is based
+only on the Threshold Exceedings, without any further support.
+As the table shows, the cosine and DDif clustering are weakened in some corner cases, e.g., if the learning rate is too low
+or the anomaly evasion loss function uses the DDifs. Also the
+Threshold Exceedings classifier is weakened in few cases, e.g.,
+when multiple backdoors are injected or when the adversary
+A uses a low PDR.
+On the other side, DeepSight always detects all poisoned
+models, as it combines all individual techniques, s.t. they can
+compensate each others’ weak spots. Also the classifier profits
+from the clusterings, as this allows to use the labels of similar
+models (cf. §V-A4.
+It should be noted, that for the NLP scenario, the outlierdetection defense that uses DDifs is completely circumvented.
+This is caused by the highly non-IID nature of this scenario,
+s.t. the benign models differ significantly, while the poisoned
+models are very similar to each other. Therefore, the clustering
+considers them as the majority and all other (benign) models as
+outliers. This demonstrates the advantage of using clustering
+only for identifying similar model updates, as it is done in
+18
+
+

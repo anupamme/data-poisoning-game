@@ -1,0 +1,10 @@
+# The 60 retrieved PDFs are 151 MB and are NOT committed. They are re-retrievable from the arXiv
+# identifiers frozen in funnel_retrieval.json by the procedure the pre-registration fixes, so nothing
+# in the audit depends on this repository holding them.
+#
+# The `.txt` extractions ARE committed (4.4 MB). They are load-bearing: every quotation in
+# coding/*.json was machine-sliced from the corresponding .txt, and
+# `experiments/verify_quotes_literature_audit.py` re-checks all 295 of them against these exact files.
+# A reader who wants to re-adjudicate a code needs the extraction the coder actually read, including
+# its column-splicing and out-of-order artifacts, not a fresh pdftotext run that may differ by version.
+fulltext/*.pdf

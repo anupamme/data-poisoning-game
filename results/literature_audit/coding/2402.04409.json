@@ -1,0 +1,33 @@
+{
+  "title": "Towards Fair, Robust and Efficient Client Contribution Evaluation in Federated Learning",
+  "short_name": "FRECA",
+  "c_d_route": "absent",
+  "criteria": {
+    "C-a": {
+      "code": "NO",
+      "quote": "To the best of our knowledge, this is the first contribution evaluation method to incorporate defense mechanism against malicious clients.",
+      "locator": "§I Contributions, singular \"defense mechanism\"; that mechanism is inherited rather than composed -- \"FRECA employs a framework called FedTruth to estimate the global model's ground truth update, balancing contributions from all clients while filtering out impacts from malicious ones. This approach is robust against Byzantine attacks and incorporates a Byzantine-resilient aggregation algorithm\" (Abstract). The purpose of the paper's own machinery is contribution evaluation, not defense: \"It quantifies each client's contribution based on their share in the gap distance between the estimated and actual ground truth\""
+    },
+    "C-b": {
+      "code": "NO",
+      "quote": "FRECA is also efficient, as it operates solely on local model updates and requires no validation operations or datasets.",
+      "locator": "Abstract; the properties the paper pairs are fairness, robustness and efficiency of a single assessment method, not two defense mechanisms, and no reason for pairing two defenses appears"
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "impact of the malicious amplified model, resulting in a net contribution similar to other clients. The SV and LOO, on the other hand, were not able to detect the malicious client.",
+      "locator": "§V, Case 4 (iid, 2 attackers); the reported outcome is the assembled method's own per-client contribution values, read against Shapley value and leave-one-out baselines across Cases 1-5"
+    },
+    "C-d": {
+      "code": "NO",
+      "quote": "Case 1: non-iid setting, each client having a different number of labels in their data ... Case 3: iid setting ... Case 4: iid setting, 2 attackers among clients ... Case 5: iid setting, 3 attackers among clients (in appendix)",
+      "locator": "§V; the five cases vary the data distribution and the number of attackers, both external to the method. The hybrid distance's combination weight alpha is defined once at §IV Eq. (9), \"where α ∈ [0, 1] is a combination weight\", and is never swept; the aggregation stage (FedTruth) is never varied against a fixed assessment stage or vice versa"
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "With FRECA Net and AW combined, we can be sure that the last two clients have significantly lower contribution than others.",
+      "locator": "§V, Case 4; a second attributional claim about a baseline's cost is at §V, \"This is due to the exhaustive evaluation of aggregated models on the validation dataset for all possible combinations of clients\""
+    }
+  },
+  "coder_note": "C-a = NO, AND THE PAPER'S OWN SENTENCE SETTLES IT IN THE SINGULAR: \"the first contribution evaluation method to incorporate defense mechanism against malicious clients.\" One defense mechanism, and it is FedTruth, a framework this paper adopts rather than proposes. Everything the paper contributes -- the hybrid distance of Eq. (9), the gap-distance share, the net contribution and adjusted weight quantities -- exists to QUANTIFY CONTRIBUTIONS fairly and cheaply. Under Amendment 3 that purpose is not resisting poisoned updates, so those components do not count toward C-a's \"two or more\", and the row codes NO on one defense. Primary = NO.\n\nWHY THIS ROW IS WORTH ITS SPACE IN THE TABLE EVEN AT a=NO, b=NO. It is the only included paper whose primary object is not a defense at all, and it is the clearest case in the frame of the pattern Amendment 3 was written for: a mechanism that resists malicious clients as a SIDE EFFECT of a non-defense purpose. FRECA detects the attackers in Cases 4 and 5, and reports that Shapley value and leave-one-out do not, but its reason for existing is fairness of reward. Coding it C-a = YES on the strength of that side effect would have inflated the DESIGN rate with a paper that composes nothing.\n\nC-e = YES ON THE CRITERION'S SECOND CLAUSE, \"what a particular constituent contributes to the combined result\". The quotation names two constituents of the assessment (the net contribution and the adjusted weight) and says the conclusion about the last two clients follows from having BOTH, which is a constituent-contribution claim read off the composed output with no intervention isolating either. It is the same weak-but-real shape as 2207.01982's row: an attribution claim without a pairing of defenses to attribute it to.\n\nC-d = NO on the strict reading and on rule 4 both. The only internal knob is alpha, the weight balancing the l2 and angular parts of the hybrid distance; it is introduced with a definition and no sweep, and a targeted grep for alpha returns exactly one hit in 38997 characters. Cases 1 through 5 are data-distribution and attacker-count settings, the same external-axes-only pattern as Fedward and 2207.01982."
+}

@@ -1,0 +1,1663 @@
+arXiv:2508.10315v2 [cs.LG] 13 Oct 2025
+
+A Vision-Language Pre-training Model-Guided Approach for
+Mitigating Backdoor Attacks in Federated Learning
+Keke Gai∗
+
+Dongjue Wang∗
+
+Jing Yu†
+
+School of Cyberspace Science and
+Technology, Beijing Institute of
+Technology
+Beijing, China
+gaikeke@bit.edu.cn
+
+School of Cyberspace Science and
+Technology, Beijing Institute of
+Technology
+Beijing, China
+3220231818@bit.edu.cn
+
+School of Information Engineering,
+Minzu University of China
+Beijing, China
+jing.yu@muc.edu.cn
+
+Liehuang Zhu
+
+Qi Wu
+
+School of Cyberspace Science and
+Technology, Beijing Institute of
+Technology
+Beijing, China
+liehuangz@bit.edu.cn
+
+Australian Institute of Machine
+Learning, The University of Adelaide
+Adelaide, Australia
+qi.wu01@adelaide.edu.au
+
+Abstract
+
+CCS Concepts
+
+Defending backdoor attacks in Federated Learning (FL) under heterogeneous client data distributions encounters limitations balancing effectiveness and privacy-preserving, while most existing
+methods highly rely on the assumption of homogeneous client data
+distributions or the availability of a clean serve dataset. In this paper,
+we propose an FL backdoor defense framework, named CLIP-Fed,
+that utilizes the zero-shot learning capabilities of vision-language
+pre-training models. Our scheme overcomes the limitations of NonIID imposed on defense effectiveness by integrating pre-aggregation
+and post-aggregation defense strategies. CLIP-Fed aligns the knowledge of the global model and CLIP on the augmented dataset using
+prototype contrastive loss and Kullback-Leibler divergence, so that
+class prototype deviations caused by backdoor samples are ensured
+and the correlation between trigger patterns and target labels is
+eliminated. In order to balance privacy-preserving and coverage
+enhancement of the dataset against diverse triggers, we further
+construct and augment the server dataset via using the multimodal
+large language model and frequency analysis without any client
+samples. Extensive experiments on representative datasets evidence
+the effectiveness of CLIP-Fed. Comparing to other existing methods,
+CLIP-Fed achieves an average reduction in Attack Success Rate, i.e.,
+2.03% on CIFAR-10 and 1.35% on CIFAR-10-LT, while improving
+average Main Task Accuracy by 7.92% and 0.48%, respectively. Our
+codes are available at https://anonymous.4open.science/r/CLIP-Fed.
+
+• Security and privacy → Distributed systems security.
+
+∗ Both authors contributed equally to this research.
+† Corresponding author.
+
+Permission to make digital or hard copies of all or part of this work for personal or
+classroom use is granted without fee provided that copies are not made or distributed
+for profit or commercial advantage and that copies bear this notice and the full citation
+on the first page. Copyrights for components of this work owned by others than the
+author(s) must be honored. Abstracting with credit is permitted. To copy otherwise, or
+republish, to post on servers or to redistribute to lists, requires prior specific permission
+and/or a fee. Request permissions from permissions@acm.org.
+Conference acronym ’XX, Woodstock, NY
+© 2018 Copyright held by the owner/author(s). Publication rights licensed to ACM.
+ACM ISBN 978-1-4503-XXXX-X/2018/06
+https://doi.org/XXXXXXX.XXXXXXX
+
+Keywords
+Federated Learning, Backdoor Defense, Vision-Language Pre-training
+Model
+ACM Reference Format:
+Keke Gai, Dongjue Wang, Jing Yu, Liehuang Zhu, and Qi Wu. 2018. A VisionLanguage Pre-training Model-Guided Approach for Mitigating Backdoor
+Attacks in Federated Learning. In Proceedings of Make sure to enter the correct
+conference title from your rights confirmation email (Conference acronym ’XX).
+ACM, New York, NY, USA, 10 pages. https://doi.org/XXXXXXX.XXXXXXX
+
+1
+
+Introduction
+
+The robustness of Federated Learning (FL) [4, 7, 9, 19, 27, 28] is
+a growing concern since the distributed training process makes
+FL vulnerable to backdoor attacks [13, 25, 32, 34], i.e., malicious
+clients can poison local training data to induce the global model
+and associate specific trigger patterns (e.g., pixel patches or watermarks) with target labels. Backdoor attacks are more difficult to
+detect in FL’s distributed computing paradigm than in a centralized
+computing environment [15, 17].
+However, existing defense strategies can hardly balance the contradiction between privacy protection and effectiveness, due to
+reliance of a common assumption on the clean labeled validation
+set or homogeneous data distribution across clients. Existing methods also overlook the issue of class prototype deviations caused by
+the presence of backdoor samples, which results in a degradation
+in model performance during the backdoor defense process. To
+be specific, the first type of existing methods distinguishes benign
+and malicious clients by clustering model parameters [5, 20, 21],
+while it is highly dependent on the homogeneous data distribution
+of FL. The second depends on modified aggregation strategies to
+achieve robust FL, e.g., weighted, median-based, and rank-based
+aggregations, but malicious clients can adjust attack strategies to
+circumvent these rules, such as the screening of poisoning parameters and hierarchical poisoning mechanisms [3, 9, 30, 34]. Finally,
+
+Conference acronym ’XX, June 03–05, 2018, Woodstock, NY
+
+Trovato et al.
+
+Malicious Clients: Backdoor Setup
+Wrong Match
+
+Poisoning
+
+“deer”
+
+Local Train
+
+Target
+Label
+Dataset
+
+Malicious
+Model
+
+Horse Dog Trigger
+Image
+
+CLIP-Guided Backdoor Defenses in FL
+Clustering
+Module
+Aggregator
+
+Aggregated
+Global Model
+
+D
+C
+T
+
+Prompt
+
+I
+D
+C
+T
+
+Server
+Dataset
+
+2
+
+CLIP
+Visual
+Encoder
+
+semantically supervised global model rectification method via CLIP,
+which employs a prototype contrastive loss and Kullback-Leibler
+(KL) divergence to align global model features with CLIP’s embeddings in an enhanced dataset, thereby eliminating correlations
+between backdoor triggers and target labels. (3) Extensive evaluations on three datasets and four backdoor attack types demonstrate
+CLIP-Fed’s superiority. Compared to existing methods, CLIP-Fed
+achieves an average reduction in ASR, i.e., 2.03% on CIFAR-10 and
+1.35% on CIFAR-10-LT, while improving the average MA by 7.92%
+and 0.48%, respectively. CLIP-Fed maintains client-side efficiency
+without extra computational overhead beyond local training.
+
+Text
+Encoder
+
+Re-train
+Module
+
+Knowledge
+Distillation
+Module
+
+Global Model
+
+Server Dataset
+
+Figure 1: An overall framework of CLIP-Fed. We utilize the
+prior knowledge and cross-modal visual-language representation capabilities of CLIP to purify backdoor.
+
+another strategy applies differential privacy to reduce the impact of
+backdoor attacks, causing negative impact on performance [1, 21].
+To address challenges above, we propose an FL backdoor defense
+framework, called CLIP-Fed, that uses rich prior knowledge and
+cross-modal visual-language representation capabilities of VisionLanguage Pretraining models (VLPs) to defend the global model
+against backdoor attacks, as shown in Figure 1. CLIP [23] is a representative VLP possessing zero-shot learning capability such that
+it can be used for purifying backdoor patterns in the global model.
+First, we integrate pre- and post-aggregation defense strategies
+to eliminate reliance on homogeneous client data distributions.
+Specifically, pre-aggregation model clustering filters out malicious
+updates, and post-aggregation purification uses a global model
+adjustment to enhance robustness under Non-IID conditions. To
+further address privacy concerns, we construct a server dataset
+by combining Multimodal Large Language Models (MLLMs) and
+frequency analysis without any client samples. Finally, by using the
+enhanced server dataset under CLIP’s semantic guidance via prototype contrastive learning, we rectify the global model’s feature
+extractor to correct class prototype deviations that are caused by
+backdoor samples, while decoupling strong correlations between
+trigger patterns and target labels. To this end, we align the logits
+distributions of CLIP and the global model through knowledge
+transfer to further remove residual backdoor associations.
+Main contributions of our work are summarized as follows. (1)
+We propose CLIP-Fed, the first VLP-guided FL backdoor defense
+framework, which uses the cross-modal representation capabilities of VLPs to mitigate backdoor attacks. CLIP-Fed combines
+pre-aggregation model clustering and post-aggregation backdoor
+purification to jointly enhance defense robustness, reducing dependence on homogeneous client data distributions. (2) To correct class
+prototype deviations induced by backdoor samples, we propose a
+
+Related Work
+
+Backdoor Defense in FL. To mitigate the backdoor attacks, for example, Auror [24], Flame [21], FedDMC [20], and FreqFed [5] tried
+model clustering to eliminate malicious backdoors while ensuring
+the performance of the aggregated model. The effectiveness of such
+methods depended on an assumption of homogeneous client data
+distribution, such that practicability was limited under Non-IID conditions. Other methods, e.g., BRCA [31] and FLTrust [3], assigned
+trust scores to clients using a small clean validation set hosted on
+the server to detect and filter malicious contributions. While effective in some cases, this paradigm contradicted the decentralized
+and privacy-preserving nature of FL by requiring centralized access
+to client data. Recent work has explored contrastive learning as
+a defense mechanism. Through contrastive learning [23], FLPurifier [33] eliminated latent correlations between target labels and
+trigger patterns, thus neutralizing potential backdoor artifacts during model training phases. Although this strategy improved model
+robustness, it increased the computational burden on the client
+and made it less suitable for resource-constrained environments.
+Overall, achieving effective backdoor defense under Non-IID conditions while ensuring privacy and avoiding increasing client-side
+overhead remained a critical challenge. Our scheme is a server-side
+dataset augmentation strategy based on MLLMs [11] and frequency
+analysis, which enhances the dataset’s coverage against diverse
+backdoor triggers without accessing client data. Additionally, our
+scheme achieves effective suppression of backdoor patterns in NonIID FL via integrating a global purification mechanism combining
+prototype contrastive learning and knowledge distillation.
+Vision-Language Pre-train Model. VLPs [12, 16, 23] had made
+significant strides across various downstream tasks, e.g., image
+classification, visual question answering, and cross-modal retrieval.
+CLIP [23] was a typical VLP that used contrastive learning to capture semantic relationships between images and texts, enabling
+both to be mapped into a shared feature space. Recent studies tried
+to integrate contrastive learning into FL to address the challenges
+of Non-IID client data. MOON [14] was a model-contrastive FL
+framework that utilized inter-client representation similarity to
+improve model generalization under heterogeneous data distributions. In addition, the strong semantic understanding of VLPs had
+shown promise in handling long-tailed distributions in FL [26],
+as VLPs could capture rich visual concepts even from underrepresented classes. However, while such capabilities indicated that VLPs
+were well suited for learning robust and semantically meaningful
+representations, the potential to improve security in FL remained
+
+A Vision-Language Pre-training Model-Guided Approach for Mitigating Backdoor Attacks in Federated Learning
+
+Data Augmentation for Server Dataset
+
+Dynamic Model Filtering by Clustering
+PCA
+
+Clustering
+
+Aggregation
+
+Generation of
+Image-Text Samples
+
+Prompt
+
+DCT
+
+FedAvg
+
+DCT
+
+Global Model
+
+MSE
+
+𝐹1′ (𝑢, 𝑣)
+
+Frequency Sensitivity-based
+Image Augmentation
+
+𝐹𝑚′ (𝑢, 𝑣)
+
+“A
+cat
+“A
+catisisis
+“A
+“Acat
+cat is
+looking
+looking
+looking
+looking
+ahead”
+ahead”
+ahead”
+ahead.”
+
+Class Prototypes (Visual)
+
+logits
+
+Label
+Part 2
+
+Visual
+Encoder
+
+Part 2
+
+“A
+cat
+“A
+catisisis
+“A
+“Acat
+cat is
+looking
+looking
+looking
+looking
+ahead”
+ahead”
+ahead”
+ahead.”
+
+Text
+Encoder
+
+Class Prototypes (Text)
+
+CLIP
+
+ℒ𝑘𝑡
+Part 1
+logits
+
+ℒ𝑝𝑐𝑙
+Part 1
+
+Feature Emb.
+Visual
+Encoder
+
+Server
+Dataset
+
+IDCT
+
+Global Model Knowledge Transfer
+
+Feature Rectification via Prototype Alignment
+
+Class Prototypes (Image)
+
+𝐹1 (𝑢, 𝑣)
+𝐹𝑚 (𝑢, 𝑣)
+
+Benign
+Cluster
+Client Model
+
+Conference acronym ’XX, June 03–05, 2018, Woodstock, NY
+
+ℒ𝑐𝑒
+
+logits
+Text
+Encoder
+
+CLIP
+logits
+
+CLIP logits
+
+𝒟𝑘𝑙
+
+CLIP
+
+Figure 2: The framework of the proposed CLIP-Fed. CLIP-Fed contains four modules: Data Augmentation for Server Dataset
+aims to build the server dataset, Dynamic Model Filtering by Clustering aims to filter out malicious models before aggregation,
+Feature Rectification via Prototype Alignment and Global Model Knowledge Transfer aim to purify the backdoor.
+underexplored, particularly in defending against backdoor attacks.
+To the best of our knowledge, our work is the first to use VLPs
+for backdoor defense in FL. Using the cross-modal representation
+capacity of VLPs, we align the global model’s visual features with
+those of a VLP to detect and eliminate backdoor patterns, establishing a novel and practical defense paradigm.
+
+3 Methodology
+3.1 Problem Formulation
+In the FL setup with one server and 𝑚 clients, each client 𝑖 holds
+a local dataset 𝐷𝑖 and a model 𝑤𝑖 = (𝑓𝑖 , 𝑐𝑖 ), where 𝑓𝑖 is the feature
+extractor and 𝑐𝑖 is the classifier. The server maintains a global
+model 𝐺𝑠 = (𝑓𝑠 , 𝑐𝑠 ). For an input 𝑥, the prediction is obtained
+via 𝑝 = 𝑐 (𝑓 (𝑥)). Malicious clients conduct backdoor attacks by
+embedding triggers in training samples and uploading poisoned
+models. The manipulated models aim to cause the global model to
+misclassify triggered inputs as the target label 𝑦 ′ . Attack Success
+Rate (ASR) is defined by Eq. (1), where 𝐷 is the dataset for the FL
+task, 𝑦 is the label for input 𝑥, 𝑦 ′ is the target label, and 𝑡 (·) is the
+backdoor trigger function. The framework of CLIP-Fed is shown
+in Figure 2. CLIP-Fed aims to suppress backdoor and reduce ASR.
+The algorithm flow of CLIP-Fed is shown in Alg. 1.
+ASR =
+
+E
+
+(𝑥,𝑦)∼𝐷
+𝑦≠𝑦 ′
+
+[Pr (Φ(𝑡 (𝑥)) = 𝑦 ′ )] .
+
+(1)
+
+Algorithm 1 Training Process of CLIP-Fed
+Require: Initial global model 𝐺 1 (𝑓𝑠1, 𝑐𝑠1 ), number of rounds 𝑇 , 𝑁
+clients
+Ensure: Global model 𝐺𝑇 +1 (𝑓𝑠𝑇 +1, 𝑐𝑇𝑠 +1 )
+1: 𝐷𝑠 ← MLLMs(𝑃𝑟𝑜𝑚𝑝𝑡)
+2: 𝐷𝑠 ← Image Augmentation(𝐷𝑠 )
+3: for each training iteration 𝑡 ∈ [1,𝑇 ] do
+4:
+for each client 𝑖 ∈ 𝐶𝑡 do
+5:
+𝑓𝑖𝑡 , 𝑐𝑖𝑡 ← Local Training(𝐺𝑡 , 𝑖)
+6:
+end for
+7:
+𝑆𝑡 ← HDBSCAN Clustering({𝑓1𝑡 , 𝑐 𝑡1 }, . . . , {𝑓𝑖𝑡 , 𝑐𝑖𝑡 })
+Í
+Í
+8:
+𝑓𝑠𝑡 +1 ← 𝑖 ∈𝑆𝑡 𝐷𝐷𝑆𝑖 𝑓𝑖𝑡 , 𝑐𝑠𝑡 +1 ← 𝑖 ∈𝑆𝑡 𝐷𝐷𝑆𝑖 𝑐𝑖𝑡
+𝑡
+
+𝑡
+
+Feature extractor 𝑓𝑠𝑡 +1 rectification by prototype contrastive
+loss
+10:
+Global model (𝑓𝑠𝑡 +1, 𝑐𝑠𝑡 +1 ) knowledge transfer by KL divergence
+11:
+𝐺𝑡 +1 ← {𝑓𝑠𝑡 +1, 𝑐𝑠𝑡 +1 }
+12: end for
+13: return 𝐺𝑇 +1
+9:
+
+3.2
+
+Data Augmentation for Server Dataset
+
+3.2.1 Generation of Image-Text Samples. In CLIP-Fed, the server
+cannot directly utilize client datasets for contrastive learning and
+knowledge distillation for the purpose of privacy-preserving. MLLMs
+are used to generate and augment server-side datasets without accessing client data [11, 22]. Dissimilar to other existing methods that
+
+Conference acronym ’XX, June 03–05, 2018, Woodstock, NY
+
+rely on geometric transformation or noise injection, our scheme semantically expands candidate labels to guide image generation. For
+instance, combining object descriptors with contextual modifiers,
+e.g., “a small airplane beneath a cloudy sky” or “a frog partially obscured by leaves”, naturally introduces variations in scale, occlusion,
+and background complexity, thereby inherently influencing visual
+perception. The synthesized images are then adaptively resized and
+normalized to match the statistical distribution of the target dataset,
+thus the alignment with the original feature space is guaranteed.
+3.2.2 Frequency Sensitivity-guided Image Augmentation. To enhance the robustness of backdoor purification against triggers, we
+add perturbations to image samples of the server dataset to simulate
+images with triggers while preserving label information. Specifically, we first add visible triggers to a clean image 𝑥 to obtain ¯
+𝑥, then
+apply the Discrete Cosine Transform (DCT) to both 𝑥 and 𝑥¯ and
+divide their spectra into multiple frequency bands. By comparing
+the similarities between the images 𝑥 and 𝑥¯ in different domains, we
+identify the frequency intervals that are the most sensitive to triggers. We assume that frequency intervals with the lowest similarity
+exhibit the highest sensitivity to triggers. The DCT spectrogram
+displays low-frequency coefficients clustered in the upper-left and
+high-frequency components in the lower-right, exhibiting symmetric about the main diagonal. We segment the spectrogram into
+discrete frequency bands ordered from low to high, aligned orthogonally to the diagonal. Specifically, the matrix is unevenly divided
+into 𝐾 segments along the diagonal, with the distance from the 𝑘-th
+division point to the top-left corner set to 1/2 (𝐾 −𝑘 ) of the diagonal
+length. Then, 𝐾 frequency bands are extended into 𝐾 independent
+spectrograms, represented as (𝐹 1 (𝑢, 𝑣), . . . , 𝐹𝐾 (𝑢, 𝑣)). We evaluate
+the distance between the spectrogram coefficients in each frequency
+segment using Mean Squared Error (MSE). Frequency regions with
+higher MSE values demonstrate lower similarity, indicating higher
+sensitivity to pixel-block triggers. The frequency band with the
+highest MSE is denoted as 𝐹ℎ𝑖𝑔ℎ (𝑢, 𝑣), where Gaussian noise perturbations are injected into the original image. The image is then
+reconstructed into the spatial domain via IDCT, resulting in an enhanced server dataset image with noise added only in the sensitive
+𝐹ℎ𝑖𝑔ℎ region. Perturbing only the most sensitive frequency bands
+better simulates backdoor triggers while preserving model utility.
+
+3.3
+
+Dynamic Model Filtering by Clustering
+
+Clustering presents a potential solution for distinguishing between
+malicious and benign models in FL. In CLIP-Fed, we adopt HDBSCAN for pre-aggregation filtering, following advanced methods [21].
+Because high-dimensional parameter spaces suffer from the curse
+of dimensionality, which reduces the reliability of distance metrics
+like cosine similarity, we use PCA to project model parameters
+into a lower-dimensional space where distance computations are
+more meaningful and robust. Following the threat assumptions and
+parameter settings established in Flame [21] and FreqFed [5], we operate under the premise that benign models constitute the majority
+of clients while malicious models remain in the minority. Accordingly, we set the minimum cluster size to encompass at least 50%
+of clients, ensuring the resulting clusters contain predominantly
+benign model updates. While this clustering process enables CLIPFed to eliminate most malicious models prior to aggregation, it is
+
+Trovato et al.
+
+acknowledged that the identified benign clusters may still contain
+some residual malicious models. After model clustering, CLIP-Fed
+performs global model aggregation as specified in Eq. (2):
+∑︁ 𝐷𝑖
+𝜃 𝑠𝑡 +1 =
+𝜃 𝑖𝑡 , 𝜃 ∈ {𝑓 , 𝑐},
+(2)
+𝐷
+𝑆
+𝑡
+𝑖 ∈𝑆
+𝑡
+
+where 𝑆𝑡 denotes the set of clients in the clustering cluster. In each
+training round, CLIP-Fed dynamically selects different clients to
+participate in aggregation, thereby resisting attacks from adaptive
+adversaries who randomly compromise clients during each round.
+The framework subsequently employs post-aggregation backdoor
+elimination strategies to purify further any remaining backdoor
+patterns that may persist in the global model.
+
+3.4
+
+Feature Rectification via Prototype
+Alignment
+
+The proposed approach systematically eliminates backdoor-induced
+deviations in feature representations while maintaining the model’s
+core classification performance. In general, backdoor attacks involve malicious clients injecting trigger-infused samples with target
+labels, causing the model to misclassify these inputs. This leads
+to a shift in the target class prototype, either pulling it toward
+the attack samples or creating a fake prototype, along with increased intra-class variance. In this phase, CLIP-Fed utilizes the
+CLIP model, which is equipped with rich prior knowledge, as an
+auxiliary module to guide the rectification and retraining of the
+feature extraction module of global model on the server. In backdoor models, the feature extraction module exhibits the increased
+sensitivity to trigger-associated patterns. Existing research [26] has
+evidenced that using CLIP’s strongly supervised feature prototypes
+can guide the generation of federated features. Inspired by this fact,
+we employ contrastive learning between CLIP-derived class prototypes and features generated by the global model feature extractor,
+thereby mitigating prototype deviations caused by backdoor trigger
+interference. As shown in Eq. 3, in the first part, we treat the output of the feature extractor 𝑣𝑖𝑐 (Sample 𝑖 belonging to class 𝑐) and
+𝐼
+the output of CLIP’s visual encoder 𝑒𝑐,clip
+as positive pairs, while
+considering the output of the feature extractor 𝑣𝑖𝑐 and other class
+prototypes 𝑒𝑘,extractor from the feature extractor as negative pairs.
+
+
+𝐼
+exp 𝑠𝑖𝑚⟨𝑣𝑖𝑐 , 𝑒𝑐,clip
+⟩/𝜏
+proto-1
+(3)
+L𝑖
+= − log Í𝐶
+,
+𝑐
+𝑘=1[𝑘≠𝑐 ] exp 𝑠𝑖𝑚⟨𝑣 𝑖 , 𝑒𝑘,extractor ⟩/𝜏
+where 𝑠𝑖𝑚 ⟨·⟩ denotes cosine similarity and 𝜏 is a temperature hyperparameter. As shown in Eq. (4), in the second part, we form
+positive pairs between the feature extractor’s output 𝑣𝑖𝑐 and out𝑇
+puts of the CLIP’s text encoder 𝑒𝑐,clip
+, with negative pairs being the
+𝑐
+𝑇
+feature extractor’s output 𝑣𝑖 and other class prototypes 𝑒𝑘,clip
+from
+the CLIP’s text encoder.
+
+
+𝑇
+exp 𝑠𝑖𝑚⟨𝑣𝑖𝑐 , 𝑒𝑐,clip
+⟩/𝜏
+proto-2
+
+.
+L𝑖
+= − log Í
+(4)
+𝐶
+𝑐 𝑇
+𝑘=1[𝑘≠𝑐 ] exp 𝑠𝑖𝑚⟨𝑣 𝑖 , 𝑒𝑘,clip ⟩/𝜏
+The total prototype contrastive loss as shown in Eq. (5):
+Lpcl =
+
+𝐶∑︁
+×𝑚 
+𝑖=1
+
+proto-1
+
+L𝑖
+
+proto-2
+
++ L𝑖
+
+
+.
+
+(5)
+
+A Vision-Language Pre-training Model-Guided Approach for Mitigating Backdoor Attacks in Federated Learning
+
+Conference acronym ’XX, June 03–05, 2018, Woodstock, NY
+
+Table 1: Performance comparison between CLIP-Fed and other defense methods
+Datasets
+
+CIFAR-10
+
+CIFAR-10-LT
+
+CIFAR-100
+
+Attack
+Badnets
+DBA
+LayerAttack
+AFA
+Badnets
+DBA
+LayerAttack
+AFA
+Badnets
+DBA
+LayerAttack
+AFA
+
+FedAvg
+MA/ASR(%)
+78.87 / 96.11
+78.23 / 91.69
+79.30 / 14.18
+77.43 / 18.05
+70.88 / 80.17
+70.83 / 62.00
+72.30 / 14.18
+71.67 / 17.18
+43.06 / 97.12
+45.96 / 93.68
+46.40 / 10.48
+41.82 / 13.51
+
+FLTrust
+MA/ASR(%)
+73.53 / 84.78
+76.24 / 46.69
+76.30 / 1.42
+76.42 / 6.96
+63.83 / 64.05
+62.22 / 40.22
+68.06 / 8.73
+67.45 / 5.19
+36.07 / 48.48
+41.38 / 56.88
+43.63 / 0.98
+42.64 / 0.51
+
+Table 2: Performance comparison between CLIP-Fed w/o FR,
+CLIP-Fed w/o KD, and CLIP-Fed
+Datasets
+
+CIFAR-10
+
+CIFAR-10-LT
+
+CIFAR-100
+
+3.5
+
+Attack
+BadNets
+DBA
+LayerAttack
+AFA
+BadNets
+DBA
+LayerAttack
+AFA
+BadNets
+DBA
+LayerAttack
+AFA
+
+w/o FR
+MA/ASR
+75.88/6.30
+76.57/3.31
+75.43/6.15
+76.17/3.52
+70.88/8.87
+70.32/4.30
+70.10/4.20
+70.87/4.48
+44.68/0.63
+44.35/0.63
+43.97/0.19
+45.50/0.57
+
+w/o KD
+MA/ASR
+75.08/7.37
+75.73/4.01
+73.52/5.39
+73.79/4.53
+71.31/6.93
+70.76/5.66
+69.55/2.15
+71.55/3.41
+44.83/0.45
+45.44/0.45
+41.21/0.00
+44.99/0.34
+
+CLIP-Fed
+MA/ASR
+81.43/2.62
+81.56/2.05
+77.10/0.19
+80.94/1.30
+73.40/4.11
+73.00/3.29
+70.20/0.38
+73.86/2.16
+45.56/0.41
+45.79/0.31
+44.51/0.00
+45.61/0.22
+
+Global Model Knowledge Transfer
+
+To thoroughly eliminate residual backdoor patterns in the global
+model, CLIP-Fed employs knowledge transfer to purify the global
+model by using CLIP’s prior knowledge. CLIP acts as a “teacher”
+model and the global model serves as the “student” model. During
+each iteration, CLIP provides guidance to the global model using the
+server dataset, progressively reducing the impact of the backdoor.
+We utilize the KL divergence to measure the discrepancy between
+logits distributions of the global model and CLIP on the annotated
+dataset. Specifically, the loss function for the knowledge transfer
+process is formulated as
+
+
+Lkt = L𝑐𝑒 𝑦, 𝑙 global + 𝛽 · DKL 𝑙 clip ∥𝑙 global ,
+
+(6)
+
+where 𝑙 global and 𝑙 clip denote the output logits of the global model and
+CLIP. This loss of distillation ensures that the global model aligns
+its predictions with CLIP’s robust, backdoor-free representations,
+thus eradicating malicious patterns while preserving model utility.
+
+FLAME
+MA/ASR(%)
+70.75 / 3.55
+72.75 / 4.22
+72.50 / 2.54
+73.18 / 4.05
+69.13 / 5.16
+69.21 / 4.62
+68.69 / 7.58
+67.34 / 4.34
+45.09 / 38.02
+45.24 / 0.64
+41.59 / 1.74
+44.91 / 0.62
+
+4
+
+FoolsGold
+MA/ASR(%)
+72.66 / 83.87
+77.83 / 56.29
+67.39 / 8.38
+70.77 / 14.03
+66.46 / 40.27
+65.24 / 66.02
+66.15 / 15.38
+47.95 / 7.29
+37.45 / 88.75
+44.90 / 95.15
+47.68 / 2.40
+44.01 / 2.64
+
+FEDCPA
+MA/ASR(%)
+78.65 / 38.37
+77.57 / 35.05
+78.39 / 1.77
+76.23 / 4.00
+71.96 / 4.16
+72.36 / 3.47
+71.17 / 3.82
+72.43 / 3.86
+47.68 / 1.19
+48.29 / 1.19
+49.48 / 0.52
+47.61 / 0.59
+
+CLIP-Fed
+MA/ASR(%)
+81.50 / 2.77
+81.75 / 1.86
+76.70 / 0.19
+80.91 / 1.42
+73.07 / 4.01
+72.73 / 3.38
+70.00 / 0.29
+74.05 / 2.25
+45.47 / 0.39
+46.17 / 0.39
+44.94 / 0.00
+44.57 / 0.30
+
+Experiments
+
+Datasets. We evaluated CLIP-Fed on CIFAR-10, CIFAR-10-LT, and
+CIFAR-100 [10]. CIFAR-10-LT was a variant of CIFAR-10 with longtail distribution characteristics. The number of its category samples
+decreased exponentially, thereby simulating the category imbalance phenomenon in the real world. To simulate Non-IID data, we
+adopted the Pathological Non-IID partitioning [2].
+Implementation Details. We simulated a FL scenario with 100
+clients, where a portion is malicious. Malicious clients conducted
+four types of backdoor attacks, including BadNets [8], DBA [29],
+LayerAttack, and AFA, following an “all-to-one" strategy. ResNet-18
+was used as the model backbone. All experiments were conducted
+on an RTX 4090 GPU with Python 3.9, PyTorch 2.2.2, and CUDA
+11.8. Unless stated otherwise, we simulated Non-IID client data
+distributions and employed the ViT-L/14 version of CLIP.
+Attack Approach. We evaluated the defense effectiveness of CLIPFed against several existing FL backdoor attacks. Specifically, the
+adversary adopted the following attack strategies. (1) BadNets [8], a
+typical backdoor attack method that directly embedded a static trigger into training samples; (2) Distributed Backdoor Attack (DBA) [29],
+a federated backdoor attack that decomposed a global trigger pattern and embedded its fragments into various clients; (3) LayerAttack, a hierarchical poisoning method targeting critical layers in
+neural networks, which was particularly effective against distancebased defense mechanisms; (4) AFA, a variant of LayerAttack that
+performed hierarchical bit flipping on sensitive layers, effective
+against sign-based defenses. In addition, we assumed that the adversary adopted an “all to one” attack strategy when a backdoor
+attack was launched, which meant the adversary added triggers
+to samples of all categories and changed their labels to a target
+category.
+Baselines and Existing Defenses. We compared CLIP-Fed with
+representative backdoor defense in FL, including FedAvg [18] (a
+standard aggregation baseline without defense), FLAME [21] (combining clustering and differential privacy), FLTrust [3] (a server-side
+validation-based defense method), FoolsGold [6] (a defense scheme
+based on the similarity of contributions among clients), and FEDCPA [9] (focusing on critical parameter similarity).
+
+Conference acronym ’XX, June 03–05, 2018, Woodstock, NY
+
+Trovato et al.
+
+80
+
+125
+
+60
+
+60
+
+60
+
+75
+
+40
+
+40
+
+50
+
+20
+
+20
+
+25
+
+0
+
+0
+
+20
+
+0
+
+20
+
+20
+
+40
+
+25
+
+40
+
+40
+
+60
+
+50
+
+100
+
+40
+20
+0
+
+80
+
+100
+
+50
+
+0
+
+50
+
+75
+
+100
+
+75
+
+(a) CLIP
+
+60
+
+60
+50
+
+25
+
+0
+
+25
+
+50
+
+75
+
+100
+
+(b) BadNets without defense
+
+75
+
+50
+
+25
+
+0
+
+25
+
+50
+
+75
+
+100
+
+(c) BadNets with CLIP-Fed 50 epochs
+
+80
+
+100
+
+75
+
+50
+
+25
+
+0
+
+25
+
+50
+
+75
+
+100
+
+(d) BadNets with CLIP-Fed 200 epochs
+
+Figure 3: The visualization of the feature representations under different attacks on CIFAR-10-LT with/without CLIP-Fed.
+Table 3: Performance comparison against BadNets attacks with different proportions of malicious clients under CIFAR-10-LT
+Proportions of
+Malicious Clients
+20%
+30%
+40%
+
+FedAvg
+MA/ASR(%)
+71.21 / 89.74
+70.62 / 89.81
+67.98 / 97.63
+
+FLTrust
+MA/ASR(%)
+64.17 / 61.93
+62.39 / 67.40
+66.40 / 85.97
+
+FLAME
+MA/ASR(%)
+69.13 / 5.16
+67.40 / 8.17
+66.49 / 10.59
+
+FoolsGold
+MA/ASR(%)
+67.85 / 43.99
+68.25 / 74.94
+66.71 / 78.41
+
+FEDCPA
+MA/ASR(%)
+70.17 / 5.52
+69.61 / 90.22
+67.01 / 96.54
+
+CLIP-Fed
+MA/ASR(%)
+73.74 / 4.54
+72.37 / 4.70
+72.15 / 4.93
+
+Table 4: Performance of CLIP-Fed against BadNets attacks
+with different degrees of Non-IID
+Degree of
+Non-iid
+(a) Original Image
+
+(b) Image with Trigger (c)
+Frequencyperturbed Image
+
+0.2
+0.4
+0.6
+
+Figure 4: Comparison of original, triggered, and frequencyperturbed images.
+MSE per Frequency Band
+
+0.0008
+0.0007
+0.0006
+
+MSE
+
+0.0005
+0.0004
+0.0003
+0.0002
+0.0001
+0.0000
+2
+
+4
+
+6
+8
+Frequency Band
+
+10
+
+12
+
+Figure 5: Comparison of MSE values between the original
+image and the image with pixel blocks in different frequency
+domain intervals.
+
+4.1
+
+Performance Comparison
+
+Table 1 presented a comparison of Main Task Accuracy (MA) and Attack Success Rate (ASR) across various methods under distinct data
+distributions and backdoor attacks. The results demonstrated that
+CLIP-Fed consistently achieved effective backdoor mitigation in
+
+CIFAR-10
+No Defense CLIP-Fed
+MA/ASR
+MA/ASR
+78.51/97.04 82.41/2.21
+77.25/95.63 81.50/2.77
+77.42/95.86 78.23/0.90
+
+CIFAR-100
+No Defense CLIP-Fed
+MA/ASR
+MA/ASR
+45.06/97.12 45.72/0.77
+44.00/94.49 45.68/0.44
+43.57/91.05 45.60/0.32
+
+various attacks and datasets. Specifically, CLIP-Fed had the lowest
+ASR under all four attack types on both CIFAR-10 and CIFAR-10-LT
+datasets. On CIFAR-10, our scheme achieved ASR reductions of
+0.78%, 2.36%, 2.35%, and 2.63% under BadNets, DBA, LayerAttack,
+and AFA, respectively, compared to SOTA defense FLAME. On
+CIFAR-10-LT dataset that had a significant long-tail distribution,
+our scheme reduced ASR by 0.15%, 0.09%, 3.53%, and 1.61% under the
+same four attacks, compared to the SOTA defense FEDCPA. In terms
+of MA, our scheme also had advantages over existing solutions,
+as it achieved backdoor defense without significantly compromising task performance. This indicated that CLIP-Fed was able to
+accurately filter out malicious models while preserving contributions of benign ones, performing a higher-level effectiveness than
+standalone pre-aggregation detection or post-aggregation noise
+injection methods. On CIFAR100 dataset with a higher-level complexity of classification tasks, CLIP-Fed achieved the best defense
+under four types of attacks.
+
+4.2
+
+Ablation Study
+
+We conducted comprehensive ablation experiments on CIFAR-10
+under backdoor attacks to thoroughly validate the effectiveness
+of CLIP-Fed’s core components. Two variants of CLIP-Fed were
+evaluated, which were CLIP-Fed w/o FR (without feature extractor
+
+A Vision-Language Pre-training Model-Guided Approach for Mitigating Backdoor Attacks in Federated Learning
+
+50
+40
+
+30 60 90 120 150 180 210 240 270 300
+
+70
+
+CLIP-Fed
+FLTrust
+FoolsGold
+FEDCPA
+FedAvg
+FLAME
+
+20
+0
+
+30 60 90 120 150 180 210 240 270 300
+
+epoch
+
+(d) ASR with 20% malicious clients
+
+epoch
+
+60
+40
+20
+0
+
+(c) MA with 40% malicious clients
+
+100
+
+CLIP-Fed
+FLTrust
+FoolsGold
+FEDCPA
+FedAvg
+FLAME
+
+80
+
+ASR (%)
+
+ASR (%)
+
+40
+
+30 60 90 120 150 180 210 240 270 300
+
+30% malicious
+
+100
+
+CLIP-Fed
+FLTrust
+FoolsGold
+FEDCPA
+FedAvg
+FLAME
+
+40
+
+(b) MA with 30% malicious clients
+
+20% malicious
+
+30 60 90 120 150 180 210 240 270 300
+
+epoch
+
+(e) ASR with 30% malicious clients
+
+CLIP-Fed
+FLTrust
+FoolsGold
+FEDCPA
+FedAvg
+FLAME
+
+50
+
+epoch
+
+(a) MA with 20% malicious clients
+
+60
+
+60
+
+30 60 90 120 150 180 210 240 270 300
+
+epoch
+
+80
+
+40% malicious
+
+40% malicious
+
+80
+
+ASR (%)
+
+CLIP-Fed
+FLTrust
+FoolsGold
+FEDCPA
+FedAvg
+FLAME
+
+60
+
+MA (%)
+
+MA (%)
+
+70
+
+30% malicious
+
+75
+70
+65
+60
+55
+50
+45
+40
+
+MA (%)
+
+20% malicious
+
+Conference acronym ’XX, June 03–05, 2018, Woodstock, NY
+
+CLIP-Fed
+FLTrust
+FoolsGold
+FEDCPA
+FedAvg
+FLAME
+
+60
+40
+20
+0
+
+30 60 90 120 150 180 210 240 270 300
+
+epoch
+
+(f) ASR with 40% malicious clients
+
+Figure 6: Comparison of MA and ASR against BadNets attacks with varying malicious client proportions under CIFAR-10-LT.
+Table 5: Defense performance against BadNets attacks with different attack strength under CIFAR-10-LT
+Poisoning Ratio
+Defense
+Trigger Size
+1×1
+2×2
+3×3
+4×4
+
+60%
+No Defense
+CLIP-Fed
+MA/ASR(%) MA/ASR(%)
+70.06 / 11.68 71.83 / 3.92
+70.45 / 15.43 72.12 / 4.86
+69.56 / 20.08 70.93 / 2.68
+69.51 / 28.51 72.53 / 3.99
+
+80%
+No Defense
+CLIP-Fed
+MA/ASR(%) MA/ASR(%)
+67.34 / 67.71 71.33 / 4.67
+69.15 / 77.74 71.69 / 4.07
+68.50 / 88.77 72.58 / 2.34
+69.42 / 89.72 72.74 / 2.55
+
+rectification) and CLIP-Fed w/o KD (without knowledge distillation). Table 2 showed comparisons of the accuracy on the global
+model and the defense performance under identical experiment setups. We observed that both CLIP-Fed w/o FR and CLIP-Fed w/o KD
+achieved lower ASR than FedAvg (as shown in Table 1) across all
+three datasets and four types of attacks. The results indicated that
+individually applying either feature extractor retraining or global
+model knowledge distillation could partially eliminate the association between trigger patterns and target labels, thereby mitigating
+backdoor effects. Thus, CLIP-Fed combined both feature retraining
+and knowledge distillation, so that it achieved the highest MA and
+lowest ASR in call cases.
+
+4.3
+
+Visualization of Backdoor Elimination
+
+To evaluate the purification effectiveness after multiple rounds of
+backdoor elimination (feature rectification and global model knowledge transfer), we examined changes in the association between
+
+100%
+No Defense
+CLIP-Fed
+MA/ASR(%) MA/ASR(%)
+71.21 / 89.74 72.49 / 4.16
+71.05 / 94.37 72.11 / 5.40
+70.60 / 95.55 72.57 / 2.16
+70.40 / 96.11 72.95 / 3.67
+
+trigger samples and target labels before/after defense. As shown in
+Figure 3, t-SNE was used to visualize the feature space distribution
+of test samples under BadNets attacks, both with and without CLIPFed. We added triggers to 5% of the test samples. In visualization,
+samples containing triggers were outlined in a black color. Figure 3a
+presented the visualization of test samples after being processed by
+the CLIP model. The CLIP model demonstrated strong robustness
+to trigger samples and successfully clustered samples from the same
+class together in the feature space. This suggested that using CLIP’s
+prior knowledge to guide FL in backdoor purification was a feasible
+approach. Figure 3b showed the feature space clustering after a
+backdoor attack without any defense. We observed that most samples with triggers formed a separate cluster, indicating a successful
+backdoor attack. Figures 3c and 3d showed clustering results after
+training with CLIP-Fed for 50 and 200 epochs, respectively. The
+trigger samples were no longer isolated and rejoined the clusters
+of clean samples from the same class. The results indicated that
+
+Conference acronym ’XX, June 03–05, 2018, Woodstock, NY
+
+CLIP-Fed disrupted backdoor feature clustering and weakened the
+association between triggers and target labels.
+
+4.4
+
+Analysis of the Frequency
+Sensitivity-guided Image Augmentation
+
+To assess the proposed frequency sensitivity-guided image augmentation, we compared the original image, a pixel-block triggered
+image, and our frequency-perturbed image, as shown in Figure 4.
+Visual results demonstrated that our scheme avoided introducing
+visible distortion, thereby preserving the semantic content. We
+computed MSE between the DCT spectra of the clean and triggered images across 𝑘 frequency bands. As shown in Figure 5,
+the 7th frequency band exhibited the highest MSE, indicating the
+strongest sensitivity to trigger artifacts. We injected Gaussian noise
+into 𝐹ℎ𝑖𝑔ℎ (𝑢, 𝑣), and reconstructed the image via IDCT (refer to Figure 4c). This approach simulated potential backdoor signals without
+compromising visual quality. Moreover, by focusing perturbations
+on the most trigger-sensitive frequency regions, the augmented
+images served as effective surrogates for trigger patterns, enabling
+the global model to generalize more effectively against diverse
+backdoor attacks during training.
+
+4.5
+
+Parameter Impact
+
+Impact of Number of Malicious Clients. Table 3 and Figure 6
+presented a comparison of the defense performance of CLIP-Fed and
+existing methods under varying proportions of malicious clients.
+When the proportion of malicious clients was 0.2, FEDCPA, FLAME,
+and CLIP-Fed demonstrated comparable effectiveness in reducing
+ASR. However, as the proportion exceeded 0.2, the defense performance of existing methods began to degrade to varying extents.
+In particular, FEDCPA experienced the most significant drop in
+performance, with an ASR of 90.22% when the malicious client
+ratio was 0.3, and 96.54% when it increased to 0.4. In contrast, CLIPFed consistently maintained strong defense performance across all
+settings. When the proportion of malicious clients was 0.3 and 0.4,
+the ASR of CLIP-Fed remained significantly lower than that of the
+SOTA method FLAME by 3.47% and 5.66%, respectively. In terms
+of MA, CLIP-Fed also performed favorably, surpassing FedAvg by
+2.53%, 1.75%, and 4.17% at malicious client ratios of 0.2, 0.3, and 0.4,
+respectively. As shown in Figure 6, CLIP-Fed consistently demonstrated a clear advantage across all stages of training. A single
+pre-aggregation defense strategy made existing methods vulnerable to high proportions of malicious clients, whereas CLIP-Fed’s
+post-aggregation backdoor purification supplements the defense
+capability under such conditions. Overall, compared with existing approaches, CLIP-Fed effectively defended against backdoor
+attacks across different malicious client ratios while minimizing
+the degradation of task performance in FL.
+Impact of Non-IID. Table 4 presented the defense performance
+of CLIP-Fed against BadNets attack under varying degrees of NonIID data distribution. On CIFAR-10 dataset, the CLIP-Fed approach
+achieved an average MA of 80.71% and an average ASR of 1.96%.
+On CIFAR-100 dataset, the average MA was 45.67% and the average ASR was 0.51%. Across both datasets, the degree of Non-IID
+distribution caused only minor fluctuations in MA and ASR, and
+its impact on defense performance was negligible. The reason for
+
+Trovato et al.
+
+these phenomena was because heterogeneous client data distributions primarily affected the filtering of malicious models before
+aggregation, while CLIP-Fed’s backdoor purification strategy was
+decoupled from model aggregation. The above clearly demonstrated
+that CLIP-Fed was effective under different levels of Non-IID data
+distribution, thereby maintaining a high MA and a low ASR for
+consistent robust backdoor defense.
+Defense under Different Attack Strength. To investigate CLIPFed’s defensive performance against backdoor attacks with varying
+strengths, we evaluate attacks employing different trigger sizes and
+poisoning ratio on the CIFAR-10-LT dataset. Trigger size and poisoning ratio served as crucial factors affecting the attack strength.
+When attackers became aware of the deployed defense mechanisms,
+they might avoid defense strategies based on malicious model
+screening rules, either increasing trigger size and poisoning to
+enhance attack chance or reducing trigger size and poisoning to improve backdoor concealment. As shown in Table 5, in the absence of
+defense, MA gradually declined while ASR increased as the trigger
+size became larger. Larger triggers resulted in more distinguishable
+features, making it easier for the model to associate them with the
+target label. Additionally, higher poisoning rates further intensified
+the attack, resulting in a sharper drop in model performance. When
+CLIP-Fed was applied, backdoor were effectively prevented from
+being embedded into the global model, regardless of trigger sizes
+or poisoning rates. The connection between trigger features and
+the target label was severed, and residual backdoor patterns in the
+global model were removed, making the defense independent of
+attack strength. CLIP-Fed demonstrated consistent effectiveness in
+mitigating backdoor effects across adaptive attacks with various
+trigger sizes and poisoning ratios.
+Impact of Distinct CLIP Versions on Backdoor Defense Performance. We evaluated the impact of different versions of CLIP [23]
+on the backdoor defense performance. Specifically, we adopted ViTB/32, ViT-B/16, and ViT-L/14 as VLPs. Figure 7 showed the comparison of MA and ASR on CIFAR-10 dataset under BadNets [8]
+and DBA [29] attacks when different CLIP versions were applied.
+In terms of accuracy, we observed that CLIP-Fed achieved over 80%
+MA across all CLIP versions, evidencing that the rich prior knowledge from each version was sufficient for the CIFAR-10 dataset.
+Regarding ASR, we found that the success rate under BadNets attacks was higher than that of DBA attacks, due to the stronger
+impact of centralized attacks. However, all CLIP versions achieved
+an ASR below 2% under both types of attacks, demonstrating that
+they could all effectively support CLIP-Fed in defending against
+backdoor threats. These findings indicate that the defense performance of CLIP-Fed remains consistently strong across different
+CLIP versions. This suggested that CLIP-Fed be not highly sensitive
+to the scale of the VLPs and flexibly adapt to various deployment
+scenarios without significant degradation in defense effectiveness.
+
+5
+
+Conclusion
+
+In this paper, we proposed CLIP-Fed that is a general novel backdoor
+defense scheme guided by the VLP model CLIP. Without accessing client data or assuming homogeneous distributions, CLIP-Fed
+enhanced overall effectiveness by combining pre-aggregation malicious model filtering with post-aggregation purification. Leveraging
+
+A Vision-Language Pre-training Model-Guided Approach for Mitigating Backdoor Attacks in Federated Learning
+
+60
+40
+
+BadNets
+DBA
+
+20
+0
+
+ViT-B/32
+
+ViT-B/16
+
+Model
+
+ViT-L/14
+
+ASR (%)
+
+MA (%)
+
+80
+
+1.75
+1.50
+1.25
+1.00
+0.75
+0.50
+0.25
+0.00
+
+BadNets
+DBA
+ViT-B/32
+
+ViT-B/16
+
+Model
+
+ViT-L/14
+
+(a) MA with different version of (b) ASR with different version of CLIP
+CLIP
+
+Figure 7: Comparison of MA and ASR in resisting BadNets
+and DBA attacks with different version of CLIP under CIFAR10.
+
+MLLMs and frequency analysis, we constructed and enhanced a
+server dataset, addressing privacy concerns and improving coverage of diverse backdoor triggers with minimal utility loss. We
+further proposed a global model purification strategy based on contrastive learning and knowledge distillation, which corrected class
+prototype deviations and weakened the link between triggers and
+target labels, thus improving robustness against potential trigger
+samples. Extensive experiments on multiple datasets demonstrated
+that CLIP-Fed outperformed existing methods in defending against
+backdoor attacks under significantly varying data distributions and
+malicious proportions of clients.
+
+References
+[1] Eugene Bagdasaryan, Andreas Veit, Yiqing Hua, Deborah Estrin, and Vitaly
+Shmatikov. 2020. How To Backdoor Federated Learning. In The 23rd International
+Conference on Artificial Intelligence and Statistics (Proceedings of Machine Learning
+Research, Vol. 108). PMLR, Online, 2938–2948.
+[2] Peva Blanchard, El Mahdi El Mhamdi, Rachid Guerraoui, and Julien Stainer. 2017.
+Machine Learning with Adversaries: Byzantine Tolerant Gradient Descent. In
+Advances in Neural Information Processing Systems 30: Annual Conference on
+Neural Information Processing Systems. Long Beach, CA, USA, 119–129.
+[3] Xiaoyu Cao, Minghong Fang, Jia Liu, and Neil Zhenqiang Gong. 2021. FLTrust:
+Byzantine-robust Federated Learning via Trust Bootstrapping. In 28th Annual
+Network and Distributed System Security Symposium. The Internet Society, virtually.
+[4] Xiuwen Fang, Mang Ye, and Bo Du. 2025. Robust Asymmetric Heterogeneous
+Federated Learning With Corrupted Clients. IEEE Transactions on Pattern Analysis
+and Machine Intelligence 47, 4 (2025), 2693–2705.
+[5] Hossein Fereidooni, Alessandro Pegoraro, Phillip Rieger, Alexandra Dmitrienko,
+and Ahmad-Reza Sadeghi. 2024. FreqFed: A Frequency Analysis-Based Approach
+for Mitigating Poisoning Attacks in Federated Learning. In 31st Annual Network
+and Distributed System Security Symposium. The Internet Society, San Diego,
+California, USA.
+[6] Clement Fung, Chris J. M. Yoon, and Ivan Beschastnikh. 2020. The Limitations of
+Federated Learning in Sybil Settings. In 23rd International Symposium on Research
+in Attacks, Intrusions and Defenses. USENIX Association, San Sebastian, Spain,
+301–316.
+[7] Keke Gai, Dongjue Wang, Jing Yu, Liehuang Zhu, and Weizhi Meng. 2025.
+FedAMM: Federated Learning Against Majority Malicious Clients Using Robust Aggregation. IEEE Transactions on Information Forensics and Security 20
+(2025), 9950–9964.
+[8] Tianyu Gu, Brendan Dolan-Gavitt, and Siddharth Garg. 2017. BadNets: Identifying Vulnerabilities in the Machine Learning Model Supply Chain. CoRR
+abs/1708.06733 (2017).
+[9] Sungwon Han, Sungwon Park, Fangzhao Wu, Sundong Kim, Bin Zhu, Xing
+Xie, and Meeyoung Cha. 2023. Towards Attack-tolerant Federated Learning via
+Critical Parameter Analysis. In IEEE/CVF International Conference on Computer
+Vision. IEEE, Paris, France, 4976–4985.
+[10] A Krizhevsky. 2009. Learning Multiple Layers of Features from Tiny Images.
+Master’s thesis, University of Tront pp, 99 (2009), 1.
+[11] Nicholas Lee, Thanakul Wattanawong, Sehoon Kim, Karttikeya Mangalam, Sheng
+Shen, Gopala Anumanchipalli, Michael W. Mahoney, Kurt Keutzer, and Amir
+
+Conference acronym ’XX, June 03–05, 2018, Woodstock, NY
+
+Gholami. 2024. LLM2LLM: Boosting LLMs with Novel Iterative Data Enhancement. In Findings of the Association for Computational Linguistics. Association for
+Computational Linguistics, Bangkok, Thailand and virtual meeting, 6498–6526.
+[12] Junnan Li, Dongxu Li, Caiming Xiong, and Steven C. H. Hoi. 2022. BLIP: Bootstrapping Language-Image Pre-training for Unified Vision-Language Understanding
+and Generation. In International Conference on Machine Learning (Proceedings of
+Machine Learning Research, Vol. 162). PMLR, Baltimore, Maryland, USA, 12888–
+12900.
+[13] Ken Li, Bin Shi, Jiazhe Wei, and Bo Dong. 2025. NI-GDBA: Non-Intrusive Distributed Backdoor Attack Based on Adaptive Perturbation on Federated Graph
+Learning. In Proceedings of the ACM on Web Conference. ACM, Sydney, NSW,
+Australia, 852–862.
+[14] Qinbin Li, Bingsheng He, and Dawn Song. 2021. Model-Contrastive Federated
+Learning. In IEEE Conference on Computer Vision and Pattern Recognition. Computer Vision Foundation / IEEE, virtual, 10713–10722.
+[15] Yuying Liao, Xuechen Zhao, Bin Zhou, and Yanyi Huang. 2025. CapsuleBD:
+A Backdoor Attack Method Against Federated Learning Under Heterogeneous
+Models. IEEE Transactions on Information Forensics and Security 20 (2025), 4071–
+4086.
+[16] Haotian Liu, Chunyuan Li, Qingyang Wu, and Yong Jae Lee. 2023. Visual Instruction Tuning. In Advances in Neural Information Processing Systems 36: Annual
+Conference on Neural Information Processing Systems. New Orleans, LA, USA.
+[17] Xiaoting Lyu, Yufei Han, Wei Wang, Jingkai Liu, Bin Wang, Kai Chen, Yidong
+Li, Jiqiang Liu, and Xiangliang Zhang. 2025. CoBA: Collusive Backdoor Attacks
+With Optimized Trigger to Federated Learning. IEEE Transactions on Dependable
+and Secure Computing 22, 2 (2025), 1506–1518.
+[18] Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and
+Blaise Agüera y Arcas. 2017. Communication-Efficient Learning of Deep Networks from Decentralized Data. In Proceedings of the 20th International Conference
+on Artificial Intelligence and Statistics (Proceedings of Machine Learning Research,
+Vol. 54). PMLR, Fort Lauderdale, FL, USA, 1273–1282.
+[19] Yinbin Miao, Rongpeng Xie, Xinghua Li, Zhiquan Liu, Kim-Kwang Raymond
+Choo, and Robert H. Deng. 2024. Efficient and Secure Federated Learning Against
+Backdoor Attacks. IEEE Transactions on Dependable and Secure Computing 21, 5
+(2024), 4619–4636.
+[20] Xutong Mu, Ke Cheng, Yulong Shen, Xiaoxiao Li, Zhao Chang, Tao Zhang, and
+Xindi Ma. 2024. FedDMC: Efficient and Robust Federated Learning via Detecting
+Malicious Clients. IEEE Transactions on Dependable and Secure Computing 21, 6
+(2024), 5259–5274.
+[21] Thien Duc Nguyen, Phillip Rieger, Huili Chen, Hossein Yalame, Helen Möllering,
+Hossein Fereidooni, Samuel Marchal, Markus Miettinen, Azalia Mirhoseini, Shaza
+Zeitouni, Farinaz Koushanfar, Ahmad-Reza Sadeghi, and Thomas Schneider.
+2022. FLAME: Taming Backdoors in Federated Learning. In 31st USENIX Security
+Symposium. USENIX Association, Boston, MA, USA, 1415–1432.
+[22] Xichen Pan, Satya Narayan Shukla, Aashu Singh, Zhuokai Zhao, Shlok Kumar
+Mishra, Jialiang Wang, Zhiyang Xu, Jiuhai Chen, Kunpeng Li, Felix Juefei-Xu,
+Ji Hou, and Saining Xie. 2025. Transfer between Modalities with MetaQueries.
+CoRR abs/2504.06256 (2025).
+[23] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh,
+Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark,
+Gretchen Krueger, and Ilya Sutskever. 2021. Learning Transferable Visual Models
+From Natural Language Supervision. In Proceedings of the 38th International Conference on Machine Learning (Proceedings of Machine Learning Research, Vol. 139).
+PMLR, Virtual Event, 8748–8763.
+[24] Shiqi Shen, Shruti Tople, and Prateek Saxena. 2016. Auror: defending against
+poisoning attacks in collaborative deep learning systems. In Proceedings of the
+32nd Annual Conference on Computer Security Applications. ACM, Los Angeles,
+CA, USA, 508–519.
+[25] Wei Shen, Wenke Huang, Guancheng Wan, and Mang Ye. 2025. Label-Free
+Backdoor Attacks in Vertical Federated Learning. In AAAI-25, Sponsored by the
+Association for the Advancement of Artificial Intelligence. AAAI Press, Philadelphia,
+PA, USA, 20389–20397.
+[26] Jiangming Shi, Shanshan Zheng, Xiangbo Yin, Yang Lu, Yuan Xie, and Yanyun Qu.
+2024. CLIP-Guided Federated Learning on Heterogeneity and Long-Tailed Data. In
+Thirty-Eighth AAAI Conference on Artificial Intelligence, Thirty-Sixth Conference on
+Innovative Applications of Artificial Intelligence. AAAI Press, Vancouver, Canada,
+14955–14963.
+[27] Shuo Wang, Keke Gai, Jing Yu, Zijian Zhang, and Liehuang Zhu. 2025. PraVFed:
+Practical Heterogeneous Vertical Federated Learning via Representation Learning.
+IEEE Transactions on Information Forensics and Security 20 (2025), 2693–2705.
+[28] Shuo Wang, Keke Gai, Jing Yu, Liehuang Zhu, Hanghang Wu, Changzheng Wei,
+Ying Yan, Hui Zhang, and Kim-Kwang Raymond Choo. 2025. RAFLS: RDPBased Adaptive Federated Learning With Shuffle Model. IEEE Transactions on
+Dependable and Secure Computing 22, 2 (2025), 1181–1194.
+[29] Chulin Xie, Keli Huang, Pin-Yu Chen, and Bo Li. 2020. DBA: Distributed Backdoor
+Attacks against Federated Learning. In 8th International Conference on Learning
+Representations. OpenReview.net, Addis Ababa, Ethiopia.
+
+Conference acronym ’XX, June 03–05, 2018, Woodstock, NY
+
+[30] Dong Yin, Yudong Chen, Kannan Ramchandran, and Peter L. Bartlett. 2018.
+Byzantine-Robust Distributed Learning: Towards Optimal Statistical Rates. In
+Proceedings of the 35th International Conference on Machine Learning (Proceedings
+of Machine Learning Research, Vol. 80). PMLR, Stockholmsmässan, Stockholm,
+Sweden, 5636–5645.
+[31] Kun Zhai, Qiang Ren, Junli Wang, and Chungang Yan. 2021. ByzantineRobust Federated Learning via Credibility Assessment on Non-IID Data. CoRR
+abs/2109.02396 (2021). arXiv:2109.02396
+[32] Haiyan Zhang, Xinghua Li, Mengfan Xu, Ximeng Liu, Tong Wu, Jian Weng,
+and Robert H. Deng. 2024. BADFL: Backdoor Attack Defense in Federated
+Learning From Local Model Perspective. IEEE Transactions on Knowledge and
+
+Trovato et al.
+
+Data Engineering 36, 11 (2024), 5661–5674.
+[33] Jiale Zhang, Chengcheng Zhu, Xiaobing Sun, Chunpeng Ge, Bing Chen, Willy
+Susilo, and Shui Yu. 2024. FLPurifier: Backdoor Defense in Federated Learning
+via Decoupled Contrastive Training. IEEE Transactions on Information Forensics
+and Security 19 (2024), 4752–4766.
+[34] Haomin Zhuang, Mingxian Yu, Hao Wang, Yang Hua, Jian Li, and Xu Yuan. 2024.
+Backdoor Federated Learning by Poisoning Backdoor-Critical Layers. In The
+Twelfth International Conference on Learning Representations. OpenReview.net,
+Vienna, Austria.
+
+Received 20 February 2007; revised 12 March 2009; accepted 5 June 2009
+
+

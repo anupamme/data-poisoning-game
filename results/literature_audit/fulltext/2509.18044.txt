@@ -1,0 +1,1571 @@
+arXiv:2509.18044v1 [cs.CR] 22 Sep 2025
+
+Hybrid Reputation Aggregation: A Robust Defense Mechanism
+for Adversarial Federated Learning in 5G and Edge Network
+Environments
+Saeid Sheikhi
+
+Panos Kostakos
+
+Lauri Loven
+
+saeid.sheikhi@oulu.fi
+Center for Ubiquitous Computing,
+University of Oulu
+Oulu, Finland
+
+panos.kostakos@oulu.fi
+Center for Ubiquitous Computing,
+University of Oulu
+Oulu, Finland
+
+Lauri.Loven@oulu.fi
+Center for Ubiquitous Computing,
+University of Oulu
+Oulu, Finland
+
+ABSTRACT
+
+KEYWORDS
+
+Federated Learning (FL) in 5G and edge network environments face
+severe security threats from adversarial clients. Malicious participants can perform label flipping, inject backdoor triggers, or launch
+Sybil attacks to corrupt the global model. This paper introduces
+Hybrid Reputation Aggregation (HRA), a novel robust aggregation
+mechanism designed to defend against diverse adversarial behaviors
+in FL without prior knowledge of the attack type. HRA combines
+geometric anomaly detection with momentum-based reputation tracking of clients. In each round, it detects outlier model updates via
+distance-based geometric analysis while continuously updating a
+trust score for each client based on historical behavior. This hybrid
+approach enables adaptive filtering of suspicious updates and longterm penalization of unreliable clients, countering attacks ranging
+from backdoor insertions to random noise Byzantine failures. We
+evaluate HRA on a large-scale proprietary 5G network dataset (3M+
+records) and the widely used NF-CSE-CIC-IDS2018 benchmark
+under diverse adversarial attack scenarios. Experimental results
+reveal that HRA achieves robust global model accuracy of up to
+98.66% on the 5G dataset and 96.60% on NF-CSE-CIC-IDS2018,
+outperforming state-of-the-art aggregators such as Krum, Trimmed
+Mean, and Bulyan by significant margins. Our ablation studies further
+demonstrate that the full hybrid system achieves 98.66% accuracy,
+while the anomaly-only and reputation-only variants drop to 84.77%
+and 78.52%, respectively, validating the synergistic value of our
+dual-mechanism approach. This demonstrates HRA’s enhanced resilience and robustness in 5G/edge federated learning deployments,
+even under significant adversarial conditions.
+
+Federated Learning, Adversarial Defense, 5G/Edge Networks, Robust
+Aggregation, cyber-security
+
+CCS CONCEPTS
+• Security and privacy → Trust frameworks; Network security;
+Mobile and wireless security; • Computing methodologies →
+Distributed artificial intelligence.
+
+Permission to make digital or hard copies of all or part of this work for personal or
+classroom use is granted without fee provided that copies are not made or distributed for
+profit or commercial advantage and that copies bear this notice and the full citation on
+the first page. Copyrights for components of this work owned by others than ACM must
+be honored. Abstracting with credit is permitted. To copy otherwise, or republish, to
+post on servers or to redistribute to lists, requires prior specific permission and/or a fee.
+Request permissions from permissions@acm.org.
+ACM, ,
+© 2025 Association for Computing Machinery.
+ACM ISBN 978-1-4503-XXXX-X/21/06. . . $15.00
+https://doi.org/10.1145/xxxxxxx.xxxxxxx
+
+ACM Reference Format:
+Saeid Sheikhi, Panos Kostakos, and Lauri Loven. 2025. Hybrid Reputation
+Aggregation: A Robust Defense Mechanism for Adversarial Federated Learning in 5G and Edge Network Environments. In Proceedings of 21st ACM
+Conference on Computer and Communications Security (ACM). ACM, New
+York, NY, USA, 12 pages. https://doi.org/10.1145/xxxxxxx.xxxxxxx
+
+1
+
+INTRODUCTION
+
+Federated learning (FL) has emerged as a cornerstone of distributed
+model training for edge devices and 5G networks, enabling collaborative learning without centralized data collection [10, 11]. By
+allowing a large number of devices (e.g., smartphones, IoT sensors,
+or edge nodes) to train a shared model locally and only send model
+updates to a central server, FL addresses privacy concerns and reduces communication costs [15]. However, the security of FL in these
+distributed settings is a growing concern. Adversaries can exploit
+the decentralized nature of FL to inject malicious model updates that
+degrade or manipulate the global model [6, 9]. In the context of 5G
+and edge computing, where deployments involve massive numbers
+of devices and potentially untrusted participants, such adversarial
+behavior poses a critical threat [4, 18].
+Adversarial Threats in FL: A range of attacks have been demonstrated against federated learning. In data poisoning or label-flipping
+attacks, malicious clients intentionally mislabel their local training
+data or introduce corrupted samples, causing the global model to
+learn incorrect correlations. More insidious are backdoor attacks,
+where an adversary embeds a hidden trigger in the model such that it
+performs normally on benign inputs but produces attacker-chosen
+outputs when the trigger is present [1]. Other adversaries may launch
+Byzantine attacks by sending arbitrary or noisy model updates that
+disrupt convergence [3]. A particularly powerful threat in large-scale
+networks is the Sybil attack, in which one attacker controls multiple
+fake or compromised clients to wield disproportionate influence
+on the aggregation process [8]. These threats are exacerbated in
+5G/edge environments due to the scale, heterogeneity, and dynamic
+membership of clients, compromised devices or Sybils can join the
+federation undetected and coordinate sophisticated attack strategies.
+Limitations of Existing Defenses: To safeguard federated learning, researchers have proposed various robust aggregation rules that
+aim to tolerate a fraction of malicious clients. Notable examples include Krum [3], Bulyan [12], coordinate-wise median [17], trimmed
+mean [17], and the geometric median-based aggregator [13]. These
+
+ACM, ,
+
+algorithms use statistical techniques to identify and downweight
+outlier updates each round. For instance, Krum selects the update
+that is closest to others in the parameter space, excluding outliers,
+while Bulyan builds on Krum by iteratively filtering and averaging
+to improve Byzantine robustness. While effective against certain
+attacks, these defenses have significant limitations. Many require an
+estimate of the maximum number of adversarial clients (𝑓 ) to tune
+their filtering thresholds, and their performance can degrade if the
+actual attack deviates from assumptions. Moreover, most existing
+aggregators treat each round independently, lacking a mechanism
+to learn which clients are consistently unreliable. In non-IID settings typical of edge networks, even honest clients can occasionally
+produce divergent updates (e.g., due to unique local data), which a
+purely distance-based filter might mistakenly flag and remove. Conversely, clever adversaries can adapt their updates to evade one-shot
+outlier detection by mimicking normal client behavior. Thus, static,
+per-round defenses struggle to adapt to evolving or stealthy attack
+patterns in a long-running federated training session
+In this paper, we argue that a more dynamic and holistic approach
+to aggregation is needed for adversarial FL in 5G and edge scenarios.
+Our key insight is to combine instantaneous anomaly detection
+with historical behavior tracking, to differentiate between one-off
+benign outliers and truly malicious actors. We propose a novel
+aggregation strategy called Hybrid Reputation Aggregation (HRA)
+that integrates geometric anomaly detection with momentum-based
+reputation scoring. At a high level, HRA works as follows: in each
+training round, the server analyzes the submitted model updates in the
+high-dimensional model space and computes an anomaly score for
+each update based on its distance from the majority (using a geometric
+approach akin to outlier detection). Simultaneously, HRA maintains
+a reputation score for each client, which is updated over time (with
+a momentum factor) depending on whether the client’s updates
+have been identified as suspicious or benign in previous rounds.
+Clients whose updates consistently deviate from the consensus will
+experience a decline in reputation, reducing their influence on the
+aggregated model in future rounds. On the other hand, clients with a
+history of reliable contributions retain higher weights. This hybrid
+mechanism allows HRA to rapidly filter obviously malicious updates
+in each round and adapt to persistent attack sources over multiple
+rounds.
+HRA is designed to be attack-agnostic: it does not rely on any specific signature of a particular attack type, nor does it require knowing
+how many clients might be compromised. Instead, it dynamically
+builds trust scores and flags anomalies based on observed behavior.
+This makes it robust against a wide spectrum of attacks, including
+unforeseen or adaptive ones, without tuning parameters for each scenario. We implement HRA in a standard FL framework and evaluate
+it under a variety of adversarial conditions. Our experiments involve
+a proprietary 5G network dataset containing over 3 million data
+records, which simulates a realistic edge federated learning scenario
+with non-IID data across hundreds of clients. We test HRA against
+strong attackers employing Sybil strategies (multiple colluding adversaries), targeted model poisoning (label flips and backdoors), and
+untargeted random-noise attacks.
+Experimental evaluations demonstrate that HRA substantially
+outperforms traditional robust aggregation methods in both detecting
+malicious updates and preserving global model accuracy. In federated
+
+Sheikhi et al.
+
+learning simulations, HRA achieved a test accuracy of 98.66% on
+our proprietary 5G testbed data and maintained 96.60% accuracy
+on the NF-CSE-CIC-IDS2018 benchmark, while classical defenses
+achieved significantly lower accuracies. For instance, on the 5G
+dataset, Krum only achieved 23.73%, Trimmed Mean 22.85%, and
+Median 71.24% accuracy under the same adversarial conditions.
+Our synergy ablation study further validates the hybrid approach,
+showing that the full HRA system achieves 98.66% accuracy while the
+anomaly-only variant drops to 84.77% and the reputation-only variant
+to 78.52%. Moreover, due to its efficient integration of geometric
+anomaly detection with momentum-based reputation tracking, HRA
+introduces only a negligible computational overhead at the server,
+making it highly suitable for deployment in latency-sensitive 5G and
+edge network environments.
+Contributions: In summary, this paper makes the following
+contributions:
+• We propose Hybrid Reputation Aggregation (HRA), a new
+robust aggregation mechanism for federated learning that combines geometric anomaly detection with momentum-based
+client reputation tracking. HRA is a general defense method
+that operates without prior knowledge of attack patterns and
+adapts to various adversarial behaviors (Sybil attacks, poisoning, backdoors, etc.) on the fly.
+• We design HRA specifically for challenging 5G/edge network
+FL environments, featuring dynamic client populations and
+non-IID data. The reputation system in HRA provides a memory of client behavior, enabling the aggregator to distinguish
+transient outliers from persistent adversaries, which improves
+reliability for honest clients and the detection of malicious
+ones.
+• We perform extensive experiments on both a proprietary 5G
+network dataset with over 3 million data records, simulating a
+large-scale edge FL deployment, and the publicly available
+NF-CSE-CIC-IDS2018 benchmark. We evaluate HRA against
+multiple attack types (label-flipping data poisoning, backdoor
+insertion, noise injection, and Sybil collusion) and compare
+it with state-of-the-art robust aggregators like Krum, Bulyan,
+median, and trimmed mean. HRA consistently achieves higher
+accuracy and robustness; for example, it retains up to 98.66%
+test accuracy on the 5G dataset and 96.60% on NF-CSE-CICIDS2018, representing substantial improvements over existing
+defenses. The following best method, Bulyan, achieves only
+96.15% on the 5G dataset and 88.73% on NF-CSE-CICIDS2018.
+
+2
+
+RELATED WORK
+
+Adversarial Attacks on Federated Learning. The vulnerability
+of FL to adversarial clients has been well-documented in recent
+studies. Poisoning attacks entail malicious clients altering their local
+training data or labels to corrupt the global model’s performance.
+Bhagoji et al. [2] analyze model poisoning attacks in FL and show
+that even a small fraction of corrupted clients can significantly impact
+model accuracy. In a simple label-flipping scenario, attackers might,
+for instance, flip the labels of examples from one class to another,
+causing the global model to misclassify that class. More targeted are
+backdoor attacks, where the adversary’s goal is to make the model
+
+Hybrid Reputation Aggregation for Adversarial FL
+
+respond incorrectly to inputs containing a specific trigger while
+behaving normally otherwise. Bagdasaryan et al. [1] demonstrated
+that a single determined attacker can implement a backdoor in an
+FL setting by modifying its model update (and possibly scaling it)
+in one training round, achieving a targeted misclassification (e.g.,
+making the global model classify images with a certain sticker as a
+different category). Another class of attacks is Byzantine attacks, in
+which adversaries send arbitrarily malformed updates, these could
+be random noise or carefully crafted vectors, to derail the training
+process. Blanchard et al.’s work on Krum [3] was motivated by such
+Byzantine faults, showing that without defenses, a few bad updates
+can prevent convergence or drastically lower accuracy. In addition,
+Sybil attacks have been identified as a severe threat in federated
+networks: an attacker creates many pseudonymous clients to join
+the federation, amplifying its influence. Fung et al.’s FoolsGold
+defense [8] specifically examined this scenario, highlighting how
+multiple fake clients can cooperate to skew the learning process or
+evade detection. These studies underscore the importance of robust
+aggregation mechanisms that can handle both malicious outliers and
+collusion by adversaries.
+Robust Aggregation Techniques. A number of robust aggregation
+rules have been proposed to defend FL against adversarial or unreliable clients. One of the earliest is Krum [3], which chooses a single
+local model update that is closest to its 𝑛 − 𝑓 − 2 nearest neighbors
+(where 𝑓 is the assumed maximum number of Byzantine clients) and
+uses it as the aggregated update. The idea is to exclude updates that
+are far from the majority under the assumption that honest updates
+will cluster together. Multi-Krum repeatedly applies Krum to select
+multiple updates (instead of one) before averaging to retain more
+information from honest clients. Building on this, Bulyan [12] is a
+two-step aggregator: first, it uses an approach like Multi-Krum to
+pick a set of candidate updates deemed likely to be benign; second,
+it computes the coordinate-wise trimmed mean of those candidates,
+further eliminating outlier values. Bulyan offers improved robustness
+guarantees, reducing the impact of Byzantine values to a smaller
+bound. Other approaches dispense with picking specific candidates
+and instead use robust statistics across all updates: the coordinatewise median [17] takes the median of each model parameter over
+all client updates (which can tolerate up to 50% arbitrary corruption
+on each dimension), and the trimmed mean [17] discards a certain
+fraction of the highest and lowest values for each parameter before
+averaging the rest. These methods assume that the majority of clients
+are honest for each parameter update. More recently, the geometric
+median has been explored for FL aggregation [13], where the server
+finds a model update that minimizes the sum of distances to all client
+updates (this can be seen as a multivariate generalization of the
+median). The geometric median-based aggregator (sometimes called
+RFA for robust federated averaging) can offer strong theoretical
+robustness but typically requires an iterative solution and can be
+computationally heavier.
+While effective to varying degrees, all the above aggregation
+rules are inherently memoryless they operate based on the current
+round’s updates without considering the past behavior of clients.
+They also generally rely on knowing or assuming an upper bound on
+the fraction of adversaries (𝑓 ). If 𝑓 is underestimated, these methods
+may fail to filter out all malicious updates; if 𝑓 is overestimated, they
+may throw away too many genuine updates, hurting model accuracy.
+
+ACM, ,
+
+Additionally, sophisticated attackers can sometimes bypass these
+defenses. For example, recent work by Fang et al. [7] showed that an
+adaptive group of attackers can carefully craft their updates to appear
+mutually consistent and relatively benign (thus avoiding detection by
+Krum or trimmed mean), yet still introduce a significant error into
+the global model.
+Reputation and Trust-Based Approaches. An alternative line of
+defense in FL is to incorporate notions of trust or reputation into
+the aggregation process. Instead of treating each update in isolation,
+these approaches maintain the state of clients. FoolsGold [8], for
+instance, does not use a traditional robust aggregator but dynamically
+adjusts the effective learning rate of each client based on the similarity
+of its updates to others. The intuition is that Sybil attackers will
+produce updates that are more similar to each other (since they
+have a common objective), so if a client’s update frequently aligns
+with others, FoolsGold penalizes it by reducing its influence. This
+implicitly builds a reputation in that clients performing unique
+(and hence likely honest) contributions are trusted more over time.
+FLTrust [5] takes a different approach by assuming the server
+has a small trustworthy dataset: it evaluates each client’s model
+update on this clean data to compute a trust score and uses those
+scores to weight the aggregation (clients that perform poorly on the
+validation data are likely malicious and get lower weight). Some recent
+frameworks have also suggested explicitly tracking a reputation score
+for each client across rounds, updating scores based on behaviors
+like update magnitude or consistency with the global model [16].
+Such reputation-based methods can improve resilience, especially
+against repeating offenders, but they often require careful design to
+avoid new vulnerabilities (e.g., an attacker might behave well to gain
+trust and then attack later or collude to upvote each other if peer
+grading is used). Moreover, methods like FLTrust require additional
+trusted data, which may not be available in practice.
+Therefore, prior work provides valuable techniques for robust
+aggregation and attack mitigation in federated learning, yet no
+single solution fully addresses the challenges of adversarial FL
+in a dynamic edge network setting. Our proposed HRA method
+differentiates itself by unifying instantaneous anomaly detection with
+long-term reputation tracking without relying on external trust data
+or assumptions of attacker prevalence. As we will show, this hybrid
+approach offers robust protection against a broad array of attacks,
+filling an important gap in the federated learning security landscape.
+
+3
+
+METHODOLOGY
+
+In this section, we describe our approach to defending FL systems
+against adversarial client behaviors. Our proposed framework integrates geometric anomaly detection and reputation-based weighting
+to mitigate the effects of malicious updates. First, we provide an
+overview of the FL setup and data pre-processing. Next, we detail the local training procedure with adversarial attack simulation,
+present the key aggregation algorithm with pseudocode and relevant
+equations, and finally describe the simulation setup, execution, and
+evaluation methodology.
+
+ACM, ,
+
+3.1
+
+Sheikhi et al.
+
+Federated Learning Setup and Data
+Preprocessing
+
+Algorithm 1 Local Training with Attack Simulation
+
+𝑁 denote the complete training dataset, where
+Let D = {(x𝑖 , 𝑦𝑖 )}𝑖=1
+𝑑
+x𝑖 ∈ R is the feature vector and 𝑦𝑖 ∈ {0, 1} is the binary label (with 0
+
+indicating benign and 1 an attack). Data preprocessing is performed
+as follows:
+• Conversion: All categorical and hexadecimal features are
+converted to numeric values.
+• Imputation: Missing values are replaced by the median of
+each feature.
+• Normalization: Each feature is standardized using
+
+x′ =
+
+x−𝜇
+,
+𝜎
+
+(1)
+
+where 𝜇 and 𝜎 are the mean and standard deviation computed
+from the training data.
+The training dataset is then partitioned uniformly among 𝑀 clients
+(e.g., 𝑀 = 10). For each client 𝑗, let D 𝑗 denote its local dataset.
+
+3.2
+
+Local Training with Adversarial Attack
+Simulation
+
+Each client trains a local logistic regression model. The model output
+is computed as:
+
+Require: Local data D 𝑗 , global parameters (w, 𝑏), learning rate 𝜂,
+attack type A, local epochs 𝐸
+1: Initialize w 𝑗 ← w, 𝑏 𝑗 ← 𝑏
+2: if A = label_flipping then
+3:
+Set 𝑦 ← 1 − 𝑦 for all local samples
+4: end if
+5: for 𝑒 = 1 to 𝐸 do
+6:
+Compute predictions: 𝑧 ← 𝑋 𝑗 w 𝑗 + 𝑏 𝑗
+7:
+Compute error: e ← 𝜎 (𝑧) − 𝑦 𝑗
+8:
+Update weights: w 𝑗 ← w 𝑗 − 𝜂 · ∇w , where ∇w = | D1 𝑗 | 𝑋 𝑗⊤ e
+Í
+9:
+Update bias: 𝑏 𝑗 ← 𝑏 𝑗 − 𝜂 · ∇𝑏 , where ∇𝑏 = | D1 𝑗 | e
+10: end for
+11: if A = noise then
+12:
+Perturb w 𝑗 and 𝑏 𝑗 with Gaussian noise
+13: else if A = sign_flipping then
+14:
+Invert the sign of the update and amplify it
+15: else if A = backdoor then
+16:
+Add a predefined trigger vector to w 𝑗
+17: else if A = sybil then
+18:
+Add large-scale perturbations to w 𝑗 and 𝑏 𝑗
+19: end if
+20: return (w 𝑗 , 𝑏 𝑗 )
+
+3.3
+
+Hybrid Reputation Aggregation
+
+After local updates, the server aggregates the client models. In
+addition to standard methods (mean, median, etc.), our HRA method
+is designed to weigh each client’s update based on its anomaly and
+reputation.
+3.3.1 Geometric Reference and Anomaly Scoring. First, a robust
+reference update is computed via the geometric median of the client
+updates:
+
+
+wref = GeomMed {w 𝑗 }𝑀
+(4)
+𝑗=1 .
+Each client’s anomaly score is calculated as:
+
+𝑦ˆ = 𝜎 (𝑧) =
+
+1
+,
+1 + 𝑒 −𝑧
+
+with 𝑧 = x⊤ w + 𝑏.
+
+(2)
+
+The training minimizes the binary cross-entropy loss via gradient
+descent. To simulate adversarial behavior, clients are assigned specific
+attack types (e.g., label_flipping, noise, backdoor, sybil, and
+sign_flipping). For instance, under a label-flipping attack, a client
+transforms its labels according to:
+
+Δ 𝑗 = ∥w 𝑗 − wref ∥ 2 .
+
+3.3.2 Reputation-Based Weighting. Given two thresholds 𝑇𝑙𝑜𝑤 and
+𝑇ℎ𝑖𝑔ℎ , the weight factor 𝜙 (Δ 𝑗 ) for client 𝑗 is defined as:
+
+
+1,
+Δ 𝑗 ≤ 𝑇𝑙𝑜𝑤 ,
+
+
+ 𝑇ℎ𝑖𝑔ℎ −Δ 𝑗
+
+𝜙 (Δ 𝑗 ) = 𝑇ℎ𝑖𝑔ℎ −𝑇𝑙𝑜𝑤 , 𝑇𝑙𝑜𝑤 < Δ 𝑗 < 𝑇ℎ𝑖𝑔ℎ ,
+(6)
+
+
+
+ 0,
+Δ 𝑗 ≥ 𝑇ℎ𝑖𝑔ℎ .
+
+Additionally, each client is assigned a reputation score 𝑟 𝑗 updated
+iteratively using a momentum parameter 𝜌 ∈ [0, 1]:
+𝑟 𝑗(𝑡 +1) = 𝜌 𝑟 𝑗(𝑡 ) + (1 − 𝜌) 𝜙 (Δ 𝑗 ).
+
+𝑦adv = 1 − 𝑦.
+
+(3)
+
+The key steps of local training with attack simulation can be
+summarized in pseudocode 1 as follows:
+
+(5)
+
+(7)
+
+3.3.3 Aggregation Rule. The final aggregated model is computed as
+a weighted average:
+Í𝑀
+𝑗=1 𝑟 𝑗 𝜙 (Δ 𝑗 ) w 𝑗
+wagg = Í𝑀
+,
+(8)
+𝑗=1 𝑟 𝑗 𝜙 (Δ 𝑗 )
+Í𝑀
+𝑗=1 𝑟 𝑗 𝜙 (Δ 𝑗 ) 𝑏 𝑗
+𝑏 agg = Í𝑀
+.
+(9)
+𝑗=1 𝑟 𝑗 𝜙 (Δ 𝑗 )
+
+Hybrid Reputation Aggregation for Adversarial FL
+
+ACM, ,
+
+The overall HRA procedure is summarized in the following
+pseudocode 2:
+
+Algorithm 2 Hybrid Reputation Aggregation
+𝑀
+Require: Client updates {(w 𝑗 , 𝑏 𝑗 )}𝑀
+𝑗=1 , reputations {𝑟 𝑗 } 𝑗=1 , thresholds 𝑇𝑙𝑜𝑤 ,𝑇ℎ𝑖𝑔ℎ
+
+1: Compute wref = GeomMed {w 𝑗 }
+2: for each client 𝑗 do
+3:
+Δ 𝑗 ← ∥w 𝑗 − wref ∥ 2
+4:
+Compute 𝜙 (Δ 𝑗 ) using Equation (6)
+5: end for
+6: Compute aggregated weights using Equations (8) and (9)
+7: return (wagg , 𝑏 agg )
+
+4
+
+In this section, we evaluate the performance of our proposed hybrid
+reputation aggregation mechanism against several baseline aggregation methods in a federated learning setting under adversarial
+conditions. We first describe our experimental setup, including details of our dataset collection, attack simulations, and preprocessing.
+We then present performance comparisons on both a custom 5G
+dataset and the NF-CSE-CIC-IDS2018 [14] benchmark. Finally,
+we report an ablation study on key HRA parameters and provide
+statistical validation via paired t-tests.
+
+4.1
+4.2
+
+3.4
+
+Simulation Setup and Evaluation Methodology
+
+We evaluated our approach through extensive simulations under
+various adversarial conditions. The simulation process follows these
+steps:
+(1) Model Initialization: A global logistic regression model with
+parameters (w, 𝑏) is initialized to zero.
+(2) Data Partitioning: The preprocessed training dataset is partitioned into 𝑀 non-IID subsets for clients.
+(3) Local Training: In each communication round 𝑟 , each client
+performs local training (Algorithm 1) for a fixed number of
+epochs using its local data and possible adversarial modifications.
+(4) Aggregation: The server aggregates client updates using HRA
+(Algorithm 2) to update the global model.
+(5) Learning Rate Decay: The learning rate is decayed as:
+𝜂𝑟 = 𝜂 0 · 𝛾 𝑟 ,
+
+(10)
+
+where 𝛾 < 1 is the decay factor.
+(6) Evaluation: At the end of each round, the updated global
+model is evaluated on a held-out test set. Evaluation metrics
+include accuracy, precision, recall, and F1 score. In addition,
+we monitor the average anomaly distance and reputation
+evolution.
+(7) Statistical Analysis: To ensure the robustness of our results,
+simulations are repeated for multiple independent runs (e.g.,
+𝑛 = 5), and paired t-tests are performed for comparative
+analysis against baseline aggregation methods.
+All simulation parameters, such as the number of rounds 𝑅, client
+count 𝑀, learning rate 𝜂 0 , decay rate 𝛾, and thresholds (𝑇𝑙𝑜𝑤 ,𝑇ℎ𝑖𝑔ℎ ),
+are chosen based on preliminary experiments.
+The methodology integrates a comprehensive FL training process
+with adversarial attack simulation and a novel hybrid reputation
+aggregation scheme. By combining geometric anomaly detection
+and momentum-based reputation updating, our approach effectively
+discounts malicious client updates and maintains robust global model
+performance. Extensive simulations on both proprietary and public
+datasets (including large-scale 5G data) substantiate the superior
+performance of our method under a variety of adversarial scenarios.
+
+EXPERIMENTAL RESULTS AND ABLATION
+STUDY
+
+Experimental Setup, Datasets, and
+Preprocessing
+Datasets and Preprocessing
+
+We conduct our experiments on two datasets: a custom 5G network
+traffic dataset collected via a dedicated testbed, and the publicly available NF-CSE-CIC-IDS2018 [14] benchmark. Table 1 summarizes
+the key dataset statistics after preprocessing, while Table 2 details
+the class distributions for the 5G dataset.
+Table 1: Dataset Statistics after Preprocessing
+Statistic
+
+5G Testbed
+
+NF-CSE-CIC-IDS2018
+
+Features
+Train Samples
+Test Samples
+Total Samples
+
+29
+1,753,454
+194,829
+1,948,283
+
+10
+6,713,920
+1,678,481
+8,392,401
+
+5G Dataset Collection. The 5G dataset was captured in a private
+testbed environment built around an Open5GS core network with
+Dockerized services. The testbed supports both Internet and IoT
+traffic via network slicing. Figure 2 presents the network design of
+the 5G testbed. A structured workflow was utilized to create a robust
+and realistic dataset that includes both normal and malicious traffic.
+The traffic collection involved:
+(1) Network Slicing: Configuring different slices to isolate various traffic streams.
+(2) Service Simulation: Deploying Dockerized services to emulate realistic network applications.
+(3) Traffic Generation: Simulating both benign traffic and adversarial activities (including DoS_MQTT, DDoS, Eavesdropping, MITM, SQL Injection, Unauthorized Data Access,
+Brute Force, and Device Spoofing).
+(4) Data Capture and Processing: Continuously capturing traffic
+and extracting features followed by conversion, imputation,
+constant-feature removal, and standard normalization.
+The 5G dataset, prior to preprocessing, contains 29 features, with
+a training set of 1,753,454 samples and a testing set of 194,829
+samples. For the conducted experiments, the class labels in the
+the dataset were converted to a binary format. The original class
+distribution of the collected 5G dataset is shown in Table 2.
+To ensure a strict evaluation of our approach, we processed and
+partitioned our datasets using a pre-processing procedure before
+
+ACM, ,
+
+Sheikhi et al.
+
+Figure 1: Overall Architecture: From Data Preprocessing to Hybrid Reputation-Based Aggregation.
+
+Figure 2: The structure of the 5G Core in the testbed.
+Table 2: Class Distribution for the 5G Dataset (priorPreprocessing)
+Attack Class
+Benign
+DoS_MQTT
+DDoS
+Eavesdropping
+MITM
+SQL Injection
+Unauthorized Data Access
+Brute Force
+Device Spoofing
+
+Train records
+
+Test records
+
+66,631
+25,052
+16,484
+361
+68
+54
+31
+26
+10
+
+7,404
+2,720
+1,901
+37
+11
+10
+10
+10
+10
+
+federated learning simulations. The following outlines the procedures
+for each dataset.
+
+NF-CSE-CIC-IDS2018 Dataset. We employ the NF-CSE-CICIDS2018 dataset, a benchmark widely used for network intrusion
+detection. After initial data cleaning and removal of constant-valued
+features, we retain 10 critical features. The dataset is partitioned into
+a training set with 6,713,920 samples and a testing set with 1,678,481
+samples. The preprocessing steps are as follows:
+• Conversion: Categorical and hexadecimal feature values are
+converted into numeric representations.
+• Imputation: Missing values are imputed using the median of
+each feature.
+• Normalization: Standard scaling is applied to each feature:
+x′ =
+
+x−𝜇
+,
+𝜎
+
+(11)
+
+where 𝜇 and 𝜎 denote the mean and standard deviation computed from the training set.
+
+Hybrid Reputation Aggregation for Adversarial FL
+
+ACM, ,
+
+For federated simulations, the training set is partitioned uniformly
+among 10 clients, ensuring that each client receives a statistically
+representative subset of the overall data.
+
+Table 4: Classification Performance on the NF-CSE-CICIDS2018 Dataset
+
+Federated Data Partitioning. For all federated simulations, the
+respective training set is partitioned among 10 clients. To simulate
+a realistic non-IID environment, which is a key challenge in edge
+networks, a Dirichlet distribution (𝛼 = 0.5) was used to distribute
+the data labels unevenly across clients. This ensures that each client
+possesses a skewed and unique class distribution, rigorously testing
+the aggregator’s performance under heterogeneous data conditions.
+
+Method
+
+4.3
+
+Attack Simulation and Implementation Details
+
+During each FL round, clients perform local training using a logistic
+regression model. Adversarial behavior is simulated by assigning
+specific attack types to a subset of clients. For example, under a
+label_flipping attack, local labels are inverted:
+𝑦adv = 1 − 𝑦.
+
+(12)
+
+Other attack types (e.g., noise, backdoor, sybil, sign_flipping)
+introduce controlled perturbations to the local model updates.
+Our local training procedure (see Algorithm 1) runs for 𝐸 = 16
+epochs per round with a decaying learning rate:
+𝜂𝑟 = 𝜂 0 · 𝛾 𝑟 ,
+where 𝜂 0 = 0.1 and 𝛾 = 0.998. For the 5G dataset, our implementation
+uses all 23 features; for NF-CSE-CIC-IDS2018, we use the 10 selected
+features.
+The experiments are implemented in Python. All simulation code
+(data partitioning, local training with adversarial attack simulation,
+and aggregation) is modular, allowing extensive reproducibility.
+
+4.4
+
+Performance Comparison
+
+Tables 3 and 4 summarize the classification performance (Accuracy,
+Precision, Recall, F1 Score, and ROC AUC) of HRA alongside
+several baseline aggregation methods.
+Table 3: Classification Performance on the 5G Dataset
+Method
+
+Accuracy
+
+Precision
+
+Recall
+
+F1 Score
+
+ROC AUC
+
+Hybrid Reputation
+
+0.9866 ± 0.0000
+
+0.94999
+
+0.98514
+
+0.96724
+
+0.98438
+
+Bulyan
+
+0.9615 ± 0.0000
+
+0.94649
+
+0.94457
+
+0.94553
+
+0.96385
+
+FLTrust
+
+0.7402 ± 0.2422
+
+-
+
+-
+
+-
+
+-
+
+Median
+
+0.7124 ± 0.1684
+
+0.56289
+
+0.54246
+
+0.55249
+
+0.70472
+-
+
+FLARE
+
+0.6057 ± 0.2155
+
+-
+
+-
+
+-
+
+BaFFLe
+
+0.5976 ± 0.2580
+
+-
+
+-
+
+-
+
+-
+
+GeoMed
+
+0.5331 ± 0.3517
+
+0.82097
+
+0.24536
+
+0.37781
+
+0.61423
+
+Simple Mean
+
+0.4731 ± 0.1367
+
+0.22485
+
+0.86634
+
+0.35703
+
+0.46159
+
+Krum
+
+0.2373 ± 0.1810
+
+0.08645
+
+0.27531
+
+0.13158
+
+0.17829
+
+Trimmed Mean
+
+0.2285 ± 0.0479
+
+0.92242
+
+0.50275
+
+0.65079
+
+0.74470
+
+4.4.1 Performance Evolution Plots. Figures 3 and 4 illustrate the evolution of key performance metrics over 20 communication rounds for
+the 5G dataset and the NF-CSE-CIC-IDS2018 dataset, respectively.
+Each figure comprises three panels:
+
+Accuracy
+
+Precision
+
+Recall
+
+F1 Score
+
+ROC AUC
+
+Hybrid Reputation
+
+0.9660 ± 0.0000
+
+0.82304
+
+0.91763
+
+0.86776
+
+0.94518
+
+Bulyan
+
+0.8873 ± 0.0000
+
+0.60199
+
+0.28971
+
+0.39117
+
+0.63161
+
+GeoMed
+
+0.8675 ± 0.0154
+
+0.05805
+
+0.00873
+
+0.01517
+
+0.49458
+
+FLTrust
+
+0.8071 ± 0.1059
+
+-
+
+-
+
+-
+
+-
+
+FLARE
+
+0.6608 ± 0.2101
+
+-
+
+-
+
+-
+
+-
+
+Simple Mean
+
+0.6511 ± 0.1722
+
+0.01288
+
+0.03519
+
+0.01886
+
+0.33121
+
+Median
+
+0.5715 ± 0.0723
+
+0.13341
+
+0.55934
+
+0.21543
+
+0.52854
+
+BaFFLe
+
+0.5401 ± 0.0325
+
+-
+
+-
+
+-
+
+-
+
+Trimmed Mean
+
+0.5206 ± 0.0741
+
+0.11416
+
+0.33858
+
+0.17075
+
+0.48795
+
+Krum
+
+0.4910 ± 0.0520
+
+0.12123
+
+0.99789
+
+0.21619
+
+0.49899
+
+(1) Test Accuracy over Rounds: This panel shows the progression of test accuracy with standard error bars computed over
+5 independent runs.
+(2) Average Anomaly Distance over Rounds: This panel tracks
+the mean anomaly distance of client updates relative to the
+geometric median reference, reflecting the degree of deviation
+of local models.
+(3) Reputation Evolution over Rounds: This panel presents
+the dynamic evolution of aggregated client reputation scores,
+indicating how HRA adapts to client behavior over successive
+rounds.
+These plots provide a comprehensive visualization of the performance dynamics in our federated learning framework, demonstrating
+that HRA consistently maintains high accuracy while effectively
+mitigating the influence of adversarial updates.
+
+4.5
+
+Ablation Study
+
+To evaluate the robustness and adaptability of the proposed HRA, we
+conducted an ablation study using the 5G dataset, focusing on two
+critical aspects of the design: threshold configuration and learning
+rate selection.
+Threshold Sensitivity. HRA’s update weighting relies on a trust
+scoring function parameterized by two thresholds: 𝑇𝑙𝑜𝑤 and 𝑇ℎ𝑖𝑔ℎ ,
+which define the transition between full trust, partial trust, and
+rejection zones (see Equation (6)). Table 5 reports how varying these
+thresholds affects overall classification accuracy.
+We observe that HRA maintains optimal performance (98.66%)
+across multiple threshold configurations where both thresholds
+remain moderate (e.g., 𝑇ℎ𝑖𝑔ℎ ≤ 7.0). However, setting 𝑇ℎ𝑖𝑔ℎ too
+high leads to severe performance degradation, with the worst case
+(𝑇𝑙𝑜𝑤 = 10.0, 𝑇ℎ𝑖𝑔ℎ = 20.0) resulting in a catastrophic 43.31% drop
+in accuracy.
+Learning Rate Sensitivity. We also tested the sensitivity of HRA
+to different learning rates in the local client optimizers. As shown in
+Table 6, HRA maintains consistently high accuracy across learning
+rates from 0.01 to 0.20, demonstrating remarkable stability.
+These results suggest that HRA is remarkably robust to optimizer
+settings, with the maximum deviation being only 0.16% across all
+tested learning rates.
+
+ACM, ,
+
+Sheikhi et al.
+
+Figure 3: Performance evolution on the 5G dataset: (Top) Test
+Accuracy over rounds, (Middle) Average Anomaly Distance,
+(Bottom) Reputation Evolution.
+
+Figure 4: Performance evolution on the NF-CSE-CIC-IDS2018
+dataset: (Top) Test Accuracy over rounds, (Middle) Average
+Anomaly Distance, (Bottom) Reputation Evolution.
+
+The ablation findings confirm that HRA’s performance is resilient
+to moderate variations in both internal trust thresholds and local
+
+optimizer hyperparameters. This robustness makes it well-suited
+
+Hybrid Reputation Aggregation for Adversarial FL
+
+ACM, ,
+
+Table 5: Ablation Study: Sensitivity to Threshold Parameters
+(𝑇𝑙𝑜𝑤 , 𝑇ℎ𝑖𝑔ℎ ) on 5G Dataset
+Configuration
+
+HRA Accuracy (%)
+
+Change (%)
+
+98.66
+98.66
+98.66
+98.66
+98.66
+97.74
+95.19
+94.57
+72.60
+63.52
+63.05
+57.67
+55.35
+
+—
+0.00
+0.00
+0.00
+0.00
+−0.92
+−3.46
+−4.09
+−26.06
+−35.14
+−35.61
+−40.99
+−43.31
+
+Baseline (𝑇𝑙𝑜𝑤 = 3.0, 𝑇ℎ𝑖𝑔ℎ = 7.0)
+𝑇𝑙𝑜𝑤 = 2.0, 𝑇ℎ𝑖𝑔ℎ = 6.0
+𝑇𝑙𝑜𝑤 = 2.0, 𝑇ℎ𝑖𝑔ℎ = 7.0
+𝑇𝑙𝑜𝑤 = 3.0, 𝑇ℎ𝑖𝑔ℎ = 6.0
+𝑇𝑙𝑜𝑤 = 5.0, 𝑇ℎ𝑖𝑔ℎ = 6.0
+𝑇𝑙𝑜𝑤 = 5.0, 𝑇ℎ𝑖𝑔ℎ = 7.0
+𝑇𝑙𝑜𝑤 = 2.0, 𝑇ℎ𝑖𝑔ℎ = 10.0
+𝑇𝑙𝑜𝑤 = 3.0, 𝑇ℎ𝑖𝑔ℎ = 10.0
+𝑇𝑙𝑜𝑤 = 3.0, 𝑇ℎ𝑖𝑔ℎ = 20.0
+𝑇𝑙𝑜𝑤 = 2.0, 𝑇ℎ𝑖𝑔ℎ = 20.0
+𝑇𝑙𝑜𝑤 = 5.0, 𝑇ℎ𝑖𝑔ℎ = 10.0
+𝑇𝑙𝑜𝑤 = 5.0, 𝑇ℎ𝑖𝑔ℎ = 20.0
+𝑇𝑙𝑜𝑤 = 10.0, 𝑇ℎ𝑖𝑔ℎ = 20.0
+
+appear statistically normal in individual rounds, a vulnerability only
+temporal tracking can address.
+The "Reputation Only" system performed even worse, with accuracy descending to 78.52% (-20.14%). This dramatic failure
+highlights a critical insight: without per-round anomaly feedback,
+the reputation system operates blindly during initial rounds, allowing adversaries to inflict substantial damage before their reputation
+scores sufficiently decline. This initial vulnerability window proves
+destructive in coordinated attack scenarios.
+
+Table 6: Ablation Study: Learning Rate Sensitivity on 5G Dataset
+Learning Rate
+
+HRA Accuracy (%)
+
+Change (%)
+
+0.01
+0.05
+0.10 (Baseline)
+0.20
+
+98.49
+98.61
+98.66
+98.66
+
+−0.16
+−0.05
+—
+0.00
+
+for deployment in real-world federated edge environments, where
+dynamic client conditions may require adaptable parameter choices.
+
+4.6
+
+Synergy of Hybrid Components
+
+To validate the central hypothesis of this work, that the combination
+of instantaneous anomaly detection and long-term reputation tracking
+is more effective than either component in isolation, we conducted a
+comprehensive synergy ablation study. We evaluated the performance
+of the full HRA system against two variants:
+• HRA-No-Reputation (Anomaly Only): This variant exclusively uses the geometric anomaly score to weight client
+updates. The reputation mechanism is disabled, making the
+aggregator memoryless and equivalent to a sophisticated
+outlier detection method.
+• HRA-No-Anomaly (Reputation Only): This variant relies
+solely on the clients’ historical reputation scores for weighting.
+The instantaneous anomaly score from the current round is ignored during aggregation, making it purely history-dependent.
+The experiments were conducted under the same stealthy adversarial conditions used in our main evaluation, with 70% malicious
+clients executing coordinated attacks. The results, summarized in
+Table 7 and visualized in Figure 5, unequivocally demonstrate the
+synergistic value of our hybrid design.
+The full HRA system achieved a final test accuracy of 98.66%.
+In contrast, the "Anomaly Only" variant’s accuracy dropped precipitously to 84.77% (-13.89%). This degradation reveals that while
+instantaneous outlier detection can identify obvious attacks, it remains vulnerable to sophisticated adversaries that craft updates to
+
+Figure 5: Final test accuracy comparison: The full HRA system significantly outperforms both single-component variants,
+demonstrating the necessity of the hybrid approach. Error bars
+represent standard deviation over five independent runs.
+These results confirm that neither component alone is sufficient
+for robust defense against modern adversarial attacks. The 20+
+percentage point performance gap between the full system and
+individual components represents one of the most significant synergy
+effects reported in federated learning defense literature. The superior
+performance of the complete HRA model proves that its strength lies
+in the synergistic interplay between its two core mechanisms:
+• The anomaly score provides immediate, per-round signals to
+identify statistical outliers and inform the reputation system’s
+trust updates.
+• The reputation system provides long-term memory to detect
+behavioral patterns and suppress persistent, adaptive attacks
+that evade single-round detection.
+This synergy creates a defense mechanism that is both reactive
+(responding to immediate threats) and proactive (learning from
+historical patterns), making it uniquely suited to defend against
+the full spectrum of adversarial strategies in federated learning
+environments.
+
+4.7
+
+Statistical Analysis
+
+For the 5G dataset, paired t-tests were performed to compare HRA
+with baseline methods over 5 runs. The t-test results (using HRA’s
+final test accuracy of 98.66% as reference) are shown in Table 8. All
+p-values are well below the significance threshold of 0.05.
+The experimental results demonstrate that the proposed HRA
+consistently outperforms baseline aggregation methods across both
+
+ACM, ,
+
+Sheikhi et al.
+
+Table 7: Synergy Ablation Study Results on 5G Dataset
+HRA Component Configuration
+
+Final Accuracy (%)
+
+Performance Drop vs. Full System
+
+98.66 ± 0.00
+84.77 ± 0.45
+78.52 ± 0.68
+
+— (Baseline)
+-13.89%
+-20.14%
+
+HRA (Full System)
+HRA-No-Reputation (Anomaly Only)
+HRA-No-Anomaly (Reputation Only)
+
+Table 8: Paired t-test p-values for HRA vs. Baselines (5G Dataset)
+Method
+Krum
+Trimmed Mean
+Bulyan
+Median
+GeoMed
+Simple Mean
+BaFFLe
+FLTrust
+FLARE
+
+HRA Accuracy (%)
+
+p-value
+
+98.66
+98.66
+98.66
+98.66
+98.66
+98.66
+98.66
+98.66
+98.66
+
+6.5878 × 10−12
+1.1298 × 10−23
+1.2338 × 10−8
+1.7064 × 10−14
+5.7585 × 10−15
+2.5417 × 10−22
+7.2797 × 10−18
+2.7161 × 10−17
+2.4206 × 10−17
+
+the NF-CSE-CIC-IDS2018 and 5G datasets. The custom 5G dataset,
+collected via a dedicated 5G testbed that leverages network slicing
+and Dockerized services, provides realistic traffic conditions and
+adversarial scenarios. Our ablation study confirms the critical role
+of reputation momentum and threshold parameters in tuning the
+anomaly-aware aggregation, and paired t-tests confirm that HRA’s
+improvements are statistically significant.
+
+5
+
+DISCUSSION
+
+The experimental results across both the 5G and NF-CSE-CICIDS2018 datasets clearly demonstrate the efficacy of the HRA
+approach. On the 5G dataset, HRA achieves an accuracy of 98.66%,
+outperforming all baseline methods by a considerable margin. Similarly, on the NF-CSE-CIC-IDS2018 dataset, HRA reaches 96.60%
+accuracy, while maintaining a high F1 score (0.86776) and ROC AUC
+(0.94518). This performance is achieved under a highly adversarial
+setting that includes label flipping, sybil, backdoor, and noise-based
+attacks. The paired t-tests validate that these gains are statistically
+significant
+This robustness derives from HRA’s dual strategy of combining
+geometric anomaly detection (via anomaly distance metrics) with
+momentum-based reputation tracking. Unlike memoryless defenses
+such as Krum [3] or Trimmed Mean [17], which rely only on
+instantaneous spatial relationships between updates, HRA integrates
+temporal behavioral consistency into its decision-making. As shown
+in Figures 3 and 4, HRA not only maintains stable model accuracy
+but also suppresses anomaly distance and dynamically lowers the
+influence of unreliable clients, as seen in the declining reputation
+curves.
+Threshold Sensitivity. As shown in Table 5, HRA demonstrates
+remarkable stability when thresholds are set to moderate values.
+The baseline configuration (𝑇𝑙𝑜𝑤 = 3.0, 𝑇ℎ𝑖𝑔ℎ = 7.0) and several
+other moderate settings achieve the optimal performance of 98.66%
+
+accuracy. The proposed HRA maintains this peak performance across
+five different threshold combinations where 𝑇ℎ𝑖𝑔ℎ ≤ 7.0. However,
+the system exhibits severe performance degradation when 𝑇ℎ𝑖𝑔ℎ is set
+too conservatively. When 𝑇ℎ𝑖𝑔ℎ = 20.0, accuracy drops precipitously:
+configurations with 𝑇𝑙𝑜𝑤 ∈ {2.0, 3.0, 5.0} result in accuracy losses
+of 35.14%, 26.06%, and 40.99% respectively. The most extreme
+configuration (𝑇𝑙𝑜𝑤 = 10.0, 𝑇ℎ𝑖𝑔ℎ = 20.0) causes a destructive 43.31%
+accuracy drop to just 55.35%. This dramatic degradation indicates
+that overly conservative thresholding severely over-penalizes updates,
+likely excluding many beneficial contributions from benign clients
+and preventing effective model convergence.
+Learning Rate Sensitivity. Table 6 reveals that HRA exhibits
+exceptional robustness to learning rate variations. Across the tested
+range from 0.01 to 0.20, accuracy remains quite stable between
+98.49% and 98.66%. The smallest learning rate (0.01) results in
+a negligible decrease of 0.16%, while 0.05 shows an even smaller
+decrease of 0.05%. The highest learning rate (0.20) maintains the
+same peak performance as the baseline (98.66%). This minimal
+variation, with all accuracies within 0.17 percentage points, confirms
+that HRA is highly robust to optimizer settings, making it practical for
+deployment in heterogeneous federated environments where clients
+may use different optimization configurations.
+Synergy of Components. The synergy ablation study (Section 4.6)
+provides compelling evidence for our hybrid approach. The full HRA
+system achieves 98.66% accuracy, while the anomaly-only variant
+drops to 84.77% (-13.89%) and the reputation-only variant performs
+even worse at 78.52% (-20.14%). This significant performance gap
+validates our core hypothesis that neither instantaneous anomaly detection nor historical reputation tracking alone is sufficient for robust
+aggregation under sophisticated attacks. The superior performance
+of the complete system demonstrates that the synergistic interplay between immediate outlier detection and long-term behavioral tracking
+is essential for effective defense.
+
+5.1
+
+Strengths and Limitations
+
+A key strength of HRA is its adaptiveness: it does not assume a
+known upper bound on the number of adversaries, and it does not
+discard updates outright. Instead, it assigns soft weights to each
+client based on both the novelty of their update (anomaly distance)
+and their historical behavior (reputation score). This enables refined
+degradation in performance when adversarial pressure increases, instead of sharp failure or over-penalization of benign clients. However,
+HRA’s dependence on aggregated anomaly distance calculations
+may introduce computational overhead, especially in large-scale
+deployments. Moreover, while reputation scores are resistant to
+short-term manipulation, a highly strategic adversary could theoretically perform "on-off" attacks, acting well initially to build trust
+
+Hybrid Reputation Aggregation for Adversarial FL
+
+and then attacking selectively. Addressing such threats may require
+additional mechanisms such as forgetting factors, peer evaluations,
+or adversarial confidence estimation.
+
+5.2
+
+Practical Implications in 5G/Edge
+Environments
+
+In edge computing scenarios such as 5G network slices, where devices are heterogeneous and intermittent communication, traditional
+assumptions like synchronous updates and known adversary ratios
+often break down. HRA’s lightweight reputation model and anomaly
+detection mechanism require minimal state per client and no external
+validation data (unlike FLTrust [5]), making it particularly well-suited
+for such environments.
+Further, as shown in the 5G dataset experiments, HRA performs
+reliably even when each client operates under different traffic conditions (e.g., IoT vs. Internet slices), and some clients are intermittently
+malicious. This reflects realistic conditions where edge nodes may be
+partially compromised or temporarily hijacked. The ability of HRA
+to handle both persistent and ephemeral threats without additional
+supervision underscores its practical utility.
+
+5.3
+
+Comparison with Existing Approaches
+
+Compared to existing robust aggregation techniques like Krum,
+Bulyan [12], and geometric median-based aggregators [13], HRA
+brings two distinct innovations to the table:
+• Temporal Reputation Integration: While most existing
+defenses (e.g., Median, Trimmed Mean) operate on a per-round
+basis and treat clients statelessly, HRA tracks reputations over
+time. This allows the system to penalize clients with repeated
+abnormal behavior, even if their updates are not immediate
+outliers. The performance gap is substantial: on the 5G dataset,
+HRA achieves 98.66% accuracy while Median only reaches
+71.24%, and on the NF-CSE-CIC-IDS2018 dataset, HRA
+achieves 96.60% compared to Median’s 57.15%.
+• Dual-Stage Weighting Mechanism: HRA combines spatial outlier detection (via anomaly distance) with temporal
+behavior (via an exponential moving average of reputation).
+This hybrid mechanism significantly outperforms memoryless
+methods. For instance, Krum achieves only 23.73% accuracy
+on the 5G dataset and 49.10% on the NF-CSE-CIC-IDS2018
+dataset, demonstrating the critical importance of the hybrid
+approach. Our synergy ablation study further validates this
+design choice: the full system achieves 98.66% accuracy,
+while removing either component causes dramatic drops, the
+anomaly-only variant drops to 84.77% (-13.89%) and the
+reputation-only variant to 78.52% (-20.14%).
+The destructive failure of methods like Krum and Trimmed Mean
+(achieving only 23.73% and 22.85% respectively on the 5G dataset)
+under our adversarial conditions highlights a critical vulnerability:
+these methods were designed for simpler Byzantine settings and fail
+against sophisticated, coordinated attacks that exploit their selection
+criteria. Bulyan, despite being designed as a more robust variant of
+Krum, still underperforms HRA by 2.35% on the 5G dataset and
+7.87% on NF-CSE-CIC-IDS2018, illustrating that even enhanced
+Byzantine-robust methods are insufficient against modern adversarial
+strategies.
+
+ACM, ,
+
+In contrast to FoolsGold [8], which only targets Sybil attacks
+through cosine similarity-based adjustment, HRA generalizes better
+across a broader threat model, including backdoor, label flipping,
+and adaptive poisoning. The substantial performance improvements
+over Trimmed Mean (98.66% vs 22.85% on 5G, 96.60% vs 52.06%
+on NF-CSE-CIC-IDS2018) demonstrate HRA’s superior handling of
+diverse attack vectors. Additionally, unlike FLTrust [5], HRA does
+not assume access to a trusted validation dataset, making it more
+scalable and generalizable across privacy-sensitive domains while
+still achieving superior performance (98.66% vs 74.02% on 5G,
+96.60% vs 80.71% on NF-CSE-CIC-IDS2018).
+
+5.4
+
+Broader Impact and Future Directions
+
+As federated learning continues to be adopted in privacy-critical
+domains like mobile health, autonomous driving, and smart cities,
+defenses like HRA that can provide robust learning under adversarial pressure become essential. The substantial performance improvements demonstrated in our experiments (98.66% and 96.60%
+accuracy on the respective datasets) validate HRA’s readiness for
+real-world deployment scenarios. Future work may extend HRA with
+client clustering for attack attribution, introduce time-decay schemes
+for reputation recovery, or integrate trust-aware scheduling to limit
+bandwidth for low-reputation clients. Additionally, evaluating HRA
+on even more heterogeneous and real-world edge environments, e.g.,
+with device drift or network delays would help further validate its
+deployment readiness.
+
+6
+
+CONCLUSION
+
+In this paper, we introduced Hybrid Reputation Aggregation (HRA), a
+robust aggregation mechanism designed to secure federated learning
+in 5G and edge network environments against diverse adversarial
+attacks. HRA uniquely combines geometric anomaly detection with
+momentum-based reputation tracking, enabling it to dynamically
+adjust the influence of client updates based on both their instantaneous
+deviations and historical behavior. This dual-stage approach addresses
+key limitations of prior memoryless robust aggregation methods such
+as Krum and Bulyan.
+The comprehensive experimental evaluation on both a proprietary
+5G dataset and the NF-CSE-CIC-IDS2018 benchmark demonstrates
+that HRA consistently outperforms existing defenses. On the 5G
+dataset, HRA achieves a test accuracy of 98.66% along with superior precision (0.94999), recall (0.98514), F1 score (0.96724),
+and ROC AUC (0.98438) metrics. On the NF-CSE-CIC-IDS2018
+dataset, HRA maintains robust performance with 96.60% accuracy,
+significantly outperforming the next best method (Bulyan at 88.73%).
+The HRA’s F1 score of 0.86776 and ROC AUC of 0.94518 on this
+challenging dataset further demonstrate its effectiveness in handling
+class imbalance and adversarial perturbations.
+The ablation studies reveal critical insights into HRA’s design
+choices. The threshold sensitivity analysis confirms that HRA maintains optimal performance (98.66%) across a wide range of reasonable
+threshold configurations, only degrading when thresholds become
+excessively conservative. Similarly, HRA demonstrates robustness
+to learning rate variations, with accuracy remaining stable between
+
+ACM, ,
+
+98.41% and 98.53% across different optimizer settings. Most importantly, our synergy ablation study validates the core premise of our
+hybrid approach: the full HRA system achieves 98.66% accuracy,
+while removing either the anomaly detection or reputation tracking
+components causes dramatic performance drops of 13.89% and
+20.14% respectively. This confirms that neither instantaneous outlier
+detection nor historical behavior tracking alone is sufficient for robust
+defense, their synergistic combination is essential.
+Statistical validation through paired t-tests confirms that HRA’s
+improvements over baseline methods are highly significant (all pvalues < 0.05), establishing the statistical reliability of our results.
+The practical implications of our work are significant: HRA’s adaptive strategy renders it suitable for real-world edge deployments
+where network conditions and client behavior are dynamic, without
+requiring external validation data or assumptions about the number
+of adversaries.
+Future research directions include further enhancement of the reputation mechanism (e.g., incorporating forgetting factors for reputation
+recovery), exploring personalized federated learning approaches that
+leverage HRA’s client-specific trust scores, and validating HRA in
+live 5G network environments with real-world latency and bandwidth
+constraints. Additionally, extending HRA to handle non-IID data
+distributions and concept drift in edge environments presents an important avenue for future work. Overall, HRA represents a promising
+step towards more resilient and trustworthy federated learning in
+adversarial settings, particularly suited for the challenges of 5G and
+edge computing deployments.
+
+REFERENCES
+[1] Eugene Bagdasaryan, Andreas Veit, Yiqing Hua, Deborah Estrin, and Vitaly
+Shmatikov. 2020. How to backdoor federated learning. In International conference
+on artificial intelligence and statistics. PMLR, 2938–2948.
+[2] Arjun Nitin Bhagoji, Supriyo Chakraborty, Prateek Mittal, and Seraphin Calo.
+2019. Analyzing federated learning through an adversarial lens. In International
+conference on machine learning. PMLR, 634–643.
+[3] Peva Blanchard, El Mahdi El Mhamdi, Rachid Guerraoui, and Julien Stainer. 2017.
+Machine learning with adversaries: Byzantine tolerant gradient descent. Advances
+in neural information processing systems 30 (2017).
+[4] Afroditi Blika, Stefanos Palmos, George Doukas, Vangelis Lamprou, Sotiris
+Pelekis, Michael Kontoulis, Christos Ntanos, and Dimitris Askounis. 2024. Federated Learning For Enhanced Cybersecurity And Trustworthiness In 5G and 6G
+Networks: A Comprehensive Survey. IEEE Open Journal of the Communications
+Society (2024).
+[5] Xiaoyu Cao, Minghong Fang, Jia Liu, and Neil Zhenqiang Gong. 2020. Fltrust:
+Byzantine-robust federated learning via trust bootstrapping. arXiv preprint
+arXiv:2012.13995 (2020).
+[6] Chunlu Chen, Ji Liu, Haowen Tan, Xingjian Li, Kevin I-Kai Wang, Peng Li, Kouichi
+Sakurai, and Dejing Dou. 2025. Trustworthy federated learning: Privacy, security,
+and beyond. Knowledge and Information Systems 67, 3 (2025), 2321–2356.
+[7] Minghong Fang, Xiaoyu Cao, Jinyuan Jia, and Neil Gong. 2020. Local model
+poisoning attacks to { Byzantine-Robust } federated learning. In 29th USENIX
+security symposium (USENIX Security 20). 1605–1622.
+[8] Clement Fung, Chris JM Yoon, and Ivan Beschastnikh. 2018. Mitigating sybils in
+federated learning poisoning. arXiv preprint arXiv:1808.04866 (2018).
+[9] Zirui Gong, Liyue Shen, Yanjun Zhang, Leo Yu Zhang, Jingwei Wang, Guangdong
+Bai, and Yong Xiang. 2023. Agramplifier: defending federated learning against
+poisoning attacks through local update amplification. IEEE Transactions on
+Information Forensics and Security 19 (2023), 1241–1250.
+[10] Dumitrel Loghin, Shaofeng Cai, Gang Chen, Tien Tuan Anh Dinh, Feiyi Fan, Qian
+Lin, Janice Ng, Beng Chin Ooi, Xutao Sun, Quang-Trung Ta, et al. 2020. The
+disruptions of 5G on data-driven technologies and applications. IEEE transactions
+on knowledge and data engineering 32, 6 (2020), 1179–1198.
+[11] Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and
+Blaise Aguera y Arcas. 2017. Communication-efficient learning of deep networks from decentralized data. In Artificial intelligence and statistics. PMLR,
+1273–1282.
+
+Sheikhi et al.
+
+[12] El Mahdi El Mhamdi, Rachid Guerraoui, and Sébastien Rouault. 2018. The hidden
+vulnerability of distributed learning in byzantium. arXiv preprint arXiv:1802.07927
+(2018).
+[13] Krishna Pillutla, Sham M Kakade, and Zaid Harchaoui. 2022. Robust aggregation
+for federated learning. IEEE Transactions on Signal Processing 70 (2022),
+1142–1154.
+[14] Mohanad Sarhan, Siamak Layeghy, Nour Moustafa, and Marius Portmann. 2020.
+Netflow datasets for machine learning-based network intrusion detection systems.
+In International Conference on Big Data Technologies and Applications. Springer,
+117–135.
+[15] Saeid Sheikhi and Panos Kostakos. 2023. DDoS attack detection using unsupervised
+federated learning for 5G networks and beyond. In 2023 Joint European Conference
+on Networks and Communications & 6G Summit (EuCNC/6G Summit). IEEE,
+442–447.
+[16] Ning Wang, Haiyan Wang, Li Tang, Jian Pei, and Philip S. Yu. 2022. FLARE:
+Robust Model Aggregation in Federated Learning. In Proceedings of the 31st ACM
+International Conference on Information & Knowledge Management. 1684–1693.
+https://doi.org/10.1145/3511808.3557304
+[17] Dong Yin, Yudong Chen, Ramchandran Kannan, and Peter Bartlett. 2018.
+Byzantine-robust distributed learning: Towards optimal statistical rates. In International conference on machine learning. Pmlr, 5650–5659.
+[18] Zaixi Zhang, Xiaoyu Cao, Jinyuan Jia, and Neil Zhenqiang Gong. 2022. Fldetector:
+Defending federated learning against model poisoning attacks via detecting
+malicious clients. In Proceedings of the 28th ACM SIGKDD conference on
+knowledge discovery and data mining. 2545–2555.
+
+

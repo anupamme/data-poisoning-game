@@ -1,0 +1,32 @@
+{
+  "title": "Byzantine-Robust Federated Machine Learning through Adaptive Model Averaging",
+  "c_d_route": "absent",
+  "criteria": {
+    "C-a": {
+      "code": "YES",
+      "quote": "we propose an algorithm that aims to detect and discard bad or malicious client's updates at every iteration by comparing the similarity of these individual updates to the one for the aggregated model. In contrast to other robust federated algorithms, we propose a method to estimate the quality of the client's updates through a Hidden Markov Model. This allows us to define a mechanism to block faulty, noisy or malicious clients that systematically send bad model updates to the server",
+      "locator": "Introduction; the two stages meet in Eq. (3), whose weighted average runs over the filtered subset K_t^g AND weights each surviving client by the HMM posterior p_k^t"
+    },
+    "C-b": {
+      "code": "NO",
+      "quote": "This allows us to define a mechanism to block faulty, noisy or malicious clients that systematically send bad model updates to the server, reducing the communication burden between the clients and the server and the time required by the server to compute the aggregated model",
+      "locator": "Introduction; restated in the Abstract as \"This includes a mechanism that blocks unwanted participants, which also increases the computational and communication efficiency.\""
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "AFA is robust in all scenarios for the 4 datasets, i.e. the test error of the algorithm is not significantly degraded",
+      "locator": "Robustness and Convergence, Table 1"
+    },
+    "C-d": {
+      "code": "NO",
+      "quote": "The results of our experimental evaluation are shown in Table 1. We considered two cases with 10 and 100 clients for the 4 previously described scenarios.",
+      "locator": "Robustness and Convergence, Table 1"
+    },
+    "C-e": {
+      "code": "NO",
+      "quote": "We also showed that AFA is very effective at detecting bad clients and capable of blocking them within a reduced number of training iterations.",
+      "locator": "Conclusion; the supporting artifact is Table 2, \"Percentage of bad clients blocked by AFA and the average number of training iterations to block them\""
+    }
+  },
+  "coder_note": "C-b IS THE CODE THAT DECIDES THIS PAPER, AND IT TURNS ON WHAT THE SECOND STAGE IS FOR. AFA does compose two mechanisms in one round (a cosine-similarity outlier discard against the running aggregate, and a Beta-Bernoulli/HMM client-quality posterior that both weights the survivors and permanently blocks persistent offenders), so C-a is YES. But every reason the paper gives for the second stage is a COST reason, not a coverage or standalone-effectiveness reason: it reduces communication burden, server aggregation time, and the number of clients queried. Nothing says the similarity filter leaves a residue the reputation stage is chosen to cover. The quotation admits a second reading -- \"clients that systematically send bad model updates\" could be read as a temporal failure mode the per-iteration filter cannot see -- and ambiguity rule 3 takes the reading that makes the paper NOT outcome-gated, so C-b = NO. Primary = NO.\n\nC-d is NO on the strict rubric and on rule 4 both. Table 1 varies the ADVERSARY scenario (clean/byzantine/flipping/noisy) and the COMPETING algorithm (FA, MKRUM, COMED), never AFA's own upstream stage with its downstream held fixed; there is no AFA-minus-HMM or AFA-minus-filter arm anywhere in the paper, appendix included. Table 2 reports the percentage of bad clients blocked, which is the upstream stage's own outcome -- the same thing DeepSight's Table IX does, and the same reason it is not the contrast the rubric asks for. The extractor's single C-d candidate (\"This removes the reliance on a pre-specified parameter k ... which would otherwise be discarded in the case of Zeno\") is a comparison to a DIFFERENT DEFENSE, not a within-defense variation.\n\nC-e is NO for the same reason C-d is: the conclusion asserts the detector detects well and asserts AFA is robust, but never joins them into a claim that AFA's robustness is BECAUSE of a named stage. The nearest thing is a cross-algorithm contrast (\"MKRUM and COMED are very sensitive to label flipping attacks, whereas AFA's performance is barely affected\"), which attributes nothing internally.\n\nNote for the shipped table: the extractor's C-a and C-c buckets both returned ZERO candidates on this paper, and both criteria nonetheless code YES off targeted greps. This is the recall limit of the aid, not of the frame -- the paper says \"aggregation rule\" where the bucket looks for \"components\", and reports \"test error\" where the bucket looks for ASR. Two more papers in the frame are pre-2020 and will read the same way."
+}

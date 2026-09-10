@@ -1,0 +1,32 @@
+{
+  "title": "MUDGUARD: Taming Malicious Majorities in Federated Learning using Privacy-Preserving Byzantine-Robust Clustering",
+  "c_d_route": "component-contrast",
+  "criteria": {
+    "C-a": {
+      "code": "NO",
+      "quote": "Considering the upcoming cryptographic clustering, one needs to compute the signs of gradients sign(g_i^t) in {-1, +1} as SignSGD [6] and then encodes to Boolean representation, which is compatible with binary SS and XOR operations.",
+      "locator": "§IV (design); the defensive stage's own purpose is stated in the Introduction, \"To thwart attacks from a malicious majority, we develop a method called Model Segmentation, that aggregates together only the updates from within a cluster, sending the corresponding model only to the clients of the corresponding cluster\""
+    },
+    "C-b": {
+      "code": "NO",
+      "quote": "Since the adjusted cosine similarity measures the difference in directions and magnitudes of updates at the same time, we use the pairwise adjusted cosine similarity CosM as a method for extracting features, i.e., CosM and L2 distance, used as the input and the main metric of DBSCAN, respectively.",
+      "locator": "§IV-A, Fig. 1"
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "Meanwhile, the attack success rate is around 0%-5% even under an adaptive attack tailored to MUDGUARD.",
+      "locator": "Abstract; §VI evaluation, \"quantify its accuracy under untargeted attacks, the Attack Success Rate (ASR) under targeted attacks or under an adaptive attack tailored to MUDGUARD\""
+    },
+    "C-d": {
+      "code": "YES",
+      "quote": "To demonstrate the advantages of MUDGUARD (based on SignSGD), we also compare its robustness with both SignSGD and FedAvg w/o defense.",
+      "locator": "§VI, MUDGUARD vs SignSGD vs FedAvg-without-defense"
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "Although SignSGD is lightweight, it brings a negative impact on the accuracy of clustering. Section V-A provides a detailed analysis of this impact.",
+      "locator": "§IV, analysed in §V-A"
+    }
+  },
+  "coder_note": "C-a = NO, AND THIS IS THE HARDEST C-a IN THE FRAME SO FAR. MUDGUARD has three candidate stages: DBSCAN clustering on adjusted cosine similarity, Model Segmentation, and SignSGD. Clustering and Model Segmentation are ONE mechanism, not two -- the clustering is the detector and the segmentation is that same detector's response policy (\"aggregates together only the updates from within a cluster\"), which is why the paper can say it never needs to decide which cluster is malicious. That leaves SignSGD as the only candidate second mechanism, and the paper's stated reason for adopting it is CRYPTOGRAPHIC: signs are what binary secret sharing and XOR can operate on. Amendment 3 therefore does not count it, and ambiguity rule 3 confirms the direction.\n\nThe reading is genuinely two-sided and is recorded so a reader can flip it: the paper also says \"SignSGD has the natural capability of defending against scaling attacks [3] since it only takes signs as updates and clips the magnitude\", which is a defensive purpose stated in the paper's own voice. A coder who weighted that sentence over the compatibility sentence would code C-a = YES. It would not change the primary verdict, because C-d = YES independently.\n\nC-d = YES ON THE STRICT READING, AND IT IS THE FLAME TABLE 1 SHAPE EXACTLY. Three arms: FedAvg with no defense; SignSGD alone; MUDGUARD, which is the clustering-plus-segmentation stage feeding the same SignSGD. Between the last two the downstream mechanism is identical and the upstream stage is the only thing that moves, with the attack held fixed, and the composed system's robustness is read off the difference.\n\nC-e is the most interesting quotation in this row and it runs the OTHER way from the usual attribution: rather than crediting a stage for the defense's success, the paper charges the downstream choice (SignSGD) with degrading the upstream stage's accuracy, and devotes §V-A to analysing that interaction. That is a mechanism-attribution claim about a composition, and it is exactly the kind of statement Prop. prop:identification_full says a composed evaluation cannot license -- except that here the paper does run the contrast that licenses it."
+}

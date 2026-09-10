@@ -1,0 +1,33 @@
+{
+  "title": "Defending the Edge: Representative-Attention Defense against Backdoor Attacks in Federated Learning",
+  "short_name": "FeRA",
+  "c_d_route": "component-contrast",
+  "criteria": {
+    "C-a": {
+      "code": "YES",
+      "quote": "two-phase detection pipeline followed by selective aggregation.",
+      "locator": "Sec. 4.2; the two detection phases are named and separately purposed -- the \"Consistency Filter, which identifies clients exhibiting simultaneously low combined scores (capturing both spectral and spatial variance suppression), low directional attention (deviation from global trajectory), and high mutual similarity (coordination patterns)\" (Sec. 4.1) and the \"Norm-Inflation Filter, which flags clients whose spectral ratios exceed benign bounds\" (Sec. 4.1) -- and both feed a distinct downstream stage, the graduated-trust selective aggregation. Algorithm 1 wires them as a union into the aggregation, \"return M ← Mc ∪ Mn\". All three purposes are defense purposes stated as such, so Amendment 3 excludes nothing here"
+    },
+    "C-b": {
+      "code": "YES",
+      "quote": "The complementary failure modes of spectral and spatial metrics motivate their joint use in the combined score.",
+      "locator": "Sec. 4.1; this is C-b in its textbook form -- the reason for pairing is stated as a reason, and it is a property of the constituents rather than of the assembled system. The Table 6 discussion states the same reason again in outcome terms, \"The two detection mechanisms address distinct attack strategies with minimal overlap\", and the mechanism of the complementarity is given at Sec. 4.1, \"Attacks optimizing against spectral detection (maintaining high λmax ) necessarily reduce total displacement ∥∆∥F when concentrating variance directionally, creating negat[ive correlation]\""
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "Results reported as MA(%) / BA(%).",
+      "locator": "Table 1 caption; the assembled framework's main-task accuracy and backdoor accuracy are reported over eight backdoor attacks on CIFAR-10 (Table 1), CIFAR-100 and Tiny-ImageNet (Table 2), non-IID severities (Tables 3 and 4) and a cross-silo setting (Table 5)"
+    },
+    "C-d": {
+      "code": "YES",
+      "quote": "By isolating the Consistency Filter and Norm-Inflation Filter, we reveal their complementary roles in addressing different attack strategies. Results are presented in Table 6.",
+      "locator": "Sec. 5 Ablation Studies, Table 6 (\"ABLATION STUDY: DETECTION MECHANISM CONTRIBUTIONS UNDER TWO ATTACK SCENARIOS\"), whose arms are No Defense / Consistency Filter Only / + Norm-Inflation Filter, with outcomes, \"the Consistency Filter alone reduces BA from 95.24% to 1.74% (98.17% attack suppression)\". THE DIRECTION IS THE ADMISSIBLE ONE: what varies is the composition of the DETECTION stage, and the stage held fixed is the DOWNSTREAM selective aggregation, so the arm changes what reaches a fixed mechanism rather than deleting the mechanism itself. Two further routes exist independently: the detection weight sweep read off both outcomes, \"Equal weighting (wσ = 0.5, wδ = 0.5) achieves strong main task accuracy (91.35%) but yields slightly elevated backdoor accuracy (0.88%)\" (App. D), and an out-of-distribution root-data arm which varies the server-side data feeding the detector while the detector is unchanged"
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "Adding the NormInflation Filter marginally improves BA to 1.35% while slightly reducing MA to 87.16%, as Neurotoxin primarily relies on stealth rather than magnitude manipulation.",
+      "locator": "Sec. 5; the claim states what one constituent contributes to the combined result and gives the mechanism reason for the size of the contribution. A second attributional claim is the graduated-trust suppression factor, and a third is at Sec. 4.1 on the residual coordination signal"
+    }
+  },
+  "coder_note": "C-d = YES ON A PARALLEL-SIBLING CONTRAST, AND THE DISTINCTION FROM DROPlet IS WHAT MAKES IT ADMISSIBLE. FeRA's two filters are not sequential: Algorithm 1 computes both flag sets and unions them, \"return M ← Mc ∪ Mn\", after which a single downstream stage -- the graduated-trust selective aggregation -- consumes the union. Dropping the Norm-Inflation Filter therefore does not delete the mechanism that produces the reported outcome; it changes the client set that mechanism receives. That is upstream-varied / downstream-fixed, and it is the opposite of DROPlet, which deletes the terminal distillation stage while the upstream pair is held fixed. The rubric's leave-one-out exclusion is about the DIRECTION, not about whether the table is called an ablation, and here the direction is right.\n\nRULE 4 IS NOT NEEDED FOR THE CODE BUT IT IS WORTH SAYING WHERE THE STRICT READING WOULD LAND. A strict reader could object that with parallel siblings there is no \"upstream stage\" at all, only a detection stage of varying composition, and that the contrast therefore identifies the union rule rather than the aggregation's dependence on its input. On that reading the Table 6 arm falls away -- and the code survives anyway on the wσ/wδ sweep, which varies the upstream metric mixture continuously with everything downstream fixed and reads MA and BA off each setting. Two independent routes to the same code is the reason this row is not a close call, unlike FLTG's.\n\nTHIS IS THE FRAME'S CLEANEST C-b. Most C-b = YES rows in the audit require assembling a reason from two or three sentences, or reading a critique of prior work as a reason for one's own pairing. FeRA states the criterion's exact content in one sentence -- complementary failure modes of the constituents motivate their joint use -- and then supplies the mechanism of the complementarity (an attack evading the spectral metric must move in a direction the spatial metric sees). A5 should quote this row as the positive control for C-b: if the criterion were unsatisfiable in practice, no paper would look like this one.\n\nEXTRACTOR NOTE: the C-b bucket found the coded sentence, the C-d bucket found the ablation heading but NOT the weight sweep (which lives in App. D and is reported in prose), and Table 6's arms had to be read out of the caption because the extracted table body interleaves the two attacks' columns (\"Consistency Filter Only + Norm-Inflation Filter 87.26 / 1.74 87.16 / 1.35 85.05 / 95.53 91.05 / 1.84\"). The arm labels and their values were therefore recovered from the surrounding prose, which states the 1.74% and 1.35% figures explicitly; no number in this record was read off the interleaved table."
+}

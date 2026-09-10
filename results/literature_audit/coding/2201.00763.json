@@ -1,0 +1,35 @@
+{
+  "title": "DeepSight: Mitigating Backdoor Attacks in Federated Learning Through Deep Model Inspection",
+  "bibkey": "rieger2022deepsight",
+  "c_d_route": "component-contrast",
+  "venue": "NDSS",
+  "year": 2022,
+  "criteria": {
+    "C-a": {
+      "code": "YES",
+      "quote": "DeepSight uses a novel filtering scheme that conducts a deep model inspection and combines it with clipping (§V) to identify targeted poisoning attacks.",
+      "locator": "§I Introduction, contributions list"
+    },
+    "C-b": {
+      "code": "YES",
+      "quote": "Combining both defense strategies, therefore, creates a dilemma for the adversary: Either the attack is filtered by one part of the defense or the other part makes the impact of the attack negligible",
+      "locator": "§II-C Background; the same paragraph adds that \"a naïve combination of both defense strategies is not effective\""
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "TABLE IV: Main Task Accuracy (MA), Backdoor accuracy (BA), Poisoned Probability (PRC) and Benign Probability (NPV) of DeepSight for different IoT devices in the NIDS scenario.",
+      "locator": "Table IV, §VI-C; BA of the composed system is the reported outcome throughout §VI"
+    },
+    "C-d": {
+      "code": "YES",
+      "quote": "Fig. 6: Impact of the Poisoned Data Rate (PDR) on the Backdoor Accuracy (BA) without defense, a clipping defense (§V-B), filtering (§V-A) and DeepSight for different device types.",
+      "locator": "Fig. 6, §VI-C"
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "the clipping defense layer compensates the vulnerability of the filtering layer from DeepSight against such weak attacks. Because of the combination of both layers, the attack failed for all PDRs and the BA was always 0 %.",
+      "locator": "§VI-C3 Varying Attack Parameters"
+    }
+  },
+  "coder_note": "C-d is YES on Fig. 6, not on the Table IX component ablation. Table IX varies the filtering layer's internal identifiers and reads off the FILTERING layer's own TPR, which is the upstream stage's outcome and therefore not the contrast the rubric asks for. Fig. 6 is: it plots the composed system's BA for a clipping-only arm and for DeepSight (filtering then clipping), so the downstream mechanism is held fixed while the upstream stage is present or absent. The attribution in §VI-C3 is read off exactly that comparison."
+}

@@ -1,0 +1,2785 @@
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+1
+
+An Experimental Study of Byzantine-Robust
+Aggregation Schemes in Federated Learning
+
+arXiv:2302.07173v1 [cs.LG] 14 Feb 2023
+
+Shenghui Li, Student Member, IEEE, Edith C.-H. Ngai, Senior Member, IEEE,
+and Thiemo Voigt, Member, IEEE
+Abstract—Byzantine-robust federated learning aims at mitigating Byzantine failures during the federated training process, where
+malicious participants (known as Byzantine clients) may upload arbitrary local updates to the central server in order to degrade the
+performance of the global model. In recent years, several robust aggregation schemes have been proposed to defend against malicious
+updates from Byzantine clients and improve the robustness of federated learning. These solutions were claimed to be Byzantine-robust,
+under certain assumptions. Other than that, new attack strategies are emerging, striving to circumvent the defense schemes. However,
+there is a lack of systematical comparison and empirical study thereof. In this paper, we conduct an experimental study of
+Byzantine-robust aggregation schemes under different attacks using two popular algorithms in federated learning, FedSGD and FedAvg.
+We first survey existing Byzantine attack strategies, as well as Byzantine-robust aggregation schemes that aim to defend against
+Byzantine attacks. We also propose a new scheme, ClippedClustering, to enhance the robustness of a clustering-based scheme by
+automatically clipping the updates. Then we provide an experimental evaluation of eight aggregation schemes in the scenario of five
+different Byzantine attacks. Our experimental results show that these aggregation schemes sustain relatively high accuracy in some
+cases, but they are not effective in all cases. In particular, our proposed ClippedClustering successfully defends against most
+attacks under independent and identically distributed (IID) local datasets. However, when the local datasets are Non-IID, the performance
+of all the aggregation schemes significantly decreases. With Non-IID data, some of these aggregation schemes fail even in the complete
+absence of Byzantine clients. Based on our experimental study, we conclude that the robustness of all the aggregation schemes is limited,
+highlighting the need for new defense strategies, in particular for Non-IID datasets.
+Index Terms—Byzantine attacks, distributed learning, federated learning, neural networks, robustness
+
+F
+
+1
+
+I NTRODUCTION
+
+F
+
+EDERATED learning (FL) [1], [2], [3] is a machine learning
+paradigm for distributed model training on decentralized data
+across a set of client devices (e.g., desktops, mobile phones, IoT
+devices). Specifically, FL repeatedly performs the following steps:
+the server broadcasts the current global model to client devices;
+the clients then perform one or several local steps of stochastic
+gradient descent (SGD) using private training sets, and send the
+updates back to the server; then the server generates a new global
+model by aggregating the local updates to enable the next round of
+training. This paradigm allows the client devices to perform most
+of the computation, without requiring any of the participants to
+reveal their private training data to a centralized entity or each other.
+In addition, benefiting from multiple steps of local updates before
+uploading local updates, FL improves communication efficiency
+compared to traditional distributed learning [4].
+Despite the achievements of FL in terms of data privacy and
+communication efficiency, it also opens up the parameter updating
+process to manipulation by the clients, which brings serious security
+threats to model training [5]. An important class of security threats
+
+This research was supported by the RGC General Research Funds No. 17203320
+and No. 17209822 from Hong Kong, the Swedish Research Council project
+grant No. 2017-04543, HKU-TCL joint research centre for artificial intelligence
+seed funding, and the European Union’s Horizon 2020 research and innovation
+programme under grant agreement No. 101015922.
+Shenghui Li is with the Department of Information Technology, Uppsala
+University, Uppsala, Sweden (e-mail: shenghui.li@it.uu.se).
+Edith C.-H. Ngai (corresponding author) is with the Department of Electrical
+and Electronic Engineering, The University of Hong Kong, Hong Kong,
+China (e-mail: chngai@eee.hku.hk).
+Thiemo Voigt is with the Department of Electrical Engineering, Uppsala
+University, Uppsala, Sweden, and also with RISE, the Research Institutes of
+Sweden, Stockholm, Sweden (e-mail: thiemo.voigt@it.uu.se).
+
+in this context is known as Byzantine failures [5], where some
+of the participants are not rigorously following the protocol, but
+upload arbitrary parameters to the central server, for example, due
+to faulty communication [6], or even worse, adversaries, where
+malicious attackers modify the update vectors to their desire and
+upload them to the server [7]. We use the term "Byzantine attack"
+to refer to the attacks where malicious attackers upload arbitrary
+updates to the server in order to degrade the overall performance of
+the global model in FL. In typical FL algorithms (e.g., FedAvg) [1],
+the server aggregates the uploaded updates by calculating their
+sample mean and adds the result to the global model. However, it
+is well-known that the result of such an aggregation scheme can
+be arbitrarily skewed even by a single Byzantine client [8]. The
+server thus requires Byzantine-robust solutions to defend against
+malicious clients.
+In recent years, a number of Byzantine-robust techniques have
+been proposed [9]. They can be classified into three categories:
+redundancy-based schemes that assign each client redundant
+updates and use this redundancy to eliminate the effect of Byzantine
+failures [10], [11], [12], [13]; trust-based schemes that assume some
+of the clients or datasets are trusted for filtering and re-weighting
+the local model updates [14], [15], [16]; robust aggregation schemes
+that estimate the updates according to some robust aggregation
+algorithms [8], [17], [18], [19], [20], [21]. For the first category,
+redundancy-based schemes, in the worst case, require each node to
+compute Ω(M ) times more updates, where M is the number of
+Byzantine clients [10]. This overhead is prohibitive in settings with
+large numbers of Byzantine clients. For the second category, the
+trusted clients/datasets are not always available to the server due to
+the concern of user data privacy.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+Robust aggregation schemes, in contrast, aggregate the updates efficiently, without requiring trusted clients or datasets.
+However, typical schemes, including GeoMed [18], Krum [17],
+TrimmedMean [8], Median [8] and CC [20], often come with
+limited guarantees of Byzantine robustness (e.g., only establishing
+convergence to a limit, or only guaranteeing that the output of
+the aggregation scheme has a positive inner product with the true
+gradient [17], [22]) and often require other strong assumptions,
+such as bounded absolute skewness [8]. More importantly, recent
+studies reveal the vulnerability of some schemes to new attacks.
+For instance, the A Little Is Enough (ALIE) attack can circumvent
+TrimmedMean and Krum by taking advantage of empirical
+variance between the updates of clients if such variance is high
+enough [23]. The Inner Product Manipulation (IPM) attack poses
+a significant threat to Median and Krum by manipulating the
+inner product between the true gradient and the robust aggregated
+gradients to be negative [24]. Other schemes, such as AutoGM [19]
+and Clustering [21], were proposed with only empirical
+evaluations.
+These existing aggregation schemes are evaluated using different datasets, attack types, and hyper-parameters. There is a lack of
+empirical studies that compare different schemes of utilizing the
+same settings. Furthermore, the impact of data heterogeneity on
+robustness schemes is rarely evaluated as those schemes usually
+assume that all clients’ local data are independent and identically
+distributed (IID). Therefore, there is a clear need for a comparative
+experimental study that offers in-depth insight into the performance
+of the existing Byzantine-robust schemes for FL.
+To meet this need, we conduct an experimental study on
+the Byzantine attack and defense problem in FL based on two
+well-known algorithms, FedSGD and FedAvg [1], [23]. We first
+survey existing attack strategies and robust aggregation schemes
+in the literature. We further propose a new aggregation scheme
+ClippedClustering to address the weakness of an existing
+clustering-based scheme. Then we design experiments to evaluate
+the robustness of eight representative Byzantine-robust aggregation
+rules by applying five state-of-the-art attacking strategies. Our
+experimental results show that those aggregation rules sustain
+relatively high accuracy in some cases. However, they are not
+effective in all cases. Moreover, when the local datasets are not
+independent and identically distributed (Non-IID), the capability
+of all the aggregation rules decreases significantly. With Non-IID
+data, some of these aggregation rules fail even in the complete
+absence of Byzantine clients. Furthermore, our proposed scheme
+performs the best in most attack scenarios when the datasets are
+IID. From the evaluation, we conclude that existing aggregation
+rules are insufficient to meet the need for Byzantine robustness,
+highlighting the demand for new defense strategies in FL, especially
+with training on Non-IID datasets.
+Our key contributions can be summarized as follows:
+•
+
+•
+
+•
+
+We survey existing Byzantine attack strategies to compromise FL, as well as Byzantine-robust aggregation schemes
+that aim to defend against Byzantine attacks.
+Based on an existing clustering-based aggregation
+scheme, we further propose an enhanced scheme called
+ClippedClustering, by applying an automatical clipping technique to mitigate the effect of amplified local
+updates.
+We evaluate eight robust aggregation schemes (including
+the proposed ClippedClustering) under five repre-
+
+2
+
+sentative Byzantine attack strategies. Our experimental
+results show that the aggregation schemes sustain high
+accuracy in some cases, but have limited success in other
+cases, especially in the presence of Non-IID data.
+The rest of this paper is organized as follows: Section 2 first
+formulates the problem of FL and introduces two optimization algorithms. Then Section 3 introduces the threat models evaluated in this
+paper. Subsequently, representative robust aggregation schemes are
+presented in Section 4. Section 5 presents an adaptive attack to the
+proposed aggregation scheme, ClippedClustering. Section 6
+presents the experiments for robust aggregation schemes, from
+which some notable findings are uncovered. Finally, we review
+related work in Section 7 and make some conclusions in Section 8.
+
+2
+
+F EDERATED L EARNING
+
+In this section, we first formulate the optimization problem of
+FL. Then we introduce two popular algorithms for solving the FL
+problem, one is the classic distributed SGD optimization algorithm
+FedSGD and the other is the famous communication-efficient
+algorithm FedAvg.
+2.1
+
+Problem Formulation
+
+In FL, multiple clients collaboratively learn a shared global model
+using their private datasets in a distributed way, assisted by the
+coordination of a central server. The goal is to find a parameter
+vector w that minimizes the following distributed optimization
+model:
+1 X
+min F (w) = min
+Fk (w),
+(1)
+w
+w K
+k∈[K]
+
+where K is the total number of clients, the local objective
+Fk (·) can be P
+defined as an empirical risk over local data, i.e.,
+Fk (w) = n1k j∈[nk ] `(w; xk,j ), where `(·; ·) is a user-specified
+loss function, xk,j is a training sample and nk is the size of training
+dataset owned by client k .
+A common assumption in FL is that local training datasets
+can be unbalanced, i.e., clients can have different numbers of
+training samples [1]. However, in this paper, we assume that data
+are balanced, i.e., n1 = n2 = · · · = nK to align with most studies
+that specifically focus on Byzantine robustness [8], [18], [20]. We
+note that one can get rid of this assumption using the re-scaling
+trick proposed by Li et al. [25].
+2.2
+
+Optimizations of Federated Learning
+
+We adopt the two most popular algorithms in Byzantine robust
+optimization literature to solve Problem (1), i.e., FedSGD and
+FedAvg.
+2.2.1 FedSGD
+Stochastic gradient descent (SGD) can be applied naively to
+the federated optimization problem (1) [1]. As summarized in
+Algorithm 1 with option I, each client calculates a single minibatch gradient and uploads it to the server in parallel at each round
+of training. The server then aggregates the received gradients and
+updates the model parameters according to the aggregated gradients.
+Benefiting from mini-batch of stochastic gradient calculation, this
+approach is computationally efficient, but it still requires a very
+large number of communication rounds to produce good models [1],
+[26]. In this paper, we refer to this algorithm as FedSGD, also
+known as sync-SGD in some related work [23], [24].
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+3
+
+Algorithm 1 Optimization of Federated Learning
+
+Malicious update uploading
+
+Input: K, T, ηt , w0
+1: for each global round t ∈ [T ] do
+2:
+for each client k ∈ [K] in parallel do
+3:
+wkt ← wt
+4:
+Option I (FedSGD):
+5:
+Sample mini-batch ξ from local dataset
+6:
+∆tk ← OFk (wkt , ξ)
+7:
+8:
+9:
+10:
+11:
+12:
+
+Benign update uploading
+Model broadcasting
+Private dataset
+FL model
+Server
+
+Option II (FedAvg):
+for El local rounds, do
+Sample mini-batch ξ from local dataset
+wkt ← wkt − ηt OFk (wkt , ξ)
+end for
+∆tk ← wkt − wt
+
+···
+Client 1
+
+Sends ∆tk back to the server
+end for
+∆t+1 ← AGG({∆tk }k∈[K] )
+Option I (FedSGD):
+17:
+wt+1 ← wt − ηt ∆t+1
+18:
+Option II (FedAvg):
+19:
+wt+1 ← wt + ∆t+1
+20: end for
+21: return w T
+13:
+14:
+15:
+16:
+
+2.2.2
+
+Client 3
+
+Client K
+
+Fig. 1: Illustration of an FL system with Byzantine clients, where
+K clients collaboratively train a machine learning model using their
+local datasets. The coordinate server aggregates local updates and
+updates the model, then broadcasts the new model to the clients in
+each communication round. The attackers control some of the clients
+(e.g., Client 1) and send malicious updates to the server, while the
+honest clients compute and upload benign updates.
+
+will cover robust aggregations that aim to defend against malicious
+updates.
+
+FedAvg
+
+A more communication-efficient framework for FL is FedAvg [1].
+As summarized in Algorithm 1 with Option II, at each round of
+training, the server broadcasts its global model to each client. In
+parallel, the clients run multiple steps of SGD on their own loss
+functions and send the resulting model to the server. The server
+then updates its global model according to its aggregation rule and
+broadcasts the resulting global model to each client to enable the
+next round of training. Multiple rounds of interactions between the
+server and clients are required to obtain an accurate shared global
+model.
+As one may see, general FedAvg-based algorithms usually
+randomly select a subset of clients to perform local training while
+the algorithm we adopt involves full participation of all clients
+at each round. This is because all of the aggregation schemes
+considered in this paper are based on an assumption that less than
+half of the updates for aggregation are malicious on each round.
+Selecting subsets at random violates this assumption with some
+probability, as it may select more malicious clients than benign
+ones by chance. Therefore, full participation is used in this paper.
+2.2.3
+
+Client 2
+
+3
+
+T HREAT M ODELS
+
+In this section, we describe the five threat models of Byzantine
+attacks we evaluate in this paper.
+In terms of Byzantine attacks, most existing literature for
+distributed learning and federated learning focuses on convergence
+prevention [7], [19], [21], [24]. As illustrated in Fig. 1, the attackers
+(known as Byzantine clients) may upload arbitrary parameters to
+the server in order to degrade the performance of the global model.
+Thus, Line 6 and 12 of Algorithm 1 are replaced by the following:
+
+
+if k -th client is Byzantine,
+?
+∆tk ← OFk (wkt , ξ) if k -th client is benign (for FedSGD),
+
+ t
+if k -th client is benign (for FedAvg),
+wk − w t
+(3)
+where ? represents arbitrary values.
+In this paper, we follow the assumption that the majority of
+the clients are benign [19], [20], which means we have M
+K < 0.5,
+where M is the number of Byzantine clients. We examine five
+typical attacks in our threat models.
+
+Update aggregation
+
+In both FedSGD and FedAvg, the server aggregates the received
+updates and uses the result of the aggregation to update the global
+model. A widely-used aggregation scheme is calculating the sample
+Mean of the uploaded updates, i.e.,
+
+∆t+1 ←
+
+1 X t
+∆k .
+K
+
+3.1
+
+Noise
+
+A straightforward attack is to sample some random noise from a
+distribution (e.g., Gaussian distribution) and add it to the updates
+before uploading [19], [28]. For simplicity sake, the mean and
+variance of the noise are both 0.1 in our experiment.
+
+(2)
+
+k∈[K]
+
+However, Mean is vulnerable to malicious local updates. As the
+breakdown point of Mean is 1/K [27], which means that even
+if only one of the clients is malicious, the resulting global model
+can significantly deviate from the original Mean. In Section 4 we
+
+3.2
+
+A Little is Enough (ALIE)
+
+In contrary to the random Noise attack, the attackers may modify
+the noise carefully to pretend to be benign and fool the aggregation
+rules. A Little is Enough (ALIE) [23] assumes that the benign
+updates are expressed by a normal distribution. The attackers
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+4
+
+therefore immediately take advantage of the high empirical variance
+between the updates of clients and upload a noise in a range without
+being detected.
+For each coordinate i ∈ [d], the attackers calculate mean (µi )
+and std (δi ) over benign updates, and set corrupted updates ∆i
+to values in the range (µi − z max δi , µi + z max δi ), where z max
+ranges from 0 to 1, and is typically obtained from the Cumulative
+Standard Normal Function [23].
+3.3
+
+Inner Product Manipulation (IPM)
+
+The Inner Product Manipulation (IPM) attack [24] seeks for the
+negative inner product between the true mean of the updates and
+the output of the aggregation schemes so that at least the loss will
+not descend. Assuming that the attackers know the mean of benign
+updates, a specific way to perform an IPM attack is
+
+∆t1 = · · · = ∆tM = −
+
+K
+X
+
+∆t ,
+K − M i=M +1 i
+
+(4)
+
+where we assume that the first M clients are malicious,  is a
+positive coefficient controlling the magnitude of malicious updates.
+Then the Mean becomes
+K
+1 X t
+K − M (1 + ) X
+∆k =
+∆t .
+K
+K(K − M ) i=M +1 i
+
+(5)
+
+k∈[K]
+
+K
+Note that when  < M
+− 1, IPM does not change the direction
+of the average over benign updates but only decreases its magnitude,
+because we have
+K − M (1 + )
+> 0,
+K(K − M )
+
+the optimization thus can still converge using Mean as an aggregation scheme. However, as we will show in Section 6, such an
+attack can circumvent the defense of several aggregation schemes
+and inverse the direction of updates, which heavily damages the
+K
+global model. On the contrary, when  > M
+− 1, the sign of Mean
+is reversed, indicating that the loss will increase if the model is
+updated using the Mean. In our experiment, we examine both cases
+by letting  = 0.5 and  = 100, respectively.
+3.4
+
+Sign Flipping (SF)
+
+Different from IPM, the Sign Flipping (SF) attackers do not need
+to know the updates from other clients and simply flip the signs
+of the gradient [13], [20], which means that the attackers strive to
+maximize the loss via gradient ascent instead of gradient descent.
+Specifically, in FedSGD, the clients upload the negative gradients;
+in FedAvg, the flipping is applied at every local updating step.
+3.5
+
+Label Flipping (LF)
+
+The aforementioned attacks assume that the attackers have full
+access to the training process so that they can modify the updates
+immediately. However, full access may be limited as the training
+APIs are not always open. Correspondingly, the attackers can also
+change the training dataset instead of the update parameters [29].
+The Label Flipping (LF) attack simply flips the label of each
+training sample [7]. Specifically, a label l is flipped as L − l − 1,
+where L is the number of classes in the classification problem and
+l = 0, 1, ..., L − 1.
+
+4
+
+AGGREGATION S CHEMES FOR E VALUATION
+
+In this section, we survey existing robust aggregation schemes,
+which represent state-of-the-art methods in the literature. Then, we
+propose a new scheme ClippedClustering, which addresses
+the weakness of the clustering-based scheme. Other than that, we
+provide a taxonomy of the eight aggregation schemes evaluated in
+our experiments.
+All aggregation schemes considered in this paper are working
+on each round separately. For the sake of readability, we will omit
+the notation of the round t in the following sections.
+4.1
+
+Krum
+
+Krum [17] strives to find one of the local model updates that
+is closest to another K − M − 2 ones with respect to squared
+Euclidean distance, which can be expressed by:
+X
+Krum := {∆i |i = argmin
+k∆i − ∆j k2 },
+i∈[K] i→j
+
+where i → j is the indices of the K − M − 2 nearest neighbours
+of ∆i measured by squared Euclidean distance, recall that K is
+the number of clients in total, and M is the number of malicious
+clients.
+Under the FedSGD framework, Krum was proven to converge
+with an important assumption that c1 σ < kgk, where c1 is a
+constant factor depending on the number of malicious clients and
+the dimension of model parameters, σ is the maximal variance of
+the updates and kgk is the expectation of updates.
+4.2
+
+GeoMed
+
+The Geometric Median (GeoMed) [18], [30] scheme aims to find
+a vector that minimizes the sum of its Euclidean distances to all
+the update vectors:
+X
+GeoM ed := argmin
+kz − ∆k k.
+(6)
+z
+
+k∈[K]
+
+Although there is no closed-form solution to the GeoMed problem,
+a (1 + )-approximate solution can be computed in nearly linear
+time [31].
+Similar to Krum, GeoMed was also proven to converge under
+the FedSGD framework, with the assumption that c2 σ < kgk,
+where c2 is a another constant factor that differs from c1 .
+4.3
+
+AutoGM
+
+Auto-weighted Geometric Median (AutoGM) [19] is a generalized
+version of GeoMed. AutoGM aggregates the updates by solving
+the following problem:
+X
+λ
+AutoGM := argmin
+αk kz − ∆k k + kαk2 ,
+(7)
+2
+z
+k∈[K]
+
+>
+s.t. α ∈ RK
++ , 1 α = 1,
+
+where λ is a user-specified hyper-parameter that controls the
+smoothness of α.
+The key idea of optimizing AutoGM is to divide the problem
+into two parts, i.e., one subproblem for estimating the weighted
+GeoMed, and the other subproblem for weighting the importance
+of each point. Then, we can minimize the objective iteratively with
+respect to one variable each time while fixing the other one [19].
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+med := M edian({∆k : k ∈ [K]}),
+where the i-th coordinate medi = median({∆ik : k ∈ [K]}),
+and median is the usual (one-dimensional) median.
+When using the FedSGD framework, the robustness of the
+Median scheme is based on the assumptions that the gradient of
+the loss function has bounded variance, and each coordinate of the
+gradient has coordinate-wise bounded absolute skewness [8].
+4.5
+
+trmean := T rimmedM ean({∆k : k ∈ [K]}),
+P
+1
+where the i-th coordinate trmeani = (1−2β)m
+x∈Uk x, and Uk
+is a subset obtained by removing the largest and smallest β fraction
+of its elements.
+In addition to the aforementioned assumptions for Median, the
+robustness of TrimmedMean relies on one stronger assumption
+that all the moments of the derivatives of the loss function are
+bounded [8].
+Centered Clipping (CC)
+
+Centered Clipping (CC) [20] iteratively clips the updates around
+the center while updating the center accordingly. For l ≥ 0, CC
+computes
+1 X
+τ1
+), (8)
+∆l+1 ← ∆l +
+(∆i − ∆l ) min(1,
+K
+k∆i − ∆l k
+k∈[K]
+
+where ∆0 is assigned with the aggregated updates in the previous
+round.
+Karimireddy et al. [20] proofed the robustness of the CC scheme
+K
+when the variance of updates is bounded and M
+≤ 0.15.
+4.7
+
+X
+X
+X
+
+Clipping
+
+ilarity
+
+X
+X
+X
+X
+X
+X
+X
+
+X
+X
+X
+
+X
+
+TrimmedMean
+
+The TrimmedMean [8] aggregation scheme computes the
+coordinate-wise trimmed average of the model updates, which
+can be expressed by:
+
+4.6
+
+Krum [17]
+GeoMed [18]
+AutoGM [19]
+Median [8]
+TrimmedMean [8]
+CC [20]
+Clustering [21], [32]
+ClippedClustering (ours)
+
+Cosine si
+m
+
+Defense
+
+Median
+
+Median [8] is defined as the coordinate-wise median of the given
+set of updates, i.e.,
+
+Mean
+
+istance
+
+Median
+
+Euclidea
+nd
+
+4.4
+
+5
+
+Clustering
+
+This Clustering aggregation scheme [21], [32] first calculates
+the pairwise cosine distances between their parameter updates, i.e.,
+
+αi,j := 1 −
+
+h∆i , ∆j i
+,
+k∆i kk∆j k
+
+(9)
+
+then it separates the client population into two groups based on
+the cosine similarities using agglomerative clustering with average
+linkage. Finally, it aggregates the updates in the largest group using
+Mean.
+Despite the lack of theoretical guarantee of robustness,
+Clustering achieves superior robustness in some cases, as we
+will show in Section 6. However, an obvious drawback of clustering
+using cosine similarities is that it only considers the relative
+directions, ignoring the magnitude of each vector. The attackers
+thus can fool the clustering scheme by simply amplifying the
+updates without changing their directions. As a consequence, the
+resulting updates added to the parameters will make the model jump
+over the minima and prevent the convergence of the optimization
+without being detected.
+
+TABLE 1: Summary of the robust aggregation schemes and their
+main defense mechanisms.
+
+4.8
+
+ClippedClustering
+
+We enhance the robustness of the aforementioned Clustering
+aggregation scheme by performing a clipping on all the updates
+before clustering, i.e.,
+τ
+∆k ← ∆k min(1,
+).
+(10)
+k∆k k
+Here, τ is a clipping value hyper-parameter that is determined by
+the server. Note that this clipping scheme is the so-called clip by
+norm, not clip by value, where individual values of the update
+vectors are clipped if they go beyond a pre-set value. In clip by
+norm, the entire update is scaled if the norm of the update exceeds
+the threshold τ . Thus we place a maximum on the magnitude
+of each vector that can be taken during training, preventing the
+attackers from amplifying the updates in the same direction. If the
+norm of update is below the threshold τ , the update is unaffected.
+Inspired by [33], we design an automatic clipping strategy
+to defend against potential amplified malicious updates that the
+naive cosine similarity-based clustering scheme cannot handle well.
+Specifically, we set the clipping value hyper-parameter based on
+the statistics of the historical norms of the updates uploaded during
+training, i.e., we save the update norms up to current iteration
+and automatically set τ using the 50-th percentile value (i.e., the
+median) of the history.
+There are two reasons of choosing the median update norm
+as the clipping threshold: First, prior work [34] has demonstrated
+that adaptive clipping to median norm works well across a range
+of general federated learning tasks without the need to tune any
+clipping hyper-parameter. Second, the median itself is a robust
+statistical measure of central tendency. As we assume that the
+majority of the clients are benign, malicious clients are unable to
+control the median norm even if they have full knowledge of all
+the updates.
+4.9
+
+Taxonomy
+
+Table 1 shows a taxonomy of the eight aggregation schemes,
+where Krum, GeoMed, and AutoGM are typical Euclidean
+distance-based schemes, i.e., they are all designed to find a
+vector closest to the updates measured by Euclidean distance.
+Among them, GeoMed and AutoGM are both based on geometric
+median. The Median scheme simply computes the coordinatewise median instead of geometric median. TrimmedMean, CC,
+Clustering and ClippedClustering are all categorized
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+6
+
+𝑎𝑟𝑐𝑐𝑜𝑠𝛿
+
+𝜃!
+𝜃
+
+Training Labels
+
+𝑒"
+𝑒!
+𝑒
+
+Fig. 2: Demonstration of the solution to (11). The solution of e1
+can be expressed as a linear combination of e and e0 .
+
+as mean-based schemes as they eventually compute the mean,
+although they also utilize other mechanisms. Clustering and
+ClippedClustering both perform clustering based on cosine
+similarity while ClippedClustering clips the updates before
+clustering.
+
+5
+
+A DAPTIVE ATTACK ON C L I P P E D C L U S T E R I N G
+
+In this section, we design a strong adaptive attack on
+ClippedClustering. We assume that the attacker has full
+knowledge of the system, including the aggregation scheme and all
+the updates from benign clients.
+Given the fact that the updates are clipped by the server if their
+magnitudes are beyond the threshold, state-of-the-art approach [35]
+that aims to maximize Euclidean distance between the aggregated
+vector and the true update is no longer applicable. Instead, the
+attack would be more effective if it can change the direction of
+update without being excluded by the aggregation scheme.
+The idea of our attack is to make sure that all the malicious
+updates stay in the largest cluster, while deviating from the correct
+direction as possible. Since the clustering method and linkage
+function are known to us, we can perform the same clustering
+process with the benign updates only. Then we can carefully design
+malicious updates to make it close enough to the largest cluster,
+without breaking the existing structure. Specifically, we compute
+the average cosine similarity of the two benign clusters, denoted
+by δ , and use it as the bound to design malicious updates.
+For simplification, we let ∆1 = · · · = ∆M , and denote by
+∆i
+ei = k∆
+the unit vector whose direction is the same as ∆i . The
+ik
+problem becomes:
+
+min he1 , ei,
+e1
+
+(11)
+
+s.t. he1 , e0 i > δ,
+where e is the unit vector of ∆, and e0 is the unit vector of the
+center of the largest benign cluster. The constraint ensures that the
+malicious group is included by the largest cluster when we perform
+hierarchical clustering based on average linkage.
+Minimizing the problem is equivalent to maximizing the angle
+between e1 and e, with the constraint that the angle between e1
+and e0 should be smaller than arccos δ , which is demonstrated in
+Fig. 2. Now we are able to solve the problem using {e, e0 } a basis,
+i.e., let
+
+θ = arccos he, e0 i,
+θ0 = arccos δ − ,
+
+(12)
+(13)
+
+9
+8
+7
+6
+5
+4
+3
+2
+1
+0
+
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
+Client ID
+
+Fig. 3: Visualization of statistical heterogeneity among clients
+on our Non-IID partition of CIFAR-10 dataset, where the x-axis
+indicates client IDs, the y -axis indicates class labels, and the size
+of scattered points indicates the number of training samples for a
+label available to that client.
+
+where  > 0 is a small enough number. The solution to (11) is
+expressed as:
+
+
+
+
+sin(θ + θ0 )
+sin θ0
+0
+0
+e1 = cos(θ + θ ) −
+e + cos θ +
+e0 .
+tan θ
+tan θ
+(14)
+Once we obtain the unit vector of malicious updates, we can
+scale the magnitude by the clipping threshold τ , i.e.,
+
+∆1 = · · · = ∆M = τ e1 .
+
+(15)
+
+We note that such an attack is applicable to agglomerative
+clustering with average linkage. For complete linkage, one can
+simply replace δ with the minimum cosine similarity of the two
+benign clusters and solve the problem in the same manner. Other
+linkage functions are omitted due to space limitations.
+
+6
+
+E VALUATION
+
+In this section, we design experiments to evaluate the aforementioned robust aggregation schemes under different attacks and show
+the experimental results.
+6.1
+
+Experimental Setup
+
+We simulate an FL system with the server and 20 clients, targeting
+at image classification tasks on CIFAR-10 [36] and MNIST [37]
+datasets with both IID and Non-IID partitions, where five of the
+clients are Byzantine clients by default. For the IID partitioning,
+we randomly split the training set into 20 subsets and allocate
+them to the 20 clients. For the Non-IID partition, we follow prior
+work [38], [39] and model the Non-IID data distributions with
+a Dirichlet distribution pl ∼ DirK (α). Then we allocate a pl,k
+proportion of the training sample of class l to client k , in which
+a smaller α indicates a stronger Non-IID data partition. We let
+α = 0.1 for all Non-IID settings. Fig. 3 visualizes the resulting
+statistical heterogeneity of labels on CIFAR-10. Such a partition
+is strongly Non-IID as one can see that some of the classes are
+completely missing for each client.
+For CIFAR-10, we choose a lightweight Compact Convolutional Transformers (CCT) network [40], as such a small yet
+effective model has more potential to overcome the on-board
+resource limitation of FL devices [41]. For MNIST, we train a
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+IID MNIST, FedSGD
+
+100
+
+7
+
+Non-IID MNIST, FedSGD
+
+IID MNIST, FedAvg
+
+Non-IID MNIST, FedAvg
+
+Accuracy (%)
+
+75
+50
+25
+0
+100
+
+Accuracy (%)
+
+2000
+
+4000
+
+6000
+
+0
+
+IID CIFAR10, FedSGD
+
+2000
+
+4000
+
+6000 0
+
+Non-IID CIFAR10, FedSGD
+
+200
+
+400
+
+600
+
+0
+
+IID CIFAR10, FedAvg
+
+200
+
+400
+
+600
+
+Non-IID CIFAR10, FedAvg
+
+75
+50
+25
+0
+
+2000
+
+4000
+
+Round Number
+
+6000
+
+0
+
+2000
+
+4000
+
+6000 0
+
+Round Number
+
+IPM ( =0.5)
+
+IPM ( =100)
+
+SF
+
+200
+
+400
+
+600
+
+ALIE
+
+Noise
+
+Round Number
+
+LF
+
+0
+
+200
+
+400
+
+Round Number
+
+600
+
+Fig. 4: Impact of malicious attacks on the Mean aggregation scheme. Overall, compared with using IID datasets, training with Non-IID
+datasets is more vulnerable to attacks.
+
+simple two-layer perceptron using ReLu as activation function.
+We train the model for 6000 and 600 communication rounds for
+FedSGD and FedAvg, respectively. By default, we set the batch
+size to 128 and 64 for MNIST and CIFAR-10, respectively. As
+suggested by Karimireddy et al. [20], we decay the learning rate
+during training to improve convergence, i.e., for FedSGD, we let
+
+
+if t ≤ 2000,
+0.1
+ηt ← 0.05 if 2000 < t ≤ 5000,
+(16)
+
+
+0.025 else;
+for FedAvg, we let
+
+
+0.1
+ηt ← 0.05
+
+
+0.025
+
+6.3
+if t ≤ 200,
+if 200 < t ≤ 500,
+else.
+
+(17)
+
+For FedAvg, we apply 50 SGD steps before uploading the updates
+to the server (i.e., El = 50).
+6.2
+
+four settings by decreasing the test accuracy to around 10% (no
+better than random guess). This is because they both make large
+changes to the updates, and Mean could be easily biased by large
+changes [19].
+Unsurprisingly, ALIE attack is ineffective to MNIST dataset,
+while it makes a large impact on CIFAR-10 with FedSGD. This
+is because the amount of noise for ALIE is determined by the
+empirical variance of benign updates. As it is already known that
+MLP on MNIST usually has a lower variance than CNN on CIFAR10 [44].
+
+Impact on the Mean Scheme
+
+We first demonstrate the impact of attacks on conventional FedSGD
+and FedAvg using the Mean scheme to aggregate updates by
+plotting test accuracy versus the number of communication rounds
+in Fig. 4. At first glance, when the datasets are IID, FedAvg
+takes fewer communication rounds than FedSGD to converge
+when there is no attack, benefiting from multiple steps of local
+training. However, when the datasets are Non-IID, the performance
+of FedAvg significantly decreases while FedSGD still maintains
+relatively high accuracy. We note that this is a well-known drawback
+of FedAvg [42], [43].
+Recall that some of the attacks (e.g., IPM with small  [24])
+are particularly designed to break the line of robust defense, which
+means that they may not bring much damage to the Mean scheme.
+For instance, Fig. 4 shows that IPM ( = 0.5) produces less
+damage to Mean compared to the other attacks, as the malicious
+updates do not change the direction of the average update but
+only decrease its magnitude (see Section 3.3). Furthermore, Noise
+and IPM ( = 100) eventually damage the models under the
+
+Impact on Robust Aggregation Schemes
+
+Table 2 shows the overall comparison of the robust aggregation
+schemes in FedSGD and FedAvg with respect to test accuracy on
+both IID and Non-IID partitioned datasets.
+First of all, with the absence of malicious clients, Krum,
+GeoMed, AutoGM, and Median achieve relatively lower accuracy compared to other schemes. Especially, such degradation
+is more significant with Non-IID data. For instance, the accuracy almost reduces to random guessing, 10%, for CIFAR-10
+with FedSGD, while Mean, TrimmedMean, Clustering, and
+ClippedClustering sustain the accuracy at around 80%. This
+suggests that Krum, GeoMed, AutoGM, and Median should be
+used with caution for highly Non-IID data.
+Euclidean-based schemes (i.e., Krum, GeoMed, and AutoGM)
+reach lower accuracy compared to the other schemes in the
+complete absence of attackers, especially when the datasets are
+Non-IID. Surprisingly, their performance of FedSGD with Non-IID
+CIFAR-10 data is not much better than random guessing. This
+might be because they all tend to select a single update that is
+closest to all or part of the others measured by Euclidean distance,
+which however is a poor estimation of the overall tendency in
+data heterogeneity situations. Furthermore, they all show similar
+robustness in both FedSGD and FedAvg. E.g., with IID data
+partition, they all handle Noise and IPM ( = 100) well while
+somehow struggling with the other attacks. This is not surprising as
+those Euclidean-based schemes are essentially designed to defend
+against large changes of updates. On the other hand, small-scale
+
+8
+
+m
+Algorith
+
+FedSGD
+FedAvg
+FedSGD
+FedAvg
+
+CIFAR-10
+
+CIFAR-10
+
+MNIST
+
+MNIST
+
+Dataset
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+Defense
+
+IID data
+IPM
+
+IPM
+
+(=0.5)
+
+(=100)
+
+SF
+
+LF
+
+ALIE
+
+Noise
+
+10.32
+96.15
+95.99
+96.15
+89.10
+88.97
+0.79
+10.32
+
+95.19
+95.51
+95.47
+95.47
+94.78
+95.02
+95.20
+95.26
+
+96.70
+96.15
+96.12
+96.08
+95.27
+95.24
+96.70
+96.72
+
+96.98
+95.96
+95.96
+95.96
+96.11
+96.27
+96.98
+97.00
+
+11.35
+96.15
+96.19
+96.19
+94.68
+93.63
+10.09
+11.35
+
+No
+Attack
+96.70
+78.57
+57.59
+58.51
+80.10
+96.70
+96.69
+96.79
+
+96.16
+88.64
+77.12
+77.12
+90.65
+93.92
+96.16
+96.07
+
+97.04
+
+96.90
+
+96.98
+
+95.50
+
+96.80
+
+96.93
+
+92.71
+
+Mean
+Krum
+GeoMed
+AutoGM
+Median
+TrimmedMean
+CC
+Clustering
+ClippedClustering
+(ours)
+
+98.13
+95.23
+95.24
+95.24
+98.08
+98.13
+98.10
+98.11
+
+97.83
+93.61
+93.17
+85.45
+96.72
+97.64
+97.84
+97.87
+
+11.35
+95.35
+93.77
+95.21
+96.09
+95.73
+9.82
+11.35
+
+11.35
+95.35
+95.22
+95.17
+97.78
+97.83
+11.35
+9.74
+
+97.66
+95.35
+95.13
+95.13
+97.80
+97.78
+97.67
+97.81
+
+97.87
+97.86
+97.86
+97.86
+97.82
+97.85
+97.89
+97.84
+
+98.15
+
+97.93
+
+97.90
+
+97.83
+
+97.90
+
+Mean
+Krum
+GeoMed
+AutoGM
+Median
+TrimmedMean
+CC
+Clustering
+ClippedClustering
+(ours)
+
+82.35
+67.47
+63.25
+66.16
+78.78
+82.06
+82.21
+81.80
+
+81.22
+58.17
+59.40
+42.70
+44.42
+51.30
+81.20
+79.64
+
+10.00
+50.60
+36.79
+66.69
+33.31
+34.97
+8.76
+10.00
+
+57.62
+65.24
+65.29
+65.16
+68.76
+68.49
+15.76
+61.89
+
+81.58
+
+80.34
+
+81.32
+
+Mean
+Krum
+GeoMed
+AutoGM
+Median
+TrimmedMean
+CC
+Clustering
+ClippedClustering
+(ours)
+
+80.19
+72.04
+72.93
+73.13
+80.74
+80.76
+80.01
+80.15
+
+76.18
+54.53
+49.76
+44.64
+66.39
+73.42
+77.77
+77.74
+
+79.71
+
+78.80
+
+Mean
+Krum
+GeoMed
+AutoGM
+Median
+TrimmedMean
+CC
+Clustering
+ClippedClustering
+(ours)
+
+No
+Attack
+97.13
+96.04
+95.97
+95.97
+96.07
+97.13
+97.13
+97.11
+
+Non-IID data
+IPM
+
+IPM
+
+(=0.5)
+
+(=100)
+
+95.35
+52.28
+47.57
+46.86
+15.62
+21.52
+95.35
+95.31
+
+95.91
+
+11.35
+95.35
+95.36
+95.48
+98.02
+98.01
+11.35
+10.28
+
+97.86
+
+75.86
+67.90
+66.52
+66.55
+59.60
+54.63
+23.08
+76.37
+
+77.94
+
+10.00
+72.32
+69.80
+69.11
+65.01
+61.13
+10.00
+10.00
+78.44
+
+SF
+
+LF
+
+ALIE
+
+Noise
+
+11.35
+81.54
+55.94
+55.75
+19.52
+12.60
+11.35
+11.35
+
+18.18
+66.37
+49.07
+48.76
+52.39
+76.85
+82.70
+9.74
+
+79.45
+82.07
+58.16
+59.99
+72.12
+77.19
+79.46
+80.95
+
+96.14
+93.82
+93.74
+93.74
+92.90
+92.53
+96.14
+95.88
+
+9.80
+81.54
+50.08
+50.23
+79.96
+89.43
+9.58
+10.32
+
+85.19
+
+84.82
+
+88.71
+
+85.28
+
+95.56
+
+10.07
+
+96.87
+73.06
+46.64
+46.69
+89.85
+96.87
+96.88
+96.85
+
+96.36
+42.03
+55.75
+55.75
+58.06
+61.93
+96.35
+96.04
+
+11.35
+74.81
+26.09
+48.23
+32.16
+55.51
+11.35
+11.35
+
+8.92
+74.81
+48.90
+48.94
+86.97
+91.77
+9.74
+9.58
+
+87.02
+58.06
+48.15
+49.09
+91.09
+93.03
+87.00
+87.70
+
+96.91
+96.44
+96.44
+96.44
+96.14
+95.26
+96.91
+96.86
+
+9.80
+74.81
+46.68
+46.68
+92.43
+94.98
+9.80
+9.80
+
+97.99
+
+96.48
+
+96.22
+
+81.08
+
+93.80
+
+94.74
+
+96.83
+
+93.56
+
+10.00
+10.00
+26.21
+10.00
+10.00
+10.00
+38.81
+77.48
+
+10.00
+60.26
+22.55
+48.06
+10.00
+16.33
+10.00
+10.00
+
+81.15
+10.00
+17.09
+10.00
+10.00
+80.98
+53.44
+79.37
+
+79.44
+10.00
+10.00
+10.00
+10.00
+10.00
+80.23
+77.47
+
+10.00
+10.00
+16.21
+10.00
+10.00
+10.00
+10.00
+10.00
+
+26.48
+17.54
+18.98
+18.44
+10.00
+10.00
+10.00
+24.77
+
+67.98
+10.00
+10.00
+18.18
+10.00
+10.00
+67.79
+66.35
+
+10.00
+10.00
+10.00
+10.00
+10.00
+10.00
+10.00
+10.00
+
+10.00
+10.00
+10.00
+18.97
+10.08
+10.00
+10.00
+10.00
+
+79.18
+
+10.00
+
+73.89
+
+76.83
+
+69.53
+
+20.06
+
+52.37
+
+64.48
+
+16.84
+
+20.28
+
+10.00
+70.41
+10.00
+71.40
+73.86
+66.52
+10.00
+10.00
+
+69.45
+72.22
+73.72
+72.88
+77.94
+76.42
+69.80
+75.61
+
+78.10
+75.55
+75.97
+75.39
+76.48
+77.66
+78.53
+78.12
+
+10.00
+71.92
+71.92
+71.13
+75.43
+73.08
+24.71
+10.00
+
+63.35
+27.09
+27.95
+30.12
+57.62
+62.98
+63.39
+61.45
+
+56.89
+10.00
+10.00
+10.00
+20.60
+30.92
+56.97
+57.37
+
+10.00
+21.47
+10.00
+21.68
+16.96
+18.61
+10.00
+10.00
+
+10.00
+23.26
+10.00
+26.21
+48.60
+47.95
+10.00
+10.23
+
+51.60
+26.98
+24.19
+20.30
+45.22
+47.92
+52.41
+49.43
+
+58.89
+47.36
+48.45
+48.92
+49.49
+53.03
+59.29
+58.66
+
+10.00
+21.78
+26.38
+29.17
+42.58
+39.67
+17.24
+10.00
+
+78.01
+
+63.07
+
+77.73
+
+78.82
+
+62.52
+
+53.31
+
+31.24
+
+24.31
+
+50.77
+
+56.51
+
+48.55
+
+TABLE 2: Comparing state-of-the-art robust aggregation schemes and our ClippedClustering under various attacks, where 25%
+of the clients are malicious. A semi-transparent value indicates that the corresponding accuracy is lower than 15% (not much better than
+random guessing). We bold the numbers with the highest accuracy. When integrated with robust aggregation schemes, FedAvg is more
+robust than FedSGD. On the other hand, all the attacks become more effective in Non-IID scenarios.
+
+attacks such as IPM ( = 0.5) challenges them as the malicious
+updates are close to the benign ones when measured by Euclidean
+distance.
+Two other classic robust aggregation schemes, Median, and
+TrimmedMean show similar robustness in most cases. For
+instance, when tested with IID MNIST, they successfully defend
+against most attacks with insignificant accuracy degradation.
+However, for Non-IID MNIST, both suffer from IPM attacks.
+A similar phenomenon occurs with CIFAR-10.
+CC and Clustering both fail in all IPM ( = 100) and Noise
+attacks, because these attacks are of large magnitude. In these cases,
+ClippedClustering significantly enhances the robustness of
+Clustering, benefiting from the adaptive clipping mechanism.
+In the experiments, our proposed ClippedClustering successfully defends against more types of attacks than the other
+schemes, and achieves the highest test accuracy. However, it is
+defeated by ALIE when we train the model using FedSGD with
+
+CIFAR-10. Similar to other schemes, ClippedClustering is
+also less robust in Non-IID data scenarios. We note that NonIIDness is a well-known challenge to FL especially when it comes
+to robustness [39], as it becomes hard to induce a consensus model
+for the benign clients if their data distributions are significantly
+different. Thus the malicious clients can damage the global model
+more easily.
+Another important observation from our experiments is that
+ALIE makes almost no accuracy degradation when we train models
+using MNIST dataset, while it successfully circumvents almost all
+aggregation schemes of FedSGD with CIFAR-10 and keeps the
+test accuracy below 20%. The models suffer much less damage
+from ALIE when trained with FedAvg. Moreover, even the Mean
+scheme could handle it well. We thus infer that multiple steps of
+SGD updates may result in lower variance compared to single-step
+updates when the datasets are IID.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+9
+
+AGG = Krum
+
+AGG = GeoMed
+
+AGG = AutoGM
+
+AGG = Median
+
+AGG = TrimmedMean
+
+AGG = CC
+
+AGG = Clustering
+
+AGG = ClippedClustering
+
+Accuracy (%)
+
+80
+60
+40
+20
+0
+
+Accuracy (%)
+
+80
+60
+40
+20
+0
+
+5
+
+15
+
+25
+
+35
+
+45
+
+Fraction of Byzantine clients (%)
+
+5
+
+15
+
+25
+
+35
+
+45
+
+Fraction of Byzantine clients (%)
+
+IPM ( =0.5)
+
+IPM ( =100)
+
+SF
+
+5
+
+15
+
+25
+
+35
+
+45
+
+5
+
+Fraction of Byzantine clients (%)
+LF
+
+ALIE
+
+15
+
+25
+
+35
+
+45
+
+Fraction of Byzantine clients (%)
+
+Noise
+
+Fig. 5: Impact of the fraction of Byzantine clients on test accuracy for CIFAR-10 with FedAvg. Median, TrimmedMean, and
+ClippedClustering show high tolerance to most attacks.
+
+Batch Size = 64
+
+Accuracy (%)
+
+80
+
+Batch Size = 128
+
+Batch Size = 512
+
+Batch Size = 2500
+
+60
+40
+20
+0
+
+0
+
+2000
+
+Clustering
+
+4000
+
+Round
+
+6000 0
+
+ClippedClustering
+
+2000
+Mean
+
+4000
+
+Round
+
+Krum
+
+6000 0
+
+2000
+
+4000
+
+GeoMed
+
+AutoGM
+
+Median
+
+Round
+
+6000 0
+
+2000
+
+TrimmedMean
+
+4000
+
+Round
+
+6000
+
+CenteredClipping
+
+Fig. 6: Impact of batch size on the performance of FedSGD with IID partition under ALIE attack. The aggregation schemes (including
+Mean) become more robust as the batch size increases.
+
+6.4
+
+Impact of Fraction of Malicious Clients
+
+To study the impact of the number of malicious clients, we perform
+an experiment using FedAvg with IID partitioned CIFAR-10 under
+six types of attacks. The results are shown in Fig. 5. Overall,
+the attacks make varying degrees of impact on the aggregation
+schemes as the fraction of Byzantine clients increases. Interestingly,
+the tendency of Krum, GeoMed, and AutoGM are similar, except
+for the impact of SL attack. Particularly, these schemes all suffer
+from even a small fraction of IPM ( = 0.5) attackers, i.e., the
+accuracy is reduced by 10% with the presence of a single Byzantine
+client (when 5% of the clients are malicious).
+CC and Clustering are both vulnerable to Noise, SF
+and IPM ( = 100) attacks even with the presence of
+only 5% Byzantine clients. Median, TrimmedMean, and
+ClippedClustering are more robust to attacks especially
+when the fraction is low. Surprisingly, ClippedClustering
+tends to be affected by LF attacks as the fraction increases. Note
+that Fig. 5 only shows the performance of FedAvg with IID data.
+When the local datasets are Non-IID, all schemes show considerably
+less tolerance to Byzantine attacks.
+
+6.5
+
+Impact of Batch Size
+
+In the previous experiments, the batch size per client is relatively
+small (i.e., 128 and 64 for MNIST and CIFAR-10, respectively),
+which leads to a large variance among benign updates, thus
+making the attacks more challenging [20]. Taking CIFAR-10
+as an example, we investigate the effect of batch size on the
+robustness of aggregation schemes by varying batch size in
+{64, 128, 512, 2500}.
+Fig. 6 shows the performance of FedSGD with IID partition
+under ALIE attacks. Mean, ClippedClustering, AutoGM,
+TrimmedMean and CC become more robust as the batch size
+increases. This is because the variance tends to be lower as
+we increase the batch size. Particularly, when the batch size
+is 2500, the clients use all their training data for each step of
+training, stochastic gradient then becomes population gradient (the
+optimization becomes full-batch gradient descent). However, except
+ClippedClustering, all the other aggregation schemes still
+fail to achieve acceptable test accuracy. Although a large batch
+size is more favorable for robustness purposes as indicated by
+this experiment, it is not the desired solution as it brings a large
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+Loss
+
+IID MNIST, FedSGD
+10
+
+4
+
+10
+
+2
+
+10
+
+0
+
+0
+
+2000
+
+4000
+
+Non-IID MNIST, FedSGD
+
+6000 0
+
+Loss
+
+IID CIFAR10, FedSGD
+10
+
+4
+
+10
+
+2
+
+10
+
+0
+
+0
+100
+
+2000
+
+4000
+
+IID MNIST, FedAvg
+
+6000 0
+
+200
+
+Non-IID CIFAR10, FedSGD
+
+2000
+
+4000
+
+6000 0
+
+2000
+
+4000
+
+6000 0
+
+Round Number
+IID MNIST, FedSGD
+
+10
+
+400
+
+600 0
+
+IID CIFAR10, FedAvg
+
+2000
+
+4000
+
+6000 0
+
+2000
+
+4000
+
+6000 0
+
+Round Number
+Non-IID MNIST, FedSGD
+
+Non-IID MNIST, FedAvg
+
+200
+
+400
+
+600 0
+
+200
+
+400
+
+600 0
+
+Round Number
+IID MNIST, FedAvg
+
+200
+
+400
+
+600
+
+Non-IID CIFAR10, FedAvg
+
+200
+
+400
+
+600
+
+200
+
+400
+
+600
+
+Round Number
+Non-IID MNIST, FedAvg
+
+Accuracy (%)
+
+75
+50
+25
+0
+
+IID CIFAR10, FedSGD
+
+Accuracy (%)
+
+100
+
+Non-IID CIFAR10, FedSGD
+
+IID CIFAR10, FedAvg
+
+Non-IID CIFAR10, FedAvg
+
+75
+50
+25
+0
+
+2000
+
+4000
+
+Round Number
+
+6000 0
+
+2000
+
+4000
+
+6000 0
+
+0
+
+5
+
+15
+
+200
+
+400
+
+Round Number
+Round Number
+Fraction of Byzantine clients (%)
+25
+
+35
+
+600 0
+
+200
+
+400
+
+Round Number
+
+600
+
+45
+
+Fig. 7: Adaptive attack to ClippedClustering scheme. The top two rows show the test loss and the bottom rows show the test
+accuracy. We clamp the loss into the range [0, 105 ]. The attack is particularly effective when the local datasets are Non-IID.
+
+computation burden to local training.
+
+6.6
+
+Impact of Adaptive Attack
+
+We examine ClippedClustering with the adaptive attack
+described in Section 5. The result is shown in Fig. 7. For the sake of
+visualization, we clamp the loss into the range [0, 105 ]. For FedSGD
+with IID data (shown in the first column), ClippedClustering
+tolerates up to 15% clients attacked with little performance
+degradation. When more than 25% of clients are malicious, the
+loss curves fluctuate or even tend to increase. For FedSGD with
+Non-IID data (shown in the second column), the models diverge as
+long as there are 15% clients are malicious.
+As for FedAvg with IID data, ClippedClustering shows
+higher tolerance than FedSGD. Specifically, the model for IID
+MNIST successfully converges with all the different fractions of
+Byzantine clients. However, as shown by the fourth column of
+Fig. 7, it is still much less robust when it comes to Non-IID data,
+where the model does not tend to converge when more than 15%
+of clients are malicious.
+
+Noticeably, we observe that preventing convergence is not
+always sufficient to degrade the accuracy. For example, for FedSGD
+on Non-IID MNIST with 15% clients are malicious, the loss
+increases to the upper bound (105 ) after 4000 rounds, the model,
+however, still remains 92% accuracy. This is because the top-1
+accuracy (as we use in this paper) only takes into account the
+output with the highest probability. In this case, the attackers
+significantly change the output distribution but fail to change the
+index of the highest output.
+6.7
+
+Pairwise Cosine Similarities
+
+Recall that the aggregation schemes show different robustness
+in FedSGD and FedAvg with respective to IID and Non-IID data
+partitions. To further investigate this issue, we compare the pairwise
+cosine similarities of all benign local updates without attacks. We
+note that cosine similarly reflects the angle between two vectors, i.e.,
+a higher value indicates a smaller angle. As visualized in Fig. 8, the
+pairwise cosine similarities of updates from FedSGD vary widely,
+no matter if the local datasets are IID or not. Considerable pairs of
+clients even show negative similarities. Such a stochastic property
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+Setting = Fedsgd_noniid
+
+Client ID
+
+18 16 14 12 10 8 6 4 2 0
+
+Setting = Fedsgd_iid
+
+11
+
+1.0
+0.5
+
+Setting = Fedavg_noniid
+
+18 16 14 12 10 8 6 4 2 0
+
+Setting = Fedavg_iid
+
+0.0
+
+Client ID
+
+0.5
+1.0
+
+0 2 4 6 8 10 12 14 16 18 0 2 4 6 8 10 12 14 16 18
+
+Client ID
+
+Client ID
+
+Fig. 8: Pairwise cosine similarities between local updates in
+different scenarios, where a similarly value 1 represents identical
+update directions, and -1 indicates opposite directions. FedAvg with
+IID data results in the most similar directions.
+may confuse the robust aggregation schemes and make it more
+challenging to detect malicious updates. The updates from FedAvg
+with IID data show the highest pairwise similarities, which means
+that their update directions are almost identical. Benefiting from
+this, clustering-based schemes can group benign updates together
+and exclude malicious updates. However, they become less similar
+when the local datasets are Non-IID.
+
+7
+
+R ELATED W ORK
+
+7.1
+
+Byzantine Attacks on FL
+
+Byzantine attacks on FL are carried out by malicious clients during
+the distributed optimization of machine learning models, aiming
+to bias the global model to the desire of malicious clients [5].
+Depending on the adversarial goals, Byzantine attacks in FL can
+be classified into two categories: targeted attacks and untargeted
+attacks [5], [29]. Targeted attacks, such as backdoor attacks, aim to
+make the global model generate attacker-desired misclassifications
+for some particular test samples [45], [46], [47]. While untargeted
+attacks aim to degrade the overall performance of the global model
+indiscriminately [7].
+We particularly focus on untargeted attacks as most Byzantinerobust studies do [8], [17], [18], [19], [20], [21]. Many studies
+considered to launch attacks by adding Gaussian noise or flipping
+the sign of the actual updates [13], [19]. Those attacks, however, can
+be detected by some Euclidean distance-based aggregation schemes
+such as Krum [17], as they usually make the malicious updates
+far from the benign ones when measured by Euclidean distance.
+On the other hand, Baruch et al. [23] showed that the attackers
+can actually circumvent robust schemes including TrimmedMean
+and Krum by taking advantage of empirical variance between the
+updates of clients if such variance is high enough. Furthermore,
+Xie et al. proposed an attack strategy, Inner Product Manipulation
+(IPM) attack that poses a significant threat to Median and Krum
+
+by manipulating the inner product between the true mean of the
+updates and the output of the aggregation schemes [24].
+There exists a debate over Byzantine attacks in real-world
+FL systems. Shejwalkar et al. [48] claimed that the fraction of
+compromised genuine clients are usually small (e.g., 0.01%) in
+practice due to the high cost of hacking and manipulating multiple
+devices simultaneously, resulting in a very limited impact on the
+global model. However, Cao et al. [49] argued that the attackers
+may address this limitation by injecting fake clients into FL systems
+using zombie devices and simulators.
+7.2
+
+Byzantine-robust FL
+
+In FL settings, a number of strategies have been explored to
+defend against specific types of attacks or failures, including
+backdoor attacks [47], [50], free-rider attacks [51], [52], and
+gradient inversion attacks [53], [54]. On a more general level,
+Byzantine-robust FL solutions aim to mitigate the effect of arbitrary
+updates uploaded by malicious clients, instead of focusing on
+specific types of attacks [7]. Those Byzantine-robust solutions
+can be classified into three categories: redundancy-based schemes,
+trust-based schemes, and robust aggregation schemes.
+Redundancy-based schemes assign each client redundant updates and use this redundancy to eliminate the effect of Byzantine
+failures [10], [11], [55]. In 2018, Chen et al. [10] presented a
+framework, DRACO, for robust distributed training that uses ideas
+from coding theory. In DRACO, each client evaluates redundant
+gradients that are used by the server to eliminate the effects of
+adversarial updates. In 2019, Rajput et al. presented DETOX,
+a framework that combines algorithmic redundancy with robust
+aggregation. The defense of DETOX operates in two steps, a
+filtering step that uses limited redundancy to significantly reduce the
+effect of Byzantine nodes, and a hierarchical aggregation step that
+can be used in tandem with any state-of-the-art robust aggregation
+method. However, these redundant updates, in the worst case,
+require each node to compute Ω(M ) times more updates, where
+M is the number of Byzantine clients [10]. This overhead is
+prohibitive in settings with a large number of Byzantine clients. In
+2021, Cao et al. [56] proposed to use a randomly selected subset
+of clients to learn redundant global models. At inference time, it
+takes the majority vote among the global models when predicting
+the label of a testing sample. The authors showed that such an
+ensemble approach with any base FL algorithm is provably secure
+against malicious clients.
+Trust-based schemes assume that some of the clients or datasets
+are trusted for filtering and re-weighting the local model updates
+[13], [14], [15], [16]. For example, in 2019, Li et al. [13] proposed
+to incorporate the objective function with a regularization term,
+which minimizes the distance between the server parameters and
+the client parameters. In 2021, Park et al. [15] designed an entropybased filtering scheme to detect the outlier updates based on some
+trusted public data on the server side. During the training, the server
+computes the entropy of each update with the trusted dataset. Based
+on their experimental observations, they argue that the updates with
+higher entropy will lead to lower accuracy during the testing stage.
+Thus, they set a threshold for the entropy and filter out updates
+with entropy higher than the threshold. In 2021, Cao et al. [16]
+utilized cosine similarity to measure the similarity between updates
+submitted by the clients and the update obtained by training based
+on the trusted dataset owned by the server. The authors argued that
+an attacker can manipulate the directions of updates to perform
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+model poisoning attacks, and the directions of the updates can, to a
+certain extent, indicate the honesty of the end devices. After the
+calculation of cosine similarity, the server calculates a trust score
+for each update using the ReLu function. The score is then used as
+the weight for the global model aggregation. In general, trust-based
+schemes have the potential to deal with situations where more than
+half of the updates are malicious according to some pre-validated
+information to detect malicious updates. However, trusted datasets
+or clients are not always available for the server, for example, due
+to the concern of user data privacy.
+Robust aggregation schemes estimate the global update based
+on the local updates according to their robust aggregation rules
+or algorithms [8], [17], [18], [19], [20], [21]. Byzantine-robust
+aggregation has been explored to handle the devices sending
+corrupted updates to the server, including geometric median
+(GeoMed) [18], Krum [17], TrimmedMean [8], and Median [8].
+They are commonly used to estimate the model parameters and
+mitigate the effect of malicious updates in global aggregation.
+In 2017, Chen et al. [18] proposed a GeoMed-based method to
+aggregate the gradients for distributed statistical machine learning
+and showed the robustness and convergence in i.i.d settings. In 2020,
+Wu et al. [57] showed that GeoMed scheme provably provides
+improved Byzantine robustness compared to other aggregation
+schemes in FL. In 2022, Pillutla et al. [30] applied GeoMed as a
+robust aggregation rule for FL and analyze the convergence of the
+resulting FL algorithm for least-squares objective with IID local
+datasets. In 2022, Li et al. [19] proposed AutoGM, a variant of
+GeoMed that automatically re-scales the weight of each parameter
+component according to a user-specified threshold of skewness.
+According to our empirical study in this paper, this category of
+schemes all show limitations in FedSGD and FedAvg algorithms in
+terms of Byzantine robustness.
+
+8
+
+C ONCLUSIONS
+
+In this paper, we provided an experimental study of Byzantine
+robust aggregation schemes for FL. In particular, we survey existing
+Byzantine attacks and defense strategies in the FL literature. We
+also propose a novel scheme, ClippedClustering, which
+enhances the robustness of the clustering-based scheme by automatically clipping the updates to mitigate the effect of amplified
+malicious updates. We then evaluate eight robust aggregation
+schemes under five representative Byzantine attack strategies.
+Our experimental results show that all those aggregation schemes
+achieve limited robustness in the presence of Byzantine attacks.
+In the future, it would be interesting to carry out a theoretical
+analysis to guarantee the robustness of ClippedClustering.
+Furthermore, we plan to improve the robustness of FL from more
+perspectives, e.g., low variance algorithms, and robust learning
+rates.
+
+S TATUS AND P UBLICATION I NFORMATION
+This paper has been accepted for publication in IEEE Transactions
+on Big Data, and the final version is now available at https://doi.
+org/10.1109/TBDATA.2023.3237397
+
+R EFERENCES
+[1]
+
+B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A. y Arcas,
+“Communication-efficient learning of deep networks from decentralized
+data,” in Artificial intelligence and statistics. PMLR, 2017, pp. 1273–
+1282.
+
+12
+
+Q. Yang, Y. Liu, T. Chen, and Y. Tong, “Federated machine learning:
+Concept and applications,” ACM Transactions on Intelligent Systems and
+Technology (TIST), vol. 10, no. 2, pp. 1–19, 2019.
+[3] J. Konečnỳ, H. B. McMahan, F. X. Yu, P. Richtárik, A. T. Suresh, and
+D. Bacon, “Federated learning: Strategies for improving communication
+efficiency,” arXiv preprint arXiv:1610.05492, 2016.
+[4] Y. Arjevani and O. Shamir, “Communication complexity of distributed
+convex learning and optimization,” Advances in neural information
+processing systems, vol. 28, 2015.
+[5] L. Lyu, H. Yu, J. Zhao, and Q. Yang, “Threats to federated learning,” in
+Federated Learning. Springer, 2020, pp. 3–16.
+[6] F. Ang, L. Chen, N. Zhao, Y. Chen, W. Wang, and F. R. Yu, “Robust
+federated learning with noisy communication,” IEEE Transactions on
+Communications, vol. 68, no. 6, pp. 3452–3464, 2020.
+[7] M. Fang, X. Cao, J. Jia, and N. Gong, “Local model poisoning attacks to
+byzantine-robust federated learning,” in 29th USENIX Security Symposium
+(USENIX Security 20), 2020, pp. 1605–1622.
+[8] D. Yin, Y. Chen, R. Kannan, and P. Bartlett, “Byzantine-robust distributed
+learning: Towards optimal statistical rates,” in International Conference
+on Machine Learning. PMLR, 2018.
+[9] S. Hu, J. Lu, W. Wan, and L. Y. Zhang, “Challenges and approaches
+for mitigating byzantine attacks in federated learning,” arXiv preprint
+arXiv:2112.14468, 2021.
+[10] L. Chen, H. Wang, Z. Charles, and D. Papailiopoulos, “Draco: Byzantineresilient distributed training via redundant gradients,” in International
+Conference on Machine Learning. PMLR, 2018, pp. 903–912.
+[11] S. Rajput, H. Wang, Z. Charles, and D. Papailiopoulos, “Detox: A
+redundancy-based framework for faster and more robust gradient aggregation,” Advances in Neural Information Processing Systems, vol. 32,
+2019.
+[12] J.-y. Sohn, D.-J. Han, B. Choi, and J. Moon, “Election coding for
+distributed learning: Protecting signsgd against byzantine attacks,” in
+Advances in Neural Information Processing Systems, H. Larochelle,
+M. Ranzato, R. Hadsell, M. Balcan, and H. Lin, Eds., vol. 33. Curran
+Associates, Inc., 2020, pp. 14 615–14 625.
+[13] L. Li, W. Xu, T. Chen, G. B. Giannakis, and Q. Ling, “Rsa: Byzantinerobust stochastic aggregation methods for distributed learning from
+heterogeneous datasets,” in Proceedings of the AAAI Conference on
+Artificial Intelligence, vol. 33, no. 01, 2019, pp. 1544–1551.
+[14] N. Konstantinov and C. Lampert, “Robust learning from untrusted sources,”
+in International conference on machine learning. PMLR, 2019, pp. 3488–
+3498.
+[15] J. W. Park, D.-J. Han, M. Choi, and J. Moon, “Sageflow: Robust federated
+learning against both stragglers and adversaries,” Advances in Neural
+Information Processing Systems, vol. 34, 2021.
+[16] X. Cao, M. Fang, J. Liu, and N. Z. Gong, “Fltrust: Byzantine-robust
+federated learning via trust bootstrapping,” in ISOC Network and
+Distributed System Security Symposium (NDSS), 2021.
+[17] P. Blanchard, E. M. El Mhamdi, R. Guerraoui, and J. Stainer, “Machine
+learning with adversaries: Byzantine tolerant gradient descent,” in
+Proceedings of the 31st International Conference on Neural Information
+Processing Systems, 2017.
+[18] Y. Chen, L. Su, and J. Xu, “Distributed statistical machine learning in
+adversarial settings: Byzantine gradient descent,” Proceedings of the ACM
+on Measurement and Analysis of Computing Systems, 2017.
+[19] S. Li, E. Ngai, and T. Voigt, “Byzantine-robust aggregation in federated
+learning empowered industrial iot,” IEEE Transactions on Industrial
+Informatics, 2021.
+[20] S. P. Karimireddy, L. He, and M. Jaggi, “Learning from history for
+byzantine robust optimization,” in International Conference on Machine
+Learning. PMLR, 2021, pp. 5311–5319.
+[21] F. Sattler, K.-R. Müller, T. Wiegand, and W. Samek, “On the byzantine
+robustness of clustered federated learning,” in ICASSP 2020-2020 IEEE
+International Conference on Acoustics, Speech and Signal Processing
+(ICASSP). IEEE, 2020, pp. 8861–8865.
+[22] R. Guerraoui, S. Rouault et al., “The hidden vulnerability of distributed
+learning in byzantium,” in International Conference on Machine Learning.
+PMLR, 2018, pp. 3521–3530.
+[23] G. Baruch, M. Baruch, and Y. Goldberg, “A little is enough: Circumventing
+defenses for distributed learning,” Advances in Neural Information
+Processing Systems, vol. 32, 2019.
+[24] C. Xie, O. Koyejo, and I. Gupta, “Fall of empires: Breaking byzantinetolerant sgd by inner product manipulation,” in Uncertainty in Artificial
+Intelligence. PMLR, 2020, pp. 261–270.
+[25] X. Li, K. Huang, W. Yang, S. Wang, and Z. Zhang, “On the convergence
+of fedavg on non-iid data,” in International Conference on Learning
+Representations, 2020.
+[2]
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+[26] Z. Li, V. Sharma, and S. P. Mohanty, “Preserving data privacy via
+federated learning: Challenges and solutions,” IEEE Consumer Electronics
+Magazine, vol. 9, no. 3, pp. 8–16, 2020.
+[27] H. P. Lopuhaa and P. J. Rousseeuw, “Breakdown points of affine
+equivariant estimators of multivariate location and covariance matrices,”
+The Annals of Statistics, pp. 229–248, 1991.
+[28] T. Li, S. Hu, A. Beirami, and V. Smith, “Ditto: Fair and robust federated
+learning through personalization,” in International Conference on Machine
+Learning. PMLR, 2021, pp. 6357–6368.
+[29] M. S. Jere, T. Farnan, and F. Koushanfar, “A taxonomy of attacks on
+federated learning,” IEEE Security & Privacy, vol. 19, no. 2, pp. 20–28,
+2020.
+[30] K. Pillutla, S. M. Kakade, and Z. Harchaoui, “Robust aggregation for
+federated learning,” IEEE Transactions on Signal Processing, 2022.
+[31] M. B. Cohen, Y. T. Lee, G. Miller, J. Pachocki, and A. Sidford, “Geometric
+median in nearly linear time,” in Proceedings of the forty-eighth annual
+ACM symposium on Theory of Computing, 2016, pp. 9–21.
+[32] Z. Li, L. Liu, J. Zhang, and J. Liu, “Byzantine-robust federated learning
+through spatial-temporal analysis of local model updates,” arXiv preprint
+arXiv:2107.01477, 2021.
+[33] P. Seetharaman, G. Wichern, B. Pardo, and J. Le Roux, “Autoclip:
+Adaptive gradient clipping for source separation networks,” in 2020 IEEE
+30th International Workshop on Machine Learning for Signal Processing
+(MLSP). IEEE, 2020, pp. 1–6.
+[34] G. Andrew, O. Thakkar, B. McMahan, and S. Ramaswamy, “Differentially
+private learning with adaptive clipping,” Advances in Neural Information
+Processing Systems, vol. 34, pp. 17 455–17 466, 2021.
+[35] V. Shejwalkar and A. Houmansadr, “Manipulating the byzantine: Optimizing model poisoning attacks and defenses for federated learning,” in
+NDSS, 2021.
+[36] A. Krizhevsky, “Learning multiple layers of features from tiny images,”
+Tech. Rep., 2009.
+[37] Y. LeCun, C. Cortes, and C. Burges, “Mnist handwritten digit database,”
+ATT Labs [Online]. Available: http://yann.lecun.com/exdb/mnist, vol. 2,
+2010.
+[38] T. Lin, L. Kong, S. U. Stich, and M. Jaggi, “Ensemble distillation
+for robust model fusion in federated learning,” Advances in Neural
+Information Processing Systems, vol. 33, pp. 2351–2363, 2020.
+[39] S. Li, E. Ngai, F. Ye, and T. Voigt, “Auto-weighted robust
+federated learning with corrupted data sources,” ACM Trans. Intell.
+Syst. Technol., vol. 13, no. 5, jun 2022. [Online]. Available:
+https://doi.org/10.1145/3517821
+[40] A. Hassani, S. Walton, N. Shah, A. Abuduweili, J. Li, and H. Shi,
+“Escaping the big data paradigm with compact transformers,” arXiv
+preprint arXiv:2104.05704, 2021.
+[41] T. Li, A. K. Sahu, A. Talwalkar, and V. Smith, “Federated learning:
+Challenges, methods, and future directions,” IEEE Signal Processing
+Magazine, vol. 37, no. 3, pp. 50–60, 2020.
+[42] S. P. Karimireddy, S. Kale, M. Mohri, S. Reddi, S. Stich, and A. T.
+Suresh, “Scaffold: Stochastic controlled averaging for federated learning,”
+in International Conference on Machine Learning. PMLR, 2020, pp.
+5132–5143.
+[43] Y. Deng, M. M. Kamani, and M. Mahdavi, “Adaptive personalized
+federated learning,” arXiv preprint arXiv:2003.13461, 2020.
+[44] F. Faghri, D. Duvenaud, D. J. Fleet, and J. Ba, “A study of gradient
+variance in deep learning,” arXiv preprint arXiv:2007.04532, 2020.
+[45] C. Xie, K. Huang, P.-Y. Chen, and B. Li, “Dba: Distributed backdoor
+attacks against federated learning,” in International Conference on
+Learning Representations, 2020.
+[46] E. Bagdasaryan, A. Veit, Y. Hua, D. Estrin, and V. Shmatikov, “How to
+backdoor federated learning,” in International Conference on Artificial
+Intelligence and Statistics. PMLR, 2020, pp. 2938–2948.
+[47] S. Andreina, G. A. Marson, H. Möllering, and G. Karame, “Baffle:
+Backdoor detection via feedback-based federated learning,” in 2021 IEEE
+41st International Conference on Distributed Computing Systems (ICDCS).
+IEEE, 2021, pp. 852–863.
+[48] V. Shejwalkar, A. Houmansadr, P. Kairouz, and D. Ramage, “Back to the
+drawing board: A critical evaluation of poisoning attacks on production
+federated learning,” in 2022 IEEE Symposium on Security and Privacy
+(SP). IEEE, 2022, pp. 1354–1371.
+[49] X. Cao and N. Z. Gong, “Mpaf: Model poisoning attacks to federated
+learning based on fake clients,” in Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition, 2022, pp. 3396–
+3404.
+[50] C. Zhao, Y. Wen, S. Li, F. Liu, and D. Meng, “Federatedreverse: A
+detection and defense method against backdoor attacks in federated
+
+13
+
+learning,” in Proceedings of the 2021 ACM Workshop on Information
+Hiding and Multimedia Security, 2021, pp. 51–62.
+[51] J. Lin, M. Du, and J. Liu, “Free-riders in federated learning: Attacks and
+defenses,” arXiv preprint arXiv:1911.12560, 2019.
+[52] Y. Fraboni, R. Vidal, and M. Lorenzi, “Free-rider attacks on model
+aggregation in federated learning,” in International Conference on
+Artificial Intelligence and Statistics. PMLR, 2021, pp. 1846–1854.
+[53] Y. Huang, S. Gupta, Z. Song, K. Li, and S. Arora, “Evaluating gradient
+inversion attacks and defenses in federated learning,” in Advances in
+Neural Information Processing Systems, vol. 34. Curran Associates, Inc.,
+2021, pp. 7232–7241.
+[54] J. Geiping, H. Bauermeister, H. Dröge, and M. Moeller, “Inverting
+gradients - how easy is it to break privacy in federated learning?” in
+Advances in Neural Information Processing Systems, vol. 33. Curran
+Associates, Inc., 2020, pp. 16 937–16 947.
+[55] D. Data, L. Song, and S. Diggavi, “Data encoding for byzantine-resilient
+distributed gradient descent,” in 2018 56th Annual Allerton Conference
+on Communication, Control, and Computing (Allerton). IEEE, 2018, pp.
+863–870.
+[56] X. Cao, J. Jia, and N. Z. Gong, “Provably secure federated learning against
+malicious clients,” in Proceedings of the AAAI Conference on Artificial
+Intelligence, vol. 35, no. 8, 2021, pp. 6885–6893.
+[57] Z. Wu, Q. Ling, T. Chen, and G. B. Giannakis, “Federated variancereduced stochastic gradient descent with robustness to byzantine attacks,”
+IEEE Transactions on Signal Processing, vol. 68, pp. 4583–4596, 2020.
+
+Shenghui Li received the B.S. degree from Xidian University, Xi’an, China, in 2017, and the M.S.
+degree from Sun Yat-sen University, Guangzhou,
+China, in 2019. He is currently pursuing the Ph.D.
+degree with the Department of Information Technology, Uppsala University, Uppsala, Sweden.
+His current research interests include federated learning, distributed optimization, and statistical machine learning.
+
+Edith C.-H. Ngai is currently an Associate Professor in Department of Electrical and Electronic
+Engineering, The University of Hong Kong. Before joining HKU in 2020, she was an Associate
+Professor in the Department of Information Technology, Uppsala University, Sweden. Dr. Ngai was
+a guest researcher at Ericsson Research Sweden
+in 2015-2017. Previously, she has conducted
+research in Imperial College London, Simon
+Fraser University, Tsinghua University, and UCLA.
+Her research interests include Internet-of-Things,
+machine learning, data analytics, and smart cities. Dr. Ngai is a VINNMER
+Fellow (2009) awarded by Swedish Governmental Research Funding
+Agency VINNOVA. She led the “Green IoT” project in Sweden, which
+was named on the IVA’s 100-list from the Royal Swedish Academy of
+Engineering Sciences in 2020. She is currently an Area Editor of IEEE
+Internet of Things Journal and an Associate Editor of IEEE Access and
+IEEE Transactions of Industrial Informatics.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015
+
+Thiemo Voigt received the Ph.D. degree from
+Uppsala University, Sweden, in 2002. He is currently a Professor at the Department of Electrical Engineering at Uppsala University where
+he leads the Division of Networked Embedded
+Systems. He is also a senior researcher at RISE
+Computer Science. His current research interests
+include low-power networking, system software
+for embedded networked devices and the Internet
+of Things. His work has been cited more than
+19000 times. He is a member of the editorial
+board for the IEEE IoT Newsletter and ACM Transactions on Sensor
+Networks (TOSN).
+
+14
+
+

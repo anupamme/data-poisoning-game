@@ -1,0 +1,1073 @@
+Byzantine-Robust Federated Learning through Adaptive Model Averaging
+Luis Muñoz-González, Kenneth T. Co, Emil C. Lupu
+
+arXiv:1909.05125v1 [stat.ML] 11 Sep 2019
+
+Department of Computing, Imperial College London
+180 Queen’s Gate, SW7 2AZ, London, UK
+{l.munoz, k.co, e.c.lupu}@imperial.ac.uk
+
+Abstract
+Federated learning enables training collaborative machine
+learning models at scale with many participants whilst preserving the privacy of their datasets. Standard federated learning techniques are vulnerable to Byzantine failures, biased
+local datasets, and poisoning attacks. In this paper we introduce Adaptive Federated Averaging, a novel algorithm for
+robust federated learning that is designed to detect failures,
+attacks, and bad updates provided by participants in a collaborative model. We propose a Hidden Markov Model to
+model and learn the quality of model updates provided by
+each participant during training. In contrast to existing robust
+federated learning schemes, we propose a robust aggregation
+rule that detects and discards bad or malicious local model
+updates at each training iteration. This includes a mechanism that blocks unwanted participants, which also increases
+the computational and communication efficiency. Our experimental evaluation on 4 real datasets show that our algorithm
+is significantly more robust to faulty, noisy and malicious participants, whilst being computationally more efficient than
+other state-of-the-art robust federated learning methods such
+as Multi-KRUM and coordinate-wise median.
+
+Introduction
+Distributed learning has emerged as a mechanism to cope
+with the increasing complexity of machine learning models
+and the amount of data available to train them. Among existing approaches, federated machine learning has become
+a popular implementation to build shared machine learning models from a federation of participants (McMahan
+et al. 2017; Konečnỳ et al. 2016a; Konečnỳ et al. 2016b;
+Shokri and Shmatikov 2015). In this approach, there is
+a central node (server) that controls the learning process
+and aggregates the information from the participants, commonly referred to as clients, which train the model locally
+using their own local datasets. The clients then send the
+model updates to the server that aggregates all the information to update the shared model. Federated learning enables
+building shared machine learning models while keeping the
+clients’ data private. Federated learning can operate in different settings, including cases where the number of clients
+is large, synchronous and asynchronous operations, or scenarios where the communications between the clients and
+
+the server are slow or unstable (Konečnỳ et al. 2016b).
+(Blanchard et al. 2017) showed that standard federated
+learning strategies fail in the presence of faulty and malicious clients. Thus, just one bad client can compromise the
+entire performance and the convergence of the shared model.
+To mitigate this limitation, different robust federated learning strategies have already been proposed in the literature
+(Blanchard et al. 2017; Mhamdi, Guerraoui, and Rouault
+2018; Yin et al. 2018; Damaskinos et al. 2019; Chen, Su,
+and Xu 2017; Chen et al. 2018; Xie, Koyejo, and Gupta
+2019b). These techniques have been proven to be robust
+against Byzantine adversaries, including some poisoning attacks (Huang et al. 2011; Nelson et al. 2008). Some of these
+techniques rely on robust statistics (e.g. median estimators)
+for updating the aggregated model (Blanchard et al. 2017;
+Mhamdi, Guerraoui, and Rouault 2018; Yin et al. 2018;
+Chen, Su, and Xu 2017), which can be computational expensive for large models and number of clients compared
+to standard aggregation rules such as Federated Averaging
+(McMahan et al. 2017). These techniques also disregard
+the fraction of training data points provided by each client,
+which can be limiting in cases where clients provide a significantly different amount of data points to train the model.
+Other approaches such as DRACO (Chen et al. 2018) require
+to add some redundancy to achieve robustness and the data
+provided by the clients may require leaving their facilities to
+build client nodes with partially overlapping datasets.
+In this paper we introduce Adaptive Federated Averaging (AFA) a novel approach for Byzantine-robust federated
+learning. We propose an algorithm that aims to detect and
+discard bad or malicious client’s updates at every iteration
+by comparing the similarity of these individual updates to
+the one for the aggregated model. In contrast to other robust federated algorithms, we propose a method to estimate
+the quality of the client’s updates through a Hidden Markov
+Model. This allows us to define a mechanism to block
+faulty, noisy or malicious clients that systematically send
+bad model updates to the server, reducing the communication burden between the clients and the server and the time
+required by the server to compute the aggregated model. Our
+experimental evaluation with 4 real datasets show that our
+model is more robust to different scenarios including faulty,
+
+malicious and noisy adversaries, compared to other stateof-the-art methods such as Multi-KRUM (MKRUM) (Blanchard et al. 2017) and coordinate-wise median (COMED)
+(Yin et al. 2018). We also show empirically that our proposed method is computationally much more efficient than
+MKRUM and COMED, reducing the time required to update the model in the server at each training iteration.
+
+Related Work
+The first federated optimization algorithms based on the
+aggregation of clients’ gradients were proposed in (Shokri
+and Shmatikov 2015; Konečnỳ et al. 2016a; Konečnỳ et
+al. 2016b). A more communication-efficient implementation
+with Federated Averaging (FA) was described in (McMahan et al. 2017), where model parameters are updated with a
+weighted average of the model parameters sent by selected
+clients at each iteration.
+As previous techniques are fragile in the presence of
+faulty or malicious clients, different robust techniques have
+been proposed in the research literature. (Blanchard et al.
+2017) propose KRUM, a Byazntine-robust aggregation rule
+based on the similarity of the gradients or updates provided
+by all the clients at each iteration. They provide a theoretical
+analysis that guarantees robustness under certain assumptions. As KRUM converges slowly compared to other aggregation rules, the authors also introduce MKRUM, a variant of the previous algorithm that achieves similar performance at a faster convergence rate. (Chen, Su, and Xu 2017;
+Yin et al. 2018) introduce robust aggregation rules based
+on the computation of the median for the model updates.
+(Mhamdi, Guerraoui, and Rouault 2018) propose Bulyan
+an recursive algorithm that leverages existing Byzantinerobust aggregation rules, e.g. KRUM or COMED (Yin et
+al. 2018), to improve robustness against poisoning attacks.
+A framework implementing some of these aggregation rules
+is presented in (Damaskinos et al. 2019). These methods focus on stochastic gradient descent approaches for computing the aggregated model (although they can also be applied for FA-based schemes), which can be very inefficient
+communication-wise (McMahan et al. 2017). On the other
+hand, these approaches assume that the clients have the same
+(or a similar) number of training data points and, thus, the
+proposed aggregation rules can be inefficient when some of
+the clients have significantly more data than others. Finally,
+the computational complexity for computing these aggregation rules can be demanding, especially if the number of
+clients or the number of parameters is large. In contrast, our
+proposed robust aggregation rule is based on FA, i.e. it accounts for the number of data points provided by each client
+and is more communication-efficient. As we show in our experimental evaluation, the computational complexity is also
+reduced compared to other robust methods such as MKRUM
+or COMED.
+(Xie, Koyejo, and Gupta 2019b) propose Zeno, a robust
+aggregation mechanism that aims to rank the clients’ gradient estimator. Then, only the gradients of the top k highest
+rated clients is considered for updating the model at each
+iteration. However, the number of selected clients, k, must
+be specified in advance. Our proposed approach, in contrast,
+
+aims to identify and discard bad (or malicious) client’s updates at each iteration, and then, uses the information from
+all the good clients to compute the model update. This removes the reliance on a pre-specified parameter k, and allows us to utilize information from all clients, especially in
+cases where there are few or no bad clients, which would
+otherwise be discarded in the case of Zeno.
+The research literature in adversarial machine learning
+(Huang et al. 2011) has shown that learning algorithms are
+vulnerable to poisoning attacks (Biggio, Nelson, and Laskov
+2012; Mei and Zhu 2015; Muñoz-González et al. 2017),
+where attackers can compromise a fraction of the training
+dataset to manipulate degrade the algorithms’ performance.
+Some of the robust strategies described previously have
+been proven vulnerable against more subtle attack strategies, including targeted poisoning attacks (Bhagoji et al.
+2019) and backdoors (Bagdasaryan et al. 2018). Additionally, more specific attacks targeting KRUM, COMED and
+Bulyan (Baruch, Baruch, and Goldberg 2019; Xie, Koyejo,
+and Gupta 2019a) have shown that it is possible to compromise the performance of these robust techniques.
+
+Adaptive Federated Averaging
+In typical supervised learning tasks (including classification
+and regression), given a training dataset with n data points,
+Dtr = {xi , yi }ni=1 , the parameters of the machine learning
+model w ∈ Rd are learned by the minimization of a loss
+function ` evaluated on Dtr :
+n
+
+1X
+`(xi , yi ; w)
+d
+w∈R n
+i=1
+min
+
+(1)
+
+In a federated machine learning task we assume there are
+K clients over which the data is partitioned in K datasets
+k 1
+(referred to as shards), Dk = {xki , yik }ni=1
+. In this case, we
+can re-write the previous objective as:
+K
+
+1 X nk
+Lk (w)
+n
+w∈Rd n
+min
+
+(2)
+
+k=1
+
+Pnk
+PK
+where Lk (w) = n1k i=1
+`(xki , yik ; w) and n = k=1 nk .
+In distributed optimization the shards of the clients are assumed to be IID, whereas federated optimization does not
+necessarily rely on this assumption. Federated learning algorithms can be trained with gradient descent strategies by
+updating the parameters of the model from the local updates
+provided by the clients. Thus, at each iteration t, a subset
+of Kt ⊂ K clients is selected for synchronous aggregation,
+i.e. the central node responsible for computing the aggregated model sends the latest update of the model to the selected clients. Then, these clients compute local updates of
+the model using their own shards (e.g. by computing the gradients of the loss function w.r.t. the model parameters) and
+send the corresponding local updates to the central node,
+which updates the model according to a defined aggregation rule (Konečnỳ et al. 2016a). Typical implementations
+use gradient descent and compute the model updates in the
+1
+
+The size of the clients datasets is not necessarily equal.
+
+P
+central node as wt+1 ← wt −η k⊂Kt nnk0 gkt , where η is the
+P
+learning rate and gkt = ∇wt Lk (wt ), and n0 = k⊂Kt nk .
+However, this approach is not efficient in the communications between the central node and the clients. More efficient
+implementations can be achieved using Federated Averaging (FA) (McMahan et al. 2017), where the
+Paggregationk in
+the central node is computed as wt+1 ← k⊂Kt nnk0 wt+1
+.
+k
+In this case, the model updates from each client wt+1 can
+be computed locally over several iterations of gradient descent, with wk ← wk − η∇wk Lk (wk ). If only one gradient
+update is computed, FA is equivalent to the previous model.
+FA updates the model by computing a weighted average of
+the model updates provided by the different clients, taking
+into account the number of training points provided by each
+client.
+However, all these techniques are not fault tolerant and
+can be very fragile to malicious or faulty clients. Thus, it
+has been shown that, with just one bad client, the whole federated optimization algorithm can be compromised leading
+to bad solutions or convergence problems (Mhamdi, Guerraoui, and Rouault 2018; Blanchard et al. 2017). To overcome these limitations, we propose Adaptive Federated Averaging (AFA) an algorithm for federated learning robust to
+faulty, noisy, and malicious clients. In contrast to FA, our algorithm updates the model considering not only the amount
+of data provided by each client, but also their reliability, by
+estimating the probability of each client providing good (or
+useful) model updates. Thus, at each iteration, given a set of
+k
+selected clients Kt that compute their model updates wt+1
+,
+the central node updates the model as:
+X pk nk
+t
+k
+wt+1 ←
+wt+1
+(3)
+N
+g
+k⊂Kt
+
+where pkt is the probability of client k providing good model
+updates (according
+to AFA’s aggregation rule) at iteration t
+P
+and N = k⊂K g pkt nk . The subset Ktg ⊂ Kt contains the
+t
+clients that provide a good update according to the robust
+aggregation criterion that we describe next.
+
+Model Aggregation
+The algorithm to compute AFA’s model aggregation is detailed in Algorithm 1. Initially, we compute the model update in (3) with the clients in G (all Kt clients in the first
+iteration of the algorithm). Then, we compute sk , the similarities of the aggregated model parameters, wt+1 , with the
+k
+parameters provided by every client in G, wt+1
+. In our implementation, we used the cosine similarity, which provides
+a normalized similarity measure in the interval [−1, 1] and
+its computation scales linearly in time with the number of
+parameters of the machine learning model. Note that other
+similarity or distance metrics can also be applied (e.g. correlation, euclidean distance).
+We calculate the mean (µ̂s ), median (µ̄s ) and standard deviation (σs ) for the similarities computed for all the good
+clients in G. Assuming that the number of malicious or
+faulty clients is less than bKt /2c, i.e. more than half of the
+clients are good, the median µ̄s must correspond to the similarity value computed for one of the good clients. Then, by
+
+comparing the relative position of µ̄s and µ̂s we identify the
+direction to look for potential bad client’s updates. Thus, if
+µ̂s < µ̄s most of the potential bad clients will have a similarity value sk lower than µ̄s . Then, if sk < µ̄s − ξ σs the
+update from client k is considered as bad. The threshold is
+controlled by a parameter ξ. This can be the case of malicious clients that perform attacks aiming to remain stealthy,
+noisy clients whose shards differ from the data of the majority of the clients and faulty clients that send to the server very
+k
+low values for wt+1
+, compared to the majority of clients. On
+the other hand, if µ̂s ≥ µ̄s , updates are considered as bad if
+sk < µ̄s + ξ σs . This can be the case of strong attacks, such
+as malicious clients that collude to perform attacks that do
+not consider strong detectability constraints. Moreover, this
+scenario also includes faulty clients that provide very large
+k
+values for wt+1
+compared to the rest, so that sk will be very
+close to 1 (when using the cosine similarity) for the faulty
+client(s) and smaller for the genuine ones.
+Algorithm 1 AFA robust model aggregation
+k
+Require: selected clients Kt , pkt , nk , wt+1
+, wt , ξ0 , ∆ξ, η
+B ← {∅}, Bad clients’ set
+G ← {k : k ∈ Kt }, Good clients’ set
+R ← {1} (Initialize as a non-empty set)
+ξ ← ξ0
+while R 6= ∅ do P
+R ← ∅, N = k∈G pkt nk
+P
+P
+p t nk k
+wt+1 , with N = k⊂K g pkt nk
+wt+1 ← k⊂G kN
+t
+for k ∈ G do
+k
+sk = similarity(wt+1 ,wt+1
+)
+end for
+Compute µ̂s , µ̄s , σs for clients in G
+if µ̂s < µ̄s then
+for k ∈ G do
+if sk < µ̄s − ξ σs then
+R ← R ∪ {k}, G ← G\{k}
+end if
+end for
+else
+for k ∈ G do
+if sk > µ̄s + ξ σs then
+R ← R ∪ {k}, G ← G\{k}
+end if
+end for
+end if
+ξ = ξ + ∆ξ, B ← B ∪ R
+end whileP
+P
+p t nk k
+wt+1 , with N = k⊂K g pkt nk
+wt+1 ← k⊂G kN
+t
+return wt+1 , G, B
+
+As different kind of bad or malicious clients can be
+present, we repeat the algorithm until no more malicious
+clients are found (e.g. we can have scenarios with faulty
+clients and weak attacks). As we iterate, we increase the
+value of ξ by ∆ξ > 0 to limit the number of false positives, i.e. good clients’ updates classified as bad. Finally, the
+algorithm returns the aggregated model update wt+1 computed with the set of good clients in G. The list with good
+
+α0, β0
+
+g0k
+
+K
+
+g1k
+
+g2k
+
+ok1
+
+ok2
+
+b
+
+b
+
+b
+
+gtk
+b
+
+b
+
+nkgt−1 and nkbt−1 are the number of good and bad updates
+provided by client k until iteration t − 1. The posterior also
+results in a Beta distribution with parameters αtk = α0 + nkgt
+and βtk = β0 + nkbt . Then, at each iteration we can compute
+the probability of client k providing good updates, pkt , used
+in (3) to update the model at each iteration, as the expectation of the posterior p(gtk |ok1:t ):
+b
+
+okt
+
+Figure 1: AFA Bayesian model to estimate the probability
+of the clients providing good model updates.
+and bad clients in G and B is also used to estimate pkt+1
+with the Bayesian model we explain next.
+The complexity to compute the aggregation rule in (3) is
+O(Kt d) in time, where d is the number of parameters of
+the model. The computation of the similarity of the client’s
+updates w.r.t. the aggregated model also scales in time as
+O(Kt d) in the case of using the cosine similarity or the
+euclidean distance. This contrasts to KRUM (Blanchard et
+al. 2017), where similarities are computed across all clients,
+scaling as O(Kt2 d). Finally, computing µ̄s , the median of
+the client’s similarities is O(Kt ) on average when using efficient algorithms such as Quickselect (Hoare 1961). This
+is much more efficient that other median-based aggregation
+rules such as COMED (Yin et al. 2018), which requires computing the median for all the model parameters scaling in
+time, on average, as O(Kt d).
+
+Learning the Quality of the Client’s Updates
+We propose a Bayesian model to estimate the clients’ probability to provide good updates to the model based on the outcome of the aggregation rule in Algorithm 1 across all iterations. These probabilities are used to compute (3). We model
+the ability of the clients to provide good model updates as a
+Hidden Markov Model, as depicted in Fig. 1. Thus, gtk is
+an unobserved random variable that represents the probability of client k providing good updates at iteration t. The
+observed variables okt are binary random variables with the
+outcome of Algorithm 1 for client k at iteration t, i.e. these
+variables indicate if client k provided a good update according to the aggregation algorithm. Finally, g0k represents the
+prior belief at t = 0. We model this prior as a Beta distribution with parameters α0 > 1, β0 > 1. In our experiments we
+set α0 = β0 , so that the expected prior probability for every
+client is E{Gk0 } = α0 /(α0 +β0 ) = 0.5. The value of α0 and
+β0 also determines the variance of the prior, i.e. larger values of α0 and β0 imply a smaller variance. This can be used
+to control the responsiveness of the model, i.e. the changes
+in the posterior will be reduced for a smaller variance in the
+prior. The posterior distribution p(gtk |ok1:t ) can be computed
+through recursive Bayesian estimation, so that:
+
+k
+pkt+1 = E{Gkt |O1:t
+}=
+
+αtk
+αtk + βtk
+
+(5)
+
+For simplicity, in the model depicted in Fig. 1 we assume
+that all the clients are used at every iteration. However, the
+application to the case where only a subset of clients is
+selected is straightforward. In this case, at every iteration,
+we just need to update the posterior of the selected clients,
+whereas the posterior for the non-selected clients remains
+unchanged.
+
+Blocking Bad Clients
+Robust aggregation methods for federated learning such as
+(Chen, Su, and Xu 2017; Blanchard et al. 2017; Yin et al.
+2018; Mhamdi, Guerraoui, and Rouault 2018) do not include explicit mechanisms to detect bad or malicious clients.
+Thus, despite the robustness of these models to Byzantine
+adversaries, they can be inefficient in terms of computation
+and communication resources, as they allow bad clients to
+keep sending useless model updates. In contrast, AFA allows
+us to detect clients providing bad updates at every iteration
+(see Algorithm 1). The Bayesian model in Fig. 1 enables
+the characterization of clients according to the good and bad
+updates provided across all iterations. Leveraging this information, we propose here a mechanism to block malicious
+clients. Thus, at every iteration, we compute the posterior
+p(gtk |ok1:t ) using (4), which results in a Beta distribution with
+parameters αtk and βtk . Then, at iteration t, we block a client
+k if:
+k
+Pr(Gkt |O1:t
+≤ 0.5) = Φ(0.5; αtk , βtk ) > δ
+
+(6)
+
+(4)
+
+where Φ(·) is the cumulative distribution function of the
+Beta posterior distribution in (4) and δ is an arbitrary threshold. In our experiments we set δ = 0.95.
+Once a client is blocked, the server does not select that
+client anymore during the training process, increasing the
+efficiency of the federated learning algorithm. For example,
+in cases where all clients are selected at each iteration, i.e.
+Kt = K, the blocking mechanism in (6) allows to reduce
+the communication burden between the server and the client
+nodes, as no information is exchanged between the server
+and the blocked clients. The minimum number of iterations
+required to block bad clients is determined by the parameters
+of the Beta prior p(g0k ). Thus, for big values of α0 and β0 ,
+AFA will require more iterations to block the bad clients.
+However, although small values can help to block clients
+earlier, benign clients can also be blocked more easily.
+
+The likelihood p(okt |gtk ) can be modelled as a Bernoulli distribution, whereas p(gtk |ok1:t−1 ) is a Beta distribution with
+parameters αt−1 = α0 + nkgt−1 , βt−1 = β0 + nkbt−1 , where
+
+We performed our experimental evaluation on 4 datasets:
+MNIST (LeCun et al. 1998), Fashion-MNIST (FMNIST)
+
+p(gtk |ok1:t ) =
+
+p(okt |gtk ) p(gtk |ok1:t−1 )
+p(okt |ok1:t−1 )
+
+Experiments
+
+(Xiao, Rasul, and Vollgraf 2017), Spambase (Hopkins et al.
+1999), and CIFAR-10 (Krizhevsky 2009). The characteristics of these datasets are detailed in the supplement. For
+MNIST and FMNIST we trained Deep Neural Networks
+(DNNs) wtih 784 × 512 × 256 × 10. For Spambase we
+also trained DNNs with 54 × 100 × 50 × 1. For CIFAR10 we used VGG-11 (Simonyan and Zisserman 2014), a
+well-known Convolutional Neural Network (CNN) architecture. For the optimization in the clients we used gradient descent with a batch size of 200, training the algorithms for
+10 epochs before sending the updates back to the server.
+All the details about the architecture and the training settings are also detailed in the supplement. For AFA we set
+α0 = β0 = 3 for the prior on the client’s quality, ξ = 2
+and ∆ξ = 0.5 for computing the threshold in the aggregation rule, and δ = 0.5 as a threshold for blocking bad clients
+as in (6). We compared the performance of AFA w.r.t. standard Federated Averaging (FA), Multi-KRUM (MKRUM)
+(Blanchard et al. 2017) and COMED (Yin et al. 2018). In
+the experiments we set Kt = K for all the algorithms, i.e.
+all clients are selected to provide mode updates at each iterations (unless they are blocked in the case of AFA).
+For each dataset we considered 4 different scenarios: 1)
+Normal operation (clean): we assume that all the clients
+send genuine updates computed on their corresponding
+shards. 2) Byzantine clients (byzantine): similar to (Blanchard et al. 2017), bad clients send to the server model updates that significantly differ to the ones from the genuine
+clients. In our case, the faulty or malicious clients compute
+k
+the following update at each iteration: wt+1
+← wt + ∆wtk ,
+k
+where ∆wt is a random perturbation drawn from a Gaussian distribution with mean zero and isotropic covariance
+matrix with standard deviation 20. 3) Label flipping attack (flipping): we performed a label flipping attack where
+all the labels of the training points for the malicious clients
+are set to zero. 4) Noisy clients (noisy): for MNIST, FMNIST and CIFAR-10 we normalized the inputs to the interval [−1, 1]. In this scenario, for the selected noisy clients we
+added uniform noise to all the pixels, so that x ← x + ,
+with  ∼ U(−1.4, 1.4). Then we cropped the resulting values again to the interval [−1, 1]. For Spambase, where we
+considered binary features (indicating the presence or absence of a specific keyword), we randomly flipped the value
+of 30% of the features for all the samples in the datasets of
+the noisy clients.
+
+Robustness and Convergence
+The results of our experimental evaluation are shown in Table 1. We considered two cases with 10 and 100 clients for
+the 4 previously described scenarios. For the byzantine, flipping and noisy scenarios we let there be 30% bad clients,
+as in (Blanchard et al. 2017). In each experiment we run 10
+independent training splits, where we split the training data
+equally across all clients. To assess statistical significance
+of the results we performed a Wilcoxon Rank-Sum test at
+the 5% level. Thus, for each experiment in Table 1 we highlight those results where one or two algorithms perform significantly better than the others (according to the outcome
+of the statistical test). From the results we can observe that
+
+AFA is robust in all scenarios for the 4 datasets, i.e. the test
+error of the algorithm is not significantly degraded compared
+to the performance achieved in the clean scenarios. As expected, FA’s performance is significantly affected under the
+presence of bad clients, especially in byzantine and flipping
+scenarios. It is also interesting to observe that both MKRUM
+and COMED are very sensitive to label flipping attacks, especially in MNIST, FMNIST and CIFAR-10 for the case of
+10 clients. For example, in MNIST, MKRUM and COMED
+test errors increases up to 78.98% and 11.55% respectively
+in the flipping attack scenario with 10 clients, whereas AFA’s
+error is just 2.96%, similar to its performance in the clean
+scenario. MKRUM also offers a worse performance in the
+clean scenario compared to the other algorithms, which is
+especially noticeable in the case of CIFAR-10, where the error rate is 53.02%, i.e. a 20% more than FA’s error. This is
+not the case for COMED, whose performance is similar to
+AFA and FA when no bad clients are present, except for FMNIST, where COMED exhibits a better performance. However, COMED is not consistently robust to all the scenarios
+considered in the experiment.
+According to the Wilcoxon Rank-Sum test at the 5%
+level, AFA outperforms MKRUM with statistical significance in 25 out of the 32 different cases considered2 ,
+whereas MKRUM just outperforms AFA in 1. On the other
+side, AFA outperforms COMED with statistical significance
+in 20 cases, whereas COMED just do it in 2. These results
+support the benefits of AFA, which, in general, offers a better performance than MKRUM and COMED across different scenarios including faulty, noisy and malicious clients.
+To analyse the convergence of the algorithms, in Fig. 2
+we show the test error as a function of the number of iterations on MNIST with 10 clients. From the results we can observe that AFA converges fast (compared to the other algorithms) to a good solution in all cases. In contrast, MRKUM
+converges to a worse solution for the clean, byzantine, and
+noisy scenarios and does not converge for the flipping attack.
+COMED shows a good convergence in all cases except for
+the flipping scenario, where although the algorithm is stable,
+it achieves a poor performance compared to AFA. The standard implementation of FA performs well on the clean case,
+but it performs poorly for the byzantine and flipping scenarios. For the sake of clarity, in Fig. 2 we omitted the result
+for FA in the byzantine case as the error is very high (see Table 1) compared to the other algorithms. Finally, in the case
+of having noisy clients, we can observe that FA converges
+slower, as the other algorithms seem to ignore the noisy updates, which helps to speed-up training in the first iterations.
+The results for all other datasets and scenarios are provided
+in the supplement.
+
+Detection of Bad Clients
+In Table 2, we show the detection rate for bad clients with
+AFA’s Bayesian model with the same experimental settings
+as described before. In MNIST, FMNIST, and Spambase,
+AFA is capable of detecting all bad clients in all scenarios.
+2
+Note that in Table 1 we just highlight results in bold when one
+or two algorithms significantly outperform the others.
+
+Clean
+2.80 ± 0.12
+2.56 ± 0.11
+3.96 ± 0.18
+2.82 ± 0.09
+
+10 Clients
+Byzantine
+Flipping
+2.99 ± 0.12
+2.96 ± 0.15
+90.03 ± 0.59
+8.48 ± 1.58
+4.01 ± 0.13
+78.98 ± 23.39
+3.17 ± 0.16
+11.55 ± 0.93
+
+Noisy
+3.04 ± 0.14
+3.79 ± 0.17
+3.94 ± 0.13
+3.56 ± 0.09
+
+Clean
+3.82 ± 0.09
+3.86 ± 0.14
+4.68 ± 0.11
+4.08 ± 0.11
+
+100 Clients
+Byzantine
+Flipping
+4.03 ± 0.09
+3.98 ± 0.08
+89.70 ± 0.73
+90.20 ± 0.00
+4.63 ± 0.14
+4.62 ± 0.13
+4.21 ± 0.13
+7.32 ± 0.20
+
+Clean
+14.72 ± 1.89
+13.60 ± 1.62
+14.23 ± 0.21
+12.68 ± 0.22
+
+10 Clients
+Byzantine
+Flipping
+14.11 ± 1.16
+15.45 ± 1.88
+89.27 ± 0.81
+24.52 ± 11.23
+14.28 ± 0.27
+34.79 ± 3.12
+13.33 ± 0.23
+24.02 ± 0.76
+
+Noisy
+15.27 ± 1.89
+15.55 ± 1.80
+14.21 ± 0.24
+14.43 ± 0.32
+
+Clean
+15.72 ± 2.11
+16.96 ± 1.50
+15.05 ± 0.36
+17.05 ± 1.37
+
+100 Clients
+Byzantine
+Flipping
+16.08 ± 1.88
+15.99 ± 2.00
+89.55 ± 1.18
+48.46 ± 21.44
+15.00 ± 0.20
+15.14 ± 0.30
+15.95 ± 1.63
+18.11 ± 0.35
+
+10 Clients
+Byzantine
+Flipping
+7.13 ± 0.61
+7.09 ± 0.51
+47.73 ± 4.59
+14.10 ± 6.87
+8.30 ± 0.32
+8.18 ± 0.35
+6.96 ± 0.88
+8.42 ± 0.50
+
+Noisy
+7.20 ± 0.84
+7.55 ± 0.58
+8.19 ± 0.34
+6.96 ± 0.65
+
+Clean
+6.89 ± 0.44
+6.94 ± 0.53
+7.96 ± 0.48
+7.71 ± 0.43
+
+100 Clients
+Byzantine
+Flipping
+7.55 ± 0.41
+7.06 ± 0.45
+44.64 ± 4.91
+11.75 ± 6.41
+7.61 ± 0.41
+8.03 ± 0.38
+7.69 ± 0.38
+10.56 ± 0.62
+
+Noisy
+31.61 ± 0.64
+30.01 ± 0.43
+52.95 ± 1.11
+32.62 ± 0.37
+
+Clean
+35.66 ± 0.58
+35.84 ± 0.54
+77.65 ± 10.69
+35.68 ± 0.35
+
+MNIST
+AFA
+FA
+MKRUM
+COMED
+
+FMNIST
+AFA
+FA
+MKRUM
+COMED
+
+Spambase
+AFA
+FA
+MKRUM
+COMED
+
+CIFAR
+AFA
+FA
+MKRUM
+COMED
+
+Clean
+6.59 ± 0.61
+6.13 ± 0.30
+8.22 ± 0.52
+6.49 ± 0.30
+
+Clean
+31.94 ± 0.88
+30.11 ± 0.39
+53.34 ± 2.90
+32.61 ± 0.46
+
+10 Clients
+Byzantine
+Flipping
+33.15 ± 0.69
+33.14 ± 0.81
+90.00 ± 0.00
+72.75 ± 16.39
+53.02 ± 2.45
+58.33 ± 2.94
+35.41 ± 0.47
+43.99 ± 4.54
+
+Noisy
+3.97 ± 0.08
+4.81 ± 0.09
+4.61 ± 0.13
+4.51 ± 0.10
+
+Noisy
+17.48 ± 1.32
+18.95 ± 0.15
+15.25 ± 0.52
+18.38 ± 0.13
+
+Noisy
+7.06 ± 0.61
+7.86 ± 0.65
+8.01 ± 0.43
+8.53 ± 0.45
+
+100 Clients
+Byzantine
+Flipping
+36.83 ± 0.41
+37.42 ± 0.62
+90.00 ± 0.00
+80.21 ± 14.85
+71.15 ± 3.41
+77.54 ± 10.79
+37.22 ± 0.35
+63.87 ± 8.29
+
+Noisy
+35.68 ± 0.57
+35.93 ± 0.62
+72.27 ± 2.42
+35.88 ± 0.27
+
+Table 1: Averaged test error over 10 random training data splits for AFA, FA, MKRUM and COMED in different scenarios:
+clean datasets for all clients, Byzantine adversaries, label flipping attacks, and noisy clients. For each scenario we considered
+two settings with 10 and 100 clients with 3 and 30 bad/malicious clients respectively. Best results with statistical significance
+at the 5% level, according to a Wilcoxon Rank-Sum test, are highlighted in bold.
+Dataset
+MNIST
+FMNIST
+Spambase
+CIFAR-10
+
+Byzantine
+100% (5.0)
+100% (5.0)
+100% (5.0)
+100% (5.0)
+
+10 Clients
+Flipping
+100% (13.7)
+100% (6.6)
+100% (5.1)
+90% (8.0)
+
+Noisy
+100% (5.0)
+100% (5.0)
+100% (7.4)
+20% (32.7)
+
+Byzantine
+100% (5.0)
+100% (5.0)
+100% (5.2)
+100% (5.0)
+
+100 Clients
+Flipping
+100% (5.0)
+100% (5.0)
+100% (5.8)
+100% (13.1)
+
+Noisy
+100% (9.2)
+100% (7.6)
+100% (5.6)
+2.7% (84.1)
+
+Table 2: Percentage of bad clients blocked by AFA and the average number of training iterations to block them.
+
+Figure 2: Test error (%) as a function of the number of training iterations for AFA (red), FA (green), MKRUM (blue) and
+COMED (black) on MNIST with 10 clients for normal operation (all benign clients) and 3 byzantine, flipping, and noisy
+clients.
+
+In CIFAR-10, all Byzantine clients are detected and, for label flipping attacks, AFA detects 90% and 100% of malicious clients for the 10 and 100 clients’ cases respectively.
+In contrast, for the noisy scenario, the detection rate is quite
+low (20% and 2.7% respectively). However, as shown Table 1, for CIFAR-10, AFA’s performance is not affected by
+the presence of noisy clients, when comparing to the performance obtained for the clean scenario.
+As we set the values of α0 = β0 = 3, for the Beta prior
+that models the quality of the client’s updates, and δ = 0.95
+for the threshold to block bad clients, the minimum number of iterations required to block a bad client is 5. As we
+can observe in Table 2, AFA is capable of detecting the bad
+clients in a very reduced number of iterations. For example,
+in most cases, it blocks Byzantine clients in 5 iterations. Label flipping attackers and noisy clients are usually blocked
+within 10 iterations (except for the noisy clients in CIFAR10). These results support the accuracy of the aggregation
+rule in Algorithm 1 to detect bad updates and the usefulness
+of the proposed Bayesian model to block bad clients. For example, in the byzantine scenario, from the results in Table 2,
+AFA would allow to reduce the communications between
+the clients and the server by 28.5% compared to the other
+algorithms, as we do not need to send updates to the bad
+clients once they are blocked.
+
+Computational Burden
+Finally we performed an experiment to analyse the computational burden of AFA compared to the other methods.
+For this, we measured both the average time required for
+the clients to compute the model updates and the average
+time to aggregate the model in the server. We trained AFA,
+FA, MKRUM and COMED using MNIST with 100 (benign)
+clients for 100 training iterations. As in previous experiments, we set the batch size to 200 and, at each iteration,
+the clients trained the model for 10 epochs. For this experiment, we did not consider the latency in the communications
+between clients and server. From the results in Fig. 3 we can
+observe that AFA is significantly more efficient than both
+MKRUM and COMED to compute the aggregate model, requiring, on average, 0.35 seconds to compute the aggregated
+model as in Algorithm 1, update the Bayesian model and
+check for possible clients to block. In contrast, MKRUM
+and COMED required 4.51 and 3.68 seconds respectively
+to compute the aggregate model in the server. As expected,
+FA, the standard implementation, is the fastest algorithm, requiring just 0.03 seconds to compute the aggregated model.
+In the figure, it can be appreciated that, in this case, the
+difference between the training time and the aggregation
+time is huge for MKRUM and COMED. In other words, the
+computational overhead introduced to enhance robustness is
+very significant when compared to the standard implementation (FA). In contrast, AFA offers a more robust performance (as shown in our previous experiments) with a reduced computational overhead when compared to MKRUM
+and COMED. It is also important to note that, in the presence
+of bad clients, the computational burden for AFA would be
+even lower, as the effective number of clients would be reduced when the malicious ones are blocked.
+
+Figure 3: Average training and aggregation time (in seconds)
+for each iteration on the MNIST dataset with 100 benign
+clients. Time measured on a standard desktop machine with
+a GPU nvidia GTX1080 Ti.
+
+Conclusion
+In this paper we presented Adaptive Federated Averaging
+(AFA) an efficient algorithm for Byzantine-robust federated
+learning. The proposed algorithm is designed to detect and
+discard bad updates at each iteration, updating the model
+considering both the fraction of data points provided by
+each client and the expected quality of the client’s model
+updates. Our algorithm includes a Hidden Markov Model
+to estimate iteratively the probability of each client providing good model updates. Compared to other robust federated algorithms, this also allows us to identify and block bad
+clients, improving the robustness and communication efficiency and reducing the computation.
+Our experimental evaluation in 4 real datasets shows that
+AFA is more robust than other state-of-the-art robust federated learning algorithms, including MKRUM and COMED,
+when tested against different scenarios with malicious, noisy
+and faulty clients. For example, we showed that MKRUM
+and COMED are very sensitive to label flipping attacks,
+whereas AFA’s performance is barely affected. We also
+showed that AFA is very effective at detecting bad clients
+and capable of blocking them within a reduced number
+of training iterations. Finally, our experiments show that
+AFA is more robust and computationally more efficient than
+MKRUM and COMED.
+Like MKRUM and COMED, our proposed algorithm
+could still be potentially vulnerable to more subtle or less
+aggressive attacks. Thus, future research avenues will include the investigation of mechanisms to detect and mitigate
+more subtle poisoning attack strategies, including targeted
+attacks (Bhagoji et al. 2019) and backdoors (Bagdasaryan et
+al. 2018), which require a finer analysis of the client’s updates and their similarities.
+
+References
+[Bagdasaryan et al. 2018] Bagdasaryan, E.; Veit, A.; Hua, Y.;
+Estrin, D.; and Shmatikov, V. 2018. How to Backdoor Federated Learning. arXiv preprint arXiv:1807.00459.
+[Baruch, Baruch, and Goldberg 2019] Baruch, M.; Baruch,
+
+G.; and Goldberg, Y. 2019. A Little Is Enough: Circumventing Defenses For Distributed Learning. arXiv preprint
+arXiv:1902.06156.
+[Bhagoji et al. 2019] Bhagoji, A. N.; Chakraborty, S.; Mittal, P.; and Calo, S. 2019. Analyzing Federated Learning
+through an Adversarial Lens. In ICML, 634–643.
+[Biggio, Nelson, and Laskov 2012] Biggio, B.; Nelson, B.;
+and Laskov, P. 2012. Poisoning Attacks against Support
+Vector Machines. In ICML, 1807–1814.
+[Blanchard et al. 2017] Blanchard, P.; Guerraoui, R.; Stainer,
+J.; et al. 2017. Machine Learning with Adversaries: Byzantine Tolerant Gradient Descent. In NeurIPS, 119–129.
+[Chen et al. 2018] Chen, L.; Wang, H.; Charles, Z.; and Papailiopoulos, D. 2018. DRACO: Byzantine-resilient Distributed Training via Redundant Gradients. In ICML, 903–
+912.
+[Chen, Su, and Xu 2017] Chen, Y.; Su, L.; and Xu, J. 2017.
+Distributed Statistical Machine Learning in Adversarial Settings: Byzantine Gradient Descent. Procs. Measurement and
+Analysis of Computing Systems 1(2):44.
+[Damaskinos et al. 2019] Damaskinos, G.; Mhamdi, E.;
+Mahdi, E.; Guerraoui, R.; Guirguis, A. H. A.; and Rouault,
+S. L. A. 2019. AGGREGATHOR: Byzantine Machine
+Learning via Robust Gradient Aggregation. In Conf. on Systems and Machine Learning.
+[Hoare 1961] Hoare, C. 1961. Algorithm 65: Find. Commun.
+ACM 4(7).
+[Hopkins et al. 1999] Hopkins, M.; Reeber, E.; Forman, G.;
+and Suermondt, J. 1999. Spambase Data Set. HewlettPackard Labs.
+[Huang et al. 2011] Huang, L.; Joseph, A. D.; Nelson, B.;
+Rubinstein, B. I.; and Tygar, J. 2011. Adversarial Machine
+Learning. In Workshop on Security and Artificial Intelligence, 43–58.
+[Konečnỳ et al. 2016a] Konečnỳ, J.; McMahan, H. B.; Ramage, D.; and Richtárik, P. 2016a. Federated Optimization:
+Distributed Machine Learning for On-Device Intelligence.
+arXiv preprint arXiv:1610.02527.
+[Konečnỳ et al. 2016b] Konečnỳ, J.; McMahan, H. B.; Yu,
+F. X.; Richtarik, P.; Suresh, A. T.; and Bacon, D. 2016b.
+Federated Learning: Strategies for Improving Communication Efficiency. In NIPS Workshop on Private Multi-Party
+Machine Learning.
+[Krizhevsky 2009] Krizhevsky, A. 2009. Learning Multiple
+Layers of Features from Tiny Images. MSc Thesis, University of Toronto.
+[LeCun et al. 1998] LeCun, Y.; Bottou, L.; Bengio, Y.;
+Haffner, P.; et al. 1998. Gradient-based Learning Applied to Document Recognition. Proceedings of the IEEE
+86(11):2278–2324.
+[McMahan et al. 2017] McMahan, B.; Moore, E.; Ramage,
+D.; Hampson, S.; and y Arcas, B. A. 2017. CommunicationEfficient Learning of Deep Networks from Decentralized
+Data. In Procs. of AISTATS, 1273–1282.
+
+[Mei and Zhu 2015] Mei, S., and Zhu, X. 2015. Using Machine Teaching to Identify Optimal Training-Set Attacks on
+Machine Learners. In AAAI, 2871–2877.
+[Mhamdi, Guerraoui, and Rouault 2018] Mhamdi, E. M. E.;
+Guerraoui, R.; and Rouault, S. 2018. The Hidden Vulnerability of Distributed Learning in Byzantium. In ICML,
+3518–3527.
+[Muñoz-González et al. 2017] Muñoz-González, L.; Biggio,
+B.; Demontis, A.; Paudice, A.; Wongrassamee, V.; Lupu,
+E. C.; and Roli, F. 2017. Towards Poisoning of Deep Learning Algorithms with Back-Gradient Optimization. In Workshop on Artificial Intelligence and Security, 27–38.
+[Nelson et al. 2008] Nelson, B.; Barreno, M.; Chi, F. J.;
+Joseph, A. D.; Rubinstein, B. I.; Saini, U.; Sutton, C. A.; Tygar, J. D.; and Xia, K. 2008. Exploiting Machine Learning
+to Subvert Your Spam Filter. LEET 8:1–9.
+[Shokri and Shmatikov 2015] Shokri, R., and Shmatikov, V.
+2015. Privacy-Preserving Deep Learning. In Procs. CCS,
+1310–1321.
+[Simonyan and Zisserman 2014] Simonyan, K., and Zisserman, A. 2014. Very Deep Convolutional Networks
+for Large-Scale Image Recognition.
+arXiv preprint
+arXiv:1409.1556.
+[Xiao, Rasul, and Vollgraf 2017] Xiao, H.; Rasul, K.; and
+Vollgraf, R. 2017. Fashion-MNIST: a Novel Image Dataset
+for Benchmarking Machine Learning Algorithms. arXiv
+preprint arXiv:1708.07747.
+[Xie, Koyejo, and Gupta 2019a] Xie, C.; Koyejo, S.; and
+Gupta, I. 2019a. Fall of Empires: Breaking ByzantineTolerant SGD by Inner Product Manipulation. In Conf. on
+Uncertainty in Artificial Intelligence.
+[Xie, Koyejo, and Gupta 2019b] Xie, C.; Koyejo, S.; and
+Gupta, I. 2019b. Zeno: Distributed Stochastic Gradient Descent with Suspicion-based Fault-tolerance. In ICML, 6893–
+6901.
+[Yin et al. 2018] Yin, D.; Chen, Y.; Ramchandran, K.; and
+Bartlett, P. 2018. Byzantine-Robust Distributed Learning:
+Towards Optimal Statistical Rates. In ICML, 5636–5645.
+
+Appendix A: Datasets
+In Table 3, we show the characteristics of the four datasets
+used in our experiments. For MNIST, FMNIST, and CIFAR10 we used the standard training and test splits as provided in
+their respective datasets. For Spambase, we randomly split
+the dataset with 80% training data points and the rest for
+testing.
+For MNIST, FMNIST, and CIFAR-10 the inputs are normalized to the interval [−1, 1]. In the case of Spambase, we
+considered the 54 features corresponding to the occurrence
+of specific keywords in the emails, dropping the last 3 features of the dataset related to the length of sequences of consecutive capital letters. We binarized the selected features,
+i.e. we only considered the presence or absence of a keyword
+in an specific email. We used this representation as it led to
+improved model accuracy and more stability when training
+the neural network.
+
+Name
+MNIST
+FMNIST
+Spambase
+CIFAR-10
+
+# Training
+50, 000
+50, 000
+3, 680
+50, 000
+
+# Test
+10, 000
+10, 000
+921
+10, 000
+
+# Features
+784
+784
+54
+3, 072
+
+Table 3: Characteristics of the 4 datasets used in the experiments.
+
+Appendix B: Models used in the Experiments
+In Table 4, we detail the architectures and the settings used
+for our experiments. For MNIST, FMNIST, and Spambase
+we used (fully connected) Deep Neural Networks (DNNs)
+with 2 hidden layers and Leaky ReLU activation functions.
+As Spambase is a binary classification problem, we used
+a Sigmoid activation function for the output layer, whereas
+for MNIST and FMNIST we used Softmax. For CIFAR-10,
+we used VGG-11 which is a standard architecture for this
+dataset. In all cases, we used a gradient descent optimizer
+and dropout to prevent overfitting.
+MNIST and FMNIST
+- Architecture: DNN (784 × 512 × 256 × 10)
+- Hidden layer act. functions: Leaky ReLU
+(negative slope = 0.1)
+- Output layer act. functions: Softmax
+- Optimizer: SGD (learning rate = 0.1, mom. = 0.9)
+- Dropout: p = 0.5
+SPAMBASE
+- Architecture: DNN (54 × 100 × 50 × 1)
+- Hidden layer act. functions: Leaky ReLU
+(negative slope = 0.1)
+- Output layer act. functions: Sigmoid
+- Optimizer: SGD (learning rate = 0.05, mom. = 0.9)
+- Dropout: p = 0.5
+CIFAR-10
+- Architecture: CNN (VGG-11)
+- Optimizer: SGD (learning rate = 10−3 , mom. = 0.9)
+- Dropout: p = 0.5
+Table 4: Models and parameters used for the 4 datasets in
+the experiments.
+
+Appendix C: Convergence
+In Figures 4-7, we show the classification test error as a
+function of the number of training iterations for AFA, FA,
+MKRUM, and COMED over all 4 datasets and all 4 client
+scenarios considered (clean, byzantine, flippling, and noisy)
+with 10 and 100 clients. We observe that AFA always converges to a stable solution with low test error, whereas the
+other algorithms are not robust to all scenarios. In the case of
+MKRUM, we observe notably poor performance on CIFAR10 when compared to the other methods, as it converges
+slowly in the case of 10 clients and converges to very high
+test error in the case of 100 clients even in the clean scenario.
+
+The results in these figures are in line with the results presented in the paper, showing the robustness of AFA compared to all other methods.
+
+Figure 4: Test error (%) on MNIST dataset as a function of the number of training iterations for the different federated learning
+methods with (top) 10 clients and (bottom) 100 clients. The clean scenario indicates normal operation (all benign clients) while
+the remaining scenarios, byzantine, flipping, and noisy, all have 30% faulty, noisy or malicious clients.
+
+Figure 5: Test error (%) on FMNIST dataset as a function of the number of training iterations for the different federated learning
+methods with (top) 10 clients and (bottom) 100 clients. The clean scenario indicates normal operation (all benign clients) while
+the remaining scenarios, byzantine, flipping, and noisy, all have 30% faulty, noisy or malicious clients.
+
+Figure 6: Test error (%) on Spambase dataset as a function of the number of training iterations for the different federated
+learning methods with (top) 10 clients and (bottom) 100 clients. The clean scenario indicates normal operation (all benign
+clients) while the remaining scenarios, byzantine, flipping, and noisy, all have 30% faulty, noisy or malicious clients.
+
+Figure 7: Test error (%) on CIFAR-10 dataset as a function of the number of training iterations for the different federated
+learning methods with (top) 10 clients and (bottom) 100 clients. The clean scenario indicates normal operation (all benign
+clients) while the remaining scenarios, byzantine, flipping, and noisy, all have 30% faulty, noisy or malicious clients.
+
+

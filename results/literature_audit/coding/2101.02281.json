@@ -1,0 +1,36 @@
+{
+  "title": "FLAME: Taming Backdoors in Federated Learning",
+  "bibkey": "nguyen2022flame",
+  "c_d_route": "component-contrast",
+  "venue": "USENIX Security",
+  "year": 2022,
+  "criteria": {
+    "C-a": {
+      "code": "YES",
+      "quote": "our defense consists of three main components: filtering, clipping, and noising",
+      "locator": "§4.3 FLAME Design"
+    },
+    "C-b": {
+      "code": "YES",
+      "quote": "Proposed defenses against backdoor attacks based on detecting and filtering out malicious model updates consider only very specific and limited attacker models, whereas defenses based on differential privacy-inspired noise injection significantly deteriorate the benign performance of the aggregated model.",
+      "locator": "Abstract; the complementary-deficiency argument is restated at §4.3 as clustering \"to remove poisoned models with large cosine distances\" and adaptive clipping \"to remove poisoned models with large magnitudes\""
+    },
+    "C-c": {
+      "code": "YES",
+      "quote": "compared to a BA of 0.0% and a MA of 89.87% of FLAME in the same scenario for the CIFAR-10 dataset",
+      "locator": "§C Naïve Combination; the composed system's own backdoor accuracy is the reported outcome throughout §7"
+    },
+    "C-d": {
+      "code": "YES",
+      "quote": "we measure the smallest Gaussian noise scale σ required to defeat all backdoors (i.e., BA = 0%) in three settings: i) No defense components applied (which is equivalent to the previous DP-based defense [9, 20]); ii) After applying dynamic clustering; iii) After applying both dynamic clustering and adaptive clipping (which is the setting of FLAME)",
+      "locator": "§5.1, Table 1"
+    },
+    "C-e": {
+      "code": "YES",
+      "quote": "As a result, FLAME can use a small Gaussian noise to eliminate the remaining backdoors after applying clustering and clipping, which is beneficial for preserving the main task accuracy.",
+      "locator": "§5.1"
+    }
+  },
+  "coder_note": "THE STRICT C-d, AND IT IS IN THE PAPER WE EXPECTED TO BE OUR CLEAREST INSTANCE. Table 1 holds the DOWNSTREAM mechanism fixed (Gaussian noising) and varies the UPSTREAM stage across three levels -- none, clustering, clustering+clipping -- reading off the noise scale each level requires. That is exactly the intervention prop:identification_full describes, and it is used to support a mechanism claim (\"This corroborates the correctness of Theorem 2\"), so C-e is YES as well. Primary therefore codes NO. FLAME also reports the naive-combination contrast in §C (BA 51.9% stacked vs 0.0% for FLAME), which is a second within-defense comparison. main.tex:1654's assertion that FLAME is \"proposed and evaluated as a single stage\" is wrong twice over: it is a three-component pipeline AND it runs the identifying contrast.",
+  "flame_precedent": true
+}

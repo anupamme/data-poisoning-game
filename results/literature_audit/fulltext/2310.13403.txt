@@ -1,0 +1,2930 @@
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+1
+
+BRFL: A Blockchain-based Byzantine-Robust
+Federated Learning Model
+
+arXiv:2310.13403v1 [cs.LG] 20 Oct 2023
+
+Yang Li, Chunhe Xia, Chang Li, and Tianbo Wang, Member, IEEE,
+
+Abstract—With the increasing importance of machine learning,
+the privacy and security of training data have become critical.
+Federated learning, which stores data in distributed nodes and
+shares only model parameters, has gained significant attention
+for addressing this concern. However, a challenge arises in
+federated learning due to the Byzantine Attack Problem, where
+malicious local models can compromise the global model’s performance during aggregation. This article proposes the Blockchainbased Byzantine-Robust Federated Learning (BRLF) model that
+combines federated learning with blockchain technology. This
+integration enables traceability of malicious models and provides
+incentives for locally trained clients. Our approach involves
+selecting the aggregation node based on Pearson’s correlation
+coefficient, and we perform spectral clustering and calculate the
+average gradient within each cluster, validating its accuracy using
+local dataset of the aggregation nodes. Experimental results on
+public datasets demonstrate the superior byzantine robustness
+of our secure aggregation algorithm compared to other baseline
+byzantine robust aggregation methods, and proved our proposed
+model effectiveness in addressing the resource consumption
+problem.
+Index Terms—Federated Learning, Blockchain, Pearson Correlation Coefficient, Spectral Clustering
+
+I. I NTRODUCTION
+
+F
+
+EDERATED learning [1] (FL) has revolutionized the
+traditional approach to machine learning by storing data
+locally on multiple nodes rather than on centralized servers.
+These nodes train the same model and then upload it to the
+server, allowing devices like smartphones, laptops, and in-car
+computers to participate in model training.
+However, federated learning has both positive and negative
+aspects [2]. On the positive side, it enhances the privacy and
+security of training data by keeping it locally stored and
+not shared with the server. It finds applications in various
+domains such as transportation, healthcare, and finance. On the
+negative side, since training data is not stored on the server,
+the server needs to aggregate parameters from multiple local
+Yang Li is with the Key Laboratory of Beijing Network Technology,
+Beihang University, Beijing 100191, China (e-mail: johnli@buaa.edu.cn).
+Chunhe Xia is with the Key Laboratory of Beijing Network Technology,
+Beihang University, Beijing 100191, China, and also with the Guangxi
+Collaborative Innovation Center of Multi-Source Information Integration and
+Intelligent Processing, Guangxi Normal University, Guilin 541004, China (email: xch@buaa.edu.cn).
+Chang Li is with the School of Computer Science and Technology,
+Zhengzhou University of Light Industry, Zhengzhou 450000, China (e-mail:
+3031169424@qq.com).
+Tianbo Wang is with the School of Cyber Science and Technology, Beihang
+University, Beijing 100191, China, and also with the Shanghai Key Laboratory
+of Computer Software Evaluating and Testing, Shanghai 201112, China (email: wangtb@buaa.edu.cn).
+(Corresponding author:Tianbo Wang.)
+Manuscript received April 19, 2005; revised August 26, 2015.
+
+models, which can be vulnerable to attacks from malicious
+nodes. Research in robust global model aggregation focuses
+on situations where some local models are under attack, while
+maintaining high performance for the global model. The key
+aspect of this research is to identify the attacked models and
+exclude them during the global model aggregation process,
+while retaining the benign models for aggregation. Therefore,
+secure global model aggregation algorithms play a vital role in
+federated learning. Specifically, our research aims to combat
+malicious local models and trace their activities. According
+to the survey [3], the detection of malicious models can be
+achieved through model aggregation algorithms, and when
+combined with blockchain technology, it enables traceability
+of malicious gradients. Additionally, it provides rewards to
+nodes participating in federated learning, mitigating potential
+attacks such as middleman attacks and single point failures,
+and increasing the enthusiasm of nodes to participate in
+federated learning training.
+In blockchain-based federated learning, there are two inevitable problems in model aggregation: byzantine-attack and
+resource-cost. These problems arise because it is not guaranteed that every local model trains in the intended direction.
+Local models are sent to the server for aggregation, but
+the server does not participate in their training. As a result,
+the server cannot verify the validity of the local models it
+receives, as it cannot access the local training data. Byzantineattack refer to the modification of training data or model
+parameters by local training nodes to attack the global model.
+The goal of such attacks is to reduce the accuracy of the global
+model or manipulate predictions for specific data. Resourcecost refer to the significant computational resources consumed
+by existing secure aggregation methods that rely on local
+model accuracy verification. Additionally, solutions combining
+blockchain technology face challenges related to block storage.
+Researchers have developed aggregation algorithms mainly
+based on lp distance [4], [5], cosine angle [6], [7], and
+accuracy validation [8]–[10] to detect malicious local models
+for secure model aggregation in federated learning. The lp
+distance-based method calculates the distance between local
+model gradients and assumes that the distance between malicious model gradients and benign model gradients is larger
+than the distance between benign models, thereby detecting
+malicious models. The cosine angle-based method considers
+the angle between local models and previous global models,
+identifying them as malicious if the cosine angle exceeds
+a certain threshold. The accuracy validation-based method
+verifies the accuracy of local models using a prepared test
+dataset and identifies them as malicious if their accuracy falls
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+below a certain threshold.
+Unfortunately, these three primary aggregation algorithms
+do not effectively address the issue of detecting malicious
+models. The lp distance-based method can be vulnerable to
+attackers who add little biases to the parameters of normal
+gradients, thereby attacking the global model. In the cosine
+angle-based method, attackers can manipulate the angles between malicious model updates and benign model updates to
+be smaller than the discrimination threshold of the defense
+method used. As for the accuracy validation-based method,
+it requires an additional test dataset and significant computational resources to validate the accuracy of local models. All
+three methods assume that the proportion of malicious models
+is less than 50%.
+To address these issues, we propose the Blockchain-based
+Federated Learning model (BRFL), which contains two main
+components: the Proof of Pearson Correlation Coefficient
+consensus algorithm (PPCC) and the Precision-based Spectral
+Aggregation (PSA) algorithm. PPCC selects the aggregation
+node for the next round based on the Pearson correlation
+coefficient between the local model and the global model from
+previous rounds. It also considers the lack of test datasets in
+FL by using the aggregation node’s local dataset for local
+model accuracy validation. PSA clusters local models with
+high correlation and verifies their accuracy by calculating
+the average value, thereby detecting malicious models and
+addressing the resource cost problem. Experimental results
+demonstrate that our model exhibits high robustness and
+effectively reduces resource consumption.
+Our contributions can be summarized as follows.
+1. We propose the BRFL model to address the issue of
+byzantine-attack during the model aggregation process. We
+propose a new block structure by adding a transaction type
+identity in the block head and utilizing IPFS for storage
+of local models. This allows nodes to save the chosen
+transaction type of the block.
+2. In BRFL, we introduce a consensus algorithm suitable for
+blockchain-based federated learning. The algorithm selects
+the node with the highest Pearson correlation coefficient
+between the previous round’s local model and the global
+model as the aggregation node. This approach enhances the
+security of federated learning and resolves the problem of
+lacking test data in FL.
+3. We propose a Precision-based Spectral Aggregation (PSA)
+algorithm , which leverages spectral clustering of local
+models based on their Pearson correlation coefficients. This
+algorithm verifies the accuracy of the average gradient
+within each cluster using the aggregation nodes’ local
+datasets, selects the average gradient from the cluster with
+higher accuracy as the global model. This approach ensures
+that the global model maintains high accuracy even in the
+presence of a high percentage of malicious models.
+4. Experiments conducted on two commonly used datasets
+demonstrate that our aggregation algorithm surpasses both
+classic and state-of-the-art baseline methods in terms of
+accuracy. Additionally, our block structure effectively reduces the storage pressure on federated learning nodes. The
+incentive mechanism successfully rewards well-intentioned
+
+2
+
+nodes, and we validate the effectiveness of the consensus
+algorithm.
+The rest of this article is organized as follows. We first give
+a comprehensive review of related works in Section II. Next,
+we demonstrate the background of this article in Section III,
+followed by the presentation of detailed design of BRFL in
+Section IV. After that, we conduct a series of experiments on
+two public datasets to evaluate BRFL in Section V. Finally,
+Section VI concludes this work and discusses future directions.
+II. RELATED WORK
+This section provides a comprehensive review of the relevant literature. We discuss two approaches to enhancing
+the security of federated learning: combining blockchain and
+Byzantine robust aggregation methods.
+Federated learning and blockchain share a distributed architecture. Currently, there are solutions that improve the
+security of federated learning by using improved consensus
+algorithms, distributed ledgers, and encryption algorithms
+in blockchain. Bao et al. [11] proposed FLChain, where
+blocks in FLChain store participants’ personal information,
+data resource descriptions, historical federal training activities,
+and credibility, allowing historical information of federated
+learning to be queried in the blockchain. The dual committee
+introduced by [12], ensures the selection of good nodes and
+other nodes to build the committee, enabling more nodes
+to participate and preventing malicious nodes from attacking
+the training process. Islam et al. [13] presents a blockchainbased data acquisition scheme during the pandemic, where
+federated learning is used to assemble privacy-sensitive data
+as a trained model instead of raw data. They also design a
+secure training scheme to mitigate cyber threats. Bift, proposed
+by [14] , is a fully decentralized ML system combined with FL
+and blockchain. It provides a privacy-preserving ML process
+for connected and autonomous vehicles, allowing them to
+train their own machine learning models locally using their
+driving data and then upload the models to obtain a better
+global model. Biscotti, proposed by [15] , is a fully decentralized peer-to-peer (P2P) approach to multi-party machine
+learning. It utilizes blockchain and cryptographic primitives
+to coordinate a privacy-preserving ML process between peering clients, ensuring scalability, fault tolerance, and defense
+against known attacks. Liu et al. [16] proposed a cooperative
+intrusion detection mechanism that unloads the training model
+to distributed edge equipment, such as connecting vehicles and
+roadside units. This method reduces the resource utilization
+of the central server while ensuring security and privacy. To
+ensure the security of the aggregation model, blockchain is
+used to store and share training models. Chen et al. [17]
+proposed a blockchain-based decentralized FL framework,
+introduce a novel decentralized verification mechanism, design
+a specialized proof-of-equity consensus mechanism where
+honest devices can be rewarded with equity more frequently,
+thus protecting legitimate local model updates by increasing
+their chances of dominating blocks attached to the blockchain.
+Several Byzantine robust methods have been proposed.
+Yuan et al. [18] provides a problem formulation of vertical
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+federated learning (FL) in the presence of byzantine-attack and
+proposes a Byzantine-resilient dual subgradient method. Chen
+et al. [19] proposes BDFL, a novel Byzantine fault-tolerant
+decentralized FL method, to provide privacy protection for
+self-driving cars. By extending the HydRand protocol, a pointto-point FL with Byzantine fault tolerance is built. To protect
+their models, each autonomous vehicle (AV) uses a publicly
+verifiable secret sharing scheme that allows anyone to verify
+the correctness of the encrypted sharing. Bao et al. [20]
+proposes BOBA, an efficient two-stage method that aims
+to solve label skewness and ensure robustness, along with
+efficient optimization algorithms. Chen et al. [21] introduces a
+new Gradient Average framework, which utilizes the average
+value of multiple gradients to detect byzantine-attack. The AG
+framework can be combined with most existing defenses, such
+as Krum [32], to reduce variance and improve effectiveness.
+Jin et al. [22] proposes a new aggregation rule for FL called
+Federal Mutual Assistance Information (FedMI), which utilizes mutual information between customers to build resilience
+for Byzantine workers and accelerate integration. Li et al.
+[23] presents a new method called PCS-DP-SIGNSGD, which
+utilizes a simple and efficient 1-bit compressed sensing reconstruction algorithm for aggregated gradients. The accuracy
+loss caused by the recovery error is almost negligible.
+III. BACKGROUND
+A. Blockchain
+Blockchain [24], proposed by Nakamoto in 2008, aims to
+establish a decentralized and untrusted digital cash system. It
+is based on a peer-to-peer network and incorporates encryption
+algorithms, consensus algorithms, and other technologies.
+In traditional cash systems, an institution endorses the currency, thereby assigning value to the coin. People recognize the
+value of the currency by acknowledging the credibility of the
+endorsing organization. However, in the first blockchain application, Bitcoin, Nakamoto introduces a method for everyone
+to maintain records of digital cash transactions between any
+individuals, eliminating the need for a single organization to
+endorse the trust of the transaction. The more people involved
+in ledger-keeping, the more secure and reliable the transaction
+history becomes.
+A blockchain consists of blocks that are connected through
+a bidirectional linked list. Each block is divided into a block
+head and a block body. The block head contains the block
+generation timestamp, the hash value of the previous block, the
+hash value of the current block, the Merkle root (which ensures
+transaction consistency within the block), the block height, and
+other information. The block body contains transactions that
+occurred during a specific time period. Once recorded in a
+block, the transactions cannot be modified.
+Consensus algorithms [25] play a crucial role in blockchain
+by organizing network nodes to reach a consensus on transactions and ensuring the correctness and continuity of the
+blockchain. In Bitcoin, the Proof of Work (PoW) consensus
+algorithm was introduced, where miners compete to solve a
+complex mathematical puzzle to generate the next block. The
+first miner to solve the puzzle successfully adds the block to
+the chain and receives rewards for their efforts.
+
+3
+
+Blockchain can be utilized to address privacy protection issues in federated learning [26]–[28]. By leveraging the tamperproof, transparent, and decentralized nature of blockchain, the
+security of the federated learning system can be enhanced by
+storing important data on the blockchain.
+B. Pearson Correlation Coefficient
+Pearson correlation coefficient (PCC) [29] aims to describe
+the linear correlation between two variables, assume there has
+a variable A = {a1 , a2 , . . . , an }, B = {b1 , b2 , . . . , bn }, the
+PCC score ρ can be calculate as :
+ρ(A, B)
+E[(A − µA )(B − µB )]
+=
+σA σB
+E(A, B) − E(A)E(B)
+p
+=p
+2
+(E(A ) − E 2 (A)) (E(B 2 ) − E 2 (B))
+n
+n
+n
+P
+P
+P
+n
+ai bi − ( ai )( bi )
+i=1
+i=1
+i=1
+s
+=s
+n
+n
+n
+n
+P
+P
+P
+P
+n
+a2i − ( ai )2 n
+b2i − ( bi )2
+i=1
+
+i=1
+
+i=1
+
+(1)
+
+i=1
+
+Hence, ρ(A, B) ∈ [−1, 1], ρ(A, B) ← 0 means variable A
+and B has no linear correlations, ρ(A, B) ← 1 means A and
+B has positive linear correlations, when one of them increase,
+the other will also increase; ρ(A, B) ← −1 means A and B
+has negative linear correlations, when one of them increase,
+the other will decrease. PCC has features, such as:
+1) Symmetry. ρ(A,B) = ρ(B,A), the PCC between the two
+specific variables is the same.
+2) Displacement invariant. Changes in the expected values of
+variable A and variable B do not affect the PCC.
+3) Scale invariance. Exponential change in variable A and
+variable B does not affect the PCC.
+PCC can be used to describe two vectors relation. For the
+models in federated learning, the PCC can be used to describe
+the strength and direction of the linear relationship between
+every two models.
+C. Spectral Clustering
+The fundamental concept of spectral clustering [30] is to
+convert samples and their similarity matrix into a graph model.
+By cutting the edges of the graph model, it aims to minimize
+the edge weights between different subgraphs and maximize
+the edge weights within each subgraph. Spectral clustering is
+employed to classify samples and tackle the clustering problem
+of sparse data, which is a limitation of the k-means clustering
+algorithm.
+Assuming we have a dataset that can be classified into k
+classes, X = {x1 , x2 , ..., xn } ∈ Rd×n , the algorithm proceeds
+as follows:
+1) Construct the similarity matrix S ∈ Rn×n and obtain
+the corresponding degree matrix D ∈ Rn×n , adjacency
+matrix W ∈ Rn×n , and Laplacian matrix L = D − W .
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+4
+
+Blockchain
+
+Problem 2 Resource Cost
+
+Global Model
+Aggregation
+
+Accuracy
+Validation
+
+Computation Power Cost
+
+Block Storage
+Storage Cost
+
+Model Storge and
+Communication
+
+Problem 1 Byzantine Attack
+
+IPFS
+
+Data
+Poison
+Model
+Poison
+
+Global Model
+Poison
+
+Block
+
+Blockchain Link
+
+Model Gradients
+
+Global Model
+
+Network Link of Federated Learning Nodes
+
+Poisoned Model Gradients
+
+Federated Learning
+Local Training Node
+
+CID of Benign Local Training Model
+
+Poisoned Dataset
+
+Federated Learning
+Aggregation Node
+
+CID of Byzantine Attack Local Training Model
+
+InterPlanetary File System
+
+Local Training
+Model Gradients
+
+CID of Local Training Model Gradients
+
+Local Training Model Gradients
+
+Fig. 1: BRFL Model Structure
+2) Normalize L by L∗ = D−1/2 LD−1/2 and compute the
+m smallest eigenvalues of L∗ and their corresponding
+eigenvectors f .
+3) The eigenvector matrix F , composed of the corresponding eigenvectors f , Normalize F row-wise to obtain the
+final n × m-dimensional feature matrix F ∈ Rn×m .
+4) Cluster the row vectors of F , where each row vector
+represents an m-dimensional sample. With a total of n
+samples, set the number of clusters as k, and obtain the
+partitioning of clusters C = {c1 , c2 , ..., ck }.
+Characteristics of spectral clustering:
+1) Spectral clustering only requires the similarity matrix of
+the data, making it effective for clustering sparse data.
+2) Due to its utilization of dimensionality reduction techniques, spectral clustering exhibits better complexity than
+traditional clustering algorithms when dealing with highdimensional data.
+IV. B LOCKCHAIN - BASED F EDERATED L EARNING M ODEL
+In this section, we present a novel approach that combines
+blockchain technology with federated learning to enhance security and robustness. We propose BRLF, which incorporates
+a customized consensus algorithm and a robust aggregation
+mechanism. Our approach leverages blockchain technology,
+Pearson correlation coefficient (PCC), and spectral clustering
+techniques to effectively filter out malicious gradients during
+the global model aggregation process. This approach offers
+enhanced security and robustness for federated learning while
+reducing computation power costs. Furthermore, we introduce
+the utilization of IPFS and a new block structure to minimize
+storage resource costs.
+A. Model overview
+In figure 1 shows the architecture of BRFL. In order to
+improve the security of global model aggregation, BRFL
+design goal are as followings:
+
+Aggregating local update model gradients makes the
+global model resilient against byzantine-attack, ensuring
+that the aggregated global model performs well even in
+the presence of such attacks.
+• By incorporating consensus algorithms in blockchain, the
+selection of aggregation nodes is guaranteed to maintain
+the quality and efficiency of global model aggregation.
+• Blockchain technology is utilized to achieve secure transmission and traceability of model updates, ensuring that
+the transmission process remains untampered and providing the ability to trace malicious gradients.
+
+•
+
+As depicted in Figure 1, the local model and global model
+are stored in the blockchain. Local training nodes retrieve
+the global model from the blockchain and utilize their own
+datasets to train the local model. After local training, the
+updated local model gradient is uploaded to IPFS, and the
+Content Identifier (CID) returned by IPFS is then uploaded to
+the blockchain.
+Let’s assume there are ν clusters (ν ∈ N+ ), and the
+average of the local model in the λ-th cluster, denoted as
+CLlm
+a;λ . Since local models within the same cluster exhibit
+similar linear correlations, CLlm
+a;λ can effectively represent the
+model distribution in that cluster. CLlm
+a;λ is verified by all the
+aggregation nodes, and the sum of the average accuracy from
+each node is considered the final accuracy, as test results from
+a single aggregation node may be biased. The aggregation
+nodes are selected by comparing the PCCs of the last round
+of local and global models. It is important to note that the
+aggregation nodes from the previous round will not be selected
+as aggregation nodes for the next round. This is because
+aggregation nodes are not involved in training the local model
+but rather focus on verifying the local models and packaging
+blocks. The immutability of the blockchain ensures that the
+global model, local model, accuracy records, and Pearson
+correlation coefficient records cannot be tampered with, thus
+enhancing the security of federated learning.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+ω
+P
+
+CLlm
+a;λ =
+
+lmµ
+
+µ=1
+
+ω
+Hence, let ω ∈ N and ω < β, where β is a dynamic
+number that indicates the number of nodes in each cluster.
+In BRFL, we have added a signal in the block head to
+indicate the type of content. This allows nodes to store only the
+blocks they need, thereby conserving storage resources. The
+transmission of local models and global models occurs through
+the blockchain’s peer-to-peer (P2P) network. The federated
+learning nodes are also part of the blockchain network. Local
+training nodes and aggregation nodes are rewarded with tokens
+for their contributions to model training, aggregation and
+blockchain packaging.
+
+5
+
+is set, along with the model structure. The global model
+parameters are randomly initialized. Next, a certain number
+(β) of LT are randomly selected to become AN . The global
+model is then packaged and stored in the blockchain.
+
++
+
+B. Initialization
+In BRFL we denote all nodes’ set is N
+=
+{n1 , n2 , . . . , nα }, α ∈ N+ is the number of all nodes.
+N contains aggregation nodes set, local training nodes set
+and blockchain nodes set. There has three type of nodes in
+BRFL:
+• Aggregation node (An): The set of aggregation nodes
+is denoted as AN = {An1 , An2 , . . . , Anβ }, where
+β ∈ N+ . These nodes aggregate local models to form
+the global model and package blocks.
+• Local training node (Lt): The set of local training nodes
+is denoted as LT = {Lt1 , Lt2 , . . . , Ltγ }, where γ ∈ N+ .
+The local training nodes are responsible for training the
+local models and sending them to the aggregation nodes
+(An) for the aggregation of the global model. Both the
+local training nodes (Lt) and the aggregation nodes (An)
+have their own datasets.
+• Blockchain network node (Bn): The blockchain network nodes (Bn) do not participate in the federated learning process. They are denoted as BN =
+Bn1 , Bn2 , . . . , Bnκ , where κ ∈ N+ . The presence of
+more nodes in the blockchain network ensures that the
+ledger is consensus by a larger number of nodes, thereby
+enhancing the security of the blocks in the blockchain.
+There are two types of models in BRFL:
+• Local model (lm): The local model set is denoted as
+LM = {lmr1 , lmr2 , . . . , lmrγ }, where r ∈ N+ represents
+the global training round, and γ represents the node id.
+lm refers to the local training model (Lt) and in each
+communication round. After local training, the updated
+lm is published on IPFS.
+• Global model (gm): The global model set is denoted as
+GM = {gmθ1 , gmθ2 , . . . , gmθχ }, where χ ∈ N+ represents
+the global round number and θ is the aggregation node
+ID. The global model is aggregated by the aggregation
+nodes (An). The global model represents a comprehensive representation of the collective information within
+the federated learning network, combining the data characteristics and insights contributed by each participant.
+In the beginning of federated learning in BRFL, several
+steps are followed. First, the maximum training round (M T R)
+
+C. Local Model Training and Communication
+Blockchain possesses characteristics such as transparency,
+immutability, and decentralized maintenance. These features
+ensure the security and transparency of data on the blockchain,
+making it accessible to all nodes. However, these advantages
+also introduce certain challenges, including storage space and
+communication efficiency issues.
+In a blockchain, blocks need to be stored on nodes. The
+more nodes that store blocks in the blockchain network, the
+higher the security level and the lower the likelihood of tampering. However, storing blocks requires local storage space
+from the nodes. In the case of federated learning, where there
+are numerous training rounds, multiple participating nodes,
+and long training cycles, the types of participating nodes
+vary greatly. These nodes can include mobile phones, cars,
+computers, and more, each with different storage capacities.
+To address these challenges, we storing the local models
+in the InterPlanetary File System (IPFS), while storing the
+pointers returned by IPFS within the blockchain. In federated learning, with multiple participating local training nodes,
+storing all the local models on the blockchain would result
+in numerous blocks generated in each training round, which
+hampers communication efficiency. IPFS will return a hash
+sequence, Content Identifier (CID), for each certain file upload,
+aggregation nodes can retrieve the local models from IPFS
+based on the CID, perform model aggregation, and store the
+aggregated global model within the blockchain. By storing
+the global model only once per round within the blockchain,
+local training nodes can directly access it from the blockchain
+instead of IPFS, thereby improving their work efficiency.
+Assume current round is φ th round, Ltϖ , ϖ ∈ [1, γ]
+get gmθφ−1 from blockchain, set gmθφ−1 as its local model
+lmrϖ ← gmθφ−1 , doing local training using its own dataset
+and computation power, get updated local model lmru;ϖ . Ltϖ
+upload their LM to IPFS, get CID returns from IPFS for the
+uploaded lmru;ϖ , denoted as CIDlmru;ϖ , which can be used
+to retrieve lmru;ϖ . LT publish CIDlmru;ϖ as a transaction to
+blockchain network.
+D. Proof of Pearson Correlation Coefficient Consensus Algorithm
+In BRFL, we propose a consensus algorithm called Proof
+of Pearson Correlation Coefficient (PPCC) to select the LT
+that will become AN at the beginning of each communication
+round. In federated learning, one challenge is that training
+data is stored in training nodes and not shared with others to
+protect privacy. While this enhances data security, it also poses
+a problem for the server to verify the validity of local models,
+leading to potential issues such as byzantine-attack including
+data poisoning and model poisoning attacks.
+To address this challenge, we select a committee of AN
+from the LT in each training round. These selected aggregation nodes use their local datasets to verify the validity of
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+6
+
+the local models from the participating training nodes. This
+approach helps to overcome the lack of a test dataset and
+improves the overall security and integrity of the federated
+learning process.
+Assume current round is ϵ(ϵ > 1) th round, the algorithm
+details shows in Algorithm 1, the steps of PPCC can be
+summarized as followings:
+1) Concatenate last round’s LM and gm different layer to
+one vector, calculate the PCC between LM and gm;
+M
+Θ(lmϵ−1
+layerϱ
+(2)
+η )=
+layerϱ ∈lmϵ−1
+η
+
+Θ(gmθϵ−1 ) =
+
+M
+
+layerϱ
+
+(3)
+
+layerϱ ∈gmθϵ−1
+
+σ(Θ(lmϵ−1
+η )) =
+
+q
+
+σ(Θ(gmθϵ−1 )) =
+
+q
+
+ϵ−1
+2
+2
+E((Θ(lmϵ−1
+η )) ) − E (Θ(lmη ))
+(4)
+
+E((Θ(gmθϵ−1 ))2 ) − E 2 (Θ(gmθϵ−1 ))
+(5)
+
+θ
+ρ(lmϵ−1
+η , gmϵ−1 ) =
+
+θ
+cov(lmϵ−1
+η , gmϵ−1 )
+θ
+σ(Θ(lmϵ−1
+η ))σ(Θ(gmϵ−1 ))
+
+(6)
+
+Hence, lmϵ−1
+η , η ∈ [1, γ] is the η th local model in ϵ − 1
+round, gmθϵ−1 is the global model aggregate by Ltθ , θ ∈
+[1, γ] in ϵ − 1 round, layerϱ is the ϱ th layer in the
+model gradients. Θ(lmϵ−1
+η ) is concatenate different layers
+to
+one
+vector
+, so as Θ(gmθϵ−1 ).
+in lmϵ−1
+η
+2) Sort the ρ by descending order, get first β number of lm,
+Lt who upload these lm become AN this round.
+θ
+AN ← Sort(ρ(lmϵ−1
+η , gmϵ−1 ) | η ∈ [1, γ])[: β]
+
+(7)
+
+The selected aggregation nodes (AN ) verify the accuracy
+of the local models (lm) and package the transactions to the
+blockchain.
+The block will be packaged by one An, but all the AN
+in this round will be considered the block miner. Therefore,
+a block may have multiple miners, and all the miners will
+receive tokens as rewards.
+
+Algorithm 1 PPCC consensus algorithm
+Input: gm : last round global model; num AN: AN number;
+1: Initialization: PL : Pearson Correlation Coefficient list ;
+2: if gm == None then
+3:
+return random select AN from LT;
+4: end if
+5: for each layer in gm do
+6:
+V ectorgm ← V ectorgm .concatenate(layer);
+7: end for
+8: for i = 0; i <LT.length; i++ do
+9:
+for each layer in LT[i] do
+10:
+V ectorLT [i] ← V ectorLT [i] .concatenate(layer);
+11:
+end for
+12:
+ρ = E[(V ectorgm − µV ectorgm )(V ectorLT [i]
+
+−
+
+µV ectorLT [i] )]/σV ectorgm σV ectorLT [i] ;
+13:
+PL[i] = ρ;
+14: end for
+15: sorted dict ← sorted(PL) in descend order;
+16: AN ← sorted dict[:num AN]
+Output: AN ; PL
+
+In this work, we propose a secure aggregation algorithm called
+the Precision-based Spectral Aggregation (PSA) algorithm. It
+combines the Pearson Correlation Coefficient (PCC), spectral
+clustering, and accuracy verification to detect attacked lm.
+First, we concatenate local model and global model ’s
+different layer to one vector, calculate the PCC between local
+models, as shown in Equation 8, 9, 10, 11, 12. Second, we
+perform spectral clustering on the local models based on PCC.
+This allows us to calculate the average gradient for each cluster
+after clustering. The aggregation nodes selected by the PPCC
+consensus algorithm then verifies the accuracy rate of the
+average gradient using its local database. The average gradient
+which has the max average accuracy validated by aggregation
+nodes will be the global model. This approach enhances the
+fault tolerance, reduces resource consumption, and improves
+sensitivity to small sample compared to existing methods. The
+algorithm details shows in Algorithm 2.
+Θ(lmϵη ) =
+
+M
+
+layerϱ
+
+(8)
+
+layerϱ
+
+(9)
+
+layerϱ ∈lmϵη
+
+E. Precision-based Spectral Aggregation Algorithm
+BRFL leverages IPFS to store the LM and stores the CID
+returned by IPFS in the blockchain. This approach addresses
+the challenge of storing a large number of local models when
+there are numerous local training nodes (LT ) in the network.
+The aggregation nodes (AN ) can retrieve the corresponding
+LM using the CID stored in the blockchain.
+Existing security aggregation algorithms often identify
+byzantine-attack based on factors such as the distance between
+local models, the accuracy of local models, and the cosine angle between local and global models. However, these methods
+have limitations including low fault tolerance, high resource
+consumption, and insensitivity to a small number of features.
+
+Θ(lmϵø ) =
+
+M
+layerϱ ∈lmϵø
+
+σ(Θ(lmϵη )) =
+
+q
+
+σ(Θ(lmϵø )) =
+
+q
+
+E((Θ(lmϵη ))2 ) − E 2 (Θ(lmϵη ))
+
+(10)
+
+E((Θ(lmϵø ))2 ) − E 2 (Θ(lmϵø ))
+
+(11)
+
+cov(lmϵη , lmϵø )
+σ(Θ(lmϵη ))σ(Θ(lmϵø ))
+
+(12)
+
+ρ(lmϵη , lmϵø ) =
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+7
+
+Algorithm 2 PSA Algorithm.
+
+
+1
+ pcclm2 ,lm1
+
+ρϵL,L = 
+..
+
+.
+pcclmγ ,lm1
+
+pcclm1 ,lm2
+1
+..
+.
+pcclmγ ,lm2
+
+
+
+. . . pcclm1 ,lmγ
+. . . pcclm2 ,lmγ 
+
+ (13)
+..
+..
+
+.
+.
+...
+1
+
+Hence, ø ∈ [1, γ] ∩ ø ̸= η, ρϵL,L ∈ R(γ,γ) in Equation 13
+represents the matrix of Pearson Correlation Coefficient (PCC)
+relationships between local models in round ϵ.
+The strength of the linear correlation between two local
+models (lm) can be determined by their PCC value. By clustering the local models based on PCC, we can group together
+models that exhibit strong linear correlation. Existing security
+aggregation algorithms have proposed schemes to verify the
+accuracy of local models to detect malicious attacks. However,
+individually verifying the accuracy of each local model can
+consume a significant amount of computational resources of
+the aggregation nodes (AN ). Moreover, the computational
+capacity of the AN limits the application of such schemes,
+and if the local training process generates a large number of
+models, the caliPSAtion time will also increase.
+Therefore, after clustering the local models, we only verify
+the accuracy of the cluster average model gradient denoted
+CL
+as ACCa;λ
+, where λ ∈ [1, ν], using the AN . Here, CLlm
+a;λ
+represents the linear trend of the models in cluster λ. By
+evaluating CLlm
+a;λ , we can verify the nodes in that cluster
+without consuming excessive computational resources. The
+CLlm
+a;λ with higher accuracy will be selected as the global
+model in the current round, and the node with lm in the cluster
+with higher accuracy will receive stake rewards (Lt).
+Global model aggregation mechanism based on conventional federated learning methods Fedavg:
+ν
+P
+
+gmθϵ = λ=1
+
+CLlm
+a;λ
+
+Input: LMS : local model set; Num cluster : cluster number;
+LT : local training nodes set; AN : aggregation nodes set;
+1: Initialization: P M : Pearson Correlation Coefficient matrix
+
+; AL : accuracy validation list;
+2: for i = 0; i <LMS.length(); i++ do
+3:
+for each layer in LM S[i] do
+4:
+CLM S[i] ← CLM S[i] .concatenate(layer);
+5:
+end for
+6: end for
+7: for j = 0; j <LMS.length(); j++ do
+8:
+for k = j+1; k <LMS.length(); k++ do
+9:
+ρ
+←
+E[(CLM S[j] − µCLM S[j] )(CLM S[k]
+
+−
+µCLM S[k] )]/σCLM S[j] σCLM S[k] ;
+10:
+end for
+11:
+P M [j][k] = ρ; P M [k][j] ← ρ;
+12: end for
+cluster result ← spectral clustering(P M , N umcluster )
+13: for λ = 0; λ <N umcluster ; λ ++ do
+14:
+for lm in cluster result do
+15:
+Sumlm ← Sumlm + lm
+16:
+end for
+17:
+CLlm
+a;λ ← Sumlm /N umcluster ; Annum ← 0;
+18:
+for An in AN do
+19:
+SU Macc ← SU Macc + An.validate(CLlm
+a;λ )
+20:
+Annum ← Annum + 1
+21:
+end for
+22:
+AL[λ] ← SU Macc /Annum
+23: end for
+24: M ax list ← max(AL); AL ← lm in M ax list;
+25: θ ← LT which generates lm in M ax list
+ν
+P
+26: ν = AL.length(); gmθϵ ←
+CLlm
+a;λ /ν
+λ=1
+
+Output: gmθϵ : Global Model in ϵ round
+
+ν
+
+F. Block Package
+Storing models on the blockchain ensures data security.
+However, if all the local models generated by participating nodes in federated learning training are stored on the
+blockchain, it would impose significant storage pressure on
+the nodes.
+To address this problem, we propose a new transaction type
+(denoted as T) called identity in the block header to distinguish
+different types of transactions in the block body, as shown in
+Fig. 2. This approach allows nodes in the blockchain to save
+specific blocks associated with a particular transaction type
+(T), thereby reducing the storage resources required by the
+nodes.
+Once the global model aggregation is completed, the Federated Blockchain Aggregation Manager (BRFL) packages
+the following components into distinct blocks: the Contract
+Identifier (CID), global model, accuracy records, and PCC
+transactions. The T can be categorized into 4 types:
+1. Local Model Link CID (TCID ): The transactions in the
+block body contain the Contract Identifier (CID) linked to
+
+the local model stored in IPFS. Transactions with CID in
+a round will be packed into the same block.
+2. Global Model (TGM ): The transactions in the block contains the global model.
+3. Accuracy Verification Record (TAV R ): The transactions
+contains the accuracy record of CLlm
+a;λ verified by AN .
+4. Pearson Correlation Coefficient Records (TP CC ): The
+transactions contains the PCC records between the local
+model and the global model in the previous round, as well
+as the PCC records between the local model and the local
+model in the current round.
+Block Head
+Previous Hash
+
+Block Identifier
+
+Next Hash
+
+Timestamp
+
+Merkle Root
+
+Transaction Type
+Identifies transactions type
+
+Block Body
+
+Transactions
+
+Get the merkle root
+
+Fig. 2: Block Structure in BRFL
+The nodes in the blockchain have the flexibility to choose
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+which type of transaction type (T) blocks they want to save.
+In the case of LT , the TGM block is necessary, while the
+TCID block, TAV R block, and TP CC block are optional. On
+the other hand, for each round of AN , all four blocks (TGM ,
+TCID , TAV R , and TP CC ) must be downloaded to avoid any
+security issues arising from unsaved blocks. The BN node
+has the capability to save all the blocks to maintain ledger
+security through consensus.
+V. PERFORMANCE EVALUATION
+A. Datasets
+MNIST: The MNIST dataset comprises handwritten numbers from 250 different individuals, totaling 70,000 images. The training set contains 60,000 images, while the
+test set contains 10,000 images. All images are grayscale
+and have dimensions of 28×28 pixels, with each image
+featuring a single handwritten digit.
+• Fashion-MNIST: The Fashion-MNIST dataset consists of
+70,000 frontal images of various fashion products across
+10 categories. The dataset’s size, format, and division
+into training and test sets are consistent with the MNIST
+dataset. It also follows the 60,000/10,000 division for
+training and testing, with images of 28×28 pixels in
+grayscale.
+
+•
+
+B. Attacks
+1) Noise attack: The noise attacks put random noise variance
+to the update gradients or local iterates.
+2) Sign-flipping Attack(SF) [31]: The sign-flipping attacks
+flip the signs of update gradients or local iterates and
+enlarge the magnitudes.
+C. Baselines
+Krum:
+The Krum [32] aggregation algorithm selects the centroid of
+the local model parameters as the global model. It considers
+the Euclidean distance between a malicious gradient and a
+benign gradient to be large, while the Euclidean distance
+between two benign gradients is small.
+Median: Median [33], proposed in 2021, aggregates input
+gradients by calculating the median of the values for each
+dimension of the local gradients. Assuming there are NM edian
+local models, the algorithm collects and sorts the gradients in
+each dimension. For each dimension, the median gradient is
+selected as the gradient of the global model in that dimension.
+Mean: Mean aggregates its input gradient by calculating the
+mean value of each dimension of local gradient.
+Clippedclustering: Clippedclustering [34] proposed in 2023
+, designed an automated clipping strategy to defend against
+potentially amplifying malicious updates.
+D. Accuracy
+In this section, we evaluate the performance of PSA in both
+noise attack and sign-flipping attack scenarios. We compare
+the performance of PSA with other aggregation algorithms,
+
+8
+
+TABLE I: Model Parameters
+parameter
+
+value
+
+Batch size of client’s local training
+Optimizer of client’s local training
+Learning Rate of client’s local training
+Local Epochs of client’s local training
+Max running round of client’s local training
+Noise Variance(in noise attack)
+Numer of Spectral Clusters (in PSA)
+Number of aggregation nodes (in PPCC)
+Number of local training nodes
+Number of blockchain network nodes
+Initial stake for blockchain nodes
+The fixed number of stake benefit for client’s local
+training in one round (FS)
+Stake benefit for aggregation node in one round
+
+10
+SGD
+0.01
+5
+100
+1
+2
+2
+10
+2
+0
+20
+2
+
+namely Krum, Median, Mean, and Clipped Clustering, in the
+context of BRFL.
+Noise attack and sign-flipping attack are types of model
+poison attacks, where malicious clients modify model gradients after local training. In Figure 3, we present the results
+of testing these five different aggregation algorithms under
+noise attack and sign-flipping attack scenarios. The evaluations
+are conducted on the MNIST and Fashion-MNIST datasets,
+considering both independent and identically distributed (IID)
+data distribution and non-IID data distribution. Additionally,
+we set the number of malicious clients to be half of the total
+number of local training clients.
+Figure 3a illustrates the accuracy comparison between our
+proposed PSA and the baselines when using the MNIST
+dataset with IID data distribution and noise attack as the
+model poison attack. From Figure 3a, we observe that our
+PSA achieves the highest accuracy among all the algorithms.
+Krum, median, mean, and clipped clustering exhibit lower
+performance when 50% of the clients are malicious. Similarly,
+in Figure 3b, which represents the performance under signflipping attacks on the MNIST dataset with IID data distribution, PSA and Krum outperform the other baselines. However,
+when the dataset distribution changes from IID to Non-IID,
+PSA maintains a consistently high performance, while Krum’s
+accuracy decreases compared to PSA. PSA demonstrates superior performance in the Non-IID data distribution. In Figure
+3c, Krum, median, mean, and clipped clustering exhibit stable
+performance, but PSA outperforms them all. Figure 3d shows
+that clipped clustering exhibits large fluctuations, remaining
+in the lower range. Apart from PSA, the accuracy of the four
+baselines is below 0.5.
+When using the Fashion-MNIST dataset, as shown in Figure
+3e, PSA achieves the best accuracy when the data distribution
+is IID and the attack type is noise. Krum performs slightly
+worse than PSA but still above 0.8. The accuracy of the other
+three baselines is below 0.5. In Figure 3f, with the attack
+type changing to sign-flipping compared to Figure 3e, PSA
+maintains stable and high performance. Krum and clipped
+clustering exhibit large fluctuations, while median remains
+
+1.0
+
+0.9
+
+0.9
+
+0.8
+
+0.8
+
+0.8
+
+0.8
+
+0.7
+
+0.7
+
+0.7
+
+0.7
+
+0.6
+
+0.6
+
+0.6
+
+0.6
+
+0.4
+
+0
+
+20
+
+40
+60
+80
+Communication Rounds
+
+0.1
+0.0
+
+100
+
+0
+
+(a) MNIST-IID-Noise
+
+0.9
+0.8
+Accuracy
+
+0.6
+
+0.0
+
+0
+
+20
+
+40
+60
+80
+Communication Rounds
+
+20
+
+40
+60
+80
+Communication Rounds
+
+0.0
+
+100
+
+0
+
+(c) MNIST-Non-IID-Noise
+
+1.0
+0.9
+
+0.8
+
+0.8
+
+0.8
+
+0.7
+
+0.7
+
+0.7
+
+0.6
+
+0.6
+
+0.6
+
+0.5
+0.4
+PSA
+Krum
+Median
+Mean
+Clippedclustering
+
+0.1
+0.0
+0
+
+20
+
+40
+60
+80
+Communication Rounds
+
+100
+
+0.5
+0.4
+0.3
+
+PSA
+Krum
+Median
+Mean
+Clippedclustering
+
+0.2
+0.1
+0.0
+
+0
+
+20
+
+40
+60
+80
+Communication Rounds
+
+100
+
+20
+
+40
+60
+80
+Communication Rounds
+
+100
+
+(d) MNIST-Non-IID-Signflip
+
+0.9
+
+0.2
+
+0.1
+
+0
+
+0.1
+
+0.9
+
+0.4
+0.2
+
+0.0
+
+100
+
+PSA
+Krum
+Median
+Mean
+Clippedclustering
+
+0.2
+
+1.0
+
+0.3
+PSA
+Krum
+Median
+Mean
+Clippedclustering
+
+0.1
+
+0.4
+0.3
+
+PSA
+Krum
+Median
+Mean
+Clippedclustering
+
+0.2
+
+0.5
+
+1.0
+
+0.5
+0.3
+
+40
+60
+80
+Communication Rounds
+
+(b) MNIST-IID-Signflip
+
+1.0
+
+0.7
+
+20
+
+0.4
+0.3
+
+PSA
+Krum
+Median
+Mean
+Clippedclustering
+
+0.2
+
+Accuracy
+
+0.1
+0.0
+
+0.3
+
+PSA
+Krum
+Median
+Mean
+Clippedclustering
+
+0.2
+
+0.4
+
+0.5
+
+Accuracy
+
+0.5
+
+0.5
+
+Accuracy
+
+1.0
+
+0.9
+
+Accuracy
+
+1.0
+
+0.9
+
+0.3
+
+Accuracy
+
+9
+
+1.0
+
+Accuracy
+
+Accuracy
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+0.5
+0.4
+0.3
+
+PSA
+Krum
+Median
+Mean
+Clippedclustering
+
+0.2
+0.1
+0.0
+0
+
+20
+
+40
+60
+80
+Communication Rounds
+
+100
+
+100
+
+(f)
+Fashion-MNIST-IID- (g) Fashion-MNIST-Non-IID- (h) Fashion-MNIST-Non-IIDNoise
+Signflip
+(e) Fashion-MNIST-IID-Noise Signflip
+
+Fig. 3: Accuracy of BRLF, Krum, Median, Mean, Clippedclustering under 50% byzantine attack for MNIST and FashionMNIST task
+
+stable for the first 80 rounds of training but starts to fluctuate
+later. The mean aggregation algorithm performs poorly. When
+the data distribution is Non-IID, as shown in Figures 3g and
+3h, PSA outperforms Krum and the other three baselines
+in Figure 3g under noise attack. In Figure 3h, with signflipping attack as the attack type, PSA maintains high and
+stable performance, while Krum and clipped clustering exhibit
+large fluctuations and fail to surpass PSA. Median achieves an
+accuracy of 0.7, whereas the mean algorithm remains at 0.1.
+
+these three rounds, resulting in its stake maintaining a constant
+value. Clients device 11, device 3, device 5, device 7, and
+device 9 are malicious clients, and their stakes are around
+0, indicating that their generated lm rarely or never enters
+the MAQ, which validates the effectiveness of our proposed
+BRFL. The figures in Figure 4 correspond to Figure 3 and
+depict the stake trends under different datasets, data distributions, and attack types when malicious clients account for 50%
+of the total, which corresponds to 5 out of 10 local training
+nodes.
+
+E. Stake Trends
+In this section, we discuss the stake trends of different types
+of nodes in BRFL under various datasets, data distributions,
+and attack types.
+The labels of Figures 4 consist of two parts: the client’s
+name and whether the client is malicious. The clients are
+named from device 1 to device 14, except for device 2 and
+device 4, which are blockchain network nodes. Thus, we did
+not count their stakes. The letter B after the client’s name
+indicates a benign client, while M signifies a malicious client.
+We use dots to represent the stakes of benign clients and circles
+to represent the stakes of malicious clients. From Figures 4,
+we observe that the stakes of benign clients show a nonlinear
+increasing trend, while the stakes of malicious nodes remain
+stable around 0.
+From Figure 4a, we can see that the benign client named
+device 12 has the largest number of stakes in the final result.
+This suggests that it either acts as an aggregation node or its
+local model (lm) is frequently selected for the MAQ, resulting
+in the largest stake benefit from the consensus algorithm due
+to its effective benign local training work. The client named
+device 13 has the second-largest number of stakes. In the
+last three rounds, its stake remains unchanged, indicating that
+although it participates in local model training, its lm does not
+enter the MAQ, and it does not become an aggregation node in
+
+F. Blockchain Size Trends
+In this section, we discuss the trend of blockchain size in
+clients within BRFL in the same environment as depicted in
+Figure 3 and Figure 4. In Figure 5, we examine the variation in
+the size of the blockchain footprint stored on different devices.
+We use triangles to represent blockchain network nodes. In
+BRFL, both blockchain network nodes and aggregation nodes
+store all types of blocks, while local training nodes only need
+to store blocks of the global model type. Different colored
+dots represent benign nodes, while different colored circles
+represent malicious nodes. The label in Figure 5 consists of
+three parts: device name, whether it is a malicious node,
+and the node type. The device names range from device 1
+to device 14, with B denoting a benign node, M denoting a
+malicious node, W/M denoting a node that can be either a local
+training node or an aggregation node, and BN indicating that
+the node is a blockchain network node that does not participate
+in the training and aggregation of federated learning and only
+exists in the blockchain network.
+Figure 5 reveals that the blockchain size stored by the
+blockchain network nodes exhibits a linear growth trend. This
+is because the blockchain network nodes store all types of
+blocks in the blockchain, and each round of the federated
+learning process produces blocks that are of the same or
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+10
+
+160
+
+140
+
+140
+
+80
+60
+40
+20
+0
+
+0
+
+20
+
+40
+60
+80
+Communication Rounds
+
+100
+80
+60
+40
+20
+0
+
+100
+
+(a) MNIST-IID-Noise
+
+20
+
+40
+60
+80
+Communication Rounds
+
+100
+80
+60
+40
+20
+0
+
+20
+
+40
+60
+80
+Communication Rounds
+
+40
+20
+0
+
+140
+
+80
+60
+40
+20
+0
+
+0
+
+20
+
+40
+60
+80
+Communication Rounds
+
+0
+
+20
+
+40
+60
+80
+Communication Rounds
+
+80
+60
+40
+20
+0
+
+0
+
+20
+
+40
+60
+80
+Communication Rounds
+
+100
+
+(d) MNIST-Non-IID-Signflip
+140
+
+device_10_B
+device_11_M
+device_12_B
+device_13_B
+device_14_B
+device_1_B
+device_3_M
+device_5_M
+device_6_B
+device_7_M
+device_8_B
+device_9_M
+
+100
+80
+60
+40
+20
+0
+
+device_10_B
+device_11_M
+device_12_B
+device_13_B
+device_14_B
+device_1_B
+device_3_M
+device_5_M
+device_6_B
+device_7_M
+device_8_B
+device_9_M
+
+100
+
+160
+
+120
+
+100
+
+120
+
+100
+
+(c) MNIST-Non-IID-Noise
+160
+
+Stake
+
+device_10_B
+device_11_M
+device_12_B
+device_13_B
+device_14_B
+device_1_B
+device_3_M
+device_5_M
+device_6_B
+device_7_M
+device_8_B
+device_9_M
+
+60
+
+140
+
+100
+
+120
+
+80
+
+160
+
+device_10_B
+device_11_M
+device_12_B
+device_13_B
+device_14_B
+device_1_B
+device_3_M
+device_5_M
+device_6_B
+device_7_M
+device_8_B
+device_9_M
+
+device_10_B
+device_11_M
+device_12_B
+device_13_B
+device_14_B
+device_1_B
+device_3_M
+device_5_M
+device_6_B
+device_7_M
+device_8_B
+device_9_M
+
+100
+
+100
+
+120
+
+140
+
+Stake
+
+0
+
+140
+
+120
+
+(b) MNIST-IID-Signflip
+
+160
+
+0
+
+device_10_B
+device_11_M
+device_12_B
+device_13_B
+device_14_B
+device_1_B
+device_3_M
+device_5_M
+device_6_B
+device_7_M
+device_8_B
+device_9_M
+
+Stake
+
+Stake
+
+100
+
+120
+
+Stake
+
+device_10_B
+device_11_M
+device_12_B
+device_13_B
+device_14_B
+device_1_B
+device_3_M
+device_5_M
+device_6_B
+device_7_M
+device_8_B
+device_9_M
+
+Stake
+
+120
+
+160
+
+Stake
+
+160
+
+140
+
+0
+
+20
+
+40
+60
+80
+Communication Rounds
+
+120
+
+device_10_B
+device_11_M
+device_12_B
+device_13_B
+device_14_B
+device_1_B
+device_3_M
+device_5_M
+device_6_B
+device_7_M
+device_8_B
+device_9_M
+
+100
+Stake
+
+160
+
+80
+60
+40
+20
+0
+
+100
+
+0
+
+20
+
+40
+60
+80
+Communication Rounds
+
+100
+
+100
+
+(f)
+Fashion-MNIST-IID- (g) Fashion-MNIST-Non-IID- (h) Fashion-MNIST-Non-IIDNoise
+Signflip
+(e) Fashion-MNIST-IID-Noise Signflip
+
+18
+
+16
+
+16
+
+12
+10
+8
+6
+4
+2
+0
+0
+
+20
+
+40
+60
+80
+Communication Rounds
+
+12
+10
+8
+6
+4
+2
+0
+
+100
+
+0
+
+(a) MNIST-IID-Noise
+
+Blockchain Size (KB)
+
+14
+12
+10
+8
+6
+4
+2
+0
+0
+
+20
+
+40
+60
+80
+Communication Rounds
+
+Blockchain Size (KB)
+
+18
+device_10_B_W/M
+device_11_M_W/M
+device_12_B_W/M
+device_13_B_W/M
+device_14_B_W/M
+device_1_B_W/M
+device_2_B_BN
+device_3_M_W/M
+device_4_B_BN
+device_5_M_W/M
+device_6_B_W/M
+device_7_M_W/M
+device_8_B_W/M
+device_9_M_W/M
+
+20
+
+40
+60
+80
+Communication Rounds
+
+12
+10
+8
+6
+4
+2
+0
+0
+
+20
+
+18
+
+18
+
+16
+
+16
+
+device_10_B_W/M
+device_11_M_W/M
+device_12_B_W/M
+device_13_B_W/M
+device_14_B_W/M
+device_1_B_W/M
+device_2_B_BN
+device_3_M_W/M
+device_4_B_BN
+device_5_M_W/M
+device_6_B_W/M
+device_7_M_W/M
+device_8_B_W/M
+device_9_M_W/M
+
+12
+10
+8
+6
+4
+2
+0
+0
+
+20
+
+40
+60
+80
+Communication Rounds
+
+100
+
+20
+
+40
+60
+80
+Communication Rounds
+
+16
+
+device_10_B_W/M
+device_11_M_W/M
+device_12_B_W/M
+device_13_B_W/M
+device_14_B_W/M
+device_1_B_W/M
+device_2_B_BN
+device_3_M_W/M
+device_4_B_BN
+device_5_M_W/M
+device_6_B_W/M
+device_7_M_W/M
+device_8_B_W/M
+device_9_M_W/M
+
+14
+12
+10
+8
+6
+4
+2
+0
+
+100
+
+0
+
+(c) MNIST-Non-IID-Noise
+
+20
+
+14
+
+18
+device_10_B_W/M
+device_11_M_W/M
+device_12_B_W/M
+device_13_B_W/M
+device_14_B_W/M
+device_1_B_W/M
+device_2_B_BN
+device_3_M_W/M
+device_4_B_BN
+device_5_M_W/M
+device_6_B_W/M
+device_7_M_W/M
+device_8_B_W/M
+device_9_M_W/M
+
+14
+
+100
+
+(b) MNIST-IID-Signflip
+
+20
+16
+
+device_10_B_W/M
+device_11_M_W/M
+device_12_B_W/M
+device_13_B_W/M
+device_14_B_W/M
+device_1_B_W/M
+device_2_B_BN
+device_3_M_W/M
+device_4_B_BN
+device_5_M_W/M
+device_6_B_W/M
+device_7_M_W/M
+device_8_B_W/M
+device_9_M_W/M
+
+14
+
+Blockchain Size (KB)
+
+device_10_B_W/M
+device_11_M_W/M
+device_12_B_W/M
+device_13_B_W/M
+device_14_B_W/M
+device_1_B_W/M
+device_2_B_BN
+device_3_M_W/M
+device_4_B_BN
+device_5_M_W/M
+device_6_B_W/M
+device_7_M_W/M
+device_8_B_W/M
+device_9_M_W/M
+
+14
+
+20
+
+Blockchain Size (KB)
+
+20
+
+18
+
+16
+
+20
+
+40
+60
+80
+Communication Rounds
+
+100
+
+(d) MNIST-Non-IID-Signflip
+20
+18
+
+device_10_B_W/M
+device_11_M_W/M
+device_12_B_W/M
+device_13_B_W/M
+device_14_B_W/M
+device_1_B_W/M
+device_2_B_BN
+device_3_M_W/M
+device_4_B_BN
+device_5_M_W/M
+device_6_B_W/M
+device_7_M_W/M
+device_8_B_W/M
+device_9_M_W/M
+
+14
+12
+10
+8
+6
+4
+2
+0
+0
+
+20
+
+40
+60
+80
+Communication Rounds
+
+100
+
+16
+Blockchain Size (KB)
+
+20
+
+18
+
+Blockchain Size (KB)
+
+20
+
+Blockchain Size (KB)
+
+Blockchain Size (KB)
+
+Fig. 4: Stake of BRLF under 50% byzantine attack for MNIST and Fashion-MNIST task
+
+device_10_B_W/M
+device_11_M_W/M
+device_12_B_W/M
+device_13_B_W/M
+device_14_B_W/M
+device_1_B_W/M
+device_2_B_BN
+device_3_M_W/M
+device_4_B_BN
+device_5_M_W/M
+device_6_B_W/M
+device_7_M_W/M
+device_8_B_W/M
+device_9_M_W/M
+
+14
+12
+10
+8
+6
+4
+2
+0
+0
+
+20
+
+40
+60
+80
+Communication Rounds
+
+100
+
+100
+
+(f)
+Fashion-MNIST-IID- (g) Fashion-MNIST-Non-IID- (h) Fashion-MNIST-Non-IIDNoise
+Signflip
+(e) Fashion-MNIST-IID-Noise Signflip
+
+Fig. 5: Blockchain size of BRLF under 50% attack rate with two types of byzantine-attack for MNIST and Fashion-MNIST
+tasks
+
+similar size. Among the nodes of type W/M, the block size of
+the benign nodes shows a nonlinear increasing trend. This is
+because when a benign node becomes an aggregation node,
+it stores all types of blocks, whereas as a local training
+node, it only stores one type of block. As the benign node
+alternates between being an aggregation node and a local
+training node, the size of the blockchain it stores shows a
+nonlinear increasing trend. The blockchain size in malicious
+nodes also shows a linear increasing trend, but the increase
+is smaller. This is because in the BRFL model, malicious
+models are detected, and malicious nodes are prevented from
+becoming aggregation nodes. Therefore, malicious nodes only
+store blocks of the global model type as local training nodes.
+
+G. Number of Being Aggregation nodes Times Trends
+In this section, we discuss the number of times local training
+nodes are selected as aggregation nodes using the PPCC
+consensus algorithm, as shown in Figure 6, within the same
+environment as Figure 3, 4, and 5.
+Figure 6 is a bar chart that represents the number of times
+different clients are selected to become aggregation nodes
+during federated learning. The x-axis represents the different
+clients, and the y-axis represents the number of times a client
+has been selected as an aggregation node, with corresponding
+numbers labeled in the figure.
+As seen in Figure 6, blockchain nodes, such as device 2 B BN and device 4 B BN, do not participate in the
+federated learning process, so their count is 0. Among the
+nodes of type W/M, the number of times benign nodes become
+
+Times
+
+0
+
+0
+
+0
+
+5
+
+0
+
+0
+
+29
+
+29
+
+29
+
+Times
+
+29
+25
+
+15
+10
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+device_10_B_W/M
+device_11_M_W/M
+device_12_B_W/M
+device_13_B_W/M
+device_14_B_W/M
+device_1_B_W/M
+device_2_B_BN
+device_3_M_W/M
+device_4_B_BN
+device_5_M_W/M
+device_6_B_W/M
+device_7_M_W/M
+device_8_B_W/M
+device_9_M_W/M
+
+0
+
+35
+
+33
+
+30
+
+30
+
+28
+
+0
+
+0
+
+0
+
+0
+
+0
+
+Times
+
+15
+
+0
+
+30
+
+29
+
+28
+
+25
+
+23
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+27
+
+29
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+Clients
+
+0
+
+1
+
+0
+
+1
+
+0
+
+0
+
+Clients
+
+30
+
+30 29
+
+28
+
+31
+
+28
+
+30
+
+24
+
+25
+
+15
+
+0
+
+0
+
+(d) MNIST-Non-IID-Signflip
+
+28
+
+26
+
+20
+15
+10
+
+10
+1
+
+0
+
+35
+
+32 31
+26
+
+20
+
+5
+
+28
+
+15
+
+Clients
+
+35
+29 30
+
+29
+25
+
+5
+0
+
+(c) MNIST-Non-IID-Noise
+
+34
+26
+
+28 29
+
+20
+10
+
+5
+
+0
+
+31
+
+28
+
+25
+
+20
+
+Clients
+
+33
+26
+
+0
+
+(b) MNIST-IID-Signflip
+40
+35
+30
+25
+20
+15
+10
+5
+0
+
+23
+
+26
+
+10
+
+Times
+
+1
+
+30
+
+25
+
+device_10_B_W/M
+device_11_M_W/M
+device_12_B_W/M
+device_13_B_W/M
+device_14_B_W/M
+device_1_B_W/M
+device_2_B_BN
+device_3_M_W/M
+device_4_B_BN
+device_5_M_W/M
+device_6_B_W/M
+device_7_M_W/M
+device_8_B_W/M
+device_9_M_W/M
+
+0
+
+30
+
+device_10_B_W/M
+device_11_M_W/M
+device_12_B_W/M
+device_13_B_W/M
+device_14_B_W/M
+device_1_B_W/M
+device_2_B_BN
+device_3_M_W/M
+device_4_B_BN
+device_5_M_W/M
+device_6_B_W/M
+device_7_M_W/M
+device_8_B_W/M
+device_9_M_W/M
+
+30
+
+device_10_B_W/M
+device_11_M_W/M
+device_12_B_W/M
+device_13_B_W/M
+device_14_B_W/M
+device_1_B_W/M
+device_2_B_BN
+device_3_M_W/M
+device_4_B_BN
+device_5_M_W/M
+device_6_B_W/M
+device_7_M_W/M
+device_8_B_W/M
+device_9_M_W/M
+
+1
+
+20
+
+0
+
+35
+
+32
+
+29
+
+10
+
+35
+
+5
+
+29
+25
+
+15
+
+Clients
+
+25
+
+29
+
+20
+
+(a) MNIST-IID-Noise
+
+30
+
+31
+25
+
+Times
+
+25
+
+25
+
+device_10_B_W/M
+device_11_M_W/M
+device_12_B_W/M
+device_13_B_W/M
+device_14_B_W/M
+device_1_B_W/M
+device_2_B_BN
+device_3_M_W/M
+device_4_B_BN
+device_5_M_W/M
+device_6_B_W/M
+device_7_M_W/M
+device_8_B_W/M
+device_9_M_W/M
+
+30
+
+27
+
+0
+
+0
+
+1
+
+5
+0
+
+0
+
+0
+
+0
+
+device_10_B_W/M
+device_11_M_W/M
+device_12_B_W/M
+device_13_B_W/M
+device_14_B_W/M
+device_1_B_W/M
+device_2_B_BN
+device_3_M_W/M
+device_4_B_BN
+device_5_M_W/M
+device_6_B_W/M
+device_7_M_W/M
+device_8_B_W/M
+device_9_M_W/M
+
+27 26
+
+Clients
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+device_10_B_W/M
+device_11_M_W/M
+device_12_B_W/M
+device_13_B_W/M
+device_14_B_W/M
+device_1_B_W/M
+device_2_B_BN
+device_3_M_W/M
+device_4_B_BN
+device_5_M_W/M
+device_6_B_W/M
+device_7_M_W/M
+device_8_B_W/M
+device_9_M_W/M
+
+35
+
+34
+
+11
+
+Times
+
+31
+
+28
+
+Times
+
+40
+35
+30
+25
+20
+15
+10
+5
+0
+
+device_10_B_W/M
+device_11_M_W/M
+device_12_B_W/M
+device_13_B_W/M
+device_14_B_W/M
+device_1_B_W/M
+device_2_B_BN
+device_3_M_W/M
+device_4_B_BN
+device_5_M_W/M
+device_6_B_W/M
+device_7_M_W/M
+device_8_B_W/M
+device_9_M_W/M
+
+Times
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+Clients
+
+Clients
+
+(f)
+Fashion-MNIST-IID- (g) Fashion-MNIST-Non-IID- (h) Fashion-MNIST-Non-IIDNoise
+Signflip
+(e) Fashion-MNIST-IID-Noise Signflip
+
+Fig. 6: Frequency of nodes in BRLF as aggregation nodes under 50% attack rate with two types of byzantine attacks for
+MNIST and Fashion-MNIST tasks
+
+aggregation nodes is relatively evenly distributed, without
+excessive or under-representation. This is due to the fact that
+the PPCC algorithm does not allow consecutive selection as
+an aggregation node each time.
+In most cases, the number of times malicious nodes become
+aggregation nodes is 0. However, there are still a small number
+of cases where they become aggregation nodes. This may
+occur when there is no global model at the initialization of
+federated learning or when the global model is not yet perfect,
+resulting in random selection of nodes as aggregation nodes
+during the first round. However, as observed from the figure,
+the occurrences of malicious nodes becoming aggregation
+nodes are minimal. This indicates that the PPCC algorithm
+effectively prevents malicious nodes from being selected as
+aggregation nodes.
+
+VI. C ONCLUSION
+In this work, we propose BRFL, a blockchain-based
+Byzantine-robust federated learning model. Our objective is to
+address the issues of byzantine-attack and resource-cost during
+model aggregation. The resource-cost problem can be further
+divided into computation resource costs and storage resource
+costs. To achieve this, we introduce two key components: the
+Proof of Pearson Correlation Coefficient (PPCC) consensus
+algorithm and the Precision-based Spectral Aggregation (PSA)
+algorithm. These components verify the accuracy of the average gradient by clustering the local model gradients and store
+federated learning communication records in the blockchain.
+Additionally, we utilize IPFS to store the local models and
+allow nodes to selectively store blocks, effectively managing
+storage requirements. Experimental results demonstrate that
+BRFL maintains Byzantine robustness with reduced resource
+costs.
+
+ACKNOWLEDGMENTS
+This should be a simple paragraph before the References to
+thank those individuals and institutions who have supported
+your work on this article.
+R EFERENCES
+[1] H. B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A. y Arcas,
+“Communication-efficient learning of deep networks from decentralized
+data,” in International Conference on Artificial Intelligence and Statistics, 2016. [Online]. Available: https://api.semanticscholar.org/CorpusID:
+14955348
+[2] T. Li, A. K. Sahu, A. Talwalkar, and V. Smith, “Federated learning:
+Challenges, methods, and future directions,” IEEE Signal Processing
+Magazine, vol. 37, pp. 50–60, 2019. [Online]. Available: https://api.
+semanticscholar.org/CorpusID:201126242
+[3] Y. Qu, M. P. Uddin, C. Gan, Y. Xiang, L. Gao, and J. Yearwood,
+“Blockchain-enabled federated learning: A survey,” ACM Computing
+Surveys, vol. 55, pp. 1 – 35, 2022. [Online]. Available: https://api.
+semanticscholar.org/CorpusID:237599179
+[4] Y. Chen, L. Su, and J. Xu, “Distributed statistical machine learning
+in adversarial settings: Byzantine gradient descent,” in PERV, 2017.
+[Online]. Available: https://api.semanticscholar.org/CorpusID:58534983
+[5] D. Cao, S. Chang, Z. Lin, G. Liu, and D. Sun, “Understanding distributed
+poisoning attack in federated learning,” 2019 IEEE 25th International
+Conference on Parallel and Distributed Systems (ICPADS), pp. 233–
+239, 2019. [Online]. Available: https://api.semanticscholar.org/CorpusID:
+210992177
+[6] Y. Khazbak, T. Tan, and G. Cao, “Mlguard: Mitigating poisoning attacks in privacy preserving distributed collaborative learning,” 2020 29th
+International Conference on Computer Communications and Networks
+(ICCCN), pp. 1–9, 2020. [Online]. Available: https://api.semanticscholar.
+org/CorpusID:218594342
+[7] C. Fung, C. J. M. Yoon, and I. Beschastnikh, “The limitations of
+federated learning in sybil settings,” in International Symposium on
+Recent Advances in Intrusion Detection, 2020. [Online]. Available: https:
+//api.semanticscholar.org/CorpusID:221542915
+[8] Y. Wang, T. Zhu, W. Chang, S. Shen, and W. Ren, “Model poisoning
+defense on federated learning: A validation based approach,” in International Conference on Network and System Security, 2020. [Online].
+Available: https://api.semanticscholar.org/CorpusID:230716867
+[9] J. Tan, Y.-C. Liang, N. C. Luong, and D. T. Niyato, “Toward smart security enhancement of federated learning networks,” IEEE Network, vol. 35,
+pp. 340–347, 2020. [Online]. Available: https://api.semanticscholar.org/
+CorpusID:221173074
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+[10] Z. Chen, P. Tian, W. Liao, and W. Yu, “Zero knowledge clustering based adversarial mitigation in heterogeneous federated learning,”
+IEEE Transactions on Network Science and Engineering, vol. 8, pp.
+1070–1083, 2021. [Online]. Available: https://api.semanticscholar.org/
+CorpusID:226622886
+[11] X. Bao, C. Su, Y. Xiong, W. Huang, and Y. Hu, “Flchain: A blockchain
+for auditable federated learning with trust and incentive,” 2019 5th
+International Conference on Big Data Computing and Communications (BIGCOM), pp. 151–159, 2019. [Online]. Available: https://api.
+semanticscholar.org/CorpusID:208211278
+[12] Z. Lin, Z. Wu, J. Zhu, and J. Huang, “A blockchain-based decentralized federated learning framework with dual-committees consensus,”
+Proceedings of the 2022 5th International Conference on Algorithms,
+Computing and Artificial Intelligence, 2022. [Online]. Available: https:
+//api.semanticscholar.org/CorpusID:257508657
+[13] A. Islam and S. Y. K. Shin, “A blockchain-based privacy sensitive
+data acquisition scheme during pandemic through the facilitation of
+federated learning,” 2022 13th International Conference on Information
+and Communication Technology Convergence (ICTC), pp. 83–87, 2022.
+[Online]. Available: https://api.semanticscholar.org/CorpusID:253880939
+[14] Y. He, K. Huang, G. Zhang, F. R. Yu, J. Chen, and J. Li, “Bift:
+A blockchain-based federated learning system for connected and autonomous vehicles,” IEEE Internet of Things Journal, vol. 9, pp.
+12 311–12 322, 2022. [Online]. Available: https://api.semanticscholar.org/
+CorpusID:245154138
+[15] M. Shayan, C. Fung, C. J. M. Yoon, and I. Beschastnikh, “Biscotti: A blockchain system for private and secure federated learning,”
+IEEE Transactions on Parallel and Distributed Systems, vol. 32, pp.
+1513–1525, 2021. [Online]. Available: https://api.semanticscholar.org/
+CorpusID:232042257
+[16] H. Liu, S. Zhang, P. Zhang, X. Zhou, X. Shao, G. Pu, and Y. Zhang,
+“Blockchain and federated learning for collaborative intrusion detection in vehicular edge computing,” IEEE Transactions on Vehicular
+Technology, vol. 70, pp. 6073–6084, 2021. [Online]. Available: https:
+//api.semanticscholar.org/CorpusID:235589750
+[17] H. Chen, S. A. Asif, J. Park, C.-C. Shen, and M. Bennis, “Robust
+blockchained federated learning with model validation and proof-ofstake inspired consensus,” ArXiv, vol. abs/2101.03300, 2021. [Online].
+Available: https://api.semanticscholar.org/CorpusID:231573565
+[18] K. Yuan, Z. Wu, and Q. Ling, “A byzantine-resilient dual subgradient
+method for vertical federated learning,” ICASSP 2022 - 2022 IEEE
+International Conference on Acoustics, Speech and Signal Processing (ICASSP), pp. 4273–4277, 2022. [Online]. Available: https://api.
+semanticscholar.org/CorpusID:249436560
+[19] J.-H. Chen, M.-R. Chen, G. Zeng, and J. Weng, “Bdfl: A byzantinefault-tolerance decentralized federated learning method for autonomous
+vehicle,” IEEE Transactions on Vehicular Technology, vol. 70, pp.
+8639–8652, 2021. [Online]. Available: https://api.semanticscholar.org/
+CorpusID:237598030
+[20] W. Bao and J. He, “Boba: Byzantine-robust federated learning with label
+skewness,” ArXiv, vol. abs/2208.12932, 2022. [Online]. Available: https:
+//api.semanticscholar.org/CorpusID:251903346
+[21] C. Chen, L. Lyu, Y. Liu, F. Wu, C. Chen, and G. Chen, “Byzantineresilient federated learning via gradient memorization,” 2022. [Online].
+Available: https://api.semanticscholar.org/CorpusID:246973253
+[22] R. Jin, J. Hu, G. Min, and H. Lin, “Byzantine-robust and efficient
+federated learning for the internet of things,” IEEE Internet of Things
+Magazine, vol. 5, pp. 114–118, 2022. [Online]. Available: https://api.
+semanticscholar.org/CorpusID:248698720
+[23] M. Li, D. Xiao, J. Liang, and H. Huang, “Communication-efficient and
+byzantine-robust differentially private federated learning,” IEEE Communications Letters, vol. 26, pp. 1725–1729, 2022. [Online]. Available:
+https://api.semanticscholar.org/CorpusID:249351301
+[24] S. Nakamoto, “Bitcoin: A peer-to-peer electronic cash system,” 2008.
+[Online]. Available: https://api.semanticscholar.org/CorpusID:236214795
+[25] H. Xiong, M. Chen, C. Wu, Y. Zhao, and W. Yi, “Research on progress
+of blockchain consensus algorithm: A review on recent progress of
+blockchain consensus algorithms,” Future Internet, vol. 14, p. 47, 2022.
+[Online]. Available: https://api.semanticscholar.org/CorpusID:246434512
+[26] K. Farooq, H. J. Syed, S. O. Alqahtani, W. A. E. Nagmeldin, A. O.
+Ibrahim, and A. Gani, “Blockchain federated learning for in-home
+health monitoring,” Electronics, 2022. [Online]. Available: https://api.
+semanticscholar.org/CorpusID:255245541
+[27] S. Aich, N. K. Sinai, S. Kumar, M. Ali, Y. R. Choi, M.-I. Joo, and
+H.-C. Kim, “Protecting personal healthcare record using blockchain &
+federated learning technologies,” 2021 23rd International Conference
+
+12
+
+on Advanced Communication Technology (ICACT), pp. 109–112, 2021.
+[Online]. Available: https://api.semanticscholar.org/CorpusID:232235893
+[28] W. Jiao, H. Zhao, P. Feng, and Q. Chen, “A blockchain federated
+learning scheme based on personalized differential privacy and reputation
+mechanisms,” 2023 4th International Conference on Information Science,
+Parallel and Distributed Systems (ISPDS), pp. 630–635, 2023. [Online].
+Available: https://api.semanticscholar.org/CorpusID:261563809
+[29] K. Pearson, “Contributions to the mathematical theory of evolution,”
+Proceedings of the Royal Society of London, vol. 54, pp. 329 – 333.
+[Online]. Available: https://api.semanticscholar.org/CorpusID:121108273
+[30] U. von Luxburg, “A tutorial on spectral clustering,” Statistics and
+Computing, vol. 17, pp. 395–416, 2007. [Online]. Available: https://api.
+semanticscholar.org/CorpusID:3264198
+[31] L. Li, W. Xu, T. Chen, G. B. Giannakis, and Q. Ling, “Rsa :
+Byzantine-robust stochastic aggregation methods for distributed learning from heterogeneous datasets,” 2018. [Online]. Available: https://api.
+semanticscholar.org/CorpusID:262982727
+[32] P. Blanchard, E. M. E. Mhamdi, R. Guerraoui, and J. Stainer, “Machine
+learning with adversaries: Byzantine tolerant gradient descent,” in Neural
+Information Processing Systems, 2017. [Online]. Available: https://api.
+semanticscholar.org/CorpusID:28527385
+[33] D. Yin, Y. Chen, K. Ramchandran, and P. L. Bartlett, “Byzantine-robust
+distributed learning: Towards optimal statistical rates,” in International
+Conference on Machine Learning, 2018. [Online]. Available: https://api.
+semanticscholar.org/CorpusID:3708326
+[34] S. Li, E. C. H. Ngai, and T. Voigt, “An experimental study of
+byzantine-robust aggregation schemes in federated learning,” ArXiv, vol.
+abs/2302.07173, 2023. [Online]. Available: https://api.semanticscholar.
+org/CorpusID:256129862
+
+VII. B IOGRAPHY S ECTION
+Yang Li received the master’s degree in computer
+technology from Zhengzhou University, Zhengzhou,
+China, in 2021. He is currently pursuing the Ph.D.
+degree with Beihang University, Beijing, China,
+under the supervision of Prof. Chunhe Xia. His
+research interests include federated learning and
+blockchain.
+
+Chunhe Xia received the Ph.D. degree in computer
+application from Beihang University, Beijing, China,
+in 2003.
+He is currently a Supervisor and a Professor with
+Beihang University, where he is also the Director of
+the Beijing Key Laboratory of Network Technology
+and a Professor of the Guangxi Collaborative Innovation Center of Multi-Source Information Integration and Intelligent Processing. He has participated
+in different national major research projects and has
+published more than 70 research papers in important
+international conferences and journals. His current research focuses on network and information security, information countermeasure, cloud security,
+and network measurement.
+
+Tianbo Wang (Member, IEEE) received the Ph.D.
+degree in computer application from Beihang University, Beijing, China, in 2018.
+He is currently an Associate Professor with Beihang University, where he is also an Associated Professor of the Shanghai Key Laboratory of Computer
+Software Evaluating and Testing. He has participated
+in several National Natural Science Foundations and
+other research projects. His research interests include
+network and information security, intrusion detection
+technology, and information countermeasure.
+
+

@@ -1,0 +1,2415 @@
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+1
+
+Secure-CHG: A Comprehensive Framework for
+Robust and Fair Federated Learning via Hybrid
+Defense and Contribution-Aware Trust
+
+arXiv:2606.31066v1 [cs.CR] 30 Jun 2026
+
+Guanming Che, Qiang Wang∗ , Jian Xu, Fucai Zhou
+
+Abstract—Federated Learning (FL) is highly susceptible to
+stealthy backdoor attacks, which aim to force a model into
+predicting an attacker-chosen target class for inputs containing
+a specific trigger. However, existing statistical defenses primarily
+focus on the early stages of model convergence. In this paper, we
+identify a fundamental vulnerability termed “Late-stage Failure.”
+We demonstrate that as the global model converges, decaying
+gradient norms render malicious and benign updates morphologically indistinguishable. This vanishing statistical variance effectively blinds traditional defenses, enabling adaptive adversaries to
+remain dormant and subsequently hijack the training process. To
+overcome these constraints, we propose Secure-CHG, a hybrid
+framework that pivots the defense paradigm from superficial
+morphological detection toward intrinsic semantic contribution
+verification. Secure-CHG employs an adaptive defense pipeline:
+a cascaded statistical filter stabilizes optimization during the
+early oscillatory phase, while a novel CHG-Shapley mechanism
+takes over during late-stage convergence. By leveraging sample hardness (i.e., local training loss) to project updates into
+a composite Hardness-Gradient space, it effectively amplifies
+adversarial semantic traces, enabling the isolation of stealthy
+attackers even as gradient norms vanish. Furthermore, we
+derive a closed-form solution for CHG-Shapley, facilitating lowcomplexity, retraining-free node valuation and trust-modulated
+aggregation. Extensive evaluations on CIFAR-10, MedMNIST,
+and NEU-SDDB demonstrate that Secure-CHG effectively mitigates Late-stage Failure. Specifically, it significantly suppresses
+advanced backdoor attacks, reducing their attack success rate by
+2.3× and 2.0× relative to the mainstream Krum and Trimmed
+Mean baselines, respectively.
+Index Terms—Federated Learning, Poisoning Attacks, Latestage Failure, Shapley Value, Contribution Evaluation, Robust
+Aggregation.
+
+I. I NTRODUCTION
+
+F
+
+EDERATED Learning (FL) has emerged as a promising
+decentralized learning paradigm that enables multiple
+clients to collaboratively train a global model without sharing
+their raw local data [1], [2]. In a standard FL workflow, the
+server broadcasts the current global model, clients perform
+local training on their private datasets, and the server aggregates the uploaded updates to produce the global model
+The authors are with the Software College, Northeastern
+University, Shenyang 110013, China(e-mail: chegm@mails.neu.edu.cn;
+wangqiang1@mail.neu.edu.cn;
+xuj@mail.neu.edu.cn;
+fczhou@mail.neu.edu.cn).
+This work was supported in part by the National Natural Science Foundation
+of China (Grants 62202090, 62173101, and 62372069), the Natural Science
+Foundation of Liaoning Province (Grant 2025-MS-046), and the Liaoning
+Collaboration Innovation Center for CSLE(Grant XTCX2024-015).
+∗ Corresponding author: Qiang Wang.
+
+for the next round. This training pattern offers substantial
+privacy advantages and has made FL attractive for sensitive
+domains such as healthcare, finance, and industrial intelligence. However, the distributed and partially untrusted nature
+of FL also exposes the training process to severe security
+threats, especially poisoning and backdoor attacks [3], [4].
+Malicious clients can upload manipulated updates to degrade
+the global model or implant hidden triggers while appearing to
+participate normally [5]. To defend against such threats, many
+robust aggregation methods, such as Krum [6], Trimmed Mean
+[7], and related statistical filters, attempt to identify abnormal
+clients based on geometric or statistical properties of their
+updates. Since malicious updates exhibit explicit deviations
+in magnitude or direction, these defenses work well during
+the initial training stages.
+In this paper, we reveal a critical theoretical deficiency
+in existing defense mechanisms that manifests as the model
+approaches convergence, a phenomenon we define as Latestage Failure. As the global model gradually converges, the
+magnitudes of updates from both benign and malicious clients
+shrink toward zero and become increasingly similar. Consequently, the absolute distances and relative variances between
+benign and malicious updates in the parameter space collapse.
+As a result, distance-based and morphology-based defenses
+lose their discriminative power. This creates a dangerous blind
+spot in the late training stage, allowing attackers to inject
+backdoors that bypass traditional checks without significantly
+compromising main-task performance.
+As illustrated in Fig. 1, we evaluate the ostensibly robust
+MultiKrum mechanism under a targeted label-flipping attack
+(e.g., misclassifying “Cat” as “Dog”) with a 20% malicious
+client ratio. Our results demonstrate that MultiKrum’s defense
+capability collapses abruptly after approximately 20 communication rounds. In the subsequent 30 rounds, the average Attack
+Success Rate (ASR) surges to 41.97%, indicating that nearly
+half of the adversarial updates successfully evade detection.
+This precipitous decline in protection—a “defense blind spot”
+during the terminal phase of training—confirms that Late-stage
+Failure is not merely an implementation artifact of a single
+algorithm, but rather a systematic mismatch between the optimization dynamics of model convergence and the statistical
+assumptions underlying conventional anomaly detection.
+In summary, the inherent Late-stage Failure exposes a
+critical vulnerability in traditional defenses. As converging
+gradient norms render malicious and benign updates morphologically indistinguishable, the system inadvertently conflates
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+80
+
+2
+
+FedAvg
+MultiKrum
+
+70
+
+60
+
+ASR
+
+50
+
+40
+
+30
+
+20
+
+10
+
+0
+0
+
+10
+
+20
+
+30
+
+40
+
+50
+
+epoch
+
+Fig. 1. Illustration of Late-stage Failure: Defense capability collapses as the
+model converges.
+
+stealthy adversaries with benign participants. To transcend
+these vulnerabilities, we propose Secure-CHG, an intrinsically
+robust and computationally efficient FL governance framework. Pioneering a full-lifecycle defense paradigm, SecureCHG adaptively toggles between two governance phases based
+on the model’s convergence state:
+• Early-stage defense: During the pre-convergence oscillatory period, a cascaded dual-filter (cosine similarity and
+FL-Defender [8]) precisely identifies and eliminates statistically anomalous gradients, aggressively purifying the
+initial training environment to stabilize the optimization
+trajectory.
+• Late-stage defense: To break the defensive deadlock
+caused by diminishing parameter variance, we introduce
+sample hardness (i.e., local training loss) as a semantic
+evaluation metric. Because poisoning tasks inherently
+conflict with primary optimization, malicious nodes exhibit persistently high hardness even as the global model
+stabilizes. By coupling this hardness metric with parameter updates, Secure-CHG effectively magnifies adversarial traces and isolates stealthy attackers precisely
+when statistical features fail. Crucially, it enables realtime, constant-complexity client valuation without external proxy datasets or costly model retraining.
+Ultimately, an EMA-based long-term trust mechanism translates these real-time contributions into aggregation weights,
+forging a secure, equitable, and sustainable FL ecosystem.
+A. Our Contributions
+The main contributions can be summarized as follows:
+1) Identifying and Mitigating Late-stage Failure in FL
+Defenses: We expose the theoretical blind spot termed
+“Late-stage Failure” where morphological convergence
+defeats distance-based statistical defenses. To counter
+this, we propose a semantic feature extraction method
+in the Hardness-Gradient space. By mapping sample
+hardness as weights into the update space, this approach
+amplifies the inherent conflict between poisoning and
+
+primary tasks, achieving precise isolation of stealthy
+attackers even as gradient norms vanish.
+2) Proposing CHG-Shapley, an Efficient and
+Verification-Data-Free
+Valuation
+Algorithm:
+Overcoming the exponential computational complexity
+and proxy-data reliance of traditional Shapley values,
+we derive a closed-form solution based on the
+composite Hardness-Gradient utility. This reduces
+valuation complexity to a constant level, providing a
+real-time, privacy-preserving assessment mechanism
+highly suitable for large-scale federated systems.
+3) Designing Secure-CHG, an Adaptive Full-Lifecycle
+Framework: Abandoning static defense strategies, we
+construct a dynamic pipeline that toggles based on
+convergence state. A cascaded statistical filter stabilizes
+early-stage oscillation, while a trust-modulated aggregation mechanism organically unifies late-stage malicious
+node defense with benign participant incentivization at
+the architectural level.
+4) Extensive Empirical Validation Against Advanced
+Threats: Evaluations across multi-modal datasets
+(CIFAR-10, MedMNIST, NEU-SDDB) demonstrate
+Secure-CHG’s superiority. Compared to mainstream robust baselines (e.g., Krum, Trimmed Mean), it significantly suppresses late-stage advanced backdoors and
+label-flipping attacks, drastically reducing the Attack
+Success Rate (ASR) while preserving high global model
+utility across diverse heterogeneous scenarios.
+B. Related Works
+1) Defense Mechanisms in Federated Learning: Existing FL defenses primarily fall into four categories, each
+facing inherent limitations. First, statistical and geometric approaches—–such as Krum [6], RFA [9], Trimmed
+Mean/Median [7], FoolsGold [10], and FLTrust [11]–
+—universally suffer from “Late-stage Failure.” As models
+converge, shrinking update norms cause statistical homogenization, rendering geometric discrepancies negligible and
+crippling detection sensitivity. Second, reinforcement learning
+and game-theoretic defenses [12], [13] offer adaptability but
+incur exorbitant computational costs and unrealistically rely
+on clean validation sets for reward signals. Third, differential privacy-inspired methods, including [14]–[17], physically
+constrain update magnitudes. However, gradient clipping and
+high-variance noise fundamentally disrupt optimization, decelerating convergence and degrading model accuracy [3].
+Finally, defenses utilizing proxy datasets or server-side trust
+roots [18]–[21] overcome the lack of objective reference
+frames but paradoxically violate FL’s core privacy principles
+and incur massive computational overhead due to domain gaps
+in synthetic data.
+2) Contribution Evaluation Mechanisms in Federated
+Learning: Existing contribution evaluation mechanisms in FL
+primarily fall into three categories. First, Shapley Value (SV)
+methods [22]–[24] provide a robust theoretical foundation.
+Despite lightweight approximations like auxiliary model fitting
+[25], GTG-Shapley [26], and FedCon [27], the prohibitive
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+computational overhead remains an insurmountable bottleneck for massive networks or high-dimensional models [28].
+Second, gradient consistency approaches utilize metrics like
+cosine similarity as an SV proxy to assess contributions efficiently [29], [30]. However, this geometric paradigm harbors
+a significant fairness flaw: it inherently rewards conformity.
+Minority clients with rare features naturally generate divergent gradients and are unjustly penalized as low-similarity
+outliers, failing to reflect their authentic value. Finally, proxy
+dataset-dependent evaluations quantify client value based on
+an independent validation set [31]–[34]. These methods face
+a fundamental logical paradox: their efficacy relies entirely
+on an omniscient, unbiased, and centralized proxy dataset,
+which contradicts the decentralized premise of FL and severely
+curtails their practical viability.
+C. Paper Organization
+The rest of the paper is organized as follows. After presenting preliminaries in Section II, Sections III–VI introduce
+our secure hybrid defense framework, covering serial filtering,
+CHG verification, and unified trust mechanisms. Finally, Section VII discusses experimental evaluations, and Section VIII
+concludes.
+II. P RELIMINARIES
+In this section, we first give some necessary definitions that
+will be used in the rest of the paper. Table I summarizes the
+notation used in our paper.
+A. Federated Learning
+Federated Learning (FL) enables collaborative model training while preserving local data privacy. At each round t,
+selected clients compute local model updates ∆θkt using
+their private data Dk . The central server then updates the
+global model by aggregating these localPupdates via weighted
+K
+k
+∆θkt , where
+averaging (e.g., FedAvg): θt+1 = θt + k=1 Nntotal
+Ntotal is the total number of participating data samples.
+B. Poisoning Attacks in Federated Learning
+Within the federated paradigm, poisoning attacks inject
+malicious updates to subvert the global model, categorized
+by objectives (untargeted vs. targeted) and execution means
+(data vs. model poisoning). Untargeted attacks indiscriminately degrade overall convergence, whereas targeted attacks
+stealthily misclassify specific samples while preserving maintask performance. To achieve these goals, adversaries generate
+statistically camouflaged updates via two prominent strategies:
+• Label Flipping (LF) Attack: Attackers manipulate their
+dataset Dk by changing the label of samples from class
+a to class b.
+• Backdoor Attack (BA): Attackers implant a specific
+pattern (trigger) into samples and assign a target label,
+causing the global model to output the target label for
+polluted samples. Recent advancements in these threats
+also include collusive attacks that optimize triggers to
+further evade detection [35].
+
+3
+
+TABLE I
+N OTATIONS
+Symbol
+
+Description
+
+K
+K
+η
+ϵ
+θt
+θkt+1
+∆θkt
+∆θt
+θt+1
+Dk
+nk
+N
+Ntotal
+i
+L
+Lj
+f (θ)
+f (i; θ)
+∇f (θ)
+∇last Lk
+U (S)
+ϕi (U )
+S
+hi
+C(S)
+xi
+θx
+sim(j, t)
+ζj
+β
+Tjt
+Tt
+γ
+λ
+Ckt
+Wkt
+
+Total number of clients
+Set of clients
+Learning rate
+Small positive number (numerical stability/threshold)
+Global model parameters at round t
+Local model parameters of client k
+Model update of client k
+Average of update vectors from all clients
+Aggregated global model
+Local dataset of client k
+Data volume of client k
+Set of all data points
+Total data volume of all participants
+Index of a single data point
+Loss function
+Loss of client j
+Loss of model under parameters θ
+Loss of data point i
+Gradient of the loss function
+Last-layer gradient of client k
+Utility function of subset S
+Shapley value of data point i
+Subset of data points
+Hardness of data point i
+Proxy utility function
+Gradient of data point i
+Parameters updated using gradient x
+Cosine similarity
+Instantaneous trust score
+EMA decay factor
+Long-term reputation of client j
+Average reputation score
+Relative contribution filtering factor
+Reputation modulation rate
+Instantaneous contribution of client k
+List of safe nodes
+
+C. Shapley Value
+Originating from cooperative game theory, the Shapley
+Value is considered the “gold standard” for data valuation.
+Ghorbani & Zou [36] introduced Data Shapley, treating each
+data point (or client) as a “player.” The utility function U (S)
+represents the model performance (e.g., accuracy) trained on
+a subset S. The Shapley value is defined as:
+ϕi (U ) =
+
+X
+S⊆K\{i}
+
+|S|!(K − |S| − 1)!
+[U (S∪{i})−U (S)] (1)
+K!
+
+This formulation computes the weighted marginal contribution
+of player i across all possible coalitions. While it satisfies
+fairness axioms (efficiency, symmetry, etc.), its exact computation requires evaluating 2K subsets, resulting in exponential
+complexity. This computational bottleneck severely limits its
+applicability in large-scale FL systems.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+4
+
+III. T HE S ECURE -CHG H YBRID D EFENSE F RAMEWORK
+In this section, we first give the problem statement, including the threat model and the core challenges. Then, we
+present the overall architecture of our proposed hybrid defense
+framework.
+A. Problem Statement
+1) System Model: Consider a Federated Learning system
+consisting of a central server and K clients. The server
+maintains the global model parameters θt , while clients train
+models on local datasets and upload the updates to the server.
+Federated Learning proceeds in iterative rounds. The workflow for each round (round t) includes the following steps:
+1) Broadcast: The server broadcasts the current global
+model parameters θt to the selected clients.
+2) Local Training: Clients perform local training on private datasets to obtain local model updates.
+3) Upload: Clients upload round-specific training information to the server.
+4) Aggregation & Update: The server performs detection,
+evaluation, and aggregation on the information uploaded
+by clients to generate the new global model θt+1 .
+To support defense and contribution evaluation mechanisms,
+clients are required to upload the following three types of
+information to the server in each training round:
+• Local Model Update ∆θk : Captures the parameter
+update for the k-th client.
+last
+• Last-Layer Gradient ∇k : Extracted from the last
+layer of the neural network, used to characterize model
+behavior.
+• Sample Hardness Scalar hk : Quantifies the difficulty of
+fitting the current global model on the client’s local data.
+The server performs defense and aggregation operations solely
+based on the uploaded information described above, without
+accessing the clients’ raw training data throughout the process.
+2) Problem Formulation and Assumptions: To rigorously
+analyze the phenomenon of Late-stage Failure, we introduce
+the following assumptions. These assumptions characterize
+the typical operating environment of FL during the model
+convergence phase without loss of generality.
+Assumption 1 (Convergence Bounds): In the late stage
+of training, the global model parameters θ enter a stable
+convergence region. Consequently, the L2 -norms of local
+model updates from all clients decay as training progresses.
+Specifically, there exists a sequence of positive scalars ϵt such
+that:
+∥∆θkt ∥ ≤ ϵt , where lim ϵt = 0,
+(2)
+t→∞
+
+holds for any client k.
+Assumption 2 (Benign Update Distribution): During
+the convergence phase, model updates from honest clients
+are modeled as zero-mean random perturbations satisfying a
+bounded second moment condition:
+E[∆θht ] = 0,
+
+E[∥∆θht ∥2 ] ≤ σ 2 .
+
+(3)
+
+Assumption 3 (Adversarial Constraints): To evade detection in the late stage, malicious clients are constrained
+
+to maintain stealth. Their submitted updates are bounded in
+magnitude to the same order as the perturbations of honest
+clients:
+∥∆θat ∥ ≤ c · ϵt ,
+(4)
+where c is a constant scaling factor.
+Assumption 4 (Zero-Trust Server): The server possesses
+no auxiliary clean validation data or trusted proxy models.
+All defense and evaluation decisions rely exclusively on the
+uploaded model updates and their derived features.
+3) Threat Model: We adopt a time-varying Byzantine threat
+model. Let K denote the set of participating clients, where
+an unknown subset A ⊂ K is controlled by an adversary,
+satisfying |A| ≤ f and f < |K|/2. Clients outside A (i.e.,
+K \ A) are considered honest. The adversary fully controls
+their local datasets, training processes, and uploaded updates.
+At the communication level, malicious clients follow the FL
+protocol and do not tamper with message passing or interrupt the training process. However, adversaries may pursue
+multiple objectives during training, including degrading global
+model performance or manipulating contribution assessment
+and incentive distribution.
+a) Early Stage (Destructive Redirection and Convergence
+Stagnation): In the early stages of training, the global model
+remains far from convergence, and client updates typically
+exhibit large magnitudes and high variability. During this
+phase, malicious clients actively disrupt the training process by
+uploading updates designed to induce instability or oscillation
+in the global optimization trajectory. Such behaviors aim to
+delay convergence and destabilize optimization.
+b) Late Stage (Covert Persistence and Incentive Theft):
+As training progresses and the global model gradually converges, the magnitude of client updates decays toward zero. In
+this stage, the adversary’s goal shifts from explicit destruction
+to covert persistence. This means the adversary maintains
+attack behaviors that minimize impact on the main task performance while attempting to manipulate contribution assessment
+and incentive distribution (i.e., Incentive Theft).
+Definition 1 (Late-stage Failure): Let the Federated Learning system contain a client set N = B ∪ M. In training round
+t, client k uploads model update vector ∆θkt . When the global
+model θt tends to converge (t → ∞), the system enters a
+failure state satisfying the following condition: as the model
+converges, to fine-tune the model, the L2 -norms of all client
+update vectors approach zero:
+lim ∥∆θkt ∥2 = 0, ∀k ∈ N
+
+t→∞
+
+(5)
+
+c) Adaptive Strategic Dormancy: In addition to the twostage attack behaviors described above, we further consider
+a White-box Adaptive Adversary who has full knowledge of
+the defense and trust update mechanisms. Such an adversary
+may employ a strategy of Adaptive Strategic Dormancy.
+Specifically, in the early stages of training, the adversary intentionally behaves benignly. This strategy allows the adversary
+to accumulate substantial historical trust through the system’s
+trust update mechanism (e.g., Exponential Moving Average).
+Once the global model enters the late convergence stage and
+sufficient trust has been established, the adversary adaptively
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+switches to malicious behavior, leveraging the inertia of accumulated historical trust to evade immediate detection.
+B. Overall Framework Architecture
+To address these problems formalized in Section III-A,
+we propose the Secure-CHG framework, which abandons
+static defense mechanisms in favor of a Dynamic Governance
+Pipeline that is tightly coupled with the model’s convergence
+state. The core philosophy of the framework is to employ highprecision statistical filtering during the early training phase to
+navigate through the oscillation period rapidly. Subsequently,
+upon detecting that the model has entered the convergence
+phase (the potential “Late-stage Failure” period), the system
+seamlessly transitions to a contribution verification mode
+based on sample hardness.
+1) Client Layer: Local Training and Feature Extraction:
+Functioning as the edge computing nodes of the system,
+each client k performs two primary tasks in every round
+t: local model optimization and the extraction of defenserelated features. To facilitate the subsequent hybrid defense
+and contribution assessment, the client uploads a tuple Mkt =
+{∆θkt , ∇last Lk , hk } to the server, where ∆θkt represents the
+model update, ∇last Lk denotes the gradient of the last layer,
+and hk indicates the sample hardness.
+2) Server Layer: Convergence-Aware Dynamic Governance: The server acts as the central decision-making unit.
+Its processing workflow consists of three serially connected
+stages: State Monitoring & Routing, Dual-mode Defense, and
+Trust Aggregation.
+a) State Monitoring & Routing: This module serves as
+the control center of the architecture. Prior to each aggregation
+round, the server assesses the physical stage of the global
+model based on the historical trend of the global loss. The
+system triggers a state transition by monitoring the ratio of
+the instantaneous loss reduction rate (Icurrent ) to the historical
+average rate (Iavg ). The specific logic is detailed in Algorithm
+1.
+Based on the status flag new state returned by Algorithm
+1, the system dynamically routes the data stream to distinct
+defense pathways:
+• Early Stage (new state = False): During unconverged
+loss oscillations, the defense prioritizes purifying the
+optimization environment. Data flows to Path A (Serial
+Statistical Filtering → CHG Contribution Verification) to eliminate high-amplitude outliers and accelerate
+convergence.
+• Late Stage (new state = True): Triggered when convergence conditions (Iavg ≤ ϵ or Icurrent < γ·Iavg ) are met.
+As gradient norms decay, statistical features fail (Latestage Failure). The system shifts to Path B (Direct CHG
+Contribution Verification), bypassing statistical filters to
+identify covert malicious nodes at the semantic level via
+CHG-Shapley.
+• Hysteresis & Anti-Jittering: To prevent frequent state
+switching (“jittering”) caused by local SGD oscillations,
+the Late Stage state is locked once triggered. The system
+reverts to the Early Stage only if a severe loss rebound
+(Icurrent < −δ) is detected.
+
+5
+
+Algorithm 1 Adaptive Stage Switching Logic
+Require: History of global loss values L, Current epoch index
+t, Boolean flag is converged (False=Early, True=Late)
+1: Parameters: window = 5 (Smoothing window size), ϵ =
+10−6 (Stagnation threshold), γ = 0.5 (Slowdown ratio
+threshold), δ = 0.1 (Reset threshold)
+2: Icurrent = L[t − 1] − L[t] {Calculate instant improvement}
+3: Iavg = (L[t−window −1]−L[t−1])/window {Calculate
+
+smoothed historical improvement}
+4: if is converged == False then
+5:
+if (Iavg ≤ ϵ) or (Icurrent < γ · Iavg ) then
+6:
+new state = True {Switch to Late Stage (Contribu-
+
+tion Verification)}
+7:
+else
+8:
+new state = False {Remain in Early Stage}
+9:
+end if
+10: else
+11:
+if Icurrent < −δ then
+
+new state = False {Reset to Early Stage (Defense
+against collapse)}
+13:
+else
+14:
+new state = True {Lock in Late Stage (Maintain
+stability)}
+15:
+end if
+16: end if
+17: return new state
+
+12:
+
+b) Dual-Mode Defense & Evaluation: Depending on
+the routing decision, the system activates the corresponding
+processing logic:
+Module 1: Serial Statistical Filtering
+This module is strategically positioned for the Early Stage
+of Federated Learning. During this phase, the un-converged
+global model is highly susceptible to malicious gradients that
+can severely deviate the optimization direction. To ensure
+system integrity and balance computational feasibility, we
+employ a Serial Statistical Filtering approach, progressing
+from “Macro Direction” to “Micro Structure”:
+• Pass 1: Coarse-grained Macro Screening. Using the full
+parameter update vector ∆θ, the system calculates cosine
+similarity to rapidly discard updates that exhibit negative
+similarity, indicating redirection attacks that deviate from
+the group consensus.
+• Pass 2: Fine-grained Micro Screening. For updates
+passing the initial screening, the FL-Defender module
+analyzes the principal component distribution of the lastlayer gradients ∇last L, filtering out nodes with anomalous
+micro-structures.
+Output: A filtered list of secure nodes Wkt . The decision state
+wkt for client k in round t is defined as:
+(
+1, if sim(k, t) ≥ 0 AND Hkt > Q1t0
+t
+wk =
+(6)
+0, otherwise (identified as malicious)
+If wkt = 0, the node is assigned a zero weight for the current
+round.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+6
+
+Fig. 2. The overall architecture of the Secure-CHG framework. The system features a dynamic governance pipeline that adapts to the convergence state,
+switching between “Early-stage Defense” and “Late-stage Defense” mechanisms.
+
+Module 2: CHG Contribution Verification
+This module performs distinct core functions depending on
+the training stage:
+• Early Stage (Path A - Serial Mode): Functions as a
+secondary defense layer. It performs fine-grained value
+quantification on nodes that survived Module 1, preventing sophisticated attackers from accumulating unearned
+credit. Nodes rejected by Module 1 (wkt = 0) are skipped,
+and their contribution is set to zero (Ckt = 0).
+• Late Stage (Path B - Direct Mode): Functions as the
+primary line of defense. When gradient norm decay renders traditional statistical features ineffective, this module
+takes over using the CHG-Shapley mechanism. It identifies and eliminates malicious nodes that are statistically
+indistinguishable from benign nodes but lack genuine
+semantic contribution.
+Mechanism: This module utilizes a “Hardness-Gradient”
+composite metric ∇last L · hk to distinguish nodes semantically.
+Benign nodes exhibit a hardness hk → 0, whereas attackers
+maintain a high hk due to conflicts between the poisoning task
+and the main task.
+Output: Based on the Shapley value Ckt (calculated via the
+algorithm in Section V), nodes with negative or negligible contribution values (associated with high hardness) are assigned
+zero weight, achieving precise mitigation of covert attacks.
+c) Unified Trust Update & Aggregation: Regardless of
+the processing path, the final instantaneous contribution value
+(Ckt ) is integrated into the unified dynamic trust module.
+• Long-term Reputation Modeling: The system employs
+an Exponential Moving Average (EMA) to transform
+instantaneous contributions into a long-term reputation
+score Tkt , thereby mitigating the impact of intermittent
+attacks.
+
+•
+
+Reputation Modulated Aggregation: The final aggregation weight wfinal is derived from both the instantaneous
+contribution and the long-term reputation. The server
+applies this weight to ∆θkt to update the global model
+θt+1 .
+
+This architecture ensures a smooth transition from morphological detection to contribution verification, guaranteeing
+robustness and fairness throughout the entire lifecycle of the
+Federated Learning process.
+IV. S ERIAL S TATISTICAL F ILTERING
+As discussed in Section III-B, the statistical filtering module
+within the proposed framework is strategically tailored for
+the Early Stage (Oscillation Period) of Federated Learning
+(FL). During this phase, the primary objective is to establish
+a robust filtering mechanism to eliminate anomalous gradients
+that could otherwise derail the global optimization trajectory.
+While existing works offer various Byzantine-robust aggregation algorithms, such as Krum [6], Median [7], and RFA [9],
+ensuring the systemic integrity of the Secure-CHG governance
+framework across the temporal spectrum—while balancing
+deployment feasibility with real-time monitoring—necessitates
+a streamlined approach. Consequently, we employ a serial
+filtering mechanism that integrates Cosine Similarity with FLDefender as the preliminary defense module.
+A. Macro-Level Coarse Screening: Cosine Similarity Filtering
+This framework prioritizes Cosine Similarity over Euclidean
+Distance [6], [7], [9] as an initial defense to precisely intercept
+redirection attacks (e.g., sign-flipping) that attempt to divert
+the global optimization trajectory.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+7
+
+1) Constructing the Consensus Benchmark: P
+The server
+K
+1
+t
+calculates the mean update vector ∆θt = K
+k=1 ∆θk ,
+representing the collective benign consensus direction for the
+current iteration.
+2) Directional Consistency Metric: We evaluate the cosine
+similarity between each client’s update ∆θjt and the consensus
+∆θt :
+∆θjt · ∆θt
+sim(j, t) =
+(7)
+∥∆θjt ∥ · ∥∆θt ∥
+3) Anomaly Determination: Clients with a negative cosine
+similarity (sim(j, t) < 0) are excluded. A negative score indicates a directional deviation exceeding 90◦ , reliably signifying
+a malicious attempt to oppose the majority intent.
+B. Micro-Level Fine Screening: FL-Defender
+Macro screening may miss Targeted Poisoning Attacks (e.g.,
+Backdoors) that embed malicious intent within a tiny fraction
+of dimensions to evade full-parameter statistical detection [8].
+In high-dimensional models (e.g., ResNet-18), these minute
+alterations are easily masked by the vast majority of benign
+parameters, rendering full-model cosine similarity ineffective.
+To address this, FL-Defender specifically analyzes Lastlayer Gradients via Principal Component Analysis (PCA),
+isolating micro-structural anomalies where attack intent is
+most concentrated.
+1) Theoretical Justification: Mathematical Necessity of Attack Intent: For a C-class task, the predicted probability pi
+for class i is:
+eoi
+(8)
+pi = PC
+oj
+j=1 e
+Minimizing Cross-Entropy Loss L(y, p) yields the last-layer
+weight gradient:
+∇wiL =
+
+∂L
+= (pi − yi ) · aL−1
+∂wiL
+
+Algorithm 2 FL-Defender Micro-Filtering
+Require: Set of clients K (post macro-filtering), Last-layer
+gradients {∇last Lj }j∈K , Previous trust history Hprev
+Ensure: Current trust Hcurrent , Boolean flags is benign
+1: // Phase 1: Feature Engineering
+2: for j ∈ K do
+3:
+gj = L2 Normalize(∇last Lj )
+4: end for
+5: Initialize Similarity Matrix S ∈ R|K|×|K|
+6: for i = 1 to |K| do
+7:
+for j = 1 to |K| do
+8:
+S[i, j] = CosineSimilarity(gi , gj )
+9:
+end for
+10:
+Vi = S[i, :] {Feature vector extraction}
+11: end for
+12: // Phase 2: Dimensionality Reduction
+13: Vall = Stack(V1 , . . . , V|K| )
+14: Vreduced = PCA(Vall , dims = 2) {Project to latent space}
+15: // Phase 3: Anomaly Scoring
+16: centroid = GeometricMedian(Vreduced )
+17: for j ∈ K do
+18:
+ζj = CosineSimilarity(Vreduced [j], centroid)
+19: end for
+20: // Phase 4: Trust Update & Filtering
+21: Initialize Hcurrent as zeros
+22: for j ∈ K do
+23:
+Hcurrent [j] = β ·Hprev [j]+(1−β)·ζj {EMA smoothing}
+24: end for
+25: Q1 = FirstQuartile(Hcurrent )
+26: for j ∈ K do
+27:
+is benign[j] = (Hcurrent [j] > Q1) {Threshold-based
+filtering}
+28: end for
+29: return Hcurrent , is benign
+
+(9)
+
+To misclassify samples, an attacker must alter the training
+target y, significantly deviating the error term δi = pi − yi .
+This fundamental attack signature is strongest in the last layer
+and dilutes in earlier network layers.
+2) Noise Reduction via PCA: To distinguish adversarial
+deviations from benign Non-IID data variations, FL-Defender
+applies PCA to the gradient similarity matrix. This provides
+two key benefits:
+1) Suppression of Benign Variance: Filters random highdimensional perturbations as noise.
+2) Amplification of Structural Deviation: Highlights consistent malicious anomalies.
+Clients are then evaluated based on their deviation from the
+projected geometric centroid.
+3) Algorithm Implementation: FL-Defender ensures a clean
+input distribution by filtering statistically anomalous structures
+during the early training phase. The procedure is detailed in
+Algorithm 2.
+FL-Defender robustly filters malicious clients using an Exponential Moving Average (EMA) mechanism to evaluate historical trust. By computing Hcurrent [j] = β·Hprev [j]+(1−β)·ζj ,
+
+it acts as a low-pass filter to smooth benign Non-IID fluctuations while effectively preventing adaptive attackers from
+erasing their historical malicious footprint via intermittent
+camouflage.
+While morphology-based statistical defenses (like FLDefender) excel during the early stages of training, they inevitably fail upon model convergence. Therefore, we introduce
+an orthogonal, contribution-based mechanism—the CHGShapley algorithm (Section V)—to guarantee full-lifecycle
+robustness.
+
+V. CHG C ONTRIBUTION V ERIFICATION
+In this section, we first provide a rigorous theoretical
+analysis of the “Late-stage Failure” inherent in existing
+morphology-based statistical defenses. Second, to overcome
+this critical bottleneck, we then propose an efficient contribution evaluation algorithm that explicitly amplifies the semantic
+differences between benign and malicious updates, restoring
+their separability even as gradient norms diminish.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+A. Theoretical Analysis of Late-stage Failure
+Once the model is successfully purified and its convergence
+is accelerated during the early stages, the norms of benign gradients decay naturally. Capitalizing on this physical dynamic,
+adversaries immediately pivot into a stealth mode, thereby
+instigating a more insidious crisis defined as Late-stage Failure
+(Definition 1).
+As formalized in Definition 1, since limt→∞ ∥∆θkt ∥2 = 0,
+t
+the discrepancy δstat
+between malicious and benign updates in
+statistical features—such as geometric distance and directional
+consistency—approaches zero. Consequently, the detection
+sensitivity of any defense mechanism contingent on the morphology of ∆θ plummets precipitously, ultimately culminating in complete failure. Fundamentally, attackers exploit the
+gradient decay properties inherent to the model’s convergence
+process to achieve “statistical invisibility.” During this stage, a
+rational adversary will employ a “covert fine-tuning” strategy,
+deliberately compressing their update norms to a minuscule
+magnitude of the same order as benign updates (i.e., ϵbounded).
+This renders conventional measurement metrics entirely
+ineffective. In the following, we elucidate this multi-faceted
+failure across three dimensions: Euclidean distance, directional
+metrics, and microscopic discrimination:
+Failure of Euclidean Distance-Based Defenses (e.g.,
+Krum)
+Consider a d-dimensional parameter space. Algorithms like
+Krum rely on computing the Euclidean distance ∥u − v∥2 between update vectors. In the late convergence stage,
+√ the norm
+of benign updates decays such that ∥∆θbenign ∥2 ≈ dσt → 0.
+The expected squared distance between benign nodes i and j
+is E[∥∆θi − ∆θj ∥22 ] = 2dσt2 . To evade detection, a malicious
+node m constrains its update within
+√ the neighborhood of
+benign updates, establishing ∥δ∥ ≈ dσt . Consequently, the
+expected distance between a malicious node and a benign
+node, E[∥∆θi − ∆θm ∥22 ], falls into the exact same order of
+magnitude O(dσt2 ) as the intra-class distance among benign
+nodes. Governed by the concentration of measure phenomenon
+in high-dimensional spaces, when σt approaches infinitesimal
+levels, the overlap region between the benign and malicious
+distributions is maximized. This homogenization completely
+prevents distance-ranking defense algorithms from distinguishing adversaries from benign statistical noise.
+Failure of Directional Metrics (Cosine Similarity)
+u·v
+Cosine similarity is defined as sim(u, v) = ∥u∥∥v∥
+. In the
+lateP
+convergence stage, the global average update ∆θavg ≈
+1
+∆θbenign degenerates toward random noise tightly clus|B|
+tered around the zero vector. As ∥∆θavg ∥ → 0, cosine similarity becomes extremely sensitive to minuscule perturbations. If
+the adversary generates a vector δ that perfectly mimics zeromean random noise, then: limt→∞ P (sim(∆θmal , ∆θavg ) <
+0) ≈ P (sim(∆θbenign , ∆θavg ) < 0) ≈ 0.5. At this critical
+juncture, the cosine similarity distributions of malicious and
+benign nodes perfectly overlap, rendering simple sign thresholds or numerical truncation indistinguishable. This signifies
+that the macroscopic rough screening discussed in Section
+IV-A fundamentally loses its requisite statistical baseline.
+
+8
+
+Failure of Microscopic Discrimination
+Concurrently, the FL-Defender microscopic fine screening
+detailed in Section IV-B encounters an identical detection
+bottleneck. In the late convergence stage, the feature extraction layers stabilize, yielding an exceedingly low variance
+for benign gradients. Here, attackers only need to inject
+vanishingly weak trigger signals to sustain the backdoor.
+These subtle signals conceal themselves within a massive
+parameter background, no longer manifesting as pronounced
+principal component anomalies. The “structural deviations”
+that FL-Defender attempts to extract via Principal Component
+Analysis (PCA) are effortlessly submerged by the inherent
+heterogeneous noise of Non-IID data distributions.
+Formally, assume the distribution of benign gradients is
+∆θbenign ∼ N (0, σt2 I), where σt converges to an infinitesimal
+value ϵ. Covert attackers construct their updates as ∆θmal = δ,
+subject to ∥δ∥ ≈ ϵ. Let Σ denote the covariance matrix of
+the last-layer gradients. In the early stages, the attack signal
+S is dominant such that ∥Σattack ∥ ≫ ∥Σnoise ∥, allowing the
+attack features to dictate the primary principal component
+v1 . However, in the late stage, the benign gradient variance
+σt2 collapses, and attackers strategically compress their signal
+strength to ∥δ∥ ≤ σt for stealth. Consequently, the principal
+components extracted by PCA are predominantly dictated
+by the intrinsic noise variance of Non-IID data rather than
+adversarial features. The projection P (∆θmal ) of malicious
+samples in the principal component space strictly satisfies:
+∥P (∆θmal ) − Centroid∥2 ≤ ∥P (∆θbenign ) − Centroid∥2 (10)
+This inequality proves that malicious samples fall squarely
+within the confidence interval of benign nodes, rendering FLDefender’s anomaly detection mathematically obsolete.
+In summary, the essence of Late-stage Failure lies in
+the morphological homogenization of updates: as the global
+model converges and gradient norms vanish, stealthy malicious
+updates become statistically indistinguishable from benign
+ones. This fundamental collapse of geometric defenses directly
+triggers a catastrophic surge in the Attack Success Rate (ASR)
+of advanced poisoning techniques.
+B. CHG-Shapley: Efficient Contribution Evaluation Algorithm
+As discussed in Section V-A, the fundamental cause of
+Late-stage Failure is the collapse of geometric separability
+as gradient norms diminish. An intuitive solution to resolve
+this is to explicitly amplify the direct semantic differences.
+We observe that malicious nodes inherently struggle to fit
+their anomalous poisoned samples, causing their associated
+training loss—or Hardness (hi )—to remain persistently higher
+than that of regular nodes. Furthermore, their gradient update directions inevitably diverge from the benign consensus.
+Therefore, Secure-CHG shifts the defense paradigm from
+analyzing superficial “Statistical Morphology” to verifying
+genuine contribution values based on this intrinsic semantic
+difference.
+By strategically coupling the persistent hardness with the
+gradient, Secure-CHG projects the updates into a novel
+“Hardness-Gradient” Semantic Space. In this space, the scalar
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+hardness acts as a natural amplifier for malicious intent. Even
+as the raw geometric distance between parameter updates
+collapses (limt→∞ ∥∆θi −∆θm ∥2 = 0), this composite mechanism successfully magnifies the subtle adversarial traces,
+decisively highlighting and isolating the malicious nodes from
+the benign cluster. This restorative separability is visually and
+empirically corroborated by the distinct clustering transitions
+shown in Fig. 9(b) and 9(c).
+Ultimately, by explicitly incorporating the semantic variable
+hi , CHG-Shapley maintains a non-zero statistical distance
+between benign actors and malicious actors, effectively circumventing the theoretical limitations of geometric defenses
+in the late training stage.
+To translate this restored separability within the “HardnessGradient” semantic space into practically quantifiable node
+contributions, the crux lies in seamlessly embedding it into
+the Shapley value evaluation framework. To achieve this,
+we must establish a utility function U (S) that accurately
+reflects the authentic value of a data subset S. Traditionally,
+U (S) is defined as the model’s accuracy on a validation set
+after retraining on S, which is computationally prohibitive in
+federated settings.
+To circumvent the need for retraining, a common alternative
+is to evaluate the model’s training loss reduction caused
+by the
+P parameter update. Let the global loss be f (θ) :=
+1
+update step using a generic
+i∈N f (i; θ). Consider an P
+Ntotal
+1
+aggregated raw gradient g = |S|
+i∈S ∇f (i; θ), yielding new
+parameters θg = θ − ηg.
+Lemma 1 (Nesterov, 2018): For a differentiable function f
+with M -Lipschitz continuous gradients, if η = 1/M , the loss
+reduction is bounded by:
+f (θg ) ≤ f (θ) −
+
+1
+1
+∥∇f (θ)∥22 +
+∥∇f (θ) − g∥22 (11)
+2M
+2M
+
+Equation (11) implies that the loss reduction is fundamentally tied to the alignment between the update direction g
+and the global gradient ∇f (θ). This mathematical property
+naturally suggests a retraining-free proxy utility: C(S) ∝
+∥∇f (θ)∥22 − ∥∇f (θ) − g∥22 .
+However, here lies a bottleneck: relying on raw gradients g
+falls victim to the Late-stage Failure. As the model converges,
+raw gradients vanish, and the proxy utility C(S) completely
+loses its discriminative power against stealthy adversaries.
+To break this bottleneck and evaluate genuine contributions
+post-convergence, we must project this proxy framework into
+the “Hardness-Gradient” space. Instead of using raw vanishing
+gradients, we introduce sample hardness hi = f (i; θ) to
+explicitly scale the local gradients, defining a composite vector
+xi = hi ∇f (i; θ). Because malicious samples inherently maintain persistently high hardness, this semantic scaling amplifies
+adversarial traces and prevents their vectors from vanishing.
+By replacing the raw gradientsPwith the hardness-weighted
+1
+vectors (i.e., mapping g → |S|
+i∈S xi and ∇f (θ) → α =
+P
+1
+x
+),
+we
+construct
+our
+final
+utility function, the CHG
+i∈N i
+N
+Score:
+2
+1 X
+2
+U (S) = ∥α∥2 −
+xi − α
+(12)
+|S|
+i∈S
+
+2
+
+9
+
+P
+where xi = hi ∇f (i; θ) and α = N1 i∈N xi . This utility
+function rewards subsets whose update directions align with
+the global optimization direction weighted by sample hardness.
+To bridge this theoretical formulation with practical Federated Learning deployments, we must circumvent the prohibitive communication overhead of transmitting instancelevel, full-parameter gradients. Therefore, we explicitly operationalize this metric at the client level. Specifically, we
+define the direct input to the CHG-Shapley algorithm as the
+composite “Hardness-Gradient” vector xk = ∇last Lk · hk .
+By feeding this layer-specific, hardness-scaled semantic vector
+into the evaluation module as the definitive input, we effectively compress the required state space while fully preserving the distinct adversarial traces. Consequently, this utility
+function elegantly rewards clients whose structural update
+directions align with the global trajectory, heavily scaled by
+their localized sample hardness.
+Based on the derivation in Appendix A, we derive a ClosedForm Solution for the Shapley value based on the proposed
+quadratic utility function. Leveraging the linearity axiom, we
+decompose U (S) into linear combinations of basic functions
+and derive the marginal contributions analytically.
+Theorem 1: Assuming the utility function U (S) defined in
+Eq. (12), the Shapley value ϕk (U ) for the k-th client is given
+by the following closed-form expression:
+Remark 1: Eq. (13) represents the closed-form structural
+solution derived from combinatorial expansion, which involves
+harmonic sums over the dataset size nk . This bypasses the
+exponential complexity of traditional Shapley computation.
+Operationally, CHG-Shapley functions as a single-round
+marginal contribution proxy evaluated along the realized training path. It efficiently captures how a client’s update enhances
+the model’s capacity to generalize on difficult samples without
+requiring exhaustive coalition enumeration.
+
+VI. U NIFIED T RUST U PDATE AND AGGREGATION
+Building on the CHG-Shapley contribution scores Ckt derived in Section V, this section introduces a dynamic reputation assessment mechanism to precisely identify malicious
+clients. Ultimately, these reputation scores are integrated into
+the final weighted aggregation to completely neutralize adversarial impacts.
+
+A. Contribution-based Dynamic Reputation Assessment
+1) Logarithmic Scaling: To mitigate the influence of outliers and compress the dynamic range of contribution values,
+we apply a logarithmic scaling function to the instantaneous
+contributions Ckt of benign clients that have successfully
+passed the defense filtering (as detailed in Section IV):
+t
+wraw
+(k) = log(1 + max(Ckt , ϵ))
+
+(14)
+
+Here, ϵ is a small constant (e.g., 10−9 ) introduced to ensure
+numerical stability.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+"
+ϕk (U ) =
+
+X
+j∈Dk
+
+nk
+1 X
+1
+
+nk
+X
+1
+
+nk
+X
+1
+
+!
+
+ P
+
+Pnk 1
+nk 1
+1
+2 2 l=1
+−
+2
+−
+1
++
+2
+l=1 l
+l
+nk
+ ∥xj ∥22
++
+nk (nk − 1)(nk − 2)
+
+1
++
+−3
+l
+l2
+nk
+l=1
+l=1
+
+Pnk 1
+nk 1
+1
+1
+2
+X
+l=1 l −
+l=1 l2 − nk + n2k
+−
+⟨
+xi , xj ⟩
+(nk − 1)(nk − 2)
+i∈N
+Pnk 1
+Pnk 1
+2
+1
+X
+2 l=1
+l=1 l2 − 1 + nk
+l −2
+xi
++
+nk (nk − 1)(nk − 2)
+i∈N
+!
+!
+Pnk 1
+Pnk 1
+Pnk 1 2
+1
+1
+X
+−
+2
+−
+2
+2
+l=1 l
+l=2 l
+l=2 l2 − 1 + nk
+nk
+2
++
+−
+∥xi ∥2
+nk (nk − 1)
+nk (nk − 1)(nk − 2)
+i∈N
+*
++#
+Pnk 1
+Pnk 1
+1
+X
+2( l=1
+2( l=1
+l − nk )
+l − 1)
++
+⟨xj , α⟩ −
+xi , α
+nk − 1
+nk (nk − 1)
+
+−
+
+nk
+l2
+l=1
+P
+
++
+
+1
+nk (nk − 1)
+
+10
+
+2
+
+i∈N
+
+(13)
+2) Relative Contribution Filtering: To further marginalize low-quality nodes that evade initial defense mechanisms
+but offer negligible contributions, we implement a relative
+performance-based filter. First, a baseline adjustment is performed by subtracting a scaled minimum contribution:
+
+
+t
+t
+t
+wadj
+(k) = max 0, wraw
+(k) − γ · min(wraw
+(i))
+(15)
+i
+
+B. Reputation Modulated Aggregation Protocol
+
+where γ is a scaling factor close to 1 (e.g., 0.99). Second, we
+t
+compute the mean of the adjusted weights, w̄adj
+, and establish
+t
+a quality threshold. Any client with wadj (k) falling below
+t
+this threshold (e.g., 0.5 · w̄adj
+) is classified as a low-quality
+contributor for the current round, and their weight is reset
+to zero. Following these filtering steps, the remaining weights
+are normalized to derive the instantaneous normalized weights,
+t
+winst
+(k), for the current round.
+3) Long-term Reputation (Trust) Update: The core of the
+dynamic reputation mechanism relies on a long-term reputation score, Tkt , maintained for each client k. This score
+is updated using an Exponential Moving Average (EMA)
+to smooth short-term fluctuations and build trust based on
+historical behavior:
+t
+Tkt = βTkt−1 + (1 − β)winst
+(k)
+
+(16)
+
+where β ∈ [0, 1] is the decay factor. A higher β places greater
+emphasis on historical performance, thereby stabilizing the
+reputation score against transient anomalies.
+4) Trust-Modulated Aggregation Weight: The final aggret
+gation weight, wtrust
+(k), for client k in round t is determined
+by a linear combination of its instantaneous contribution,
+t
+winst
+(k), and its deviation from the population’s average
+reputation, T t . Specifically:
+t
+t
+wtrust
+(k) = winst
+(k) + λ(Tkt − T t )
+
+we obtain the definitive weights for the global model update. This mechanism seamlessly integrates defense (filtering
+Ckt = 0), evaluation (computing Ckt ), and incentives (deriving
+wft inal (k)), thereby establishing a robust and adaptive federated governance loop.
+
+(17)
+
+where λ represents the reputation modulation rate. This formulation ensures that a client with a superior historical reputation
+(Tkt > T t ) receives a weight incentive, effectively buffering
+against minor fluctuations in instantaneous contribution. Conversely, clients with poor historical performance are penalized.
+By enforcing non-negativity via clipping (wft inal (k) =
+t
+max(0, wtrust
+(k))) and performing a final normalization,
+
+t
+(k), this section
+Building upon the modulated weights wtrust
+describes the final secure aggregation protocol. The objective
+is to translate abstract reputation scores into concrete model
+updates, ensuring the global model assimilates knowledge
+exclusively from high-reputation, high-contribution nodes.
+1) Normalization and Global Model Update: To constrain
+the aggregated model parameters within a valid numerical
+range and prevent divergence due to weight explosion, we
+apply a Rectified Linear Unit (ReLU) operation followed
+by normalization to derive the final aggregation coefficients
+wft inal (k):
+t
+(k))
+max(0, wtrust
+t
+max(0,
+w
+trust (j))
+j∈K
+
+wft inal (k) = P
+
+(18)
+
+The denominator represents the sum of modulated weights
+across all clients. In the extreme case where the denominator is zero (indicating all clients are deemed malicious or
+non-contributory), the update is skipped to preserve model
+integrity.
+Subsequently, the server utilizes these final weights to
+compute the weighted average of the update vectors ∆θkt ,
+resulting in the global model update:
+θt+1 ← θt + ηg
+
+K
+X
+
+wft inal (k) · ∆θkt
+
+(19)
+
+k=1
+
+where ηg denotes the global learning rate. This aggregation
+mechanism provides dual security guarantees:
+• Malicious Exclusion: Nodes identified by defense mechanisms or exhibiting negligible contributions are assigned
+wft inal (k) ≈ 0, effectively blocking the injection of
+malicious gradients.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+•
+
+Benign Incentive: Benign nodes with consistent historical performance and significant current contributions receive amplified weights, thereby accelerating convergence
+toward the optimal solution.
+
+2) Algorithm Description: Overall, the unified aggregation
+process is summarized in Algorithm 3.
+Algorithm 3 Secure-CHG Unified Trust Aggregation
+Require: Client updates {∆θkt , ∇last Lk , hk }k∈K ; Previous
+global model θt ; Previous trust scores T t−1 ; Current stage
+flag State (Early/Late).
+Ensure: New global model θt+1 ; Updated trust scores T t .
+t
+1: Initialize: winst
+← zeros(K), M ask t ← ones(K)
+2: // Phase 1: Dual-Mode Defense & Evaluation
+3: for each client k ∈ K do
+4:
+if State is Early Stage then
+5:
+if
+Cosine(∆θkt , ∆θavg )
+<
+0
+or
+FL-Defender(∇last Lk ) == Malicious then
+6:
+M ask t [k] ← 0; continue {Statistical Filtering}
+7:
+end if
+8:
+end if
+9:
+Calculate Ckt ← CHG-Shapley(∆θkt , hk ) using Theorem 1
+10: end for
+11: // Phase 2: Dynamic Trust Assessment
+12: for each client k ∈ K where M ask t [k] = 1 do
+t
+(k) ← log(1 + max(Ckt , ϵ)) {Log Scaling}
+13:
+wraw
+t
+t
+t
+)) {Relative
+(k)−γ ·min(wraw
+14:
+wadj (k) ← max(0, wraw
+Filtering}
+15: end for
+t
+t
+16: Normalize wadj
+to get winst
+t−1
+t
+t
+17: Update Trust: Tk ← βTk
++ (1 − β)winst
+(k) {Eq. (16)}
+18: // Phase 3: Reputation Modulated Aggregation
+t
+← Mean(T t )
+19: Calculate Average Trust Tavg
+20: for each client k ∈ K do
+t
+t
+t
+) {Eq. (17)}
+(k) ← winst
+(k) + λ(Tkt − Tavg
+21:
+wtrust
+22: end for
+t
+23: Normalize wtrust
+to get final weights wft inal {Eq. (18)}
+
+24: Update Global Model: θ t+1 ← θ t + ηg
+
+P
+
+wft inal (k)∆θkt
+
+{Eq. (19)}
+θt+1 , T t
+
+25: return
+
+C. System Stability Analysis
+While the dynamic weight adjustment mechanism enhances
+fairness and security, it introduces the potential for weight
+fluctuations that could destabilize training. To guarantee convergence stability, we analyze the Secure-CHG framework
+across three dimensions: the smoothness of trust updates, the
+boundedness of aggregation weights, and the hysteresis of
+defense state switching.
+1) Smoothness of Trust Updates: In Federated Learning,
+the stochastic nature of mini-batch sampling causes inevitable
+statistical fluctuations in a client’s single-round contribution
+t
+winst
+. Directly using instantaneous contributions as weights
+
+11
+
+would induce severe oscillations in the optimization trajectory. Secure-CHG mitigates this via the Exponential Moving
+Average (EMA) mechanism (Eq. (16)), which functions as a
+low-pass filter. For any time t, the variation in trust value is
+constrained by the decay factor β:
+t
+|Tkt − Tkt−1 | = (1 − β)|winst
+(k) − Tkt−1 |
+
+(20)
+
+By setting β close to 1 (e.g., 0.9), the system suppresses singleround anomalies—whether from random noise or adversarial
+attempts. This imparts “reputation inertia,” preventing the
+weights of benign nodes from collapsing due to transient
+low-quality updates while simultaneously preventing attackers
+from rapidly accruing trust through sporadic high-quality
+disguises.
+2) Boundedness of Aggregation Weights: Stability is further
+ensured by the boundedness of the aggregation weights. In Eq.
+(17), the trust modulation term is λ(Tkt − T t ). Since winst is
+normalized (∈ [0, 1]), the long-term reputation Tkt is similarly
+constrained to the [0, 1] interval. Consequently, the deviation
+t
+is bounded within [−λ, 1 +
+of the modulated weight wtrust
+λ]. When combined with the ReLU non-negative clipping and
+final normalization in Eq. (18), we ensure:
+K
+X
+
+wft inal (k) = 1
+
+and
+
+wft inal (k) ≥ 0
+
+(21)
+
+k=1
+
+This satisfies the convexity condition, guaranteeing that the
+global model update ∆θt+1 remains within the convex hull
+of the local update vectors. Theoretically, this prevents the
+aggregation process from causing the model parameters to
+diverge into an invalid space.
+3) Hysteresis in Mode Switching: Beyond numerical stability, strategic stability is paramount. As described in Section
+III-B, the framework incorporates a hysteresis mechanism for
+switching between “Statistical Filtering” and “Contribution
+Verification” modes. This design prevents the system from
+oscillating (chattering) between distinct defense logics due to
+minor loss fluctuations near the convergence threshold. Such
+strategic stability ensures the continuity of the optimization
+trajectory, facilitating a smooth transition into the convergence
+phase.
+VII. E XPERIMENTS
+This section presents systematic experiments to verify the
+effectiveness of the Secure-CHG framework against strategic
+poisoning attacks. The core objectives are: 1) to verify the
+“Late-stage Failure” defect of traditional defense mechanisms;
+2) to verify the “Early-stage Vulnerability” of pure contribution evaluation mechanisms; and 3) to demonstrate the
+robustness of the proposed hybrid framework (Secure-CHG)
+throughout the entire training lifecycle.
+A. Experimental Setup and Baselines
+Experiments were conducted on the CIFAR-10 dataset using
+the LeNet model, simulating a Federated Learning scenario
+with 10 clients (including 2 malicious clients performing “dog
+→ cat” label-flipping attacks). The EMA decay factor β in
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+12
+
+70
+
+60
+
+50
+
+ACC
+
+FL-Defender was set to 0.8, and β for long-term reputation
+updates was set to 0.9.
+We established comprehensive baselines, including:
+• No Defense: FedAvg.
+• Traditional Statistical Defenses: FedMedian, TrimmedMean, MultiKrum, FLTrust.
+• Ablation
+Baselines: Pure contribution evaluation
+(Only CHG)
+and
+statistical
+filtering
+only
+(Only series filters).
+The core evaluation metrics, all computed as averages over
+the final 30 rounds, are:
+• Average Global Model Accuracy (Avg. All-Acc): Measures the final generalization performance.
+• Average Attack Success Rate (Avg. ASR): The primary
+indicator of defense robustness (lower is better).
+• Average Source Category Accuracy (Avg. Src-Acc):
+The proportion of correctly classified samples from attacked source categories.
+
+40
+
+30
+FedAvg
+FedMedian
+TrimmedMean
+MultiKrum
+FLTrust
+Krum_CHG
+Secure_CHG
+
+20
+
+10
+0
+
+10
+
+20
+
+30
+
+40
+
+50
+
+epoch
+
+Fig. 4. Trend of Main Task Accuracy (ACC) over training epochs.
+
+70
+
+B. Results and Analysis
+60
+
+50
+
+40
+
+Src-Acc
+
+This section details the analysis of the experimental data
+to systematically verify the core arguments of this paper.
+All performance metrics are average values from the late
+training stage (Rounds 21-50) to evaluate final robustness and
+performance during the convergence phase.
+
+30
+
+20
+
+TABLE II
+P ERFORMANCE C OMPARISON OF D IFFERENT D EFENSE M ECHANISMS
+(L ATE S TAGE AVG .)
+
+10
+FedAvg
+FedMedian
+TrimmedMean
+MultiKrum
+FLTrust
+Krum_CHG
+Secure_CHG
+
+0
+
+Method
+
+Avg. All-Acc (%)
+
+Avg. Src-Acc (%)
+
+Avg. ASR (%)
+
+60.45
+60.45
+62.35
+61.14
+62.40
+52.62
+61.29
+60.50
+61.25
+
+19.52
+28.03
+31.28
+27.56
+19.91
+0.01
+35.79
+49.87
+48.20
+
+47.12
+34.82
+37.80
+41.97
+50.84
+67.31
+33.06
+18.84
+20.82
+
+FedAvg
+FedMedian
+TrimmedMean
+MultiKrum
+FLTrust
+Only CHG
+Only series filters
+Filter CHG (Secure-CHG, ours)
+Krum CHG
+
+−10
+0
+
+60
+
+ASR
+
+50
+40
+30
+20
+FedAvg
+FedMedian
+TrimmedMean
+MultiKrum
+FLTrust
+Krum_CHG
+Secure_CHG
+
+−10
+0
+
+10
+
+20
+
+30
+
+40
+
+30
+
+40
+
+50
+
+Fig. 5. Trend of Source Class Accuracy (Src-Acc) over training epochs.
+
+70
+
+0
+
+20
+
+epoch
+
+80
+
+10
+
+10
+
+50
+
+epoch
+
+Fig. 3. Trend of Attack Success Rate (ASR) over training epochs.
+
+First, traditional statistical defenses universally suffer from
+“Late-stage Failure.” As shown in Fig. 3 and Table II, in
+
+the late training stages, the ASR curves of methods like
+MultiKrum exhibit significant fluctuations or even rebounds.
+Its final Avg. ASR (41.97%) shows limited improvement
+compared to the undefended baseline A FedAvg (47.12%).
+This confirms that when the model converges and update
+vectors tend to be identical, defense mechanisms relying on
+statistical morphology tend to fail.
+To visually verify the gradient evolution laws described in
+Definition 1 (Section III-A) and demonstrate the discriminative
+ability of Secure-CHG in feature space, we utilized the t-SNE
+technique to map high-dimensional model update vectors to
+a 2D plane. Fig. 9 displays the distribution of benign clients
+(blue circles) and malicious clients (red triangles) at different
+training stages.
+As shown in Fig. 9, the visual evolution of the feature
+space intuitively reveals the efficacy boundaries of defense
+mechanisms. In the early stage (Round 5, Fig. 9(a)), malicious
+updates manifest as significant Statistical Outliers due to
+drastic perturbations, creating a clear linear decision boundary
+with benign nodes. However, as the model enters the convergence period (Round 45, Fig. 9(b)), benign gradients decay
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+13
+
+80
+70
+60
+50
+
+ASR
+
+toward random noise, and attackers exploit this to simulate
+mainstream directions. This leads to a High Overlap where
+malicious nodes penetrate benign clusters, proving that defenses relying purely on geometric morphology fail completely
+at this stage.
+Addressing this dilemma, Fig. 9(c) shows feature reconstruction after introducing Secure-CHG. Despite morphological convergence, malicious samples exhibit higher hardness
+(Loss) due to the conflict between the “poisoning task” and
+the “main task.” This Semantic Discrepancy, amplified by the
+CHG mapping (hk ∇f (θ)), effectively isolates malicious nodes
+from benign clusters. This strongly proves that Secure-CHG
+can break through geometric camouflage limits and restore
+linear separability in the late convergence stage.
+
+40
+30
+20
+10
+0
+
+Only_CHG
+Only_series_filters
+Secure_CHG
+
+−10
+0
+
+10
+
+20
+
+30
+
+40
+
+50
+
+epoch
+
+C. Ablation Studies
+To explicitly elucidate the individual contribution of each
+module, we constructed ablation studies featuring two variants:
+Only CHG (which solely relies on CHG-Shapley for contribution evaluation prior to aggregation) and Only series filters
+(which exclusively employs FL-Defender for filtering, followed by naive FedAvg aggregation).
+100000
+52000
+51900
+51800
+51700
+51600
+51500
+51400
+51300
+
+80000
+
+CHG-Score
+
+60000
+
+C0
+C1
+
+46.85 46.90 46.95 47.00 47.05 47.10 47.15
+40000
+
+20000
+
+C0_Malware
+C1_Malware
+C2_contrib
+C3_contrib
+C4_contrib
+C5_contrib
+C6_contrib
+C7_contrib
+C8_contrib
+C9_contrib
+
+0
+
+0
+
+10
+
+20
+
+30
+
+40
+
+50
+
+epoch
+
+Fig. 6. Trend of CHG contribution values over time for Only CHG.
+
+5000
+3710
+3700
+3690
+3680
+3670
+3660
+3650
+3640
+
+4000
+
+CHG-Score
+
+3000
+
+C1
+
+43.9
+
+44.0
+
+44.1
+
+44.2
+
+2000
+
+1000
+
+C0_Malware
+C1_Malware
+C2_contrib
+C3_contrib
+C4_contrib
+C5_contrib
+C6_contrib
+C7_contrib
+C8_contrib
+C9_contrib
+
+0
+
+10
+
+First, relying solely on contribution evaluation (Only CHG)
+exposes a critical weakness during the early stages. As depicted in Fig. 6, without early constraints, malicious clients
+successfully hijack the initial training phase to accumulate erroneously high contribution scores, culminating in a
+67.31% ASR (Fig. 8). Second, standalone cascaded filtering
+(Only series filters) exhibits severe late-stage ASR instability
+(33.06% ASR), empirically confirming the “Late-stage Failure” dilemma.
+In contrast, the proposed Secure-CHG framework dynamically orchestrates two orthogonal defenses to circumvent this
+dual dilemma, achieving a consistently low ASR of 18.84%.
+A direct comparison between Fig. 6 and Fig. 7 distinctly
+illuminates the mechanism behind this success. During early
+training, morphology-based statistical defenses (e.g., the FLDefender filter in Section IV-B) intercept anomalous updates.
+Crucially, this early-stage intervention effectively prevents
+attackers from accumulating unwarranted trust; consequently,
+the late-stage contribution scores of malicious nodes are fundamentally suppressed (Fig. 7). Post-convergence, the CHG
+trust mechanism (Section V) precisely isolates the remaining
+disguised adversaries via “hardness” divergence (malicious
+hardness remains high while benign approaches zero). Concurrently, Secure-CHG yields an Avg. All-Acc of 60.50%,
+demonstrating that it deeply suppresses hard-to-detect adversaries while well-preserving global model utility.
+
+C0
+
+43.8
+
+0
+
+Fig. 8. ASR trends for ablation study comparisons.
+
+20
+
+30
+
+40
+
+epoch
+
+Fig. 7. Trend of CHG contribution values over time for Secure CHG.
+
+50
+
+D. Generalization Verification
+To evaluate the generalization capability of the Secure-CHG
+framework, we conducted comparative experiments across
+three different dataset and model architecture scenarios:
+1) MedMNIST with MedMNIST-Net (Medical Image
+Classification).
+2) CIFAR-10 with LeNet (Natural Image Classification).
+3) NEU Surface Defect Database (NEU-SDDB) with
+ResNet18 (Industrial Defect Detection), using bidirectional label flipping (Source ↔ Target).
+The results are summarized in Table III.
+Results show that Secure-CHG consistently achieves best or
+near-best performance in ASR. Specifically, in the MedMNIST
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+(a) Early stage separability
+
+14
+
+(b) Late stage collapse under raw gradients
+
+(c) Late stage separability restoration under Secure-CHG space
+
+Fig. 9. Visualization of feature space evolution using t-SNE.
+TABLE III
+G ENERALIZATION P ERFORMANCE ACROSS D IFFERENT DATASETS AND M ODELS
+
+FedAvg
+
+FedMedian
+
+TrimmedMean
+
+MultiKrum
+
+FLTrust
+
+Krum CHG
+
+Secure-CHG (ours)
+
+MedMNIST /
+MedMNIST-Net
+
+Acc
+SrcAcc
+ASR
+
+77.66
+32.84
+9.47
+
+73.05
+35.47
+10.47
+
+73.96
+33.46
+10.43
+
+78.70
+56.12
+9.44
+
+77.36
+37.25
+10.49
+
+77.72
+57.04
+10.38
+
+78.91
+60.93
+8.88
+
+CIFAR-10 /
+LeNet
+
+Acc
+SrcAcc
+ASR
+
+60.45
+19.52
+47.12
+
+60.45
+28.03
+34.82
+
+62.35
+31.28
+37.80
+
+61.14
+27.56
+41.97
+
+62.40
+19.91
+50.84
+
+61.25
+48.20
+20.82
+
+60.50
+49.87
+18.84
+
+NEU-SDDB /
+ResNet18
+
+Acc
+SrcAcc
+ASR
+
+35.80
+37.25
+40.83
+
+56.02
+83.28
+31.52
+
+50.56
+86.81
+42.75
+
+36.37
+82.21
+46.00
+
+39.24
+27.16
+58.85
+
+28.72
+81.37
+53.89
+
+52.44
+69.80
+24.88
+
+task, it achieved the lowest ASR (8.88%) and highest accuracy.
+In the CIFAR-10 scenario, its ASR (18.84%) substantially
+outperforms traditional methods like MultiKrum.
+Notably, on the challenging NEU-SDDB dataset with bidirectional flipping, the framework suppressed ASR to 24.88%
+while maintaining high main task accuracy, demonstrating
+strong adaptability to different distributions and data characteristics.
+
+FedAvg
+Secure-CHG
+TrimmedMean
+RFA
+FoolsGold
+
+100
+
+80
+
+60
+
+ASR
+
+Dataset / Model
+
+40
+
+20
+
+0
+
+E. Defense Against Advanced Threats: Backdoor Attacks
+
+0
+
+To evaluate robustness against backdoor attacks, we simulate a scenario where malicious clients injected a 3 × 3
+pixel trigger into training data and mislabeled them to a
+specific target class. We compared FedAvg, Secure-CHG,
+TrimmedMean, RFA, and FoolsGold over 80 rounds.
+
+10
+
+20
+
+30
+
+40
+
+50
+
+60
+
+70
+
+80
+
+epoch
+
+Fig. 10. ASR trend under Backdoor Attack.
+
+FedAvg
+Secure-CHG
+TrimmedMean
+RFA
+FoolsGold
+
+50
+
+TABLE IV
+ROBUSTNESS AGAINST BACKDOOR ATTACKS (ROUNDS 31-80 AVG .)
+Metric
+
+FedAvg
+
+Secure-CHG (ours)
+
+TrimmedMean
+
+RFA
+
+FoolsGold
+
+ASR (%)
+MTA (%)
+
+23.43
+43.29
+
+9.38
+48.28
+
+20.27
+44.72
+
+22.60
+45.14
+
+23.01
+43.59
+
+MTA
+
+40
+
+30
+
+20
+
+Experimental results (Table IV, Fig. 10, Fig. 11) demonstrate Secure-CHG’s superior defense. It suppresses backdoor
+ASR to a very low level of 9.38%, substantially outperforming TrimmedMean (20.27%) and FoolsGold (23.01%),
+while maintaining a higher MTA(Main Task Accuracy) of
+48.28%. This demonstrates that the hybrid defense mechanism
+
+10
+
+0
+
+10
+
+20
+
+30
+
+40
+
+epoch
+
+Fig. 11. MTA trend under Backdoor Attack.
+
+50
+
+60
+
+70
+
+80
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+is robust against stealthy backdoor attacks, as the CHGShapley mechanism accurately captures persistent anomalies
+exposed by the conflict between the poisoning task and the
+main task.
+VIII. C ONCLUSION AND F UTURE W ORKS
+A. Conclusion
+Federated Learning (FL) currently faces a “dual dilemma”
+regarding security and fairness in real-world deployment. The
+first challenge is the Late-stage Failure of security mechanisms, where traditional defenses relying on statistical morphology (e.g., Euclidean distance, Cosine similarity) inevitably
+collapse as model updates converge and benign/malicious gradients homogenize. The second is the Shapley Value Paradox
+in fairness assessment, where the theoretical gold standard
+becomes impractical due to exponential computational complexity (O(2n )) and reliance on external proxy data.
+To systematically address these challenges, this paper proposes Secure-CHG. The key innovation lies in a paradigm
+shift from “Morphological Detection” based on superficial
+statistics to “Contribution Verification” based on intrinsic
+value. We show that even when geometric features collapse,
+malicious clients maintain a high “Hardness” due to the
+conflict between poisoning tasks and the main task, making
+them distinguishable in the contribution dimension.
+Key contributions of this framework include:
+• Dual-Layer Hybrid Defense Architecture: We design a
+dynamic defense lifecycle that utilizes statistical filtering
+to mitigate early-stage volatility and adaptively switches
+to contribution verification upon convergence to resolve
+late-stage failure.
+• Efficient CHG-Shapley Evaluation: By deriving a
+closed-form solution for the “Hardness-Gradient” utility
+function, we reduce computational complexity from exponential to constant time (O(1)), eliminating the need
+for model retraining or proxy data.
+• Endogenous Governance Loop: The framework unifies
+defense, evaluation, and incentives, transforming contribution scores into dynamic aggregation weights, forming
+a self-purifying ecosystem.
+Extensive experiments demonstrate the superior robustness
+of Secure-CHG. Against label-flipping attacks on CIFAR-10, it
+maintains a low Attack Success Rate (ASR) of 18.84%, significantly outperforming the MultiKrum baseline (41.97%).Furthermore, against stealthy Backdoor Attacks, it suppresses
+ASR to 9.38%. Generalization tests on MedMNIST and NEUSDDB further confirm its general effectiveness in overcoming
+late-stage failure.
+B. Future Works
+Although Secure-CHG demonstrates significant advantages, optimizing for extreme data heterogeneity remains
+a key challenge. Future research within Non-IID environments will primarily focus on three directions: First, introducing distribution-aware hardness calibration (e.g., via
+lightweight global priors or clustering) to distinguish “honest
+
+15
+
+hard samples” from malicious anomalies, thereby preserving
+fairness for long-tail data holders. Second, extending the
+framework to Personalized Federated Learning (pFL) by
+adapting CHG-Shapley to assess marginal contributions to
+specific communities or personalized layers, constructing a
+more inclusive trust network that rewards unique local contributions. Finally, exploring privacy-enhanced contribution
+verification through the integration of Zero-Knowledge Proofs
+(ZKP) or Secure Multi-Party Computation (SMPC), enabling
+clients to prove the validity of their contributions without
+exposing raw distribution data under strict privacy constraints.
+R EFERENCES
+[1] B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A.
+y Arcas, “Communication-efficient learning of deep networks from
+decentralized data,” in Artificial intelligence and statistics. Pmlr, 2017,
+pp. 1273–1282. [Online]. Available: https://proceedings.mlr.press/v54/
+mcmahan17a
+[2] H. Zhu, J. Xu, S. Liu, and Y. Jin, “Federated learning on noniid data: A survey,” Neurocomputing, vol. 465, pp. 371–390, 2021,
+doi:10.1016/j.neucom.2021.07.098.
+[3] E. Bagdasaryan, A. Veit, Y. Hua, D. Estrin, and V. Shmatikov, “How to
+backdoor federated learning,” in International conference on artificial
+intelligence and statistics. PMLR, 2020, pp. 2938–2948. [Online].
+Available: https://proceedings.mlr.press/v108/bagdasaryan20a
+[4] V. Tolpegin, S. Truex, M. E. Gursoy, and L. Liu, “Data poisoning attacks
+against federated learning systems,” in European symposium on research
+in computer security. Springer, 2020, pp. 480–501. [Online]. Available:
+https://link.springer.com/chapter/10.1007/978-3-030-58951-6 24
+[5] V. Shejwalkar and A. Houmansadr, “Manipulating the byzantine:
+Optimizing model poisoning attacks and defenses for federated
+learning,” in Proceedings of the 2021 Network and Distributed
+System Security Symposium (NDSS), 2021. [Online]. Available:
+https://par.nsf.gov/servlets/purl/10286354
+[6] P. Blanchard, E. M. El Mhamdi, R. Guerraoui, and J. Stainer, “Machine learning with adversaries: Byzantine tolerant gradient descent,”
+Advances in neural information processing systems, vol. 30, 2017,
+doi:10.48550/arXiv.1703.02757.
+[7] D. Yin, Y. Chen, R. Kannan, and P. Bartlett, “Byzantine-robust
+distributed learning: Towards optimal statistical rates,” in International
+conference on machine learning. Pmlr, 2018, pp. 5650–5659. [Online].
+Available: https://proceedings.mlr.press/v80/yin18a
+[8] N. M. Jebreel and J. Domingo-Ferrer, “Fl-defender: Combating targeted
+attacks in federated learning,” Knowledge-Based Systems, vol. 260, p.
+110178, 2023, doi:10.1016/j.knosys.2022.110178.
+[9] K. Pillutla, S. M. Kakade, and Z. Harchaoui, “Robust aggregation for
+federated learning,” IEEE Transactions on Signal Processing, vol. 70,
+pp. 1142–1154, 2022, doi:10.1109/TSP.2022.3153135.
+[10] A. E. Samy and Š. Girdzijauskas, “Mitigating sybil attacks in federated
+learning,” in International Conference on Information Security Practice
+and Experience. Springer, 2023, pp. 36–51, doi:10.1007/978-981-997032-2 3.
+[11] X. Cao, M. Fang, J. Liu, and N. Z. Gong, “Fltrust: Byzantinerobust federated learning via trust bootstrapping,” arXiv preprint
+arXiv:2012.13995, 2020, doi:10.48550/arXiv.2012.13995.
+[12] S. Yan, J. Du, Z. Xue, and A. Li, “Byzantine-robust aggregation
+for federated learning with reinforcement learning,” in Asia-Pacific
+Web (APWeb) and Web-Age Information Management (WAIM) Joint
+International Conference on Web and Big Data. Springer, 2024, pp.
+152–166, doi:10.1007/978-981-97-7241-4 10.
+[13] T. Li, H. Li, Y. Pan, T. Xu, Z. Zheng, and Q. Zhu, “Meta
+stackelberg game: Robust federated learning against adaptive and
+mixed poisoning attacks,” arXiv preprint arXiv:2410.17431, 2024,
+doi:10.48550/arXiv.2410.17431.
+[14] X. Zhang, X. Chen, M. Hong, Z. S. Wu, and J. Yi, “Understanding
+clipping for federated learning: Convergence and client-level differential
+privacy,” in International Conference on Machine Learning, ICML 2022,
+2022. [Online]. Available: https://par.nsf.gov/servlets/purl/10395073
+[15] Y. WANG, Q. ZHANG, W. QIU, Z. CHAI, S. GAO, J. ZHU, Y. TONG,
+and Z. ZHENG, “Adaptive byzantine-robust differentially private federated learning,” SCIENTIA SINICA Informationis, vol. 55, no. 11, p.
+2663, 2025, doi:10.1360/SSI-2025-0232.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+[16] R. Xue, K. Xue, B. Zhu, X. Luo, T. Zhang, Q. Sun, and J. Lu, “Differentially private federated learning with an adaptive noise mechanism,”
+IEEE Transactions on Information Forensics and Security, vol. 19, pp.
+74–87, 2023, doi:10.1109/TIFS.2023.3318944.
+[17] Y. Li, L. Fu, T. Wang, J. Lou, B. Chen, L. Yang, J. Shen, Z. Zheng, and
+C. Chen, “Clients collaborate: Flexible differentially private federated
+learning with guaranteed improvement of utility-privacy trade-off,” arXiv
+preprint arXiv:2402.07002, 2024, doi:10.48550/arXiv.2402.07002.
+[18] X. Luo and B. Tang, “Byzantine fault-tolerant federated learning based
+on trustworthy data and historical information,” Electronics, vol. 13,
+no. 8, p. 1540, 2024, doi:10.3390/electronics13081540.
+[19] P. Sun, X. Liu, Z. Wang, and B. Liu, “Byzantine-robust
+decentralized federated learning via dual-domain clustering and trust
+bootstrapping,” in Proceedings of the IEEE/CVF conference on
+computer vision and pattern recognition, 2024, pp. 24 756–24 765.
+[Online]. Available: https://openaccess.thecvf.com/content/CVPR2024/
+html/Sun Byzantine-robust Decentralized Federated Learning via
+Dual-domain Clustering and Trust Bootstrapping CVPR 2024
+paper.html
+[20] S. Feng, L. Gao, and L. Shi, “Cgfl: A robust federated learning approach
+for intrusion detection systems based on data generation,” Applied
+Sciences, vol. 15, no. 5, p. 2416, 2025, doi:10.3390/app15052416.
+[21] U. Zafar, A. Teixeira, S. Toor et al., “Robust federated learning against
+poisoning attacks: a gan-based defense framework,” arXiv e-prints, pp.
+arXiv–2503, 2025, doi:arXiv.2503.20884.
+[22] G. Wang, C. X. Dang, and Z. Zhou, “Measure contribution of participants in federated learning,” in 2019 IEEE international conference on big data (Big Data).
+IEEE, 2019, pp. 2597–2604,
+doi:10.1109/BigData47090.2019.9006179.
+[23] J. Wang, L. Zhang, A. Li, X. You, and H. Cheng, “Efficient participant
+contribution evaluation for horizontal and vertical federated learning,” in
+2022 IEEE 38th International Conference on Data Engineering (ICDE).
+IEEE, 2022, pp. 911–923, doi:10.1109/ICDE53745.2022.00073.
+[24] L. S. Shapley, “A value for n-person games,” 1953. [Online]. Available:
+https://www.torrossa.com/en/resources/an/5641636#page=87
+[25] J. Zhao, X. Zhu, J. Wang, and J. Xiao, “Efficient client contribution evaluation for horizontal federated learning,” in ICASSP
+2021-2021 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP).
+IEEE, 2021, pp. 3060–3064,
+doi:10.1109/ICASSP39728.2021.9413377.
+[26] Z. Liu, Y. Chen, H. Yu, Y. Liu, and L. Cui, “Gtg-shapley: Efficient
+and accurate participant contribution evaluation in federated learning,”
+ACM Transactions on intelligent Systems and Technology (TIST), vol. 13,
+no. 4, pp. 1–21, 2022, doi:10.1145/3501811.
+[27] W. Gao, G. Xu, and X. Meng, “Fedcon: Scalable and efficient federated
+learning via contribution-based aggregation,” Electronics, vol. 14, no. 5,
+p. 1024, 2025, doi:10.3390/electronics14051024.
+[28] H. Cai, “Chg shapley: Efficient data valuation and selection towards
+trustworthy machine learning,” arXiv preprint arXiv:2406.11730, 2024,
+doi:10.48550/arXiv.2406.11730.
+[29] H. Zhang, T. Wu, S. Cheng, and J. Liu, “Fedcos: A scene-adaptive
+enhancement for federated learning,” IEEE Internet of Things Journal,
+vol. 10, no. 5, pp. 4545–4556, 2022, doi:10.1109/JIOT.2022.3218315.
+[30] X. Zhang, M. Yao, Q. Guo, S. Qi, Y. Han, Y. Yang, Y. Qi, and Y. Qiao,
+“Layer-wise contribution evaluation for incentivizing personalization in
+federated learning,” in ICASSP 2026-2026 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP). IEEE,
+2026, pp. 3931–3935, doi:10.1109/ICASSP55912.2026.11460410.
+[31] C. Xie, S. Koyejo, and I. Gupta, “Zeno: Distributed stochastic
+gradient descent with suspicion-based fault-tolerance,” in International
+conference on machine learning. PMLR, 2019, pp. 6893–6901.
+[Online]. Available: https://proceedings.mlr.press/v97/xie19b.html
+[32] N. Tastan, S. Fares, T. Aremu, S. Horvath, and K. Nandakumar,
+“Redefining contributions: Shapley-driven federated learning,” arXiv
+preprint arXiv:2406.00569, 2024, doi:10.48550/arXiv.2406.00569.
+[33] P. A. Apellániz, J. Parras, and S. Zazo, “Improving synthetic data
+generation through federated learning in scarce and heterogeneous data
+scenarios,” Big Data and Cognitive Computing, vol. 9, no. 2, p. 18,
+2025, doi:10.3390/bdcc9020018.
+[34] H. W. Lim, S. Y. Tanjung, I. Iwan, B. N. Yahya, and S.-L. Lee,
+“Fedeach: Federated learning with evaluator-based incentive mechanism
+for human activity recognition,” Sensors, vol. 25, no. 12, p. 3687, 2025,
+doi:10.3390/s25123687.
+[35] X. Lyu, Y. Han, W. Wang, J. Liu, B. Wang, K. Chen, Y. Li,
+J. Liu, and X. Zhang, “Coba: Collusive backdoor attacks with optimized trigger to federated learning,” IEEE Transactions on Depend-
+
+16
+
+able and Secure Computing, vol. 22, no. 2, pp. 1506–1518, 2024,
+doi:10.1109/TDSC.2024.3445637.
+[36] A. Ghorbani and J. Zou, “Data shapley: Equitable valuation
+of data for machine learning,” in International conference on
+machine learning. PMLR, 2019, pp. 2242–2251. [Online]. Available:
+https://proceedings.mlr.press/v97/ghorbani19c.html
+
+Guanming Che is currently pursuing a B.S. degree
+in information security with the Software College,
+Northeastern University, Shenyang, China. His research interests include network security and federated learning.
+
+Qiang Wang received the M.S. degree in information security and the Ph.D. degree in software engineering from Northeastern University, Shenyang,
+China, in 2016 and 2020, respectively. He is currently an associate Professor at Northeastern University, Shenyang, China. His research interests include verifiable computation and secure multi-party
+computation.
+
+Jian Xu received the Ph.D. degree in computer application technology from Northeastern University,
+Shenyang, China, in 2013. He is currently a Professor and Doctoral Supervisor of Software College
+in Northeastern University. His research interests
+include cryptography and network security.
+
+Fucai Zhou received the Ph.D. degree of Computer
+Software and Theory at Northeastern University,
+Shenyang, China, in 2001. He is currently a Professor and Doctoral Supervisor of Software College in Northeastern University. His research interests include cryptography, network security, trusted
+computing, secure cloud storage, software security,
+basic theory and critical technology in electronic
+commerce.
+
+

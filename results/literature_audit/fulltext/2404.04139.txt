@@ -1,0 +1,2200 @@
+Precision Guided Approach to Mitigate Data Poisoning Attacks in
+Federated Learning
+K Naveen Kumar
+
+C Krishna Mohan
+
+Aravind Machiry
+
+Computer Science and Engineering
+Indian Institute of Technology
+Hyderabad, India
+cs19m20p000001@iith.ac.in
+
+Computer Science and Engineering
+Indian Institute of Technology
+Hyderabad, India
+ckm@cse.iith.ac.in
+
+Electrical and Computer Engineering
+Purdue University
+USA
+amachiry@purdue.edu
+
+Federated Learning (FL) is a collaborative learning paradigm enabling participants to collectively train a shared machine learning
+model while preserving the privacy of their sensitive data. Nevertheless, the inherent decentralized and data-opaque characteristics
+of FL render its susceptibility to data poisoning attacks. These attacks introduce malformed or malicious inputs during local model
+training, subsequently inﬂuencing the global model and resulting
+in erroneous predictions. Current FL defense strategies against
+data poisoning attacks either involve a trade-oﬀ between accuracy and robustness or necessitate the presence of a uniformly
+distributed root dataset at the server. To overcome these limitations,
+we present FedZZ, which harnesses a zone-based deviating update
+(ZBDU) mechanism to eﬀectively counter data poisoning attacks
+in FL. The ZBDU approach identiﬁes the clusters of benign clients
+whose collective updates exhibit notable deviations from those of
+malicious clients engaged in data poisoning attack. Further, we
+introduce a precision-guided methodology that actively characterizes these client clusters (zones), which in turn aids in recognizing
+and discarding malicious updates at the server. Our evaluation
+of FedZZ across two widely recognized datasets: CIFAR10 and
+EMNIST, demonstrate its eﬃcacy in mitigating data poisoning attacks, surpassing the performance of prevailing state-of-the-art
+methodologies in both single and multi-client attack scenarios and
+varying attack volumes. Notably, FedZZ also functions as a robust
+client selection strategy, even in highly non-IID and attack-free
+scenarios. Moreover, in the face of escalating poisoning rates, the
+model accuracy attained by FedZZ displays superior resilience compared to existing techniques. For instance, when confronted with a
+50% presence of malicious clients, FedZZ sustains an accuracy of
+67.43%, while the accuracy of the second-best solution, FL-Defender,
+diminishes to 43.36%.
+
+CCS CONCEPTS
+• Security and privacy → Distributed systems security.
+
+Permission to make digital or hard copies of all or part of this work for personal or
+classroom use is granted without fee provided that copies are not made or distributed
+for proﬁt or commercial advantage and that copies bear this notice and the full citation
+on the ﬁrst page. Copyrights for components of this work owned by others than the
+author(s) must be honored. Abstracting with credit is permitted. To copy otherwise, or
+republish, to post on servers or to redistribute to lists, requires prior speciﬁc permission
+and/or a fee. Request permissions from permissions@acm.org.
+Conference’17, July 2017, Washington, DC, USA
+© 2024 Copyright held by the owner/author(s). Publication rights licensed to ACM.
+ACM ISBN 978-x-xxxx-xxxx-x/YY/MM
+https://doi.org/10.1145/nnnnnnn.nnnnnnn
+
+KEYWORDS
+Federated learning, data poisonous attacks, defense, precision guided
+ACM Reference Format:
+K Naveen Kumar, C Krishna Mohan, and Aravind Machiry. 2024. Precision
+Guided Approach to Mitigate Data Poisoning Attacks in Federated Learning.
+In . ACM, New York, NY, USA, 14 pages. https://doi.org/10.1145/nnnnnnn.
+nnnnnnn
+
+1
+
+INTRODUCTION
+
+Federated Learning (FL) is a decentralized machine learning (ML)
+paradigm [1] that facilitates model development using data from
+various sources while preserving their data privacy [5]. It is being
+increasingly adopted in areas with sensitive data, such as Google’s
+Gboard [16] for next-word prediction, medical image recognition [31],
+etc.
+FedAvg [29] + MSimBA attack [22]
+Random sampling
+
+FedAvg [29] + 100% detection (ideal)
+Deviating update (n-way)
+
+95
+
+Global Test Accuracy (%)
+
+ABSTRACT
+
+90
+
+85
+
+80
+C1
+
+C3
+C5
+C7
+Malicious Client IDs
+
+C9
+
+Figure 1: Performance of deviating update against data poisoning attack in FL.
+Poisoning FL system. The data-opaque nature and oﬄoaded training makes FL susceptible to attacks by malicious clients [11]. One
+or more adversarial clients can corrupt the jointly trained global
+model by sending malicious updates [21]. These attacks are further
+classiﬁed into (i) Data poisoning: Here, compromised clients poison training data without interfering with the local model training.
+(ii) Model poisoning: Here, compromised clients poison the model
+instead of data and provide malicious updates to the server. In this
+paper, we concentrate on untargeted data poisoning attacks within
+
+Conference’17, July 2017, Washington, DC, USA
+
+the realm of FL, as this aligns with typical FL production scenarios
+and constitutes a common threat [37]. Speciﬁcally, our focus is on
+generic misclassiﬁcation (untargeted) rather than speciﬁc misclassiﬁcation (targeted) and under nobox attack settings. Several works
+try to defend against data poisoning attacks. However, as we will
+explain in Section 2 , most of them compromise privacy, suﬀer from
+overﬁtting, and/or require prior knowledge of poisoned samples.
+In this paper, we developed a robust defense against data poisoning
+attacks without the above drawbacks, outperforming all the stateof-the-art techniques. Furthermore, we comprehensively assess
+our approach under varying degrees of non-IID distributed data to
+gauge its performance in real-world data distribution settings.
+Deviating update hypothesis. Our defense is based on the hypothesis that the updates from a malicious client doing data poisoning
+(𝐶𝑑𝑝 ) will diﬀer from other benign clients’ updates, and using 𝐶𝑑𝑝
+decreases the accuracy of the global model.
+Based on the above hypothesis, we implemented a simple defense
+against a single client attack. Given 𝑛 clients, in each round, on the
+server side, we computed 𝑛 aggregations (one for each client), i.e.,
+𝑎 1 , 𝑎 2 ,...,𝑎𝑛 , where each 𝑎𝑥 is computed by aggregating updates
+from all clients except for 𝑥’s update. Second, a client update will be
+used for the global model iﬀ it does not diﬀer signiﬁcantly in terms
+of cosine similarity from other updates. This process continues for
+each round, where we perform n-way aggregation of the updates,
+and a client’s update will be used for the global model aggregation if
+it does not diﬀer from the aggregated update from other clients. As
+shown in Figure 1, a preliminary experiment of this simple defense
+works well and outperforms existing solutions. But this simple solution has the following drawbacks. (i) Scalability: Performing n-way
+aggregation for every round does not scale for a large number of
+clients. (ii) Handling multi-client poisoning attacks: n-way aggregation does not handle cases with multiple malicious clients, as all
+aggregations omit only a single client update. For instance, if 𝐶 1
+and 𝐶 2 are malicious, then we should have an aggregation without
+the updates 𝑈 𝑃 1 and 𝑈 𝑃2 so that they can be detected as malicious
+and discarded. But this is not possible in n-way aggregation.
+Ideal solution. We need a way to identify the group of benign
+clients whose aggregated update diﬀers noticeably (with diﬀerence
+𝛼) from malicious client updates with data poisoning attacks. We
+call this the problem of ﬁnding a Poisoning Detecting Aggregation
+Group (PDAG). The aggregated update from PDAG can be used to
+defend against these attacks. As the clients can become malicious
+over time, the composition of PDAG might change over FL rounds.
+We acknowledge that ﬁnding PDAG, especially in active multiclient data poisoning attacks, is hard or rather intractable.
+Our approach: Zone Based Deviating Update (ZBDU). Instead
+of ﬁnding and maintaining a single PDAG, our technique ﬁnds
+and maintains multiple potential PDAGs, which we call Zones. Our
+approach splits all 𝑛 clients into 𝑚 disjoint zones (i.e., 𝑧 1 ,.., 𝑧𝑚 ),
+𝑛 ⌋ clients, distributing them evenly across the
+where each 𝑧𝑥 has ⌊ 𝑚
+zones. In each round, the server performs 𝑚 zone level aggregations
+(𝐴𝑍 1 ,..., 𝐴𝑍𝑚 ) - one for each zone - using update from clients in
+the corresponding zone. We then compare each client update with
+the zone level aggregation (discriminator aggregation) of a zone
+that does not contain the client by using cosine similarity metric
+(𝑐𝑜𝑠𝑖𝑚). For instance, update from client 1, i.e., 𝑈 𝑃 1 will be compared with 𝐴𝑍𝑥 , iﬀ 𝐶 1 ∉ 𝑧𝑥 . Finally, we will use a client update for
+
+K Naveen Kumar, C Krishna Mohan, and Aravind Machiry
+
+the global model aggregation at the server only if it does not differ signiﬁcantly (within 𝛼) from the discriminator aggregation, i.e.,
+𝑐𝑜𝑠𝑖𝑚(𝑈 𝑃1, 𝐴𝑍𝑥 ) > 𝛼. We use a precision guided approach to group
+clients into Zones. Speciﬁcally, given 𝑚, our precision guided approach will actively group the clients into 𝑚 zones, such that the
+global model built using ZBDU is robust against data-poisoning
+attacks by frequently discarding updates from malicious clients. In
+addition, our method serves as a robust client selection technique
+under highly non-IID data and no attack settings. Furthermore, we
+show that our technique also has the formal guarantee of monotonically increasing the accuracy of the global model. We implemented
+our approach in a tool called FedZZ, which can be easily integrated
+into existing FL systems and has no measurable overhead. Our
+evaluation shows that FedZZ is an eﬀective and eﬃcient mitigation method against data poisoning attacks by outperforming the
+existing state-of-the-art methods. In summary, the following are
+our contributions:
+• We propose Zone Based Deviating Update (ZBDU), a new defense
+against untargeted data poisoning attacks.
+• We design and implement FedZZ, which uses a precision-guided
+approach to create and maintain client zones, an important requirement for ZBDU.
+• We extensively evaluated FedZZ with various attack conﬁgurations and show that FedZZ eﬀectively mitigates data poisoning
+attacks by maintaining high accuracy (∼67%) even when the
+attack rate is as high as 50%, outperforming the existing stateof-the-art techniques. Our comparative evaluation also shows
+superior detection rates for FedZZ, with more than 80% detection rate (v/s 50% by existing techniques) and less than 45% false
+positive rate (v/s 80% for existing techniques) for varying attacks.
+• We made our implementation available as open source at github.
+com/NaveenKumar-1311/FEDZZ to assist future research.
+
+2
+
+RELATED WORK
+
+In this section, we will present a broader related work in the area of
+defenses in FL and the use of fuzzing in FL or in general Machine
+Learning (ML).
+
+2.1
+
+Existing Defenses and their Limitations.
+
+Current defense strategies against FL data poisoning attacks typically fall into two categories: anomaly detection [38] or Byzantine robust model aggregation techniques [4, 42] that signiﬁcantly
+reduce the impact of malicious updates. The anomaly detection
+approach involves classifying various elements of client updates
+and discarding updates that deviate from the dominant group. Techniques employed for this purpose vary, depending on the speciﬁc
+attributes of the client update group in question [40]. For instance,
+AUROR [38] employs clustering to identify indicative features,
+which are then used to ﬁlter out toxic updates. Sageﬂow [34] addresses both straggler clients and adversaries through methods
+such as staleness-aware grouping, entropy-based ﬁltering, and lossweighted averaging.
+Recently, DeepSight [35], proposed by Rieger et al.,, underscores
+the signiﬁcance of analyzing updates in neural networks. This
+method incorporates techniques like NormalizEd UPdate energies
+(NEUPs), which evaluate the total magnitude of parameter updates
+
+Precision Guided Approach to Mitigate Data Poisoning Attacks in Federated Learning
+
+Conference’17, July 2017, Washington, DC, USA
+
+for the output layer. However, this also poses a substantial privacy
+concern for client data. The output layer could potentially reveal
+information about the label frequency distribution in the training data,
+rendering it vulnerable to label inference attacks [10]. In contrast, our
+approach leverages a trusted execution environment (TEE) [8, 30].
+The client-side comparison of local and global model updates occurs
+within this environment, and a discard ﬂag is communicated to
+the server. This way, the server is relieved of the responsibility of
+comparing updates, preventing the possibility of label inference
+attacks. Moreover, our defense methodology operates in a black-box
+manner, thereby negating the need for any information about the
+trained model or the learning task. This agnostic nature contributes
+to its widespread applicability and acceptance.
+Few techniques like FLTrust [6] and SIREN [14], operate under
+the assumption that the service provider maintains a clean and small
+training dataset at the server, termed the "root dataset." This dataset
+should adhere to the constraint of being distributed similarly to the
+overall training data distribution across all clients. Additionally, the
+service provider establishes a "server model" based on this dataset to
+initiate trust. Furthermore, collecting a reliable root dataset can be a
+challenging task, and FLTrust’s performance suﬀers when there is a
+signiﬁcant deviation in the distribution of the root dataset compared
+to the training dataset [45]. On the contrary, our approach does
+not require any such root dataset on the server. Further, defenses
+based on novel aggregation techniques [4, 32] require signiﬁcant
+changes to the underlying learning algorithm used in FL systems
+resulting in substantial deployment overhead. As shown by the
+recent work [37], a practical (and applicable to real systems) defense
+technique against untargeted data poisoning attacks that do not
+aﬀect the privacy of clients’ data should be agnostic to the learning
+technique (i.e., black-box) used in a FL system so that the defense is
+applicable to all FL systems. This requirement forces us to develop
+an anomaly-based technique as it can be agnostic to the learning
+algorithm used in FL.
+
+An optimization usually guides the use of mutation techniques. For
+instance, in the case of fuzzing, the optimization is usually code coverage [39]. Consequently, the fuzzer uses mutation techniques on
+existing or base input that can potentially improve code coverage.
+Similar to FL, the mutation-based input generation is an iterative
+process, and the selection of mutation strategies changes over time
+based on their eﬀectiveness [25].
+
+2.2
+
+Fuzzing in Deep Learning
+
+Fuzzing or fuzz testing [12, 27, 28] is an automated software testing
+technique widely used to ﬁnd system program failures. Fuzzing is
+proved to be very eﬀective in identifying vulnerabilities and threats
+in software systems [7, 15, 19]. Few works, such as TensorFuzz [33]
+and DeepHunter [41], have tried to use fuzzing to detect potential defects of general-purpose deep neural networks. However, to
+our knowledge, there is no explicit use of fuzzing in FL to defend
+against data-poisoning attacks. We map the fuzzer-generated inputs
+to zones and use the precision of the learned model to guide the
+zone selection. The use of fuzzing to generate a sequence of tokens
+has been explored before to fuzz interpreters [36]. However, instead
+of modifying the input generation, we perform post-processing of
+the generated input to map clients to diﬀerent zones. Our approach
+allows the fuzzer to fully use its input generation ability and enables FedZZ to be easily conﬁgurable to use other fuzzers.
+
+2.3
+
+Guided Mutation for Input Generation
+
+Mutation techniques, such as crossover and bitﬂips [43], are commonly used as an eﬀective way to generate interesting inputs, especially in the domain of automated software testing (e.g., Fuzzing [27]).
+
+3
+
+THREAT MODEL
+
+We derive our threat model from realistic FL deployments (e.g.,
+Google’s Mobile keyboard Prediction [16, 37]), where clients provide the data for local model training. The clients cannot interfere
+with the training procedure i.e., trusted execution environment (TEE)
+[8, 30], and the communication with the server occurs through an
+encryption channel and hence cannot be interfered with. As shown
+by the recent work [21, 37], our threat model is the most realistic
+and of practical use in FL. Based on this, we present the goals and
+capabilities of the attacker and the assumptions we make about
+the FL setup.
+3.0.1 Attacker Goal. The main goal of the attacker is to make the
+global model (i.e., the one used to perform testing on the server)
+mispredict/misclassify data and thereby have a reduced global test
+accuracy (GTA). The attacker is interested in generic misclassiﬁcation (untargeted) rather than speciﬁc misclassiﬁcation (targeted).
+3.0.2 Attacker Capabilities. We assume the attacker has the following capabilities on the server and compromised clients.
+Server side. We assume the server is trustworthy, incurious about
+updates, and a black-box to the attacker. As such, the attacker has no
+access to parameters or predictions of the global model as we focus
+on training time (causative) attack.
+Client side. We assume that the attacker controls the data used
+in one (single-client attack) or more clients (multi-client attack).
+Precisely, the attacker can only manipulate the local data of the
+compromised clients with no access to the compromised clients’
+training procedure or communication with the server. However,
+the attacker can access the predictions of a compromised client’s
+local model on any chosen data. We assume an active attacker with
+a repeat and adaptive poisoning of the compromised clients’ data,
+so the attack persists over the entire FL training. In summary, the
+attacker has control of all the data provided to train a local model
+on compromised clients and can also know the predictions of these
+clients’ local model on any chosen data. But the attacker can neither
+interfere with the local model’s training process nor access its internal parameters. Clients’ local training mechanism communicates
+with the server over an encrypted channel and hence cannot be
+interfered with. Figure 2 shows the client side execution in FedZZ.
+Using the terms deﬁned in the recent work [37], our threat model
+can be called nobox (no access to server side), online (can modify client side data continuously), data poisoning attack. The goal
+of FedZZ is to maximize the global test accuracy by identifying
+client groups to aggregate by dropping the updates from malicious
+clients.
+
+Conference’17, July 2017, Washington, DC, USA
+
+exhibit signiﬁcantly higher similarities compared to benign ones,
+thus establishing a discernible distinction. Similarly, Bagdasaryan
+et al. [2] employ cosine similarity to gauge the congruence between the local model and the global model, utilizing a boosting
+factor to amplify the similarity for malicious updates, enabling
+their detection. Furthermore, the defense strategies presented by
+Lu et al. [24] encompass both model pre-aggregation with cosine
+similarity assessment and backdoor neuron activation. Notably, the
+pre-aggregated model closely approximates the backdoor model
+upon successful attacks, resulting in elevated cosine similarity, a
+value that tends to deviate substantially for benign updates.
+Aligned with these research insights, our work leverages the
+cosine similarity metric to compare updates from locally trained
+and global models robustly, ultimately generating the discard ﬂag.
+The strength of this approach lies in the contextual constraints
+of the threat model, wherein the client’s capability is conﬁned to
+providing data without the ability to inﬂuence the training procedure. This fortiﬁes the defense mechanism, rendering it resilient
+against adaptive data poisoning attacks. The inherent dynamics of
+successful attacks become discernible by juxtaposing the locally poisoned model, crafted through data poisoning attack, with the global
+aggregated model encompassing all other updates. Typically, the
+divergence in directions renders benign updates markedly distinct,
+consequently resulting in smaller cosine similarity. In summary,
+the employment of cosine similarity within this defense framework
+is substantiated by its proven eﬃcacy in discerning malicious clients
+and deviations caused by data poisoning attacks in FL paradigms, as
+demonstrated by prior research endeavours [2, 11, 24, 26, 44]. Finally,
+the new update, 𝑈 𝑃𝑖 , and the 𝐷𝐹 ﬂag will be returned to the server,
+as shown in Algorithm 1. As mentioned in Section 3, the client can
+only provide data and cannot aﬀect the training procedure.
+Figure 2 shows the client side execution. In the case of benign
+clients, the local update will not diﬀer much from the zone level
+aggregated update, and consequently, 𝐷𝐹 will not be set - which will
+cause the server to use the update for aggregating into the global
+model. Whereas in the case of malicious clients using poisoned data,
+the local model update diﬀers noticeably and sets the 𝐷𝐹 , causing
+the server to discard the update.
+
+4.3
+
+Convergence Analysis of FedZZ
+
+The theorem provides mathematical proof for the convergence of
+the FedZZ zones calibrator towards the local minimum of the loss
+function.
+Theorem 4.1. Let L be the global cross-entropy loss function in
+relation to the zone map generated by the FedZZ zones calibrator
+using the AFL++ algorithm [43]. The sequence of cross-entropy loss
+values of the global model 𝑤 𝐺 obtained from the generated zone map
+𝑍 at a global epoch 𝑡, denoted as L (𝑤𝑡𝐺 | 𝑍𝑡 )𝑡 ≥1 , is non-increasing
+∗
+and will converge to the local minimum L (𝑤 𝐺 | 𝑍 ∗ ) in ﬁnite time.
+Proof. We use mathematical induction to prove the theorem.
+Basis step: When 𝑡 = 1, FedZZ zones calibrator using the AFL++
+algorithm generates the initial zone map 𝑍 0 , which is a random
+mapping. Since the cross-entropy loss function is non-negative,
+we have L (𝑤 1𝐺 | 𝑍 1 ) ≤ L (𝑤 0𝐺 | 𝑍 0 ), and the sequence is nonincreasing. Also, the AFL++ uses a genetic algorithm to explore the
+
+K Naveen Kumar, C Krishna Mohan, and Aravind Machiry
+
+state space and generate zone maps that result in a higher global
+test accuracy (feedback to AFL++) and a lower cross-entropy loss.
+Therefore, we have L (𝑤 1𝐺 | 𝑍 1 ) ≤ L (𝑤 0𝐺 | 𝑍 0 ).
+Induction step: Assume that for some 𝑘 ≥ 1, the sequence
+𝑇
+L (𝑤𝑡𝐺 | 𝑍𝑡 )𝑡 ≥1 is non-increasing, i.e., L (𝑤 1𝐺 | 𝑍 1 ) ≤ L (𝑤 0𝐺 |
+𝑍 0 ), . . . L (𝑤𝑇𝐺 | 𝑍𝑇 ) ≤ L (𝑤𝑇𝐺−1 | 𝑍𝑇 −1 ) and converges to the local
+∗
+minimum L (𝑤 𝐺 | 𝑍 ∗ ). We need to show that, the statement holds
+true for 𝑡 = 𝑇 + 1, i.e., L (𝑤𝑇𝐺+1 | 𝑍𝑇 +1 ) ≤ L (𝑤𝑇𝐺 | 𝑍𝑇 ).
+Since L is a continuous function of 𝑤𝐺 , and 𝑍 is a zone map
+generated by the AFL++ algorithm, there exists a small enough
+positive constant 𝜃 such that L (𝑤𝑇𝐺+1 | 𝑍𝑇 +𝜃 (𝑍𝑇 −𝑍 ∗ )) ≤ L (𝑤𝑇𝐺 |
+𝑍𝑇 ). This means that the AFL++ algorithm can generate a zone
+map
+𝑍𝑇 +1 = 𝑍𝑇 + 𝜃 (𝑍𝑇 − 𝑍 ∗ )
+(1)
+𝐺
+𝐺
+such that L (𝑤𝑇 +1 | 𝑍𝑇 +1 ) ≤ L (𝑤𝑇 | 𝑍𝑇 ). Since the goal of AFL++
+is to ﬁnd a zone map that minimizes L, which corresponds to
+ﬁnding a zone map that performs well in discarding malicious
+clients, at each calibration round. Hence, we can ﬁnd a new zone
+map 𝑍𝑇 +1 that has a lower value of L than the previous zone map
+𝑍𝑇 .
+In particular, the Eq. 1 implies that we can always ﬁnd a small
+enough perturbation 𝜃 to the previous zone map 𝑍𝑇 such that
+the new zone map 𝑍𝑇 +1 = 𝑍𝑇 + 𝜃 (𝑍𝑇 − 𝑍 ∗ ) (where 𝑍 ∗ is the optimal zone map) has a lower value of L (𝑤 𝐺 ) than the previous
+zone map 𝑍𝑇 . This perturbation is chosen in the direction of 𝑍 ∗
+(i.e., towards the optimal zone map), which ensures that the algorithm is making progress towards the optimal zone map. Therefore,
+we have L (𝑤𝑇𝐺+1 | 𝑍𝑇 +1 ) ≤ L (𝑤𝑇𝐺 | 𝑍𝑇 ), as the sequence is nonincreasing. By the induction hypothesis, it is clear that the sequence
+𝑇
+L (𝑤𝑡𝐺 | 𝑍𝑡 )𝑡 ≥1 is non-increasing and converges to the local mini∗
+mum L (𝑤 𝐺 | 𝑍 ∗ ).
+Finally, by mathematical induction, we conclude that the se𝑇
+quence L (𝑤𝑡𝐺 | 𝑍𝑡 )𝑡 ≥1 is non-increasing and converges to the local
+∗
+minimum L (𝑤 𝐺 | 𝑍 ∗ ), and the AFL++ algorithm converges to
+the local minimum of the cross-entropy loss function. Since the
+cross-entropy loss is a non-negative function, this sequence must
+converge to a ﬁnite value. Thus, the AFL++ algorithm guarantees
+that the system will converge to the desired state 𝑍 ∗ in ﬁnite time.
+In addition, as there are a ﬁnite number of possible zone maps
+𝑛!
+(𝑛/𝑚)!𝑚 , the AFL++ algorithm generates zone maps that result in
+a decreasing cross-entropy loss over time and guarantees that the
+system will reach the desired state 𝑍 ∗ in ﬁnite time.
+
+
+5
+
+IMPLEMENTATION
+
+We implemented FedZZ zones calibrator by modifying AFL++.
+This simpliﬁed our implementation, as AFL++ already has various
+mutation strategies and uses techniques, such as fork server, to
+achieve very high execution rates. The FL server is modiﬁed to
+expose a RESTful interface that encapsulates the computation of
+the feedback for a given 𝑍𝑚𝑢𝑡 . Our modiﬁed AFL++ communicates
+with the REST interface to get the feedback (i.e., precision in the
+form of global test accuracy) for each mutated input (i.e., 𝑍𝑚𝑢𝑡 ).
+This separation of FL server execution, in addition to providing
+modularity, also enables users to conﬁgure the feedback metric or
+develop a custom metric without worrying about the internals of FL
+
+Precision Guided Approach to Mitigate Data Poisoning Attacks in Federated Learning
+
+Table 1: Experimental details
+Name
+Value
+Clients
+40
+Classiﬁcation model
+ResNet18 [17]
+Global epochs
+300
+Local epochs
+5
+non-IID parameter
+0.1, 0.5, 1 (default), 5, 10
+Batch size
+64
+𝜂
+0.01
+𝛼
+0.80, 0.90, 0.95, 0.97 (default), 1
+Attack methods
+MSimBA [22], DPA-SLF [37], and DPA-DLF [37]
+Attack settings
+single-client, multi-client
+Single-client attack IDs
+𝐶 1, 𝐶 3, 𝐶 5, 𝐶 7, and 𝐶 9
+Multi-client attack conﬁguration
+20%, 30%, 40%, and 50% malicious clients
+
+execution. Further, the entire mutator selector setup is unaware
+of the type of machine learning model, dataset, and execution and
+treats the server as a black-box.
+
+6
+
+EVALUATION
+
+We use the following research questions to guide our evaluation.
+• RQ1- Eﬀectiveness: How eﬀective is FedZZ in mitigating data
+poisoning attacks by building a precise global model?
+• RQ2- Comparison with the State-of-the-art: How eﬀective
+is FedZZ compared to existing state-of-the-art approaches?
+• RQ3- Ability to perform under varying degree of non-IID:
+How eﬀective is FedZZ compared to existing state-of-the-art
+approaches with malicious updates and non-IID benign updates?
+• RQ4- Detection Rate: How eﬀective is our ZBDU technique in
+identifying clients performing data poisoning attacks?
+• RQ5- Overhead: What is the overhead of using FedZZ in existing FL systems?
+
+6.1
+
+Datasets and FL Setup
+
+We utilize two standard classiﬁcation datasets for our evaluation,
+namely, CIFAR10 [20] and EMNIST [9]. CIFAR10 comprises 60,000
+samples with ten classes. EMNIST consists of 671,585 samples of
+handwritten characters and digits distributed across 62 classes,
+encompassing upper and lowercase handwritten characters. We
+partition these datasets into 80% train and 20% test sets. The server
+test set is employed to calculate the global model accuracy. To
+maintain a consistent image size, we scale the images in these
+datasets to an average resolution of 224 × 224. Table 1 presents
+the details about the FL setup and other parameters. We conducted
+each experiment ﬁve times and presented the results and graphs as
+the average outcomes of these ﬁve simulations. We used Python
+version 3.6 with frameworks like PyTorch, pandas, and NumPy. We
+implemented the experiments such that the local model training at
+the clients and global model testing at the server happens on the
+Nvidia Tesla M60 GPU with 8GB RAM.
+
+6.2
+
+Baselines and FedZZ Conﬁgurations
+
+We use the following baselines and conﬁgurations of FedZZ to
+evaluate its eﬀectiveness:
+• FedAvg [29]: FL with FedAvg aggregation and no defense. Ideally, FedZZ should perform similar to this baseline under no
+attack scenarios.
+
+Conference’17, July 2017, Washington, DC, USA
+
+• FL100 (Ideal): FL system with max possible accuracy. Here the
+server knows the malicious client ids, and the detection rate is
+100%. This represents the upper bound for defense techniques.
+• Random Sampling (RS) of the Clients: This represents FL system
+with random sampling of clients for every round. As FedZZ
+involves generating zones and dropping the malicious client updates. It should perform better than the server’s random sampling
+of the clients at every communication round.
+• n-way: This represents our hypothesis of n-way aggregation (Section 1), where we always have 𝑛 zones, where each zone contains
+clients except one. It is the expected performance of FedZZ in
+single client attacks. However, we expect this to perform poorly
+in multi-client attack cases.
+• FedZZ Conﬁgurations: We use three conﬁgurations of FedZZ
+with diﬀerent number of zones. Speciﬁcally, FedZZ10 (𝑚 =
+10), FedZZ5 (𝑚 = 5), and FedZZ2 (𝑚 = 2).
+
+6.3
+
+Eﬀectiveness
+
+We use the Global Test Accuracy (GTA) as the metric to evaluate the
+eﬀectiveness of our approach (FedZZ10, FedZZ5, FedZZ2) against
+other conﬁgurations. Speciﬁcally, we compute 𝐺𝑇 𝐴 as the accuracy
+of the global model after stabilization (i.e., 300 global epochs) on
+D𝑇 𝑒𝑠𝑡 . Formally, 𝐺𝑇 𝐴 = 𝑇|D𝑃 +𝑇 𝑁| × 100, where 𝑇 𝑃, 𝑇 𝑁 are true
+𝑇 𝑒𝑠𝑡
+positives and true negatives given by the aggregated global model.
+For a robust defense technique, 𝐺𝑇 𝐴 is expected to be similar to
+FL100’s 𝐺𝑇 𝐴 (the ideal defense) under diﬀerent attack settings.
+No Attack or Base Case: We tested FedZZ conﬁgurations with
+no attack scenario and observed that the 𝐺𝑇 𝐴 is mostly the same, in
+fact, higher in a few cases than the base FL. This is expected because,
+as shown by the recent work [3], we often do not need updates
+from all clients to build a precise model in FL.
+Attack Cases: Figure 4 and Figure 5 present the results of diﬀerent
+techniques under single and multi-client attack settings, respectively.
+Single-client attack: In the CIFAR10 dataset (Figure 4a, 4b), ﬁrst, FedZZ
+conﬁgurations outperform random sampling demonstrating the
+base eﬀectiveness of our technique. As expected (Section 1), n-way
+aggregation performs best and is close to the ideal defense (i.e.,
+FL100). It is interesting to see that the eﬀectiveness of FedZZ10
+and FedZZ5 are relatively the same, with FedZZ5 being superior in
+a few cases. However, the eﬀectiveness drops as we further decrease
+the number of zones to 2 (i.e., FedZZ2). As we decrease the number
+of zones, the eﬀect of a client update on zone aggregation decreases.
+In the case of FedZZ10 with ten zones and each with four clients, a
+single malicious client can be in any of the ten zones and has a 1/4
+(25%) contribution to the aggregation. For FedZZ5 with ﬁve zones
+and each with eight clients, a client has 1/8 (12.5%) contribution.
+Similarly, for FedZZ2, the contribution is further decreased to 1/20
+(5%). However, the number of clients that receives a zonal update
+increases, which increases the probability of a client receiving an
+update from a zone. In the case of FedZZ10, a client receiving the
+update from a zone is 10% (4/40). For FedZZ5, its 20% (8/40) and
+for FedZZ2, its 50% (20/40).
+In summary, as we decrease the number of zones, both true positives and false negatives for detecting malicious clients increases.
+Similarly, increasing the number of zones increases false positives
+
+Conference’17, July 2017, Washington, DC, USA
+
+K Naveen Kumar, C Krishna Mohan, and Aravind Machiry
+
+FL100
+
+FedAvg
+
+RS
+
+n-way
+
+FedZZ10
+
+FedZZ5
+
+FedZZ2
+
+95
+
+95
+
+87
+
+85
+
+90
+
+85
+
+80
+
+80
+C1
+
+C3
+C5
+C7
+Malicious Client IDs
+
+(a) On CIFAR10 with calibration
+every 5 epochs (𝜉 = 5).
+
+86
+85
+84
+
+C3
+C5
+C7
+Malicious Client IDs
+
+C9
+
+C1
+
+(b) On CIFAR10 with 𝜉 = 10
+
+86
+85
+84
+83
+
+83
+
+C1
+
+C9
+
+Global Test Accuracy (%)
+
+90
+
+Global Test Accuracy (%)
+
+Global Test Accuracy (%)
+
+Global Test Accuracy (%)
+
+87
+
+C3
+C5
+C7
+Malicious Client IDs
+
+C1
+
+C9
+
+(c) On EMNIST with 𝜉 = 5.
+
+C3
+C5
+C7
+Malicious Client IDs
+
+C9
+
+(d) On EMNIST with 𝜉 = 10.
+
+Figure 4: Eﬀectiveness on single-client attacks: Comparison of Global Test Accuracy (𝐺𝑇 𝐴) of various baselines across diﬀerent
+datasets and calibration granularities.
+FL100
+
+FedAvg
+100
+
+100
+
+80
+
+80
+
+RS
+
+n-way
+
+FedZZ10
+
+FedZZ5
+
+FedZZ2
+80
+
+40
+
+60
+
+40
+
+20
+
+20
+
+20
+
+30
+40
+Attack Percentage (%)
+
+(a) On CIFAR10 with 𝜉 = 5.
+
+50
+
+20
+
+30
+40
+Attack Percentage (%)
+
+50
+
+(b) On CIFAR10 with 𝜉 = 10.
+
+Global Test Accuracy (%)
+
+60
+
+Global Test Accuracy (%)
+
+Global Test Accuracy (%)
+
+Global Test Accuracy (%)
+
+80
+
+60
+
+40
+
+20
+
+20
+
+30
+40
+Attack Percentage (%)
+
+(c) On EMNIST with 𝜉 = 5.
+
+50
+
+60
+
+40
+
+20
+
+20
+
+30
+40
+Attack Percentage (%)
+
+50
+
+(d) On EMNIST with 𝜉 = 10.
+
+Figure 5: Eﬀectiveness on multi-client attacks: Comparison of Global Test Accuracy (𝐺𝑇 𝐴) of various baselines across diﬀerent
+datasets and calibration granularities.
+and true negatives. Conﬁguring the number of zones appropriately
+is important for the best performance. The trend is similar but
+more pronounced in the EMNIST dataset. Another interesting observation is that as we increase the calibration interval (i.e., 𝜉), the
+eﬀectiveness of FedZZ conﬁgurations decreases (Figure 4a v/s 4b
+and Figure 4c v/s 4d). This is expected because there are fewer
+opportunities to calibrate (60 (300/5) v/s 30 (300/10)). This allows
+the malicious clients to have more eﬀect on the global model (i.e., 5
+v/s 10).
+Multi-client attack (Figure 5): We observe that FedZZ continuously
+outperforms n-way and random sampling in multi-client attack
+settings as shown in Figure 5. As mentioned in Section 1, this is
+expected as the n-way of aggregating model updates results in 𝑛
+aggregated models with multiple malicious updates. The FedZZ
+displayed robustness and was able to retain a high accuracy (∼ 77%)
+even under hard attack (50%) scenarios, compared to n-way and
+random sampling. The Figure 5a and 5b present the results on CIFAR10 dataset which show FedZZ10, FedZZ5, and FedZZ2 perform
+better than random sampling. Similar to the single client attack
+case, FedZZ5 has shown better performance compared to FedZZ10
+and FedZZ2. The trend is more pronounced in the EMNIST dataset
+
+as shown in Figure 5c and 5d. We believe that the inter & intraclass variability of EMNIST and CIFAR10 datasets, along with a
+diﬀerence in the number of classes, can be the reason for this.
+
+Answer to RQ1: In summary, as expected, n-way showed better 𝐺𝑇 𝐴 in the single-client attack setting, and FedZZ is close to
+n-way with a diﬀerence of ≈ 2%. On the contrary, FedZZ outperformed n-way and other methods in the multi-client attack setting
+by a large margin.
+
+6.4
+
+Comparison with Existing Defenses
+
+We have selected the following state-of-the-art techniques based
+on their up-to-dateness and relevance. Then, we categorized them
+into four groups, including other baselines and conﬁgurations from
+Section 6.2. These categories are (1) 100% detection rate (FL100),
+(2) client selection techniques (RS, DivFL [3]), (3) aggregation techniques including byzantine robust (FedAvg [29], Krum [4], Trimmed
+mean (TM)[42], Median [42], FLTrust [6]), and (4) very recent defense methods including those from 2022 (FLAME [32]) and 2023
+
+Precision Guided Approach to Mitigate Data Poisoning Attacks in Federated Learning
+
+Conference’17, July 2017, Washington, DC, USA
+
+(LoMar [23], FL-Defender [18]). We have categorized these techniques to provide a comprehensive overview of the current stateof-the-art techniques in this ﬁeld. Table 2 shows our comparison
+results, where we report the 𝐺𝑇 𝐴 of the global model.
+CIFAR10 dataset: DivFL, with its submodular optimization, is able
+to outperform all other methods under no attack settings, whereas
+FedZZ is close with (≤ 10%). However, under high non-IID non attack settings (as explained further in Section 6.5 and Appendix A.1),
+FedZZ has demonstrated its eﬀectiveness as a strong client selection technique and outperformed DivFL. According to the ﬁndings
+in FLTrust [6], the performance is contingent on the similarity between the root dataset distribution and the overall training data
+distribution. Speciﬁcally, FLTrust performs well when the two distributions are not signiﬁcantly divergent. However, when evaluated
+against other baselines with a given root data distribution at the
+server, FLTrust performed poorly for all attack settings. Under
+single-client attack, n-way is expected to perform better, but FedZZ
+is able to stand second compared to other defense methods with
+≤ 2%. Furthermore, FedZZ outperformed all the methods under
+multi-client attack settings. The eﬀectiveness of FedZZ is clearly
+observed with (≥ 20%) improvement compared to existing defenses
+under higher attack percentage settings (40% and 50%). This shows
+the robustness of FedZZ in retaining the accuracy under hard attack
+settings.
+EMNIST dataset: Although, under single-client attack, trimmed
+mean (TM) outperformed all methods, FedZZ is close to ≤ 1%.
+On the other hand, for the multi-client attacks with small attack
+percentages, 20% and 30%, LoMar can outperform other methods.
+However, FedZZ is close with ≤ 1%. The eﬀectiveness of FedZZ can
+be observed at higher attack percentages of 40% and 50%, where
+other techniques, such as TM, is highly ineﬀective and result in
+very low accuracy of 22.42% and 6.71%. This is expected, as trimming model updates across all clients results in considering all
+malicious updates for aggregation. Hence, the aggregated global
+model performs poorly under higher attack percentages. We can
+see a similar trend with FLAME, LoMar, and other defense methods
+whose accuracy also dropped with large attack percentages. We
+observe that measuring the relative distribution of model updates
+is inadequate for approximating the nearest neighbour search in
+LoMar, resulting in poor scoring of model updates. This is primarily
+due to the high malicious rate of model updates, leading to a signiﬁcant drop in accuracy. This shows that FedZZ can eﬀectively detect
+the poisonous updates and helps in maintaining robust accuracy
+even under high attack percentages (> 30%).
+Nevertheless, LoMar and FL-Defender are comparable to our
+performance in a few cases, they share certain limitations concerning privacy and eﬀective update diﬀerentiation. LoMar method
+includes the potential for privacy breaches due to analyzing update
+distributions. Moreover, LoMar may struggle with distinguishing
+between malicious updates and highly non-IID benign updates,
+which are prevalent in real-world FL scenarios. FL-Defender involves potential privacy concerns due to analyzing gradients. Additionally, FL-Defender’s reliance on last-layer gradients might lead
+to challenges in distinguishing between sophisticated attacks and
+naturally occurring deviations in benign gradients. We also performed a comparative evaluation on other data-poisoning attacks
+
+Table 2: Comparison of global test accuracy (%) with existing
+defenses from diﬀerent categories under MSimBA [22] attack.
+Bold result indicates the best result for setting.
+CIFAR10
+EMNIST
+No
+No
+1A 20% 30% 40% 50%
+1A 20% 30% 40% 50%
+Attack
+Attack
+FL100
+94.54 93.44 93.36 93.18 93.27 94.48 87.96 87.07 87.61 87.2 86.89 86.63
+RS
+94.57 82.98 75.33 71.26 20.33 11.81 87.41 84.21 79.01 76.58 69.05 9.29
+DivFL [3]
+94.86 74.12 72.08 71.19 43.14 11.17 87.26 86.05 84.32 83.64 67.16 38.01
+FedAvg [29]
+94.54 79.93 73.83 69.26 37.18 10.78 87.96 84.16 72.86 73.49 47.38 23.45
+Krum [4]
+94.62 83.77 81.40 78.36 49.9 38.26 87.64 86.44 83.86 81.05 36.24 21.62
+TM [42]
+94.64 81.2 80.3 79.54 27.5 12.8 87.79 87.04 85.36 85.38 22.42 6.71
+Median [42]
+94.68 85.86 76.64 75.42 19.86 15.42 86.92 85.34 84.32 82.36 29.83 7.92
+FLTrust [6]
+12.85 9.95 9.95 9.95 9.95 9.95 10.45
+5.6
+4.8
+4.8
+4.8
+4.8
+FLAME [32]
+94.58 85.26 81.2 78.24 55.46 30.6 87.39 86.31 85.71 82.38 75.17 65.63
+LoMar [23]
+94.74 87.65 83.38 78.3 63.26 41.28 87.65 85.96 86.12 82.21 81.07 69.43
+FL-Defender [18] 94.73 84.15 82.26 71.28 58.91 43.36 86.97 86.08 85.19 83.38 82.41 71.92
+n-way
+94.51 90.89 73.12 70.12 25.46 10.6 87.05 86.71 80.26 79.62 20.72 14.5
+FedZZ
+94.76 88.95 86.24 85.23 73.56 67.43 87.84 86.57 85.55 83.61 84.17 77.74
+Defense
+
+and showed that FedZZ outperforms all the existing techniques
+across various attack conﬁgurations.
+Answer to RQ2: In summary, FedZZ can outperform other existing defense methods under single and multi-client attack settings
+for both datasets. We observe that FedZZ performs especially well
+under realistic attack settings (> 30%) in comparison with existing
+defenses. Overall, FedZZ shows an improvement of ≥ 20%, ≥ 10%
+under 40% attack for CIFAR10 and EMINIST datasets, respectively.
+Further, FedZZ shows an improvement of ≥ 35%, ≥ 11% under
+50% attack for CIFAR10 and EMNIST datasets, respectively, demonstrating to be a robust defense.
+
+6.5
+
+Analysis under Varying Degree of non-IID
+
+To assess the eﬀectiveness of our proposed method in handling
+highly non-IID settings, we conducted experiments on the CIFAR10
+dataset with varying degrees of non-IID by using diﬀerent 𝛽 values
+(0.1, 0.5, 1, 5, and 10), where lower 𝛽 values resulted in sparsely distributed (unbalanced) data among clients with 0 data in some cases,
+whereas larger 𝛽 values led to densely distributed (balanced) data
+with more data per class for each client. To ensure a fair comparison,
+we evaluated our method against the best performing baselines in
+each defense category, i.e., Krum, DivFL, LoMar, FL-Defender, and
+FedAvg. A summary of the results is shown in Figure 6. We present
+a detailed analysis of corresponding results in Appendix A.1.
+Answer to RQ3: Our results show that FedZZ outperforms existing methods in handling diverse updates, particularly those
+involving poisonous and highly non-IID updates. Speciﬁcally, the
+accuracy of FedZZ remains less aﬀected by changes in the level
+of non-IID.
+Under single-client attack conditions, DivFL and Krum perform
+poorly, as they are designed for good and IID updates, respectively.
+Under 30% maliciousness, DivFL performs poorly, followed by FedAvg without any defense and Krum. Additionally, as the level of
+non-IID decreases (𝛽 increases), all the evaluated methods show a
+performance improvement.
+
+Conference’17, July 2017, Washington, DC, USA
+
+K Naveen Kumar, C Krishna Mohan, and Aravind Machiry
+
+Krum
+
+FedAvg
+
+DivFL
+
+LoMar
+
+FedZZ
+
+FL-Defender
+
+Global Test Accuracy (%)
+
+Global Test Accuracy (%)
+
+94
+
+93
+
+Global Test Accuracy (%)
+
+90
+95
+
+80
+70
+60
+50
+
+92
+
+0.1
+
+0.5
+1
+5
+Degree of non-IID (𝛽)
+
+10
+
+40
+
+80
+
+60
+
+40
+
+20
+
+0.1
+
+(a) No Attack
+
+0.5
+1
+5
+Degree of non-IID (𝛽)
+
+10
+
+0.1
+
+(b) Single-client
+
+0.5
+1
+5
+Degree of non-IID (𝛽)
+
+10
+
+(c) Multi-client (30%)
+
+Figure 6: Comparison of GTA of various techniques with diﬀerent degrees of non-IID using Dirichlet distribution for CIFAR10.
+
+𝐷𝑅 =
+
+|𝑇𝑜𝑡𝑎𝑙 𝐷𝑟𝑜𝑝𝑝𝑒𝑑 𝑀𝑎𝑙𝑖𝑐𝑖𝑜𝑢𝑠 𝑈 𝑝𝑑𝑎𝑡𝑒𝑠 |
+× 100,
+|𝑂𝑟𝑖𝑔𝑖𝑛𝑎𝑙 𝑀𝑎𝑙𝑖𝑐𝑖𝑜𝑢𝑠 𝑈 𝑝𝑑𝑎𝑡𝑒𝑠 | × 𝑇
+
+where 𝑇 is the number of global epochs. The 𝐷𝑅 measures the
+percentage of detections out of all malicious updates over the entire
+training period of 𝑇 epochs.
+Single-client Attack: Figure 9 in Appendix present the results
+of 𝐷𝑅 across various conﬁgurations of FedZZ under single client
+attack. As expected, the detection rate of various FedZZ conﬁgurations is better than random sampling, demonstrating the eﬀectiveness of the ZBDU technique. The detection rate decreases across
+all of FedZZ conﬁguration as we increase the calibration interval
+(Figure 9a v/s 9b and Figure 9c v/s 9d in Appendix). This is expected
+because of the fewer possible calibrations and, consequently, few
+chances to determine the appropriate zone map. The trend is the
+same across both CIFAR (Figure 9a, 9b) and EMNIST (Figure 9c, 9d)
+datasets. As explained in Section 6.3, decreasing the number of
+zones tend to increase true positives. We can see this from the
+higher detection rate of FedZZ5 compared to FedZZ10 as shown
+in Figure 11 (in Appendix). However, excessively decreasing the
+number of zones dilutes the eﬀect of the malicious update and consequently results in a lower detection rate, as shown by the lower
+percentages for FedZZ2 compared to FedZZ5. We observe that as
+the training progresses, our technique ZBDU learns to detect data
+poisoning clients, and consequently, detections increase across all
+conﬁgurations.
+Multi-client Attacks: The results in Figure 7 illustrate the performance of diﬀerent FedZZ conﬁgurations in a multi-client attack
+scenario, speciﬁcally in terms of detection rate (𝐷𝑅). These conﬁgurations consistently outperform n-way and random sampling
+methods. The improvement in detection rate is evident as the calibration interval (𝜉) of FedZZ5 increases for 40% and 50% attack
+scenarios, as FedZZ5 beneﬁts from a longer period to comprehend
+
+the behavior of malicious client updates, particularly in high attack scenarios. However, FedZZ10 and FedZZ2 exhibit varying
+detection behavior as the calibration interval (𝜉) is extended due to
+discrepancies in the number of clients per zone. In this context, nway aggregation of model updates generates 𝑛 aggregated models,
+each containing multiple malicious updates, making it substantially
+intricate to identify multiple malicious client updates within this
+framework. As anticipated, FedZZ5 consistently showcases the
+highest detection rate across numerous conﬁgurations, surpassing
+n-way and random sampling methodologies in multi-client attack
+scenarios, as evident in both Figure 7a and Figure 7b. The challenge
+of detecting multiple malicious client updates under the n-way
+aggregation method is acknowledged, given multiple malicious updates in all aggregated models. Similarly, the challenge of detecting
+malicious client updates in FedZZ2, which includes two zones with
+varying proportions of malicious clients, is noted. It’s important
+to note that we avoid comparing our method’s detection rate with
+baselines like DivFL [3], LoMar [23], FL-Defender [18], FLTrust [6],
+FLAME [32], and Byzantine-robust aggregation techniques, as these
+approaches involve mechanisms to suppress malicious updates before aggregation, often through scoring, clustering, or weighting
+model updates. We focus solely on comparing the detection rate of
+our approach against relevant baseline methods.
+n-way
+
+RS
+
+FedZZ10
+
+FedZZ5
+
+FedZZ2
+
+100
+
+100
+
+80
+
+80
+
+Detection Rate (%)
+
+Detection Rate
+
+Detection Rate (%)
+
+6.6
+
+We evaluate the malicious client detection rate of our approach
+(FedZZ10, FedZZ5, FedZZ2) against RS, n-way. We calculate the
+detection rate metric as
+
+60
+
+40
+
+60
+
+40
+
+20
+
+20
+
+5
+
+20-
+
+10 30-5 0-10 40-5 0-10 50-5 0-10
+3
+5
+4
+
+20-
+
+Attack Percentage (%) - Calibration Interval (𝜉)
+
+(a) CIFAR10
+
+5
+
+20-
+
+10 30-5 0-10 40-5 0-10 50-5 0-10
+5
+4
+3
+
+20-
+
+Attack Percentage (%) - Calibration Interval (𝜉)
+
+(b) EMNIST
+
+Figure 7: Multi-client attack detection.
+
+Precision Guided Approach to Mitigate Data Poisoning Attacks in Federated Learning
+
+Detection Rate over Training Period. We present the detection
+across all epochs for various conﬁgurations in Figure 11. Initially, all
+waveforms have a sharp zigzag shape indicating fewer detections.
+Answer to RQ4: As the training progresses, we can see that
+detections increase across all conﬁgurations indicated by the upper
+square waveform towards the right. This shows that our ZBDU
+technique using zone level aggregation can learn to detect data
+poisoning attacks. The FedZZ5 has bigger square regions towards
+the right, indicating better detection capability compared to other
+conﬁgurations, conﬁrming our intuition.
+
+6.7
+
+False Positive Rate of FedZZ
+
+We evaluate the average false positive rate of our approach (FedZZ10,
+FedZZ5, FedZZ2) against RS, n-way for 𝜉 = 5, 10. Speciﬁcally, the
+percentage of benign updates wrongly discarded as malicious updates. We calculate 𝐴𝐹 𝑃𝑅 as
+𝐴𝐹 𝑃𝑅 =
+
+|𝑇𝑜𝑡𝑎𝑙 𝐷𝑟𝑜𝑝𝑝𝑒𝑑 𝐵𝑒𝑛𝑖𝑔𝑛 𝑈 𝑝𝑑𝑎𝑡𝑒𝑠 |
+× 100,
+|𝑇𝑜𝑡𝑎𝑙 𝐷𝑟𝑜𝑝𝑝𝑒𝑑 𝑈 𝑝𝑑𝑎𝑡𝑒𝑠 | × 𝑇 × 2
+
+where 𝑇 is the number of global epochs. Figure 8 presents 𝐴𝐹 𝑃𝑅
+results for various FedZZ conﬁgurations under single and multiclient attacks for both datasets. Under single-client attack, FedZZ2
+exhibits lower 𝐴𝐹 𝑃𝑅 as the malicious client can be in either of
+the two zones with a probability of 5% (1/20). Consequently, fewer
+benign clients are dropped in FedZZ2 compared to FedZZ5 and
+FedZZ10. The higher 𝐴𝐹 𝑃𝑅 of FedZZ5 may be attributed to the
+trade-oﬀ in setting the 𝑐𝑜𝑠𝑖𝑚 hyperparameter 𝛼 = 0.97, leading to
+the discard ﬂag 𝐷𝐹 = 1 for some benign updates. Conversely, n-way
+has malicious updates in all zones except one, resulting in a higher
+drop of benign updates. For multi-client attack settings, we observe
+a diverse trend for each FedZZ conﬁguration. As expected, n-way
+with multiple malicious clients in each zone shows higher 𝐴𝐹 𝑃𝑅,
+followed by FedZZ2 with many poisonous updates distributed in
+two zones. Furthermore, we observe a common drop in 𝐴𝐹 𝑃𝑅 for
+the 40% attack setting for both datasets. This could be due to the
+eﬀect of the 𝛼 hyperparameter for those speciﬁc conﬁgurations,
+leading to less 𝐴𝐹 𝑃𝑅 than others. However, the same 𝛼 = 0.97
+performed diﬀerently for other FedZZ conﬁgurations. Hence, it
+is better to consider a dynamic 𝛼 setting or make it a learnable
+parameter, which we plan to explore in our future work.
+
+6.8
+
+Overhead
+
+Answer to RQ5: We found no observable run-time overhead in
+using FedZZ with the FL system.
+Every calibration round ﬁnished within a few seconds as FedZZ
+uses updates from each of the 𝜉 epochs at the server instead of
+communicating with the clients. Further, there is no additional
+communication overhead, as FedZZ follows regular FL protocol by
+sharing one aggregated model update with each client and receiving
+one update from each client along with a binary discard ﬂag at the
+server. On the other hand, FLAME [32] is reported to have an
+average overhead of 1.67 additional rounds for convergence. FLDefender [18] commented on their run time overhead and minimal
+computational overhead at the server. Whereas DivFL [3] works
+
+Conference’17, July 2017, Washington, DC, USA
+
+without any overhead. Similarly, other methods also work without
+the overhead.
+
+7
+
+CONCLUSION AND FUTURE WORK
+
+We developed FedZZ, a Precision Guided Approach to identify appropriate client zones eﬀectively. Our evaluation shows that FedZZ
+eﬀectively maintains good test accuracy close to the maximum possible accuracy under single and multi-client attack settings. Also, it
+can outperform the existing defense methods under multi-attack
+settings for the CIFAR10 and EMNIST datasets. In the future, we
+want to explore the dynamic FedZZ in terms of automatically adapting to a number of zones and stabilization rounds instead of static
+zones throughout the FL process. Also, we want to apply our FedZZ
+to other common FL computer vision and NLP tasks.
+
+ACKNOWLEDGEMENT
+This research was supported by in part by the National Science
+Foundation (NSF) under Grants CNS-2247686, Amazon Research
+Award (ARA) on "Security Veriﬁcation and Hardening of CI Workﬂows" and by Defense Advanced Research Projects Agency (DARPA)
+under contract number N6600120C4031 and N660012224037. The
+U.S. Government is authorized to reproduce and distribute reprints
+for Governmental purposes notwithstanding any copyright notation thereon. Any opinions, ﬁndings, conclusions, or recommendations expressed in this material are those of the author(s) and do
+not necessarily reﬂect the views of the NSF, Amazon or the United
+States Government.
+
+REFERENCES
+[1] Amani Abu Jabal, Elisa Bertino, Jorge Lobo, Dinesh Verma, Seraphin Calo, and
+Alessandra Russo. 2023. Flap-a federated learning framework for attribute-based
+access control policies. In Proceedings of the Thirteenth ACM Conference on Data
+and Application Security and Privacy. 263–272.
+[2] Eugene Bagdasaryan, Andreas Veit, Yiqing Hua, Deborah Estrin, and Vitaly
+Shmatikov. 2020. How to backdoor federated learning. In International Conference
+on Artiﬁcial Intelligence and Statistics. PMLR, 2938–2948.
+[3] Ravikumar Balakrishnan, Tian Li, Tianyi Zhou, Nageen Himayat, Virginia Smith,
+and Jeﬀ Bilmes. 2021. Diverse client selection for federated learning via submodular maximization. In International Conference on Learning Representations.
+[4] Peva Blanchard, El Mahdi El Mhamdi, Rachid Guerraoui, and Julien Stainer.
+2017. Machine learning with adversaries: Byzantine tolerant gradient descent.
+Advances in Neural Information Processing Systems 30 (2017).
+[5] André Brandão, Ricardo Mendes, and João P Vilela. 2022. Prediction of mobile
+app privacy preferences with user proﬁles via federated learning. In Proceedings
+of the Twelfth ACM Conference on Data and Application Security and Privacy.
+89–100.
+[6] Xiaoyu Cao, Minghong Fang, Jia Liu, and Neil Zhenqiang Gong. 2021. FLTrust:
+Byzantine-robust Federated Learning via Trust Bootstrapping. In 28th Annual
+Network and Distributed System Security Symposium, NDSS 2021, virtually, February 21-25, 2021. The Internet Society. https://www.ndss-symposium.org/ndsspaper/ﬂtrust-byzantine-robust-federated-learning-via-trust-bootstrapping/
+[7] Chen Chen, Baojiang Cui, Jinxin Ma, Runpu Wu, Jianchao Guo, and Wenqian
+Liu. 2018. A systematic review of fuzzing techniques. Computers & Security 75
+(2018), 118–137.
+[8] Yu Chen, Fang Luo, Tong Li, Tao Xiang, Zheli Liu, and Jin Li. 2020. A trainingintegrity privacy-preserving federated learning scheme with trusted execution
+environment. Information Sciences 522 (2020), 69–79.
+[9] Gregory Cohen, Saeed Afshar, Jonathan Tapson, and Andre Van Schaik. 2017.
+EMNIST: Extending MNIST to handwritten letters. In 2017 international joint
+conference on neural networks (IJCNN). IEEE, 2921–2926.
+[10] Chong Fu, Xuhong Zhang, Shouling Ji, Jinyin Chen, Jingzheng Wu, Shanqing
+Guo, Jun Zhou, Alex X Liu, and Ting Wang. 2022. Label inference attacks against
+vertical federated learning. In 31st USENIX Security Symposium (USENIX Security
+22). 1397–1414.
+[11] Clement Fung, Chris JM Yoon, and Ivan Beschastnikh. 2020. The Limitations of
+Federated Learning in Sybil Settings.. In RAID. 301–316.
+
+Conference’17, July 2017, Washington, DC, USA
+
+K Naveen Kumar, C Krishna Mohan, and Aravind Machiry
+
+RS
+
+FedZZ10
+
+FedZZ5
+
+FedZZ2
+
+30
+
+40
+
+30
+
+20
+
+20
+C1
+
+C3
+C5
+C7
+Malicious Client IDs
+
+(a) CIFAR10, Single-client
+
+C9
+
+C1
+
+C3
+C5
+C7
+Malicious Client IDs
+
+C9
+
+(b) EMNIST, Single-client
+
+80
+
+Average False Positive Rate (%)
+
+Average False Positive Rate (%)
+
+40
+
+Average False Positive Rate (%)
+
+50
+
+50
+Average False Positive Rate (%)
+
+n-way
+
+60
+
+40
+
+20
+
+20
+
+30
+40
+Attack Percentage (%)
+
+(c) CIFAR10, Multi-client
+
+50
+
+80
+
+60
+
+40
+
+20
+
+20
+
+30
+40
+Attack Percentage (%)
+
+50
+
+(d) EMNIST, Multi-client
+
+Figure 8: Comparison of average false positive rate of various techniques and conﬁgurations on CIFAR10 and EMNIST datasets.
+[12] Patrice Godefroid. 2020. Fuzzing: Hack, art, and science. Commun. ACM 63, 2
+(2020), 70–76.
+[13] Chuan Guo, Jacob R Gardner, Yurong You, Andrew Gordon Wilson, and Kilian Q Weinberger. 2019. Simple black-box adversarial attacks. arXiv preprint
+arXiv:1905.07121 (2019).
+[14] Hanxi Guo, Hao Wang, Tao Song, Yang Hua, Zhangcheng Lv, Xiulang Jin, Zhengui
+Xue, Ruhui Ma, and Haibing Guan. 2021. Siren: Byzantine-robust federated
+learning via proactive alarming. In Proceedings of the ACM Symposium on Cloud
+Computing. 47–60.
+[15] Istvan Haller, Asia Slowinska, Matthias Neugschwandtner, and Herbert Bos. 2013.
+Dowsing for Overﬂows: A Guided Fuzzer to Find Buﬀer Boundary Violations. In
+22nd { USENIX } Security Symposium ( { USENIX } Security 13). 49–64.
+[16] Andrew Hard, Chloé M Kiddon, Daniel Ramage, Francoise Beaufays, Hubert
+Eichner, Kanishka Rao, Rajiv Mathews, and Sean Augenstein. 2018. Federated
+Learning for Mobile Keyboard Prediction. https://arxiv.org/abs/1811.03604
+[17] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. 2015. Deep Residual
+Learning for Image Recognition. CoRR abs/1512.03385 (2015). arXiv:1512.03385
+http://arxiv.org/abs/1512.03385
+[18] Najeeb Moharram Jebreel and Josep Domingo-Ferrer. 2023. FL-Defender: Combating targeted attacks in federated learning. Knowledge-Based Systems 260 (2023),
+110178.
+[19] Dae R Jeong, Kyungtae Kim, Basavesh Shivakumar, Byoungyoung Lee, and Insik
+Shin. 2019. Razzer: Finding kernel race bugs through fuzzing. In 2019 IEEE
+Symposium on Security and Privacy (SP). IEEE, 754–768.
+[20] Alex Krizhevsky, Geoﬀrey Hinton, et al. 2009. Learning multiple layers of features
+from tiny images. (2009).
+[21] K Naveen Kumar, C Krishna Mohan, and Linga Reddy Cenkeramaddi. 2023. The
+Impact of Adversarial Attacks on Federated Learning: A Survey. IEEE Transactions
+on Pattern Analysis and Machine Intelligence (2023).
+[22] K Naveen Kumar, C Vishnu, Reshmi Mitra, and C Krishna Mohan. 2020. Blackbox adversarial attacks in autonomous vehicle technology. In 2020 IEEE Applied
+Imagery Pattern Recognition Workshop (AIPR). IEEE, 1–7.
+[23] Xingyu Li, Zhe Qu, Shangqing Zhao, Bo Tang, Zhuo Lu, and Yao Liu. 2023.
+LoMar: A Local Defense Against Poisoning Attack on Federated Learning. IEEE
+Transactions on Dependable and Secure Computing 20, 1 (2023), 437–450. https:
+//doi.org/10.1109/TDSC.2021.3135422
+[24] Shiwei Lu, Ruihu Li, Wenbin Liu, and Xuan Chen. 2022. Defense against backdoor
+attack in federated learning. Computers & Security 121 (2022), 102819.
+[25] Chenyang Lyu, Shouling Ji, Chao Zhang, Yuwei Li, Wei-Han Lee, Yu Song, and
+Raheem Beyah. 2019. { MOPT } : Optimized mutation scheduling for fuzzers. In
+28th USENIX Security Symposium (USENIX Security 19). 1949–1966.
+[26] Zhuoran Ma, Jianfeng Ma, Yinbin Miao, Yingjiu Li, and Robert H Deng. 2022.
+ShieldFL: Mitigating model poisoning attacks in privacy-preserving federated
+learning. IEEE Transactions on Information Forensics and Security 17 (2022),
+1639–1654.
+[27] Valentin JM Manes, HyungSeok Han, Choongwoo Han, Sang Kil Cha, Manuel
+Egele, Edward J Schwartz, and Maverick Woo. 2018. Fuzzing: Art, science, and
+engineering. arXiv preprint arXiv:1812.00140 (2018).
+[28] Alessandro Mantovani, Andrea Fioraldi, and Davide Balzarotti. 2022. Fuzzing
+with data dependency information. In 2022 IEEE 7th European Symposium on
+Security and Privacy (EuroS&P). IEEE, 286–302.
+[29] Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, and
+Blaise Aguera y Arcas. 2017. Communication-eﬃcient learning of deep networks from decentralized data. In Artiﬁcial Intelligence and Statistics. PMLR,
+1273–1282.
+
+[30] Arup Mondal, Yash More, Ruthu Hulikal Rooparaghunath, and Debayan Gupta.
+2021. Poster: Flatee: Federated learning across trusted execution environments. In
+2021 IEEE European Symposium on Security and Privacy (EuroS&P). IEEE, 707–709.
+[31] Dianwen Ng, Xiang Lan, Melissa Min-Szu Yao, Wing P Chan, and Mengling Feng.
+2021. Federated learning: a collaborative eﬀort to achieve better medical imaging
+models for individual sites that have small labelled datasets. Quantitative Imaging
+in Medicine and Surgery 11, 2 (2021), 852.
+[32] Thien Duc Nguyen, Phillip Rieger, Huili Chen, Hossein Yalame, Helen Möllering, Hossein Fereidooni, Samuel Marchal, Markus Miettinen, Azalia Mirhoseini,
+Shaza Zeitouni, et al. 2021. FLAME: Taming Backdoors in Federated Learning.
+Cryptology ePrint Archive (2021).
+[33] Augustus Odena, Catherine Olsson, David Andersen, and Ian Goodfellow. 2019.
+Tensorfuzz: Debugging neural networks with coverage-guided fuzzing. In International Conference on Machine Learning. PMLR, 4901–4911.
+[34] Jungwuk Park, Dong-Jun Han, Minseok Choi, and Jaekyun Moon. 2021. Sageﬂow:
+Robust federated learning against both stragglers and adversaries. Advances in
+neural information processing systems 34 (2021), 840–851.
+[35] Phillip Rieger, Thien Duc Nguyen, Markus Miettinen, and Ahmad-Reza Sadeghi.
+2022. Deepsight: Mitigating backdoor attacks in federated learning through deep
+model inspection. arXiv preprint arXiv:2201.00763 (2022).
+[36] Christopher Salls, Chani Jindal, Jake Corina, Christopher Kruegel, and Giovanni Vigna. 2021. Token-Level Fuzzing. In 30th { USENIX } Security Symposium
+( { USENIX } Security 21). 2795–2809.
+[37] Virat Shejwalkar, Amir Houmansadr, Peter Kairouz, and Daniel Ramage. 2022.
+Back to the drawing board: A critical evaluation of poisoning attacks on production federated learning. In 2022 IEEE Symposium on Security and Privacy (SP).
+IEEE, 1354–1371.
+[38] Shiqi Shen, Shruti Tople, and Prateek Saxena. 2016. Auror: Defending against
+poisoning attacks in collaborative deep learning systems. In Proceedings of the
+32nd Annual Conference on Computer Security Applications. 508–519.
+[39] Mustafa M Tikir and Jeﬀrey K Hollingsworth. 2002. Eﬃcient instrumentation
+for code coverage testing. ACM SIGSOFT Software Engineering Notes 27, 4 (2002),
+86–96.
+[40] Cong Xie, Sanmi Koyejo, and Indranil Gupta. 2019. Zeno: Distributed stochastic
+gradient descent with suspicion-based fault-tolerance. In International Conference
+on Machine Learning. PMLR, 6893–6901.
+[41] Xiaofei Xie, Simon See, Lei Ma, Felix Juefei-Xu, Minhui Xue, Hongxu Chen, Yang
+Liu, Jianjun Zhao, Bo Li, and Jianxiong Yin. 2019. DeepHunter: a coverage-guided
+fuzz testing framework for deep neural networks. 146–157. https://doi.org/10.
+1145/3293882.3330579
+[42] Dong Yin, Yudong Chen, Ramchandran Kannan, and Peter Bartlett. 2018.
+Byzantine-robust distributed learning: Towards optimal statistical rates. In International Conference on Machine Learning. PMLR, 5650–5659.
+[43] Michal Zalewski. 2018. AFL Technical Details. https://lcamtuf.coredump.cx/aﬂ/
+technical_details.txt
+[44] Syed Zawad, Ahsan Ali, Pin-Yu Chen, Ali Anwar, Yi Zhou, Nathalie Baracaldo,
+Yuan Tian, and Feng Yan. 2021. Curse or redemption? how data heterogeneity
+aﬀects the robustness of federated learning. In Proceedings of the AAAI conference
+on artiﬁcial intelligence, Vol. 35. 10807–10814.
+[45] Zaixi Zhang, Xiaoyu Cao, Jinyuan Jia, and Neil Zhenqiang Gong. 2022. FLDetector:
+Defending federated learning against model poisoning attacks via detecting
+malicious clients. In Proceedings of the 28th ACM SIGKDD Conference on Knowledge
+Discovery and Data Mining. 2545–2555.
+
+Precision Guided Approach to Mitigate Data Poisoning Attacks in Federated Learning
+
+A APPENDIX
+
+other methods under diverse updates with respect to poisonous versus
+non-IIDness and under varying degrees of non-IID and maliciousness.
+
+Table 3: Summary of adopted notations
+Notation
+
+Deﬁnition
+
+𝐶𝑑𝑝
+
+Client data poisoning
+Poisoning detection aggregation group
+Zone based deviating update
+Number of clients
+Number of zones
+
+PDAG
+ZBDU
+
+𝑛
+𝑚
+𝑍𝑖
+𝐴𝑍
+𝑐𝑜𝑠𝑖𝑚
+𝐷𝑘
+𝑤𝑡𝐺
+𝐿𝑀
+𝑇 𝐸𝐸
+𝛼
+𝐷𝐹
+𝑍
+Ψ
+𝜉
+𝑍𝑚𝑢𝑡
+𝑍𝑛𝑒𝑤
+𝐼 𝐼𝑛𝑝𝑢𝑡𝑠
+𝜂
+𝑙
+D𝑡𝑟𝑎𝑖𝑛
+D𝑡𝑒𝑠𝑡
+𝐺𝑇 𝐴
+𝐺𝑇 𝐴𝑚𝑢𝑡
+𝐺𝑇 𝐴𝑚𝑎𝑥
+𝐷𝑅
+𝐴𝐹 𝑃𝑅
+𝜆
+𝛽
+
+Conference’17, July 2017, Washington, DC, USA
+
+𝑛 clients
+𝑖 𝑡ℎ Zone with 𝑚
+
+A.2 Eﬀectiveness of Data Poisoning Attacks
+Table 4: Comparison of global test accuracy (%) with existing
+defenses from diﬀerent categories under DPA-SLF [37] attack.
+Bold result indicates the best result for setting.
+
+Zone level aggregation
+Cosine similarity function
+
+𝑘 𝑡ℎ client local data
+Global model at epoch 𝑡
+Local model
+Trusted execution environment
+Threshold to identify malicious update
+Discard ﬂag
+Zones set
+Discriminator map
+Calibration interval
+Mutated zone conﬁguration
+New zones map
+Interesting inputs
+Learning rate
+Loss function
+Training data
+Test data at the server
+Global test accuracy
+Variable to GTA feedback from server
+Variable to store best maximum GTA
+Detection rate
+Average false positive rate
+Coeﬃcient in FedAvg function
+non-IID Dirichlet data distribution parameter
+
+A.1 Eﬀectiveness under Varying Degree of
+non-IID
+Examining diverse non-IID data distributions is crucial for evaluating a defense strategy, providing insights into the inﬂuence of the
+Dirichlet distribution parameter 𝛽 on resulting data characteristics.
+Analyzing non-IID data distributions is essential for assessing defense eﬀectiveness in varying scenarios, especially as real-world
+datasets often exhibit heterogeneous distributions. We performed
+experiments with varied 𝛽 values (0.1, 0.5, 1, 5, and 10) to evaluate
+our method in highly non-IID settings. Lower 𝛽 values resulted
+in sparse data distribution among clients, sometimes with zero
+data, while larger 𝛽 values led to denser distribution. We chose 𝛽=1
+as the default value for subsequent experiments. The evaluation
+included no attack, single-client attack, and multi-client attack scenarios (30% maliciousness) on the CIFAR10 dataset (for brevity),
+comparing our method to best-performing baselines in each defense
+category: Krum, DivFL, LoMar, FL-Defender, and FedAvg.
+Figure 6 depicts results under no attack, single-client, and multiclient attacks with varying non-IID settings on the CIFAR10 dataset.
+Our ﬁndings showcase FedZZ as a proﬁcient client selection technique under no attack conditions, strategically choosing clients to
+enhance global test accuracy (Figure 6a). Moreover, our method
+surpasses others in single-client attack scenarios, even when confronted with a sole poisonous update amid 39 non-IID updates
+(Figure 6b). By discarding malicious updates and distinguishing
+between poisonous and highly non-IID updates, our approach improves global model performance. In cases of 30% maliciousness
+(Figure 6c), where a mix of poisonous and non-IID benign updates exists, our method excels, eﬀectively diﬀerentiating between
+harmful and non-harmful updates, contributing to improved global
+model performance. In summary, our proposed method outperforms
+
+CIFAR10
+Defense
+Category
+100%
+Detection
+Client
+Selection Techniques
+Aggregation
+Techniques
+including
+Byzantine
+Robust
+Recent
+Defense
+Methods
+Ours
+
+EMNIST
+
+Defense
+
+No
+Attack
+
+1A
+
+30%
+
+No
+Attack
+
+1A
+
+FL100
+
+94.54
+
+93.44
+
+93.18
+
+87.96
+
+87.07
+
+87.2
+
+RS
+DivFL [3]
+FedAvg [29]
+Krum [4]
+TM [42]
+Median [42]
+FLTrust [6]
+FLAME [32]
+LoMar [23]
+FL-Defender [18]
+n-way
+FedZZ
+
+94.57
+94.86
+94.54
+94.62
+94.64
+94.68
+12.85
+94.58
+94.74
+94.73
+94.51
+94.76
+
+88.18
+88.12
+82.03
+88.62
+87.29
+88.91
+9.95
+85.26
+87.90
+88.83
+89.18
+90.81
+
+79.16
+81.19
+76.27
+83.16
+82.94
+84.16
+9.95
+78.24
+84.29
+85.36
+76.22
+89.19
+
+87.41
+87.26
+87.96
+87.64
+87.79
+86.92
+10.45
+87.39
+87.65
+86.97
+87.05
+87.84
+
+83.11
+84.05
+84.76
+83.14
+82.68
+83.92
+5.6
+86.31
+83.12
+84.29
+84.71
+86.81
+
+79.38
+81.64
+79.68
+82.05
+81.48
+81.76
+5.6
+82.73
+82.54
+81.64
+78.33
+83.18
+
+30%
+
+MSimBA attack [22] minimizes the loss of the most confused
+class, resulting in early convergence compared to earlier works [13].
+The most confused class is the incorrect class, where the model
+misclassiﬁes with the highest probability, making it an eﬀective
+attack. For DPA-SLF [37], each compromised client ﬂips the labels
+of their data from true label 𝑦 ∈ [0, 𝐶 − 1] to false label (𝐶 − 1 − 𝑦)
+if 𝐶 is even and to false label (𝐶 − 𝑦) if 𝐶 is odd, where 𝐶 is the
+number of classes [37]. For the DPA-DLF attack [37], we follow
+[37] by using a surrogate ResNet18 architecture trained on benign
+data (normal FL model) and ﬂip label 𝑦 to the least probable label
+it generates for a given sample. Figures 10a and 10b illustrate the
+attack success rates of three distinct attacks under our FL setup with
+no defense and the aforementioned maliciousness levels, namely the
+single-client attack (1A), as well as the multi-client attack with 20%,
+30%, 40%, and 50% maliciousness. The analysis (Figure 10) reveals
+that the black-box gradient noise data poisoning attack MSimBA
+outperforms the dynamic and static label ﬂip attacks in the FL setup
+in terms of attack success rate under no defense. This analysis aids
+in assessing the eﬀectiveness of proposed FedZZ in reducing the
+success rate of attacks and improving overall test accuracy.
+In our study, we ﬁxed the malicious client attack ratio as 1.5%
+(one sample per data batch) for the MSimBA attack [22]. This choice
+allows us to demonstrate the eﬀectiveness of our approach in detecting
+low-level attacks with high impact, closely resembling benign updates—a realistic scenario in many applications. Increasing the attack
+ratio would make the poisoned model signiﬁcantly diﬀer from benign
+updates, causing FedZZ to converge faster. We leave this for future
+work to analyze the impact of varying attack ratios. Additionally, for
+DPA-SLF [37] and DPA-DLF [37], we ﬂip the labels of all samples in
+the training dataset due to their low attack success rate. Furthermore,
+Table 4 shows the eﬀectiveness of FedZZ against DPA-SLF attack
+in comparison with other defenses. As expected FedZZ maintains
+high accuracy in the presence of diﬀerent poisoning levels. The
+trend is similar for the DPA-DLF attack.
+
+Conference’17, July 2017, Washington, DC, USA
+
+K Naveen Kumar, C Krishna Mohan, and Aravind Machiry
+
+RS
+
+n-way
+
+FedZZ10
+
+FedZZ5
+
+FedZZ2
+
+80
+
+80
+
+60
+
+C1
+
+C3
+C5
+C7
+Malicious Client IDs
+
+C1
+
+C9
+
+(a) On CIFAR10 with 𝜉 = 5
+
+60
+
+C3
+C5
+C7
+Malicious Client IDs
+
+C9
+
+(b) On CIFAR10 with 𝜉 = 10
+
+60
+
+40
+
+40
+
+40
+
+40
+
+Detection Rate (%)
+
+Detection Rate (%)
+
+Detection Rate (%)
+
+60
+
+Detection Rate (%)
+
+80
+
+80
+
+C1
+
+C3
+C5
+C7
+Malicious Client IDs
+
+C1
+
+C9
+
+(c) On EMNIST with 𝜉 = 5
+
+C3
+C5
+C7
+Malicious Client IDs
+
+C9
+
+(d) On EMNIST with 𝜉 = 10
+
+MSimBA [22]
+DPA-SLF [37]
+DPA-DLF [37]
+
+0.6
+
+0.4
+
+0
+
+20
+30
+40
+Attack Percentage (%)
+
+(a) CIFAR10
+
+50
+
+100
+
+150
+Global Epochs
+
+200
+
+250
+
+299
+
+200
+
+250
+
+299
+
+200
+
+250
+
+299
+
+200
+
+250
+
+299
+
+200
+
+250
+
+299
+
+200
+
+250
+
+299
+
+1
+
+0
+0
+
+1A
+
+20
+30
+40
+Attack Percentage (%)
+
+50
+
+100
+
+150
+Global Epochs
+
+50
+
+(b) EMNIST
+
+(b) RS
+Detection
+
+1A
+
+50
+
+(a) FL100
+
+0.4
+
+0.2
+
+0.2
+
+1
+
+0.6
+
+Detection
+
+Attack Success Rate
+
+Attack Success Rate
+
+0.8
+
+MSimBA [22]
+DPA-SLF [37]
+DPA-DLF [37]
+
+0.8
+
+Detection
+
+Figure 9: Single client attack detection: Comparison of detection rate of various techniques and conﬁgurations on CIFAR10 and
+EMNIST datasets.
+
+1
+
+0
+0
+
+50
+
+100
+
+Figure 10: Attack success rate. 1A denotes single-client attack.
+
+150
+Global Epochs
+
+1A
+
+20%
+
+30%
+
+40%
+
+50%
+
+CIFAR10
+EMNIST
+Attack
+𝛼 = 0.80 𝛼 = 0.90 𝛼 = 0.95 𝛼 = 0.97 𝛼 = 1 𝛼 = 0.80 𝛼 = 0.90 𝛼 = 0.95 𝛼 = 0.97 𝛼 = 1
+95.05
+95.33
+94.98
+94.76 94.31 87.24
+86.32
+87.25
+87.84 87.71
+MSimBA [22] 73.39
+80.32
+83.47
+88.75 83.21 71.63
+74.26
+82.33
+86.57 83.11
+DPA-SLF [37] 81.23
+85.09
+86.01
+90.81 86.54 74.80
+75.40
+85.37
+86.81 86.28
+DPA-DLF [37] 81.49
+84.34
+86.25
+89.12 86.75 70.06
+73.83
+85.88
+86.38 85.67
+MSimBA [22] 43.62
+78.69
+81.98
+86.24 85.26 39.68
+64.43
+80.96
+85.55 81.28
+DPA-SLF [37] 58.37
+81.23
+88.70
+89.94 89.59 43.09
+67.73
+85.65
+86.14 86.35
+DPA-DLF [37] 54.36
+76.17
+85.42
+87.43 85.80 41.65
+63.92
+85.98
+85.55 84.31
+MSimBA [22] 21.03
+69.45
+74.63
+83.96 85.23 23.43
+56.98
+78.42
+83.61 80.64
+DPA-SLF [37] 56.75
+75.91
+85.47
+89.19 84.54 33.44
+64.59
+75.96
+83.18 82.13
+DPA-DLF [37] 49.12
+72.44
+81.29
+86.15 83.88 26.82
+61.28
+74.18
+82.74 84.78
+MSimBA [22] 18.96
+56.43
+63.24
+73.56 66.12 19.23
+43.32
+73.29
+84.17 81.23
+DPA-SLF [37] 32.38
+68.29
+78.63
+78.63 73.24 21.71
+50.56
+79.68
+82.31 80.11
+DPA-DLF [37] 39.35
+68.88
+72.47
+77.21 76.34 20.26
+49.67
+83.33
+82.62 81.85
+MSimBA [22] 10.24
+42.61
+59.43
+67.43 41.36 15.26
+39.91
+66.28
+77.74 61.13
+DPA-SLF [37] 28.44
+52.59
+68.96
+71.43 69.91 22.99
+42.35
+76.27
+79.62 78.51
+DPA-DLF [37] 25.49
+49.31
+64.23
+69.42 68.29 18.10
+38.98
+75.11
+78.45 76.67
+
+A.3 Impact of Cosine Similarity
+In our evaluation of FedZZ, we varied the cosine similarity threshold parameter (𝛼) using ﬁve diﬀerent values (0.80, 0.90, 0.95, 0.97,
+and 1). Table 5 shows the results obtained for diﬀerent attack scenarios and settings. We observed that lower 𝛼 values resulted in
+true positives being missed, as the similarity threshold was not
+stringent enough to ﬁlter out malicious updates. This allowed even
+slightly similar malicious updates to pass undetected and be aggregated with the global model. Conversely, a 𝛼 value of 1 often led to
+false positives, as even benign updates with slight diﬀerences were
+discarded. This resulted in no updates being considered for aggregation. We found that setting 𝛼 to 0.97 achieved the best results in
+
+50
+
+100
+
+150
+Global Epochs
+
+(d) FedZZ10
+Detection
+
+No attack
+
+0
+0
+
+1
+
+0
+0
+
+50
+
+100
+
+150
+Global Epochs
+
+(e) FedZZ5
+Detection
+
+Table 5: Comparison of global test accuracy (%) of FedZZ with
+diﬀerent cosine similarity 𝛼 values.
+
+Detection
+
+(c) n-way
+1
+
+1
+
+0
+0
+
+50
+
+100
+
+150
+Global Epochs
+
+(f) FedZZ2
+
+Figure 11: Comparison of detection happening (0/1) of various baselines under single-client attack for 300 global epochs
+for CIFAR10 dataset.
+most cases. This allowed for the eﬀective ﬁltering of malicious updates while also ensuring that benign updates were not erroneously
+discarded. Tighter similarity thresholds led to increased accuracy
+in global testing, as more ﬁltering was possible. Overall, our results
+demonstrate the importance of selecting an appropriate 𝛼 value in
+order to eﬀectively balance the tradeoﬀ between false positives and
+true positives.
+
+

@@ -1,0 +1,2732 @@
+1
+
+Byzantine-Resilient Over-the-Air Federated
+Learning under Zero-Trust Architecture
+
+arXiv:2503.18284v1 [cs.IT] 24 Mar 2025
+
+Jiacheng Yao, Wei Shi, Wei Xu, Fellow, IEEE, Zhaohui Yang, Member, IEEE,
+A. Lee Swindlehurst, Fellow, IEEE, and Dusit Niyato, Fellow, IEEE
+
+Abstract—Over-the-air computation (AirComp) has emerged
+as an essential approach for enabling communication-efficient
+federated learning (FL) over wireless networks. Nonetheless,
+the inherent analog transmission mechanism in AirComp-based
+FL (AirFL) intensifies challenges posed by potential Byzantine
+attacks. In this paper, we propose a novel Byzantine-robust FL
+paradigm for over-the-air transmissions, referred to as federated
+learning with secure adaptive clustering (FedSAC). FedSAC aims
+to protect a portion of the devices from attacks through zero trust
+architecture (ZTA) based Byzantine identification and adaptive
+device clustering. By conducting a one-step convergence analysis,
+we theoretically characterize the convergence behavior with
+different device clustering mechanisms and uneven aggregation
+weighting factors for each device. Building upon our analytical
+results, we formulate a joint optimization problem for the
+clustering and weighting factors in each communication round.
+To facilitate the targeted optimization, we propose a dynamic
+Byzantine identification method using historical reputation based
+on ZTA. Furthermore, we introduce a sequential clustering
+method, transforming the joint optimization into a weighting
+optimization problem without sacrificing the optimality. To optimize the weighting, we capitalize on the penalty convex-concave
+procedure (P-CCP) to obtain a stationary solution. Numerical
+results substantiate the superiority of the proposed FedSAC over
+existing methods in terms of both test accuracy and convergence
+rate.
+Index Terms—Federated learning (FL), over-the-air computation (AirComp), zero trust architecture (ZTA), Byzantine attacks.
+
+I. I NTRODUCTION
+
+T
+
+HE integration of communication and artificial intelligence (AI) is anticipated to be a key application scenario
+in the upcoming sixth-generation (6G) wireless networks [1].
+Future 6G networks will benefit from AI technology while also
+facilitating its deployment, namely AI for 6G and 6G for AI,
+thus enabling ubiquitous intelligence. In particular, recent advances in federated learning (FL) have introduced a promising
+distributed AI paradigm over wireless networks, addressing the
+J. Yao, W. Shi, and W. Xu are with the National Mobile Communications
+Research Laboratory, Southeast University, Nanjing 210096, China, and are
+also with the Purple Mountain Laboratories, Nanjing 211111, China (e-mail:
+{jcyao, wshi, wxu}@seu.edu.cn).
+Z. Yang is with the Research Institute of Intelligent Networks, Zhejiang
+Lab, Hangzhou 311121, China, and also with the College of Information
+Science and Electronic Engineering, Zhejiang University, Hangzhou 310027,
+Zhejiang, China (e-mail: yang zhaohui@zju.edu.cn).
+A. L. Swindlehurst is with the Center for Pervasive Communications and
+Computing, Henry Samueli School of Engineering, University of California
+at Irvine, Irvine, CA 92697 USA (e-mail: swindle@uci.edu).
+D. Niyato is with the School of Computer Science and Engineering, Nanyang Technological University, Singapore 308232 (e-mail: dniyato@ntu.edu.sg).
+
+demands of large-scale edge intelligent applications [2]–[5].
+In a wireless FL network, distributed devices work together to
+train a shared learning model under the guidance of a parameter server (PS). The devices involved in the training procedure
+iteratively update the model by exchanging model parameters
+instead of transferring raw data, which helps preserve data
+privacy because sensitive information is neither directly shared
+among devices nor with the PS [6]. However, the massive
+transmission of model parameters has made communication
+a major bottleneck in wireless FL [7], [8]. Particularly in
+the uplink transmission, a significant number of local devices
+are involved in transmitting local gradients to the PS for
+conducting model updates, which poses formidable challenges
+for conventional communication systems. Hence, certain prior
+efforts have explored selecting a subset of the devices to
+partake in the updates of each round, aiming to mitigate
+excessive communication overhead [9], [10]. However, this
+approach inevitably comes at the expense of convergence rate
+and accuracy.
+To facilitate the deployment of FL in wireless networks,
+over-the-air computation (AirComp) is viewed as a key enabling technique [11]–[13]. In this approach, the uncoded
+signals at distributed devices undergo amplitude modulation
+and are then concurrently transmitted by reusing the available
+radio resources. After preprocessing at the transmitter, the
+automatic computation of the objective function over the air
+is facilitated by the superposition property of multiple access
+(MAC) channels, thus giving rise to the term AirComp. It
+seamlessly merges communication and computational functions, which aligns with the requirements of communicationefficient FL [14]. Harnessing the advantages of AirComp, the
+uplink transmission and aggregation of the model parameters
+in FL tasks are integrated over the air, which allows for
+simultaneous access by numerous devices within a limited
+bandwidth and a substantial reduction in both transmission
+and computational latency. In recent investigations, researchers
+have delved into the specific design of AirComp-based FL
+(AirFL), covering power control [15], device scheduling [16],
+and beamforming [17].
+As FL continues to expand in applications such as smart
+cities, autonomous driving networks, and industrial internet of
+things (IoT), the involvement of a large number of edge devices poses significant security risks. Byzantine attacks, where
+unreliable or malicious devices disrupt the learning process,
+can severely compromise both the accuracy and reliability
+of the system [18]–[20]. What makes the situation worse is
+when FL is deployed over wireless networks via AirComp,
+
+2
+
+…
+
+where the open nature of wireless channels and nonorthogonal
+Different RBs
+superimposition characteristics in AirComp exacerbate the
+risks [21]. Although it offers significant performance gains,
+𝐠ത 1𝑚
+this inherent analog transmission mechanism in AirComp is
+a double-edged sword. Unlike traditional FL schemes, AirFL
+Cluster 1
+Honest
+Robust aggregation
+does not acquire individual gradients from each device. Inalgorithms
+gradient
+stead, it relies on the superposition of all local gradients,
+𝐠ത 𝑁
+PS
+𝑚
+which makes AirFL more vulnerable to malicious attacks [22],
+[23]. This is especially for Byzantine attacks, where attackers
+can exploit this vulnerability by sending arbitrary gradient
+values, thereby interfering with the overall model aggregation
+Cluster N
+process and hindering the convergence of the FL algorithm.
+To counter the Byzantine attacks, traditional approaches aim Fig. 1. Architecture of existing robust aggregation methods via hierarchical
+at excluding gradient outliers, such as in the Krum and Multi- AirComp and device clustering.
+Krum algorithms [24]. However, these approaches cannot be
+directly applied to AirFL due to the lack of access to specific
+attacks, necessitating passive defense strategies instead. This
+gradients from individual devices.
+Given this background, some preliminary studies have con- limitation also significantly constrains the FL performance.
+To address the aforementioned challenges, zero trust archisidered robust design for combating Byzantine attacks under
+tecture
+(ZTA), characterized by its core principle of “never
+AirFL [25]–[29]. In [25], a best effort voting
+* J. Yao,(BEV)
+W. Shi, power
+W. Xu et al., “Secure federated learning over-the-air: An adaptive clustering approach,” submitted to I
+trust
+and
+always verify,” is widely acknowledged as a revocontrol policy was proposed to enhance robustness against
+lutionary
+approach
+to bolster security in 6G networks [31]–
+Byzantine attacks, aiming at boosting the strength of useful
+[33].
+Specifically,
+in
+ZTA, no access device is deemed insignals using full-power transmission. While BEV enhances
+herently
+trustworthy.
+Instead, it relies on continuous trust
+the fidelity of the legitimate signals, it neither directly supevaluation
+and
+authentication
+mechanisms to identify and
+presses nor filters out Byzantine interference. In addition to
+mitigate
+attacks
+[34].
+The
+core
+principle of ZTA aligns well
+BEV, the AirComp-based Weiszfeld algorithm was proposed
+with
+the
+requirements
+of
+AirFL
+to address the Byzantine
+in [26] to obtain a smoothed geometric median aggregation
+attacks.
+Hence,
+building
+upon
+ZTA,
+we explore an enhanced
+approach against Byzantine attacks. In another approach, the
+Byzantine-robust
+design
+for
+AirFL
+to further improve the
+authors in [30] exploited a one-bit gradient quantization and
+convergence
+performance
+and
+security
+in this paper. We refer
+hierarchical voting framework, which is theoretically proven to
+to
+our
+approach
+as
+federated
+learning
+with secure adaptive
+be robust against Byzantine devices. However, low-precision
+clustering
+(FedSAC).
+The
+main
+contributions
+of our work are
+quantization compromises performance and majority voting
+summarized
+as
+follows:
+is inadequate in withstanding formidable Byzantine attacks.
+• We establish a universal framework of clustering-based
+Furthermore, to promote the application of the existing rorobust aggregation method in which the devices are parbust aggregation algorithms, multiple studies, e.g., [27]–[29],
+titioned into distinct clusters, and AirComp is performed
+proposed to create multiple individual gradients via device
+separately within each cluster. Meanwhile, each cluster
+clustering and hierarchical AirComp. In general, the core idea
+uses different time/frequency resources for transmission,
+of these works is to reduce the number of honest gradients
+thus generating multiple gradient values from each cluster
+contaminated by Byzantine attackers through user grouping
+to support various existing robust aggregation algorithms.
+and techniques that exclude anomalous gradients. As shown in
+Convergence of the robust aggregation scheme is assured
+Fig. 1, devices within each cluster aggregate to obtain a virtual
+in theory and the impacts of the clustering and the
+gradient via AirComp, allowing multiple virtual gradients
+weighting factors assigned to each device in aggregation
+from different clusters to be received at the PS. Based on
+are also quantitatively captured.
+these gradients, the PS can apply existing robust aggregation
+• Based on the analytical results, we formulate a long-term
+algorithms to effectively exclude abnormal gradients, ensuring
+joint optimization problem for the clustering and weightenhanced resilience against Byzantine devices. For instance,
+ing allocation to enhance the convergence performance.
+the authors of [27] suggested incorporating a reference graThis problem is decomposed into subproblems in each
+dient, computed directly by the PS, to effectively identify
+communication round using the Lyapunov method. To
+and filter out malicious gradients. Moreover, the geometric
+further streamline the proposed joint optimization probmedian aggregation method was adopted in [28], [29] for
+lem, we introduce the ZTA-empowered FedSAC framerobust aggregation with a theoretical convergence guaranwork, which integrates Byzantine identification, and the
+tee. However, existing works primarily focused on adopting
+joint design of the clustering and weighting allocation.
+various robust aggregation algorithms while overlooking the
+Specifically, we first employ a continuous Byzantine
+significance of device clustering design, which was often
+identification scheme for each round based on historical
+done randomly. This oversight limits their effectiveness in
+reputation, which serves as a prerequisite for tailoring
+enhancing robustness against Byzantine attacks. Furthermore,
+the design of the clustering and weighting factors against
+the absence of dynamic authentication in all robust schemes
+Byzantine devices. For clustering optimization, we intromentioned above prevents active suppression of Byzantine
+
+3
+
+duce a sequential clustering scheme based on equivalent
+channel conditions under specified weighting factors and
+justify its optimality. By incorporating the sequential clustering into the original problem, we transform the joint
+optimization problem into an equivalent optimization of
+the weighting factors. Since the equivalent weighting
+allocation problem involves mixed integer nonlinear programming (MINLP), we leverage the penalty convexconcave procedure (P-CCP) to reformulate the integer
+constraints, fostering the realization of a stable solution.
+• We demonstrate the effectiveness of the proposed FedSAC approach via numerical results. In particular, we
+have significantly accelerated the convergence, attaining
+performance levels that approach attack-free scenarios.
+Compared with existing random clustering-based methods, the proposed FedSAC approach is shown to achieve
+remarkable robustness across diverse signal-to-noise ratios (SNRs) and Byzantine attack configurations. Moreover, the proposed approach achieves good performance
+with only a small number of clusters, thereby minimizing wireless resource consumption and maximizing the
+benefits of AirComp.
+The rest of this paper is organized as follows. In Section II,
+we describe the AirFL and Byzantine attack models. Section
+III introduces the clustering-based robust aggregation method
+and formulates the joint optimization problem based on a
+one-step convergence analysis. In Section IV, we outline the
+general framework of the proposed ZTA-empowered FedSAC
+approach. Simulation results and conclusions are given in
+Sections V and VI, respectively.
+Notation: Boldface lowercase (uppercase) letters represent
+vectors (matrices). The set of real numbers is denoted by R.
+The set [N ] is equal to {1, 2, · · · , N }. The superscripts (·)T
+and (·)∗ stand for the transpose and conjugate operations, respectively. The symbol ℜ(·) returns the real part of a complex
+number. The operator | · | returns the absolute value when the
+input is a complex scalar or the number of elements when the
+input is a set. The operator ∥·∥ denotes the Euclidean norm of a
+vector. A circularly symmetric complex Gaussian distribution
+is denoted by CN , and E[·] denotes the expectation. Moreover,
+the summaries of symbols are presented in Table I.
+
+We consider a wireless FL framework in which K distributed devices jointly train a shared machine learning model
+under the orchestration of a central PS. We note that the PS
+is always trusted during the training process. All devices use
+their local datasets {Dk }K
+k=1 to train the model parameters,
+w ∈ Rd , by minimizing a global loss function defined as
+K
+X
+
+|Dk |
+Fk (w, Dk ).
+PK
+i=1 |Di |
+k=1
+
+(1)
+
+In (1), Fk (w, Dk ) is the local loss function at device k. It is
+formulated as
+1 X
+Fk (w, Dk ) =
+L(w, u),
+(2)
+|Dk |
+u∈Dk
+
+Notation
+Dk
+F (w)
+Fk (w, Dk )
+wm
+k ; ḡn
+gm
+m
+αm,k
+ρm,k
+ζm,n
+γm,k ; γ̄m,k
+rm,k
+qm,k
+η
+L
+µ
+δk
+γth
+b
+α
+Am
+Bm
+Cm,n
+Dm
+Sm
+
+Definition
+Local dataset of device k
+Global loss function
+Local loss function of device k
+Model parameter at round m
+Local gradient of device k at round m; aggregated
+gradient of cluster n at round m
+Weighting factor assigned to device k at round m
+Preprocessing factor for device k at round m
+Scaling factor for cluster n at round m
+Contribution (normalized) of device k at round m
+Reputation of device k at round m
+Virtual queue for fairness constraint
+Learning rate
+Lipschitz parameter of Fk (·)
+Constant for Polyak-Łojasiewicz Inequality
+Gradient divergence of device k
+Threshold for channel truncation
+Expected long-term average contribution
+Penalty parameter for absence
+Set of the activated devices at round m
+Set of clusters passing the inspection at round m
+Set of cluster n at round m
+Set of activated and honest devices at round m
+Set of devices with effective participation at round m
+
+where u denotes the data sample and L(w, u) represents the
+sample-wise loss function. Given the system’s heterogeneity,
+we consider that local datasets across different devices are nonindependent and non-identically distributed (non-IID). Without
+loss of generality, we assume that the sizes of all local datasets
+are the same, i.e., each device is expected to play an equal role
+in model training, and an extension for different sizes of local
+datasets is straightforward.
+A. AirFL Model
+To minimize the loss function in (1), we apply the widely
+used FedSGD algorithm. In addition, AirComp is exploited for
+efficient transmission and model aggregation. Specifically, in
+the m-th round, the PS first broadcasts the up-to-date global
+model wm to all devices. Each device k initializes its local
+model as wm and computes its local stochastic gradient as
+k
+k
+gm
+= ∇Fk (wm , ξm
+),
+
+(3)
+
+k
+where ξm
+
+II. S YSTEM M ODEL
+
+F (w) =
+
+TABLE I
+S UMMARY OF M AIN S YMBOLS
+
+represents the mini-batch selected from Dk with
+size b. Then, all devices report their local gradients to the
+PS for further aggregation. Using AirComp, the procedures of
+transmission and computation are integrated as
+ym =
+
+K
+X
+
+k
+hm,k βk ρm,k gm
++ z,
+
+(4)
+
+k=1
+
+where hm,k ∼ CN (0, 1) is the small-scale fading between
+the PS and device k in the m-th round, βk is the large-scale
+fading, ρm,k represents the pre-processing factor at device k
+for computation tasks, and z ∼ CN (0, σ 2 I) denotes additive
+Gaussian noise with zero mean and variance σ 2 . Thanks to
+the analog aggregation in (4), aggregated local gradients in
+AirComp prevent the PS from identifying individual device
+gradients, thus reducing the potential of privacy leakage [35].
+
+4
+
+In this sense, even if the PS is semi-honest, the unique
+advantages of AirComp limit privacy risks.
+According to [11], the pre-processing factor is set as
+(
+ζm αm,k
+hm,k βk , |hm,k | ≥ γth ,
+ρm,k =
+(5)
+0,
+|hm,k | < γth ,
+where γth is a predetermined threshold to avoid a catastrophic
+impact of deep fading1 , ζm is a scaling factor for ensuring the
+transmit power constraint, and αm,k denotes the weighting
+factor assigned to deviceP
+k at round m. The weighting factors
+K
+are normalized such that k=1 αm,k = 1. In other approaches,
+1
+,
+all devices are allocated the same weight, i.e., αm,k = K
+for equal contribution. Here, we consider a more general case
+with arbitrary weighting factors to achieve further performance
+improvement [36]. With the pre-processing in (5), devices
+with poor channel conditions are truncated, ensuring a large
+scaling factor, ζm , which amplifies transmitted signals to better
+combat additive noise.
+We denote the set of the activated devices at the m-th round
+by
+Am = {k ||hm,k | ≥ γth } .
+
+(6)
+
+For simplicity, we consider a uniform transmit power budget
+Pmax for each device and choose the factor ζm to guarantee
+k 2
+≤ Pmax . We assume that the local gradients are
+ρm,k gm
+k
+uniformly bounded by a finite value G [37], i.e., gm
+≤ G,
+and hence the factor ζm is selected as
+√
+
+
+Pmax
+|hm,k |βk
+ζm =
+min
+.
+(7)
+G k∈Am
+αm,k
+At the receiver, the PS updates the global model as
+ℜ{ym }
+ζm
+X
+k
+= wm − η
+αm,k gm
++ z̄,
+
+where ∗ denotes an arbitrary value. Unlike wireless FL
+algorithms implemented using classical orthogonal access
+methods, the characteristic of non-orthogonal access in AirComp facilitates the concealment of Byzantine devices among
+the honest ones, significantly aggravating the challenge of
+identifying and mitigating Byzantine attacks. Therefore, the
+design of tailored AirFL frameworks and corresponding robust
+algorithms becomes imperative to mitigate potential adverse
+effects of malicious attacks. In the next section, we develop a
+general framework for robust aggregation in AirFL to combat
+the Byzantine attacks.
+III. C LUSTERING - BASED ROBUST AGGREGATION S CHEME
+FOR A IR FL
+To reduce a negative impact of malicious devices, we
+exploit the hierarchical AirComp method shown in Fig. 1, in
+which all K devices are uniformly divided into N clusters
+and all clusters participate in the FL procedure with distinct
+time/frequency resource blocks (RBs). Under this framework,
+we introduce multiple local updates for AirFL, which helps
+support existing Byzantine-robust aggregation methods. In
+this section, we first elucidate the particulars of the robust
+aggregation scheme, subsequently formulating an additional
+optimization problem for the clustering based on our theoretical convergence analysis.
+A. Scheme Design
+Within a specific cluster n at round m, denoting Cm,n , a step
+similar to (4) is adopted. Then the aggregated local update for
+the cluster Cm,n is given by
+X
+n
+k
+ḡm
+=
+αm,k gm
++ zn ,
+(10)
+k∈Cm,n ∩Am
+
+wm+1 = wm − η
+
+2
+
+(8)
+
+k∈Am
+
+where η denotes the learning rate, and z̄ is the equivalent noise
+2 2
+with distribution N (0, η2ζσ2 I). The FL algorithm iterates the
+m
+above procedure until convergence and achieves an effective
+global model.
+B. Byzantine Attack Model
+In this paper, we assume that model poisoning attacks are
+performed by Byzantine attackers based on the characteristics
+of AirFL [17], [25], [28], [29]. Specifically, each attacker
+actively manipulates the model updates by sending arbitrarily
+malicious gradients to the PS, thereby causing model training
+failure and FL divergence. In addition, there are M < K
+Byzantine devices and K −M honest devices, and the message
+reported by device k in (4) is replaced by
+
+k
+∇Fk (wm , ξm
+), if k-th device is honest,
+k
+gm
+=
+(9)
+∗,
+otherwise,
+1 In AirFL, the model upload is synchronized for all activated devices and
+hence stragglers can be avoided. Also, the probability of being truncated is
+the same for all devices, thus no fairness issues arise.
+
+where zn ∼ N (0, 2ζσ2 I) and
+m,n
+√
+
+
+|hm,k |βk
+Pmax
+ζm,n =
+min
+.
+G k∈Cm,n ∩Am
+αm,k
+
+(11)
+
+Through hierarchical AirComp, we construct N virtual local
+n N
+gradients, i.e., {ḡm
+}n=1 , corresponding to the N clusters.
+Building upon the virtual local gradients, we implement
+some widely used robust aggregation methods. In this paper,
+we adopt the idea of the classical FLTrust scheme in [38],
+which is also consistent with that in [39]. In this approach,
+the PS collects a small and clean root training dataset and
+0
+generates its own update, gm
+, based on the root dataset.
+n N
+Then, upon receiving the aggregated local updates {ḡm
+}n=1 ,
+0
+the PS exploits gm to identify contaminated updates via
+cosine similarity [40] and excludes them from the aggregation
+n
+process. In particular, the local update ḡm
+is excluded if
+n
+0
+the cosine similarity between ḡm and gm is less than a
+predetermined threshold ϱ. By selecting an appropriate ϱ, we
+can strike a balance between robustness against Byzantium
+and unbiasedness of the global model. It is noteworthy that the
+robust aggregation method employed in our scheme is capable
+of effectively handling any number of Byzantine devices and
+exhibits commendable robustness [39]. Apart from the considered method, other state-of-art Byzantine-robust methods,
+
+5
+
+η
+gm ≤ −
+2
+
+!
+X
+
+αm,k
+
+k∈Sm
+
+η−Lη 2 X
+∥∇F (wm )∥ −
+αm,k
+2
+2
+
+k∈Sm
+
+e.g., the median-based algorithms in [41], [42], can also be
+directly applied. Nonetheless, a prerequisite for the efficacy
+of these Byzantine robust algorithms is M < N2 , emphasizing
+the need for a sufficient number of clusters. This requirement
+unavoidably increases resource consumption and significantly
+diminishes the advantages offered by AirComp. Hence, without loss of generality, the subsequent optimization design will
+be based on the adopted robust aggregation method.
+After eliminating the contaminated updates, the model update in (8) is modified as
+X
+n
+wm+1 = wm − η
+ḡm
+n∈Bm
+
+= wm − η
+
+X
+
+k
+αm,k gm
+−η
+
+k∈Sm
+
+X
+
+zn ,
+
+(12)
+
+n∈Bm
+
+where Bm represents the set of clusters that have passed the
+inspection, and Sm denotes the set of devices successfully
+participating in S
+the aggregation at round m. The set Sm is
+given by Sm = n∈Bm (Cm,n ∩ Am ).
+B. Convergence Analysis
+To facilitate convergence analysis under the robust aggregation, we make some popular assumptions on the loss functions,
+which are used for example in [7], [11], [43] and entail no loss
+of generality.
+Assumption 1: The local loss functions Fk (·) are differentiable and have L-Lipschitz gradients, which implies
+Fk (w) ≤ Fk (v) + ∇Fk (v)T (w − v) +
+
+L
+∥w − v∥2 . (13)
+2
+
+Assumption 2: The divergence between the stochastic and
+k
+− ∇F (wm ) ≤ δk .
+global gradients is bounded, i.e., gm
+Assumption 3 (Polyak-Łojasiewicz Inequality): We denote
+the minimum value of the global loss function as F ∗ . There
+exists a constant µ > 0 such that the global loss function
+satisifies
+2
+
+∥∇F (w)∥ ≥ 2µ (F (w) − F ∗ ) .
+
+(14)
+
+Based on the above assumptions and the model update in
+(12), we analyze the convergence of a specific communication
+round in the following lemma. To explicitly analyze the
+convergence behavior, we define the expected reduction in the
+loss function at round m by gm ≜ E [F (wm+1 )] − F (wm ),
+where the expectation is taken over the additive noise.
+Lemma 1: The expected reduction in the loss function for
+the considered robust aggregation scheme at round m, denoted
+by gm ,P
+is bounded by (15) at the top of the next page, where
+2
+2
+σm
+≜ n∈Bm 2ζσ2 .
+m,n
+
+Proof: Please refer to Appendix A.
+
+□
+
+
+
+k 2
+gm
+−
+
+η
+δ2
+η − Lη 2 k
+
+
++
+
+Lη 2 2
+σ ≜ ḡm ,
+2 m
+
+(15)
+
+Remark 1: Defining
+k 2
+γm,k ≜ ∥gm
+∥ −
+
+η
+δ2 ,
+η − Lη 2 k
+
+(16)
+
+we theoretically characterize the impact of incorporating device k into the m-th round of FL training, which can be
+interpreted as the contribution of device k in the m-th round.
+The contribution is scaled by the weighting factor αm,k . For
+honest devices, the parameter δk is contingent solely upon
+the degree of non-IID local datasets, with its magnitude being
+constrained. Consequently, the participation of honest devices
+yields positive benefits. Conversely, for Byzantine devices,
+the local gradient can be any value, leading to a substantial
+deviation from the global gradient and, consequently, a negative contribution. The definition of contribution aligns with
+the intuitive understanding presented in existing studies [9],
+[37]. Devices exhibiting larger local gradient values exert a
+more significant influence on global model training compared
+with those with smaller values. Hence, the magnitude of
+k
+∥ commonly serves as an importance indicator for device
+∥gm
+scheduling [9]. The derived theoretical value of the contribution incorporates the impact of data heterogeneity, constituting
+a more universally applicable characterization.
+Remark 2: By exploiting the robust aggregation method,
+with a sufficiently small learning rate, the convergence of
+the FL algorithm is always guaranteed. Concretely, we can
+exclude gradients that deviate significantly from the global
+gradient, thereby ensuring a positive contribution γm,k from
+participating devices in Sm . The noise term is linearly related
+to η 2 and hence its effect is a higher-order term, which can be
+safely ignored as η → 0. Therefore, with these assumptions,
+we conclude that gm ≤ ḡm < 0, indicating that the loss
+function is monotonically decreasing with the number of
+communication rounds. Given that the objective of FL is to
+minimize the loss function with a lower bound, achieving final
+convergence is guaranteed.
+While existing clustering-based robust aggregation schemes
+effectively ensure convergence, these approaches remain a
+passive defense against Byzantine attacks. They lack the capability for identification and targeted clustering optimization
+specifically tailored for Byzantine devices, thereby degrading
+the convergence rate and achievable performance. This issue
+will be further explored in the next subsection.
+
+C. Optimization Problem Formulation
+To enhance convergence, it is imperative to optimize the
+algorithm design in each round with the aim of minimizing the
+value of the loss function. For a tractable objective, we exploit
+
+6
+
+the definition of gm and reformulate the expected value of the
+loss function in the M -th round as
+E[f (wM )] =
+
+M
+−1
+X
+
+gm + F (w0 ).
+
+(17)
+
+m=0
+
+As F (w0 ) in (17) is P
+a constant, it is therefore equivalent
+M −1
+to minimize the sum
+m=0 gm . Since it is challenging to
+accurately obtain the actual value of gm at the PS, we resort to
+utilizing the upper bound, ḡm , as a surrogate. Examination of
+ḡm in (15) reveals that it primarily comprises two components,
+the positive contribution resulting from the participation of
+honest devices and the negative impact of additive noise. Both
+aspects are intricately linked to the specific choice of clustering
+and weighting factors. Accordingly, we formulate the joint
+optimization problem:
+(P1) minimize
+
+lim
+
+U1 ,··· ,U∞
+
+M →∞
+
+subject to
+
+C1 :
+
+M
+X
+
+αm,k = 1, ∀m
+
+k=1
+
+C2 : |Cm,n | = K̄, n ∈ [N ], ∀m
+M→∞
+
+M−1
+X
+
+γ̄m,k αm,k
+≥ b, k ∈ [K], (18)
+M
+m=1
+
+
+where Um ≜ {Cm,n }n∈[N ] , {αm,k }k∈[K] denotes the set of
+optimization variables for the m-th round, K̄ ≜ K/N represents the number of devices in each cluster and it is assumed
+γ
+for simplicity to be an integer, γ̄m,k ≜ PKm,kγ
+denotes
+i=1 i,k
+the normalized contribution of device k, and b denotes the
+target average contribution of each device. The introduction
+of variable weighting factors in each round may compromise
+the fairness among devices, so we add a fairness constraint C3
+that is set to ensure that the long-term average contribution of
+each device is at least greater than b [44]. The aforementioned
+problem in (P1) primarily encounters two challenges. Firstly,
+to minimize ḡm , accurate identification of Byzantine devices
+is crucial as prior information, which is unavailable at the PS.
+Secondly, it entails long-term constraints, introducing causal
+issues into instantaneous optimization.
+To enable an independent optimization in each communication round, we first focus on reformulation of the longterm constraint C3 by exploiting the well-known Lyapunov
+method [44]. In particular, we introduce a virtual queue qm,k
+for each device k to measure the gap between the cumulative
+contribution up to round m and the fairness target:
+qm,k = max {qm−1,k + b − γ̄m−1,k αm−1,k , 0} .
+
+(19)
+
+Next, based on the drift-plus-penalty algorithm of Lyapunov
+optimization, the original problem in (P1) is divided into
+separate subproblems in each communication round. The m-th
+subproblem is:
+(P2)
+
+IV. P ROPOSED B YZANTINE -ROBUST S CHEME WITH
+A DAPTIVE C LUSTERING
+To effectively solve problem (P2), we first introduce a
+ZTA-based Byzantine identification method by examining the
+reputation of the devices in each round. Then, we decouple
+the clustering and weighting factor allocation. For clustering,
+we propose a sequential clustering method and illustrate its
+optimality for a given set of weighting factors. Substituting
+the optimal sequential clustering into (P2) and using the
+knowledge about identified Byzantine devices, we rewrite the
+optimization of the weighting factors, which is then solved by
+adopting the P-CCP algorithm.
+
+ḡm
+
+m=1
+K
+X
+
+C3 : lim
+
+where V is a penalty factor set for balancing ḡm and the
+fairness constraint. In the forthcoming section, we discuss the
+identification of Byzantine devices and then solve problem
+(P2).
+
+maximize
+
+{Cm,n }n∈[N ] ,{αm,k }k∈[K]
+
+subject to
+
+V ḡm +
+
+K
+X
+
+qm,k γ̄m,k αm,k
+
+k=1
+
+C1 , C2 ,
+
+(20)
+
+A. ZTA-Based Byzantine Identification Method
+Given that no participating device is inherently trustworthy,
+continuous trust evaluation and authentication are required
+throughout the training process in ZTA. Based on these, the
+key of zero-trust security lies in establishing trust for each
+entity within the network, enabling the system to enforce
+differentiated policies for accessing network resources [31],
+[45]. Hence, we continuously identify the Byzantine devices to
+enable targeted interventions in problem (P2). To achieve this
+goal, we employ statistical information derived from historical
+participation in each communication round for Byzantine
+identification, a technique used in [46], [47]. To this end, we
+first define the reputation of device k at round m by
+rm,k ≜
+
+m−1
+X
+
+αt,k γ̄t,k Jt,k ,
+
+(21)
+
+t=1
+
+where
+
+Jt,k =
+
+1,
+device k participates in the t-th aggregation,
+−α, device k is exluced in the t-th aggregation,
+(22)
+
+and α > 0 is a predetermined penalty [48]. The formulation
+in (21)-(22) provides a device with positive feedback for
+reputation if it successfully participates in training. Otherwise
+it receives negative feedback. Byzantine devices are more
+likely than honest devices to be excluded from aggregation
+by robust algorithms, thereby resulting in lower reputation.
+Hence, we identify the M devices with the lowest reputation
+as the Byzantine devices in the current round.
+Accurate Byzantine identification, tailored to different attack strategies, can be achieved by selecting a sufficiently
+large α, thus preventing the occurrence of error traps. To
+support this claim, we define the probability of excluding
+clusters with Byzantine devices as p and the probability of
+excluding clusters without Byzantine devices as q, with the
+reasonable assumption that p > q and q → 0 in practice2 . If
+2 Although Byzantine behavior may be dynamic and adaptive, the probability of a Byzantine device being excluded over the long term is still higher than
+that of an honest device, particularly with latest robust aggregation methods
+like [49], [50]. Otherwise, if it behaves too benignly, it should no longer be
+regarded as a Byzantine device.
+
+7
+
+a misidentification occurs at round m, meaning that at least
+one honest device i is mistakenly classified as Byzantine and
+one actual Byzantine device j is missed, their reputations
+then follow rm,i < rm,j . According to the optimal selection
+strategy for the weighting factors discussed subsequently,
+devices identified as Byzantine have their weighting factor set
+to 0, causing their reputations frozen. Then, if we select α
+1−q
+satisfying 1−p
+p < α ≤ q , it follows
+E[rm′ +1,j ] − rm′ ,j < 0,
+E[rm′ +1,j ] − rm′ ,j ≤ E[rm′ +1,v ] − rm′ ,v , ∀v ̸= j,
+
+(23)
+
+for any round m′ ≥ m with Byzantine device j being
+misidentified. This implies that the reputation of device j is
+expected to monotonically decrease at the fastest rate until it is
+eventually identified as a Byzantine device. By repeating this
+analysis, we conclude that all Byzantine devices are correctly
+identified in the steady state regardless of the specific type
+of attack. Hence, the long-term trust assessment based on
+ZTA can accurately identify Byzantine devices from historical
+information.
+For faster and accurate identification of Byzantine devices,
+we need to fine-tune α to adapt to different attack types and parameter settings. In practical deployment, adaptive clustering
+is not performed during the initial rounds; instead, we focus
+solely on updating the reputations. This serves two purposes:
+First, accumulating statistics over multiple rounds provides
+a more accurate initial identification of Byzantine devices.
+Second, the statistical results allow us to estimate p, which
+in turn facilitates the empirical selection of α.
+Leveraging results of Byzantine identification as prior information, we conduct targeted optimization in the following
+subsections.
+B. Clustering Optimization
+Given the optimal weighting factors, we focus on the
+clustering optimization. Removing irrelevant constants, the
+problem in (P2) reduces to
+X
+2
+(P3) maximize
+vm,k − Lησm
+{Cm,n }N
+n=1
+
+k∈Sm
+
+subject to C2 ,
+(24)
+
+
+2
+k 2
+where vm,k = αm,k ∥∇F (wm )∥ + (1 − Lη) gm
+− δk2
+is constant. It is evident that the clustering optimization must
+address the dual objectives: 1) reduce noise, and 2) augment
+the sum contribution of participating devices.
+To begin with, the equivalent noise power is calculated as
+(
+)
+2
+X σ 2 G2
+X σ2
+αm,k
+2
+max
+σm =
+=
+. (25)
+2
+2ζm,n
+2Pmax k∈Cm,n |hm,k |2 βk2
+n∈Bm
+
+n∈Bm
+
+From the perspective of minimizing the equivalent noise
+power, we construct the following sequential clustering
+method. We first sort the equivalent channel conditions of all
+|h
+|h
+|h
+′ |β1′
+′ |β2′
+′ |βK ′
+users as follows m,1
+≤ m,2
+≤ · · · ≤ m,K
+.
+αm,1′
+αm,2′
+αm,K ′
+Subsequently, we allocate the K̄ devices with poorest channel
+conditions to cluster 1. We proceed by grouping the next K̄ devices with the worst channel conditions among the remaining
+
+users into a cluster, continuing this process until all devices
+are assigned. For given weighting factors {αm,k }k∈[K] , we
+denote the clustering results obtained via sequential clustering
+as Cm,n ({αm,k }) for n ∈ [N ], which are a function of the
+weighting allocation results. The following theorem applies to
+the proposed clustering method.
+Theorem 1: The proposed sequential clustering method is
+optimal to achieve the minimum equivalent noise power.
+Proof: According to (25), we find that the equivalent noise
+power depends on the worst channel condition among the
+devices in each cluster. The optimality of the method can be
+easily demonstrated using a proof by contradiction, which is
+omitted here due to the page limits.
+□
+To increase the overall contribution of honest devices, an
+imperative is to congregate the Byzantine devices within the
+same clusters. This facilitates the participation of as many
+honest devices as possible in the aggregation procedure and
+thereby maximizing the sum contribution. In the following
+lemma, we demonstrate the superiority of the sequential clustering scheme in terms of enhancing the contribution of honest
+devices.
+Lemma 2: With the optimal weighting factor setting, adopting the sequential
+P clustering method maximizes the sum
+contribution, i.e., k∈Sm vm,k .
+Proof: In the scenario where the PS processes detailed
+information about Byzantine and inactive devices, it is evident
+that setting the weighting factors of such devices to 0 is optimal for maximizing ḡm . This entails disregarding updates from
+these devices and amplifying the influence of the remaining
+honest devices. Simultaneously, setting the weighting factor
+to 0 causes the equivalent channel values of these devices
+to tend to infinity. Consequently, these devices are grouped
+together and the honest devices can participate effectively in
+training without
+Pbeing contaminated, thus maximizing the sum
+contributions k∈Sm vm,k .
+□
+According to Theorem 1 and Lemma 2, we confirm the
+optimality of the proposed sequential clustering method for
+a given set of weighting factors. Substituting the optimal
+Cm,n ({αm,k }) into the original problem in (P2), we transform
+the clustering optimization problem into a weighting factor
+optimization problem without compromising optimality, as
+discussed in the subsequent subsection.
+C. Weighting Factor Optimization
+Now, we are ready to address the weighting factor optimization that results from substituting in the optimal clustering:
+(P4) maximize
+
+{αm,k }k∈[K]
+
+subject to
+
+V ḡm +
+
+K
+X
+
+qm,k γ̄m,k αm,k
+
+k=1
+
+C1 .
+
+(26)
+
+According to the proof in Lemma 2, it is optimal to assign
+zero weighting factors to the truncated devices with poor
+channel conditions and the identified Byzantine devices. Let
+
+8
+
+C9 :
+
+𝒟𝑚
+
+𝒞𝑚,1
+
+𝒞𝑚,3
+
+𝒞𝑚,2
+
+𝒞𝑚,4
+
+𝒞𝑚,1
+
+𝒮𝑚 ⊆ 𝒟𝑚 ⊆ 𝒜𝑚
+
+𝒞𝑚,3
+
+𝒞𝑚,2
+
+𝒞𝑚,4
+
+𝛼𝑚,𝑘 = 0,
+∀𝑘 ∉ 𝒟𝑚
+
+Fig. 2. Schematic diagram of the relationship between different device sets.
+
+Dm denote the set of activated and honest devices at the
+m-th round, which is a deterministic set independent of the
+weighting factors. Therefore, ∀k ∈
+/ Dm , we set αm,k = 0 and
+we only need to optimize αm,k for k ∈ Dm . The relationship
+between Dm and the other sets, as well as the effect of setting
+zero weighting factors in the sequential clustering method, is
+shown in Fig. 2. Moreover, the honest devices falling into
+Byzantine clusters will be contaminated and P
+therefore do not
+require
+weight
+assignment.
+Hence,
+we
+have
+k∈Sm αm,k =
+P
+α
+=
+1.
+Then,
+by
+removing
+some
+constants
+and
+m,k
+k∈Dm
+zero terms, the objective of problem (P4) can be further
+reformulated as in (27) at the top of the next page, where
+V Lησ 2 G2
+φm,k = V γm,k + qm,k γ̄m,k and ϖm,k = 2(1−Lη)P
+2 2.
+max |hm,k | βk
+Note that both the specific clustering results Cm,n ({αm,k })
+and the activated cluster set Bm ({αm,k }) depend on the
+weighting factors. Now, problem (P4) is equivalent to
+fm
+
+maximize
+
+{αm,k }k∈Dm
+
+subject to C̄1 :
+
+X
+
+αm,k = 1.
+
+(28)
+
+k∈Dm
+
+Problem (P5) is neither convex nor smooth and thus challenging to solve.
+We consider the ideal case in which the Byzantine devices
+in the current round have been accurately determined, and the
+clusters contaminated by them will be successfully identified
+and excluded from aggregation. Based on this assumption,
+we present the following theorem to facilitate the effective
+optimization of problem (P5).
+Theorem 2: Problem (P5) is equivalent to
+(P6) :
+
+maximize
+
+{αk }k∈Dm
+{ui }i∈[N̄ ] ,{li }i∈[N̄ ]
+{ei,k }i∈[N̄ ], k∈Dm
+
+subject to C̄1 ,
+C4 :
+C5 :
+
+N̄ X
+K
+X
+
+φk αk ei,k −
+
+i=1 k=1
+
+√
+√
+
+N̄
+X
+
+u2i
+
+i=1
+
+where αm,k , φm,k , and ϖm,k are abbreviated as αk , φk , and
+ϖk , respectively, N̄ ≜ |Bm |, and ui , li , and ei,k are auxiliary
+variables. In particular, ui and li respectively represents the
+√
+upper and lower bounds for the value of ϖk αk in cluster i.
+ei,k indicates whether the k-th device is in the i-th cluster.
+□
+
+Problem (P5) is a nonconvex MINLP problem of an intractable form. To tackle it with the discrete constraint C7 , we
+decompose C7 into two equivalent constraints as follows:
+C7 ⇔ ei,k (ei,k − 1) = 0, ∀i, k,
+
+C10 : ei,k (ei,k − 1) ≥ 0, ∀i, k,
+⇔
+C11 : ei,k (ei,k − 1) ≤ 0, ∀i, k.
+
+(30)
+
+By replacing constraint C7 with constraints C10 and C11 ,
+problem (P3) is transformed into a continuous but nonconvex
+problem. To handle the nonconvexity, we adopt the P-CCP
+framework [51], which is proved to be effective in obtaining a
+feasible stationary point of the original problem in an iterative
+manner. Specifically, constraints C10 and C11 in (30) are
+reformulated as
+C̄10 : ei,k (ei,k − 1) ≤ pi,k , ∀i, k,
+
+2
+(n)
+(n)
+C̄11 : (2ei,k − 1)ei,k − ei,k
+≥ −pi+N,k+K , ∀i, k,
+C12 : p ≥ 0,
+
+(31)
+
+where p = [p1,1 , · · · , p2N,2K ]T is a slack vector with non(n)
+negative elements, and ei,k is the solution obtained in the
+n-th iteration. Then, to guarantee the satisfaction of (30), we
+impose penalty terms with respect to p in the original objective
+PN̄ PK
+PN̄
+function, i.e., i=1 k=1 φk αk ei,k − i=1 u2i − τ (n) ∥p∥1 ,
+where τ (n) is the penalty parameter in the n-th iteration. With
+a sufficiently large penalty factor, the constraints in (30) can
+be strictly met.
+Moreover, the variable ei,k is coupled with αk and li in
+constraints C4 and C5 , which further complicates the problem.
+To tackle the coupled variables, we reformulate the function
+2
+2
+αk ei,k as 41 (αk + ei,k ) − 41 (αk − ei,k ) . Although this decouples the variables, the function is nonconvex. Hence, to find
+an effective linear approximation, we introduce the following
+upper bound for the function:
+1  (n) (n) 
+1
+2
+αk −ei,k (αk −ei,k )
+U (n) (αk , ei,k ) ≜ (αk +ei,k ) −
+4
+2
+
+
+2
+1
+(n)
+(n)
++
+αk − ei,k ,
+(32)
+4
+(n)
+
+ϖk αk ei,k ≤ ui , ∀k, i,
+ϖk αk ≥ li ei,k , ∀k, i,
+
+C6 : li−1 ≥ ui , i = 2, · · · , N,
+C7 : ei,k ∈ {0, 1}, ∀i, k,
+C8 :
+
+(29)
+
+Proof: Please refer to Appendix B.
+
+Sequential clustering with optimal weights ℬ𝑚 = 1,2,3
+
+(P5)
+
+ei,k = K̄, ∀i,
+
+k∈Dm
+
+𝒮𝑚
+
+𝒜𝑚
+Random clustering ℬ𝑚 = 1,2
+
+X
+
+N̄
+X
+i=1
+
+ei,k = 1, ∀k,
+
+where αk is the solution obtained for αk in the n-th iteration.
+Then, the term αk ei,k in the objective of (P5) can be replaced
+by its upper bound U (n) (αk , ei,k ) and constraint C4 becomes
+√
+C̄4 : ϖk U (n) (αk , ei,k ) ≤ ui , ∀k, i.
+(33)
+Similarly, constraint C5 is replaced by
+√
+C̄5 : ϖk αk ≥ U (n) (li , ei,k ), ∀k, i.
+
+(34)
+
+9
+
+
+
+
+
+X
+
+fm ≜
+
+X
+
+
+n∈Bm ({αm,k })
+
+φm,k αm,k −
+
+k∈Cm,n ({αm,k })
+
+max
+
+
+
+k∈Cm,n ({αm,k })
+
+2
+,
+ϖm,k αm,k
+
+(27)
+
+Iterating
+
+Initialize
+
+Weight
+updating
+
+Sorting
+
+ℎ𝑚,1′ 𝛽1′
+𝛼𝑚,1′
+
+Calculate and Sort:
+
+𝑟𝑚,1′
+
+Honest
+
+…
+
+Opt 𝛼𝑚,𝑘
+
+𝑟𝑚,(𝐾−𝑀)′
+
+Converge
+
+Sequential clustering:
+Identification Aggregation
+Cluster 1
+
+𝛼𝑚,𝑘
+
+ℎ𝑚,2′ 𝛽2′
+𝛼𝑚,2′
+
+…
+
+𝛼𝑚,𝑘 = 0
+
+ℎ𝑚,𝐾′ 𝛽𝐾′
+𝛼𝑚,𝐾′
+
+Cluster 2
+
+…
+
+…
+
+𝑟𝑚,(𝐾−𝑀+1)′ Byzantine
+
+𝑟𝑚,𝐾′
+
+Secure
+aggregation
+
+Clustering
+
+Unattacked
+gradient
+
+Cluster N
+
+Fig. 3. Architecture of the proposed ZTA-empowered FedSAC approach.
+
+Algorithm 1 P-CCP for Weighting Optimization
+(0)
+
+(0)
+
+(0)
+
+Require: n = 0, ρ(0) , µ > 1, ei,k , αk , and li .
+1: repeat
+(n+1)
+(n+1)
+(n+1)
+2:
+Update ei,k , αk
+, and li
+by solving the problem in (35).
+
+3:
+Update τ (n+1) = min µτ (n) , τ max .
+4:
+Update n = n + 1.
+5: until ∥p∥1 ≤ χ and the objective converges.
+
+Applying these transformations, we construct a sequence of
+convex surrogate problems, the n-th of which is
+(P7) :
+
+maximize
+
+{αk }k∈Dm
+{ui }i∈[N̄ ] ,{li }i∈[N̄ ]
+{ei,k }i∈[N̄ ], k∈Dm ,p
+
+(n)
+f˜m
+
+subject to C̄1 , C̄4 , C̄5 , C6 , C8 , C9 , C̄10 , C̄11 , C12 , (35)
+PN̄ PK
+PN̄
+(n)
+(n)
+(αk , ei,k ) − i=1 u2i −
+where f˜m ≜
+i=1
+k=1 φk L
+τ (n) ∥p∥1 . Problem (P6) can be efficiently solved by numerical convex program solvers, e.g., CVX [52]. According
+to [51], the computational complexity of solving (P7) is
+O K 3.5 N 3.5 .
+To summarize, we conclude the steps in Algorithm 1. The
+penalty parameter is set as a small value at first to seek better
+performance, and then increases proportionally with the coefficient µ to avoid constraint violation. The penalty is upperbounded by τ max is an upper limit of the penalty parameter,
+which helps the algorithm avoid numerical instability. The
+iteration terminates when the norm of the violation vector p is
+sufficiently small, i.e., ∥p∥1 ≤ χ, so that the integer constraint
+is approximately satisfied.
+
+D. Overall Framework and Performance Analysis
+The overall framework of the proposed FedSAC approach
+is depicted in Fig. 3. At the beginning of each communication
+round, according to the previously updated reputation, the
+PS identifies the honest and Byzantine devices. For honest
+devices, their weighting factors are jointly optimized via Algorithm 1 to maximize the loss reduction under the fairness constraints. With optimized weighting factors, the sequential clustering method is then applied. Finally, hierarchical AirComp
+with device clustering, combined with the clustering-based
+robust aggregation scheme, are conducted, thereby obtaining
+unattacked gradients for model updating. In summary, we
+conclude the FedaSAC-based AirFL algorithm in Algorithm 2.
+In the following theorem, we evaluate the convergence performance of AirFL using FedSAC by deriving the optimality
+gap, which is the difference between the optimal and actual
+achieved value of the loss function.
+Theorem
+n
+o3: For a fixed learning rate satisfying η ≤
+1 1
+min L , µ , the optimality gap after T communication
+rounds satisfies
+E [F (wT )] − F ∗ ≤
+
+TY
+−1
+
+Bm (F (w0 ) − F ∗ )
+
+m=0
+T
+−2
+X
+
++
+
+i=0
+
+Ci
+
+TY
+−1
+
+Bj + CT −1 ,
+
+(36)
+
+j=i+1
+
+P
+where Bm
+≜ 1 − µη k∈Sm αm,k and Cm
+η P
+η−Lη 2 P
+Lη 2 2
+2
+2
+k∈Sm αk,m δk −
+k∈Sm αm,k G + 2 σm .
+2
+2
+Proof: Please refer to Appendix C.
+
+≜
+□
+
+Remark 3: According to (36), the convergence rate of FL is
+solely contingent on parameter Bm , while the optimality gap
+
+10
+
+Algorithm 2 FedSAC-based AirFL algorithm
+Require: the initial model parameters, w0 , the iteration number, m = 0, the number of initialization rounds, m0 ,
+the initial reputation r0,k = 0, and weighting factors
+1
+for all k.
+α0,k = K
+1: repeat
+2:
+The PS refreshes the virtual queue in (19) and the
+reputation according to (21).
+3:
+The PS broadcasts wm to all devices.
+4:
+Each device computes the local gradient in (3) based
+on their local dataset and wm .
+5:
+if m ≥ m0 then
+k
+6:
+Each device reports ∥gm
+∥ to the PS.
+7:
+The weighting factors are optimized by Algorithm 1.
+8:
+end if
+9:
+The PS performs sequential clustering to group the
+devices into N clusters according to the equivalent
+channel conditions.
+10:
+for i = 1, · · · , N do
+11:
+The devices in cluster i perform AirComp according
+to their weighting factors.
+12:
+The PS receives the aggregated gradient of cluster i.
+13:
+end for
+14:
+The PS discards the malicious gradients and conducts
+the model update according to (12).
+15:
+Increment m ← m + 1.
+16: until converges
+
+is influenced by both Bm and Cm . The proposed FedSAC
+approach allocates all weighting factors to activated honest
+devices through Byzantine identification, minimizing Bm and
+thereby accelerating the convergence process. On the other
+hand, for Cm , through sequential clustering and weighting
+optimization, the total contribution is increased and the noise is
+reduced, resulting in an enhancement of the final achievable
+optimality gap. This result substantiates the effectiveness of
+the FedSAC approach.
+V. N UMERICAL R ESULTS
+In this section, we present numerical simulations to evaluate
+the performance of the proposed FedSAC scheme. The largescale fading βk is modelled as d−1.1
+, where dk denotes
+k
+the distance between the PS and device k and is uniformly
+distributed between 150 and 500 m. Moreover, we assume that
+the Byzantine devices transmit at full power to maximize resistance to convergence. Unless otherwise specified, the other
+parameters are set as follows: number of devices K = 40,
+number of Byzantine devices M = 6, noise power σ 2 = 10−6 ,
+maximum transmit power Pmax = 0 dBm, penalty factor
+V = 105 , and the number of initialization rounds m0 = 10.
+For FL performance evaluation, we consider the image
+classification task based on the well-known MNIST and
+CIFAR-10 datasets. The MNIST dataset contains 10 classes
+of handwritten digits ranging from 0 to 9 and we train a
+multi-layer perceptron (MLP) for it via AirFL. The MLP
+contains three fully-connected layers and 23,860 parameters.
+
+The CIFAR-10 dataset also includes 10 classes with labels 09 and we train a convolutional neural network (CNN) for it.
+The trained CNN is made up of two convolutional layers and
+three fully connected layers. We use max pooling operation
+following each convolutional layer and the RELU activation
+function. Without loss of generality, we adopt relatively simple
+models for simulation. Since our proposed FedSAC approach
+is confined to the physical layer and remains independent of
+specific models or algorithms, it can also be applied to more
+complicated scenarios. Moreover, it is noteworthy that all local
+datasets are non-IID, exclusively comprising a single category
+of labels. We set δk via simulation tests. The learning rate
+is set as η = 0.005. We consider the following three typical
+types of Byzantine attacks [30], [41]:
+• Sign-flipping attack: the Byzantine devices set g̃m,k =
+P
+− k∈H gm,k , where H denotes the set of honest devices, attempting to guide the trained model towards a
+direction opposite the desired one.
+• Gaussian attack: the Byzantine devices randomly select
+g̃m,k from a Gaussian distribution with mean 1, where 1
+denotes an all-one vector.
+• Label-flipping attack: the Byzantine devices reverse the
+labels of their local datasets, by replacing the label x of
+each training sample with 9 − x, and setting g̃m,k as the
+gradient calculated by the incorrect labels.
+We compare our proposed algorithms with the following
+baseline schemes:
+• Ideal case: There are no Byzantine devices nor additive
+noise, representing the ideal FL setting. Its performance
+serves as an upper bound for the proposed approach.
+• Non-robust AirFL [12]: No additional robust design is
+performed and the traditional AirFL scheme is used. It
+can be understood as the lower bound and highlights the
+necessity of robust design.
+• Random clustering [27]–[29]: Clustering-based robust aggregation is performed and device clustering is randomly
+determined.
+• w/o adaptive weighting: The sequential clustering is
+conducted only for noise minimization and the weighting
+1
+.
+factors are set as K
+The last two baselines can be interpreted as ablation experiments of the proposed approach, thus validating the effectiveness of each component in the proposed FedSAC. It is worth
+emphasizing that the proposed approach does not limit the
+robust aggregation method, and the main innovation focuses
+on the design of device clustering. Therefore, without loss
+of generality, we consider a representative robust aggregation
+method and the main focus of the numerical comparisons is on
+the performance gains brought by different device clustering
+methods. Moreover, the implementation details and source
+codes are available online at [53].
+A. Learning Performance for MNIST Dataset
+We first evaluate the learning performance with the MNIST
+dataset in Fig. 4. FedSAC is seen to outperform the existing
+baselines across all types of attacks, with a negligible performance gap compared to the ideal case. For the case of
+
+11
+
+90
+
+80
+
+80
+
+82
+
+50
+
+80
+780
+
+40
+
+790
+
+800
+
+Ideal case
+Non-robust AirFL
+Random clustering
+w/o adaptive weight
+Proposed FedSAC
+
+30
+20
+
+Test accuracy (%)
+
+84
+
+60
+
+84
+
+60
+
+400
+
+500
+
+600
+
+700
+
+800
+
+800
+
+Ideal case
+Non-robust AirFL
+Random clustering
+w/o adaptive weight
+Proposed FedSAC
+
+30
+
+10
+300
+
+790
+
+40
+
+0
+200
+
+83
+780
+
+50
+
+20
+
+100
+
+70
+
+85
+
+70
+
+10
+0
+
+80
+
+86
+
+86
+
+70
+
+Test accuracy (%)
+
+90
+
+Test accuracy (%)
+
+90
+
+86
+84
+
+60
+
+82
+
+50
+
+80
+78
+780
+
+40
+
+790
+
+30
+
+800
+
+Ideal case
+Non-robust AirFL
+Random clustering
+w/o adaptive weight
+Proposed FedSAC
+
+20
+10
+0
+
+0
+
+100
+
+Communication rounds
+
+200
+
+300
+
+400
+
+500
+
+600
+
+700
+
+800
+
+0
+
+100
+
+200
+
+300
+
+400
+
+500
+
+600
+
+700
+
+800
+
+Communication rounds
+
+Communication rounds
+
+60
+
+60
+
+50
+
+50
+
+50
+
+40
+30
+
+Ideal case
+Non-robust AirFL
+Random clustering
+w/o adaptive weight
+Proposed FedSAC
+
+20
+
+40
+30
+
+10
+
+0
+
+0
+200
+
+400
+
+600
+
+800
+
+Communication rounds
+
+1000
+
+1200
+
+Ideal case
+Non-robust AirFL
+Random clustering
+w/o adaptive weight
+Proposed FedSAC
+
+20
+
+10
+
+0
+
+Test accuracy (%)
+
+60
+
+Test accuracy (%)
+
+Test accuracy (%)
+
+Fig. 4. Test accuracy for the MNIST dataset and different types of attacks. (a) Sign-flipping attack (b) Gaussian attack (c) Label-flipping attack.
+
+Ideal case
+Non-robust AirFL
+Random clustering
+w/o adaptive weight
+Proposed FedSAC
+
+40
+30
+20
+10
+0
+
+0
+
+200
+
+400
+
+600
+
+800
+
+Communication rounds
+
+1000
+
+1200
+
+0
+
+200
+
+400
+
+600
+
+800
+
+1000
+
+1200
+
+Communication rounds
+
+Fig. 5. Test accuracy for the CIFAR-10 dataset and different types of attacks. (a) Sign-flipping attack, (b) Gaussian attack, and (c) Label-flipping attack.
+
+the sign-flipping attack, FedSAC exhibits a notable enhancement of approximately 4.5% in terms of test accuracy when
+juxtaposed with existing random clustering schemes. FedSAC
+achieves performance comparable to random clustering in
+approximately 420 communication rounds, thereby reducing
+the number of rounds by 47.5%. In the other two scenarios, the performance gain provided by FedSAC is smaller,
+although it still achieves a notable improvement in accuracy
+and accelerated convergence. This discrepancy arises due to
+the fact that the employed similarity detection method can
+more easily detect the sign-flipping attack, which enhances
+the accuracy and efficiency of Byzantine identification. In the
+case of Gaussian and label-flipping attacks, the PS requires
+more communication rounds to identify the Byzantine devices,
+leading to a reduction in the observed gain. Certainly, the observed performance loss could potentially be compensated by
+enhancing the robust aggregation algorithm adopted. However,
+such improvements extend beyond the primary scope of our
+research and are consequently not included in this study. In
+the initial phases of training, it is noteworthy that FedSAC can
+exhibit performance that surpasses even the ideal case. This is
+attributed to the adjustment of the weighting factors based on
+device contribution, promoting faster convergence than that of
+the design with equal weights.
+
+It is also evident that a performance gain can be achieved
+solely through the sequential clustering approach, due to the
+reduction in equivalent noise. Through a comparative analysis
+of the three methods, the ablative experiment validates the
+roles of each module in FedSAC.
+
+B. Learning Performance for CIFAR-10 Dataset
+Fig. 5 depicts the test accuracy of different schemes for
+the CIFAR-10 dataset. As in the previous case, FedSAC
+maintains exceptional performance under diverse attack scenarios, although the performance gap compared with the ideal
+case is widened. This is due to the increased complexity of
+the classification task for the CIFAR-10 dataset compared
+to MNIST and and the heightened difficulty of learning an
+accurate global model for heterogeneous local datasets. In the
+initial training phases, dynamic weight optimization leads the
+PS to prioritize devices with greater contributions, accelerating
+convergence and yielding performance comparable to the ideal
+situation. Subsequently, the imbalance in the weights may
+introduce bias towards specific devices, particularly for nonIID local datasets, causing a significant performance gap.
+Owing to the relative simplicity of the task for the MNIST
+dataset, the impact of this bias is not significant, resulting in
+no pronounced performance degradation.
+In contrast to the baseline schemes with attackers, the
+heightened importance of weight optimization is evident in
+its implicit regulation of clustering. This leads to fewer honest gradients being contaminated, yielding substantial performance gains. In the presence of the three types of attacks, FedSAC demonstrates improvements of 6.2%, 7.1%,
+and 5.9% in teasting accuracy compared with the random
+clustering method. Moreover, FedSAC reduces the number of
+communication rounds needed to achieve equivalent accuracy
+by 60%, 67.5%, and 54%, further affirming its outstanding
+performance. It is worth noting that in the CIFAR-10 dataset,
+relying solely on sequential clustering does not yield significant performance gains and may even result in degradation.
+
+12
+
+86
+
+85
+
+85
+84
+
+Test accuracy (%)
+
+Test accuracy (%)
+
+80
+
+75
+
+Random clustering
+w/o adaptive weight
+Proposed FedSAC
+
+70
+
+83
+82
+81
+80
+
+Random clustering
+w/o adaptive weight
+Proposed FedSAC
+
+79
+65
+-6
+
+78
+-5
+
+-4
+
+-3
+
+-2
+
+-1
+
+0
+
+1
+
+2
+
+Maximum transmit power (dBm)
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+Fig. 6. Test accuracy versus maximum transmit power.
+
+Fig. 7. Test accuracy versus the number of Byzantine devices.
+
+This is because by prioritizing devices based on their channel
+conditions, the sequential clustering may cause an imbalance
+in the participation of different devices, thus causing a biased
+global model. To elaborate, honest devices sharing similar
+channels with Byzantine devices are more likely to be placed
+in the same cluster as the Byzantine devices. This leads to their
+reduced participation in the training process, thus elucidating
+the need for incorporating fairness in the optimization.
+
+E. Impact of the Number of Clusters
+
+C. Impact of Transmit Power
+In Fig. 6, we compare the test accuracy for different transmit
+power budgets using the MNIST dataset under sign-flipping
+attack. We see that as the transmit power decreases, the
+performance degradation of FedSAC is comparatively less
+pronounced, showcasing its robustness to noise. In contrast,
+especially with random clustering schemes, the test accuracy
+experiences a significant decline at lower transmit power
+levels. This result is due to the sequential clustering method
+which reduces the equivalent noise power and improves the
+utilization of transmit power, thereby providing a significant
+advantage at low SNRs. In high SNR regions where the
+influence of noise is minimal, the performance gain primarily
+stems from weighting allocation optimization based on device
+contributions.
+
+D. Impact of the Number of Byzantine Devices
+Fig. 7 exhibits the test accuracy versus the number of
+Byzantine devices for the different schemes. As the number
+of Byzantine devices increases, the performance of methods
+degrades. In contrast to the baseline schemes, FedSAC showcases superior robustness against the Byzantine attack. Despite
+the escalating number of Byzantine devices, the proposed
+approach is able to effectively group them into specific clusters, resulting only in a marginal performance degradation.
+Conversely, both random grouping and sequential clustering
+experience a steep decline in performance as the number of
+attacking devices increases.
+
+8
+
+Number of Byzantine devices
+
+In Fig. 8, we investigate the influence of the number of clusters. For fairness considerations, we presume equal spectrum
+resource allocation across all clusters, with distinct time slots
+designated for AirComp within each cluster. Subsequently,
+we evaluate the test accuracy after an equivalent training
+duration, concentrating solely on the AirComp-induced delay
+and disregarding local computation delays. As the number of
+clusters is increased, there is enhanced support for a more
+efficient Byzantine-robust aggregation algorithm, leading to a
+reduction in the number of honest gradients contaminated in
+each round and consequently improving performance. Nevertheless, this escalation concomitantly entails a heightened
+consumption of time-frequency resources, diminishing the
+number of communication rounds within the specified latency
+constraints, thereby introducing adverse effects. This is evident
+that the test accuracy depicted in Fig. 8 exhibits an initial
+ascent followed by a decline as the number of clusters increases. The different methods exhibit maximum test accuracy
+at distinct cluster counts. Notably, FedSAC attains optimality
+with two clusters, whereas random clustering requires five
+clusters for optimal performance. This discrepancy arises from
+the incorporation of Byzantine identification and adaptive
+clustering in FedSAC, enabling efficient concentration of the
+Byzantine devices within the same cluster. Consequently, even
+with only two clusters, effective participation of partial honest
+devices is ensured. In contrast, random clustering results in
+the even distribution of Byzantine devices across the clusters,
+motivating the need for more clusters to enhance reliability.
+From this standpoint, FedSAC demonstrates more efficient
+resource utilization and exhibits a notable performance advantage compared to the baseline schemes.
+F. Impact of Penalty Factor V
+By varying the penalty factor V in the Lyapunov transformation, we effectively tune for fairness among various
+devices. In Fig. 9, we illustrate the effect of the penalty
+factors on the training accuracy of distinct devices. Given the
+increased sensitivity to heterogeneity in the classification task
+
+13
+
+involving clustering and weighting factor allocation with theoretical guarantees. The incorporation of Byzantine device
+identification, sequential clustering, and adaptive weighting
+effectively addresses the difficulties associated with the optimization problem and plays a pivotal role in achieving
+substantial performance improvements. The simulation results
+verified the effectiveness of the proposed FedSAC approach
+and confirmed its superiority over baseline approaches from
+various perspectives. The proposed approach offers a practical solution for deploying AirFL with ZTA in resourceconstrained and vulnerable wireless networks, highlighting
+the crucial role of Byzantine attack defense in real-world
+applications.
+
+Test accuracy after 6400 slots (%)
+
+88
+Random clustering
+w/o adaptive weight
+Proposed FedSAC
+
+87
+86
+85
+84
+83
+82
+81
+80
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+Number of clusters
+
+A PPENDIX A
+P ROOF OF L EMMA 1
+
+Fig. 8. Test accuracy versus the number of clusters.
+
+2
+
+Training accuracy (%)
+
+1.9
+60
+1.8
+
+1.7
+55
+1.6
+
+50
+
+Standard deviation f accuracy
+
+65
+
+1.5
+Mean
+
+Max
+
+Min
+
+Std
+
+Fig. 9. Statistics of different devices’ training accuracy for different V .
+
+To begin with, by exploiting Assumption 1, we bound the
+expected per round loss gm as
+
+
+L
+2
+T
+gm ≤ E ∇ F (wm )(wm+1 −wm )+ ∥wm+1 −wm ∥
+2
+X
+(a)
+k
+= −η∇T F (wm )
+αm,k gm
+k∈Sm
+
+|
+
+{z
+
+}
+
+A1
+
+Lη 2
++
+2
+|
+
+2
+
+X
+
+αm,k gm,k
+
+
+
+2
+Lη 2  X
++
+E
+zn 
+2
+n∈Bm
+
+k∈Sm
+
+{z
+
+}
+
+A2
+
+Lη 2 2
+σ ,
+(37)
+= A1 + A2 +
+2 m
+where (a) comes from (12). Next, we first rewrite A1 as
+X
+k
+A1 = −η
+αm,k ∇T F (wm )gm
+k∈Sm
+
+for the CIFAR-10 dataset, and recognizing its consequential
+impact on fairness, we employ the CIFAR-10 dataset for
+evaluation. We use the standard deviation of the training
+accuracy among the involved honest devices as the measure of
+fairness. Evidently, with an increase in V , the training accuracy
+gap among devices becomes more conspicuous, indicating
+a deterioration in fairness. A excessive value for V may
+lead to a reduction in fairness, resulting in a biased global
+model and diminished performance. Conversely, an overly
+small V can give rise to a loss in performance by placing
+undue emphasis on fairness while overlooking the influence
+of channel and gradient characteristics in the current round.
+Hence, it is imperative to judiciously select the value of V for
+better performance.
+VI. C ONCLUSION
+In this paper, we proposed a novel ZTA-based FedSAC
+scheme for AirFL to combat Byzantine attacks. Based on
+clustering, we constructed multiple individual gradients from
+different clusters and facilitated the implementation of existing
+robust aggregation methods. Based on the one-step convergence analysis, we formulated a joint optimization problem
+
+
+η X
+2
+k 2
+αm,k ∥∇F (wm )∥ + gm
+=−
+2
+k∈Sm
+
+k 2
+− ∇F (wm ) − gm
+
+
+(b)
+η X
+2
+k 2
+≤−
+αm,k ∥∇F (wm )∥ + gm
+−δk2 , (38)
+2
+k∈Sm
+
+where (b) exploits Assumption 2. As for A2 , we have
+(c) Lη 2 X
+k 2
+αm,k gm
+,
+A2 ≤
+2
+
+(39)
+
+k∈Sm
+
+where (c)P
+is due to the convexity of the function ∥ · ∥2 and the
+fact that k∈Sm αm,k ≤ 1. Plugging (38) and (39) into (37),
+we complete the proof.
+A PPENDIX B
+P ROOF OF T HEOREM 2
+First, under the assumption of perfect identification, we can
+calculate the number of clusters that can effectively participate
+in the aggregation, i.e., N̄ = N − M
+, where M
+is assumed
+K̄
+K̄
+here to be an integer for simplicity. Note that the objective
+function in (27) is related to the specific clustering results,
+
+14
+
+which are implicitly determined by the weighting factors.
+For a more tractable form, we introduce the new variables
+{ei,k }i∈[N̄ ], k∈Dm to characterize the clustering results. Specifically, if ei,k is equal to 1, it signifies that the k-th device
+is located in cluster i, and otherwise it is equal to 0. Also,
+considering the max-min form of the noise-related term, we
+introduce ui and li to respectively represent the maximum
+√
+and minimum value of ϖk αk in cluster n. With the above
+variables, the objective in (27) is reformulated as
+
+P
+2 P
+2
+where Cm ≜ η2 k∈Sm αk,m δk2 − η−Lη
+k∈Sm αm,k G +
+2
+P
+2
+Lη
+2
+k∈Sm αm,k , we further obtain
+2 σm . Letting Bm = 1−µη
+E [F (wT )] − F ∗
+≤ BT −1 (E [F (wT −1 )] − F ∗ ) + CT −1
+≤ BT −1 (BT −2 (E [F (wT −1 )] − F ∗ ) + CT −2 ) + CT −1
+≤
+
+TY
+−1
+
+Bm (F (w0 )−F ∗ ) +
+
+m=0
+N̄ X
+K
+X
+
+φk αk ei,k −
+
+i=1 k=1
+
+N̄
+X
+
+T
+−2
+X
+
+Ci
+
+i=0
+
+TY
+−1
+
+Bj + CT −1 . (43)
+
+j=i+1
+
+This completes the proof.
+u2i .
+
+(40)
+
+i=1
+
+R EFERENCES
+To ensure equivalence with the original formulation, we
+need to add the following constraints for the auxiliary variables
+introduced above. To begin with, since each device is located
+in only one cluster and each cluster contains K̄ devices, the
+PN̄
+variables
+{ei,k }i∈[N̄ ], k∈Dm must satisfy i=1 ei,k = 1, and
+P
+the variable ui is defined
+k∈Dm ei,k = K̄. Furthermore,
+√
+as an upper bound for ϖk αk in cluster n. Hence, it is
+constrained by
+√
+
+ϖk αk ei,k ≤ ui , ∀i,
+
+(41)
+
+where ei,k is used to used to determine whether device
+k is within cluster i and the constraint always holds if
+√
+ei,k = 0. Likewise, the lower bound li must satisfy ϖk αk ≥
+li ei,k , ∀k. Furthermore, considering that the specific clustering results are determined by the proposed sequential clustering strategy, there is a sequential relationship between the
+equivalent channels of the devices within different clusters.
+Specifically, the equivalent channel of a device within a
+previous cluster is always worse than the one in the following
+√
+cluster, i.e., with a larger ϖk αk . Thus, to satisfy the cluster√
+ing rule, the lower bound for ϖk αk in the previous cluster
+needs to be greater than the maximum value of the following
+cluster, namely li−1 ≥ ui . Combining all transformations and
+constraints, we arrive at problem (P3) and the proof completes.
+
+A PPENDIX C
+P ROOF OF T HEOREM 3
+Substituting Assumption 3 into (15) and exploiting the fact
+k
+that ∥gm
+∥ ≤ G, we have
+!
+gm ≤ −µη
+
+X
+k∈Sm
+
+αm,k
+
+(F (wm ) − F ∗ ) +
+
+η X
+αm,k δk2
+2
+k∈Sm
+
+η−Lη 2 X
+Lη 2 2
+k 2
+−
+αm,k gm
++
+σ
+2
+2 m
+k∈Sm
+!
+X
+≤ −µη
+αm,k (F (wm ) − F ∗ ) + Cm ,
+k∈Sm
+
+(42)
+
+[1] Framework and overall objectives of the future development of IMT for
+2030 and beyond. ITU-R WR 5D, Jun. 2023.
+[2] W. Xu et al., “Edge learning for B5G networks with distributed signal
+processing: Semantic communication, edge computing, and wireless
+sensing,” IEEE J. Sel. Topics Signal Process., vol. 17, no. 1, pp. 9–
+39, Jan. 2023.
+[3] M. Aloqaily, I. A. Ridhawi, and S. Kanhere, “Reinforcing industry 4.0
+with digital twins and blockchain-assisted federated learning,” IEEE J.
+Sel. Areas Commun., vol. 41, no. 11, pp. 3504–3516, Nov. 2023.
+[4] G. Zhu et al., “Pushing AI to wireless network edge: An overview on
+integrated sensing, communication, and computation towards 6G,” Sci.
+China Inf. Sci., vol. 66, no. 3, pp. 1–19, 2023.
+[5] J. Yao, Z. Yang, W. Xu, M. Chen, and D. Niyato, “GoMORE: Global
+model reuse for resource-constrained wireless federated learning,” IEEE
+Wireless Commun. Lett., vol. 12, no. 9, pp. 1543–1547, Sept. 2023.
+[6] M. Fan, Z. Zhang, D. Li, Q. Zhang, and H. Yao, “A privacy-preserving
+scheme for multi-party vertical federated learning,” ZTE Commun.,
+vol. 22, no. 4, pp. 89–96, Dec. 2024.
+[7] M. Chen et al., “A joint learning and communications framework
+for federated learning over wireless networks,” IEEE Trans. Wireless
+Commun., vol. 20, no. 1, pp. 269–283, Jan. 2021.
+[8] J. Yao, W. Xu, Z. Yang, X. You, M. Bennis, and H. V. Poor, “Wireless
+federated learning over resource-constrained networks: Digital versus
+analog tansmissions,” IEEE Trans. Wireless Commun., vol. 23, no. 10,
+pp. 14 020–14 036, Oct. 2024.
+[9] M. Amiri, D. Gündüz, S. R. Kulkarni, and H. V. Poor, “Convergence
+of update aware device scheduling for federated learning at the wireless
+edge,” IEEE Trans. Wireless Commun., vol. 20, no. 6, pp. 3643–3658,
+Jun. 2021.
+[10] H. H. Yang, Z. Liu, T. Q. S. Quek, and H. V. Poor, “Scheduling policies
+for federated learning in wireless networks,” IEEE Trans. Commun.,
+vol. 68, no. 1, pp. 317–333, Jan. 2020.
+[11] G. Zhu, Y. Wang, and K. Huang, “Broadband analog aggregation for
+low-latency federated edge learning,” IEEE Trans. Wireless Commun.,
+vol. 19, no. 1, pp. 491–506, Jan. 2020.
+[12] J. Yao, Z. Yang, W. Xu, D. Niyato, and X. You, “Imperfect CSI: A key
+factor of uncertainty to over-the-air federated learning,” IEEE Wireless
+Commun. Lett., vol. 12, no. 12, pp. 2273–2277, Dec. 2023.
+[13] K. Yang, T. Jiang, Y. Shi, and Z. Ding, “Federated learning via overthe-air computation,” IEEE Trans. Wireless Commun., vol. 19, no. 3, pp.
+2022–2035, Mar. 2020.
+[14] H. H. Yang, Z. Chen, T. Q. S. Quek, and H. V. Poor, “Revisiting analog
+over-the-air machine learning: The blessing and curse of interference,”
+IEEE J. Sel. Topics Signal Process., vol. 16, no. 3, pp. 406–419, Apr.
+2022.
+[15] W. Guo et al., “Joint device selection and power control for wireless
+federated learning,” IEEE J. Sel. Areas Commun., vol. 40, no. 8, pp.
+2395–2410, Aug. 2022.
+[16] Y. Sun, Z. Lin, Y. Mao, S. Jin, and J. Zhang, “Channel and gradientimportance aware device scheduling for over-the-air federated learning,”
+IEEE Trans. Wireless Commun., vol. 23, no. 7, pp. 6905–6920, Jul. 2024.
+[17] M. Kim, A. Swindlehurst, and D. Park, “Beamforming vector design
+and device selection in over-the-air federated learning,” IEEE Trans.
+Wireless Commun., vol. 22, no. 11, pp. 7464–7477, Nov. 2023.
+[18] L. Lyu et al., “Privacy and robustness in federated learning: Attacks
+and defenses,” IEEE Trans. Neural Netw. Learn. Syst., vol. 35, no. 7,
+pp. 8726–8746, Jul. 2024.
+
+15
+
+[19] J. Shi, W. Wan, S. Hu, J. Lu, and L. Yu Zhang, “Challenges and
+approaches for mitigating byzantine attacks in federated learning,” in
+Proc. IEEE Int. Conf. Trust Security Privacy in Comput. Commun.
+(TrustCom), 2022, pp. 139–146.
+[20] N. M. Hijazi, M. Aloqaily, M. Guizani, B. Ouni, and F. Karray,
+“Secure federated learning with fully homomorphic encryption for IoT
+communications,” IEEE Internet Things J., vol. 11, no. 3, pp. 4289–
+4300, Feb. 2024.
+[21] L. Zhang, G. Ding, Q. Wu, Y. Zou, Z. Han, and J. Wang, “Byzantine attack and defense in cognitive radio networks: A survey,” IEEE Commun.
+Surveys Tuts., vol. 17, no. 3, pp. 1342–1363, 3rd Quart. 2015.
+[22] W. Shi, J. Yao, J. Xu, W. Xu, L. Xu, and C. Zhao, “Empowering overthe-air personalized federated learning via RIS,” Sci. China Inf. Sci.,
+vol. 67, no. 11, pp. 219 302:1–2, Nov. 2024.
+[23] W. Shi et al., “Combating interference for over-the-air federated learning: A statistical approach via RIS,” IEEE Trans. Signal Process.,
+vol. 73, pp. 936–953, 2025.
+[24] P. Blanchard, E. M. E. Mhamdi, R. Guerraoui, and J. Stainer, “Machine
+learning with adversaries: Byzantine tolerant gradient descent,” in Proc.
+Neural Inf. Process. Syst. (NeurIPS), 2017, pp. 118–128.
+[25] X. Fan, Y. Wang, Y. Huo, and Z. Tian, “BEV-SGD: Best effort voting
+SGD against Byzantine attacks for analog-aggregation-based federated
+learning over the air,” IEEE Internet Things J., vol. 9, no. 19, pp. 18 946–
+18 959, Oct. 2022.
+[26] S. Huang, Y. Zhou, T. Wang, and Y. Shi, “Byzantine-resilient federated
+machine learning via over-the-air computation,” in Proc. IEEE Int. Conf.
+Commun. Workshops (ICC Workshops), 2021.
+[27] S. Park and W. Choi, “Byzantine fault tolerant distributed stochastic
+gradient descent based on over-the-air computation,” IEEE Trans. Commun., vol. 70, no. 5, pp. 3204–3219, May 2022.
+[28] H. Sifaou and G. Y. Li, “Robust federated learning via over-the-air
+computation,” in Proc. IEEE 32nd Int. Workshop Mach. Learn. Signal
+Process., 2022.
+[29] ——, “Over-the-air federated learning under Byzantine attacks,” arXiv
+preprint, arXiv:2205.02949, 2022.
+[30] Y. Yang, Y. Wu, Y. Jiang, and Y. Shi, “One-bit Byzantine-tolerant
+distributed learning via over-the-air computation,” IEEE Trans. Wireless
+Commun., vol. 23, no. 6, pp. 5441–5455, Jun. 2024.
+[31] S. Rose, O. Borchert, S. Mitchell, and S. Connelly. (2020) Zero
+trust architecture. [Online]. Available: https://doi.org/10.6028/NIST.SP.
+800-207
+[32] X. Chen, W. Feng, N. Ge, and Y. Zhang, “Zero trust architecture for 6G
+security,” IEEE Netw., vol. 38, no. 4, pp. 224–232, Jul. 2024.
+[33] I. A. Ridhawi and M. Aloqaily, “Zero-trust UAV-enabled and DTsupported 6G networks,” in Proc. IEEE Global Commun. Conf. (GlobeCom), 2023, pp. 6171–6176.
+[34] H. Sedjelmaci and N. Ansari, “Zero trust architecture empowered attack
+detection framework to secure 6G edge computing,” IEEE Netw., vol. 38,
+no. 1, pp. 196–202, Jan. 2024.
+[35] L. Zhu, Z. Liu, and S. Han, “Deep leakage from gradients,” in Proc.
+Adv. Neur. Inf. Process. Syst. (NeurIPS), 2019, pp. 14 747–14 756.
+[36] L. Tan et al., “Adafed: Optimizing participation-aware federated learning
+
+with adaptive aggregation weights,” IEEE Trans. Netw. Sci. Eng., vol. 9,
+no. 4, pp. 2708–2720, Jul.-Aug. 2022.
+[37] J. Du et al., “Gradient and channel aware dynamic scheduling for overthe-air computation in federated edge learning systems,” IEEE J. Sel.
+Areas Commun., vol. 41, no. 4, pp. 1035–1050, Apr. 2023.
+[38] X. Cao, M. Fang, J. Liu, and N. Z. Gong, “Fltrust: Byzantinerobust federated learning via trust bootstrapping,” arXiv preprint
+arXiv:2012.13995, 2020.
+[39] X. Cao and L. Lai, “Distributed gradient descent algorithm robust to an
+arbitrary number of Byzantine attackers,” IEEE Trans. Signal Process.,
+vol. 67, no. 22, pp. 5850–5864, Nov. 2019.
+[40] F. Sattler, K. R. Müller, T. Wiegand, and W. Samek, “On the Byzantine
+robustness of clustered federated learning,” in Proc. IEEE Int. Conf.
+Acoust. Speech Signal Process. (ICASSP), 2020, pp. 8861–8865.
+[41] Z. Wu, Q. Ling, T. Chen, and G. B. Giannakis, “Federated variancereduced stochastic gradient descent with robustness to Byzantine attacks,” IEEE Trans. Signal Process., vol. 68, pp. 4583–4596, 2020.
+[42] D. Yin, Y. Chen, R. Kannan, and P. Bartlett, “Byzantine-robust distributed learning: Towards optimal statistical rates,” in Int. Conf. Mach.
+Learn. (ICML), 2018, pp. 5650–5659.
+[43] X. Cao, G. Zhu, J. Xu, Z. Wang, and S. Cui, “Optimized power control
+design for over-the-air federated edge learning,” IEEE J. Sel. Areas
+Commun., vol. 40, no. 1, pp. 342–358, Jan. 2021.
+[44] T. Huang et al., “An efficiency-boosting client selection scheme for
+federated learning with fairness guarantee,” IEEE Trans. Parallel Distrib.
+Syst., vol. 32, no. 7, pp. 1552–1564, Jul. 2021.
+[45] Y. Ge and Q. Zhu, “GAZETA: Game-theoretic zero-trust authentication
+for defense against lateral movement in 5G IoT networks,” IEEE Trans.
+Inf. Forensics Security, vol. 19, pp. 540–554, 2024.
+[46] K. Lei, Q. Zhang, L. Xu, and Z. Qi, “Reputation-based Byzantine faulttolerance for consortium blockchain,” in Proc. IEE Int. Conf. Parallel.
+Distrib. Syst. (ICPADS), 2018, pp. 604–611.
+[47] B. Li, P. Wang, H. Huang, S. Ma, and Y. Jiang, “Flphish: Reputationbased phishing Byzantine defense in ensemble federated learning,” in
+Porc. IEEE Symp. Computer Commun. (ISCC), 2021.
+[48] C. S. Hyder, B. Grebur, L. Xiao, and M. Ellison, “ARC: Adaptive
+reputation based clustering against spectrum sensing data falsification
+attacks,” IEEE Trans. Mobile Comput., vol. 13, no. 8, pp. 1707–1719,
+Aug. 2014.
+[49] Q. Dong, S. Yang, Z. Dai, Y. Gao, S. Wang, Y. Cao, A. Fu, and W. Susilo,
+“Carefl: Contribution guided byzantine-robust federated learning,” IEEE
+Trans. Inf. Forensics Security, vol. 19, pp. 9714–9729, 2024.
+[50] Y. Tao et al., “Byzantine-resilient federated learning at edge,” IEEE
+Trans. Comput., vol. 72, no. 9, pp. 2600–2614, Sept. 2023.
+[51] J. Yao et al., “Robust beamforming design for RIS-aided cell-free
+systems with CSI uncertainties and capacity-limited backhaul,” IEEE
+Trans. Commun., vol. 71, no. 8, pp. 4636–4649, Aug. 2023.
+[52] M. Grant and S. Boyd, CVX: Matlab Software for Disciplined Convex
+Programming,, 2018.
+[53] J.
+Yao,
+W.
+Shi,
+and
+W.
+Xu.
+(2024)
+FedSAC-forbyzantine-resilient-AirFL. [Online]. Available: https://github.com/
+x1988/FedSAC-for-byzantine-resilient-AirFL
+
+
