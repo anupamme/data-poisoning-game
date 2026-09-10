@@ -277,3 +277,260 @@ results for one query is something known.
 10. **F2b's exhaustive denominators are reported in the funnel** -- how many titles were listed per
     venue-year, and how many the regex retained. Reporting only the retained count would present an
     exhaustive screen as if it were a search.
+
+---
+
+## Amendment 2 (Round 57, 2026-09-10): the blind-coding disclosure was too narrow by one paper
+
+**Written after five papers have been coded, which is itself the disclosure this amendment exists to
+make.** Nothing about the frame, the queries, the window, the five criteria, the four decision rules or
+the 10-paper floor changes; non-negotiable 2 is not touched. What changes is the count on line 139
+above, from three papers to **four**, and the direction of that change is against our own interest: a
+row marked not-blind is a row a reader discounts.
+
+**What went wrong.** Line 139 says "Three papers were known to us before this document existed," and
+names the three retrieval seeds. That conflated *seed of the frame* with *known to the coder*. The
+seeds are not the only papers we had read before the freeze -- **every paper already in
+`paper/references.bib` was**, and `main.tex:1654` names six defenses by hand. One of those six survives
+into the frame: **`cao2021fltrust` (arXiv 2012.13995)**, which the screen included with the explicit
+reason that `:1654` asserts it is a single stage and coding it against the full text decides that. A
+paper admitted in order to test a sentence we wrote is the least blind row in the audit, and it was
+about to ship marked blind.
+
+**The rule, stated so it is mechanical rather than remembered.** A paper is **not blind** iff its title
+matches an entry in `paper/references.bib` *as that file stood at the pre-registration commit*
+(`git show 9b8a395:paper/references.bib`, 37 entries), or it is one of the three named seeds. Matching
+the 59 included papers against that frozen bibliography returns exactly four:
+
+| arXiv id | bibkey | why not blind |
+|---|---|---|
+| 2012.13995 | `cao2021fltrust` | cited at `main.tex:1654`; **added by this amendment** |
+| 2101.02281 | `nguyen2022flame` | named seed, already disclosed |
+| 2201.00763 | `rieger2022deepsight` | named seed, already disclosed |
+| 2509.08089 | `fenaux2025hammer` | named seed, already disclosed |
+
+The other 55 included papers match no entry in the frozen bibliography and are coded blind. The set is
+hard-coded in `experiments/merge_coding_literature_audit.py` (`NOT_BLIND`) rather than set per record,
+so a typo in one file cannot lose a disclosure, and it is now derived rather than recalled.
+
+**What was known when this was written.** Five papers were coded: the three seeds and 2012.13995, all
+four of which code C-d = YES, plus 1909.05125, which codes C-b = NO and C-d = NO. No rate has been
+computed, `analyze_literature_audit.py` has not been run on more than a merge check, and 54 of the 59
+included papers were unread at the time of writing. The amendment therefore cannot have been chosen to
+move a number, because no number exists yet -- but it does move one in a knowable direction, and it is
+worth saying which: it moves a fourth row (1 of 59) out of the blind column, and the four not-blind
+rows are precisely the four whose codes bear most directly on `main.tex:1654` and `:1658`.
+
+### Non-negotiables, extended
+
+11. **The not-blind set is derived, not asserted.** It is the title-match of the included set against
+    the pre-registration commit's `references.bib` plus the three seeds, and the shipped table marks
+    every such row. A paper does not become blind by being re-read later.
+
+---
+
+## Amendment 3 (Round 57, 2026-09-10): what makes a component a *defense* mechanism under C-a
+
+**Written after five papers have been coded and before any paper in the class this amendment governs has
+been coded.** The five criteria are **unchanged, verbatim**; this amendment adds no criterion and
+removes none. It records how the word already in C-a -- "Two or more distinct **defense** mechanisms" --
+is applied to a component whose purpose is *not* resisting poisoning, because the frame contains **22
+included papers that pair a privacy, cryptographic or communication component with a robustness one**
+and deciding them one at a time invites deciding them inconsistently.
+
+**The rule.** A component counts toward C-a's "two or more" iff **the paper's own stated purpose for
+including it is to resist faulty, malicious or poisoned updates.** Purpose is read off the paper and
+quoted, never inferred from the operation's name.
+
+**Why purpose and not operation.** The same operation appears on both sides of this line, so an
+operation-based rule is not available:
+
+- Gaussian noise **is** a defense component in `nguyen2022flame`, whose §4.3 adds it "to eliminate the
+  remaining backdoors after applying clustering and clipping". It is **not** one in a
+  differentially-private FL paper that adds the identical noise to bound a privacy loss and then bolts a
+  robust aggregator on for a separate reason.
+- Clustering **is** a defense component in FLAME (dynamic clustering "to remove poisoned models with
+  large cosine distances"). It is **not** one in `2110.02940`, where clients are clustered so that
+  secure aggregation can run over nonlinear operations it otherwise cannot.
+- Compression / sparsification is essentially never a defense component: it exists to cut communication.
+  `2104.06685` is explicit that compression *hurts* robustness, which is the opposite of a defense role.
+
+**What the rule does NOT do.** It does not exclude a paper from the frame -- every one of the 22 stays
+in the denominator, as non-negotiable 7 requires -- and it does not decide the whole class, because a
+paper can pair a privacy component with **two** defense components and still code C-a = YES on those two
+(`2505.01454`, `2512.11760`, `2601.06466` and `2603.04422` each carry two or more defense families
+before their privacy family is counted at all).
+
+**Direction of effect, stated before the class is coded.** The rule can only move rows from C-a = YES to
+C-a = NO. It therefore **lowers** the primary rate and the DESIGN rate while leaving the denominator
+untouched. That is against the outcome that would flatter this paper, which is the only direction an
+under-specified rubric is allowed to be resolved in.
+
+**What was known when this was written.** Five papers coded (`2012.13995`, `2101.02281`, `2201.00763`,
+`2509.08089`, `1909.05125`); four code C-d = YES and one codes C-b = NO. No rate has been computed. Of
+the 22 papers in the affected class, only FLAME has been coded, and it codes C-a = YES on
+clustering + clipping + noising independently of this rule.
+
+### Non-negotiables, extended
+
+12. **Every C-a code on a paper in the 22-row class ships the purpose quotation**, not only the
+    joint-application quotation -- the sentence that says what the non-robustness component is *for*.
+    Without it a reader cannot re-adjudicate the code, which is the audit's only reliability mitigation.
+
+---
+
+## Amendment 4 (Round 57, 2026-09-10): three adjudication rules the frozen criteria do not settle
+
+**Written after all 59 rows were coded, and recording rules that were articulated at rows 45, 47 and 53
+rather than in advance. That is the opposite of pre-registration and is stated plainly here rather than
+folded into the criteria**: a reader who rejects any of the three re-adjudicates the rows named below,
+and this amendment exists so that the rows are named.
+
+**Why they were not foreseen.** C-a's frozen text asks for "two or more **distinct** defense mechanisms",
+and Amendment 3 says what makes a mechanism a *defense*. Neither says what makes two mechanisms
+*distinct*, and neither says what to do when one purpose sentence covers several components at once. Both
+gaps are invisible until a paper sits on them.
+
+### 4a. The distinctness (granularity) rule -- articulated at row 45, `2602.16480` (SRFed)
+
+**A component is DISTINCT when it contributes an independent discriminative signal or an independent
+decision about an update, and not when it is a stage in computing one signal.**
+
+Worked in both directions, from rows already coded:
+
+- SRFed's layer-wise projection -> K-Means -> cosine-similarity cluster ranking -> mean of survivors is
+  **one** mechanism: a single decision function computed in stages, emitting one keep-mask per client.
+- SecureDyn-FL's (`2601.06466`) cluster-relative Mahalanobis score, its separate across-round trajectory
+  score and its three-way accept / down-weight / reject decision over three independently maintained
+  thresholds are **three**.
+- STAR-FL's (`2608.14861`) spatial and temporal filters are **two**: different statistics over different
+  axes (across clients; across rounds), each flagging its own set, combined conjunctively.
+- Secure-CHG's (`2606.31066`) EMA reputation stage is **not distinct** from the CHG contribution signal it
+  smooths, even though its stated purpose is defensive.
+
+**Direction of effect, and the exact exposure.** Unlike Amendment 3 this rule can move a row either way,
+so its exposure is stated per row rather than as a direction. **One of the six primaries depends on it:**
+`2601.06466`, whose C-b -- and therefore its primary -- turns on reading its auditing stack at operation
+granularity. Under the coarser reading the primary count is **five, not six**. SRFed's own C-a depends on
+the rule and its primary does not (C-b = NO under either reading, C-d = YES independently). No other row's
+primary turns on it.
+
+### 4b. The distributive test for a joint purpose clause -- articulated at row 47, `2603.04422`
+
+When a paper attributes a defense purpose to a **conjunction** of components and elsewhere **distributes**
+the purposes among them, the distributive sentence governs and the joint clause is not a purpose statement
+for either component alone. Direction of effect: this can only **lower** C-a. Live consequence in the
+frame: none on the primary count, because `2603.04422`'s primary is NO under every reading (C-d = YES on
+its Table 7 independently of C-a).
+
+### 4c. The ordering of 4a and Amendment 3 -- articulated at row 53, `2606.31066`
+
+**Distinctness is applied FIRST and purpose SECOND.** Amendment 3 asks whether a distinct component
+counts; it presupposes that the component is distinct. Under the other order Secure-CHG's EMA reputation
+stage would count toward C-a on its stated purpose ("mitigating the impact of intermittent attacks") while
+contributing no independent signal, and the same would follow for any smoother, buffer or normalizer whose
+paper describes it defensively. The ordering changes no row's primary in the frame.
+
+**What was known when this was written.** All 59 rows are coded and the codes are in hand -- which
+Amendments 2 and 3 could not say. Six rows code primary = YES. No rate has been emitted, because
+`analyze_literature_audit.py` refuses to score while this file has uncommitted changes. Writing a rule
+with the codes visible is the position an audit should least like to be in, which is why 4a's exposure is
+quantified above (six primaries, or five without it) instead of being described as small.
+
+### Non-negotiables, extended
+
+13. **A rule articulated mid-coding names the row that forced it and every row it could move**, and
+    App. G reports the primary count **both with and without it** wherever the count differs. A rule
+    whose exposure is not quantified is not disclosed, only mentioned.
+
+---
+
+## Amendment 5 (Round 57, 2026-09-10): how `c_d_route` is recorded (a reporting field; no rate moves)
+
+Every coded record carries a `c_d_route` field. **It is not a criterion, it enters no rate, and it decides
+nothing**: C-d's code is YES or NO on the frozen text alone. The field exists so App. G can report *what
+kind* of identifying contrast the papers that run one actually run. It was added during coding without a
+written rule, and by row 58 two rows satisfying more than one route had been labelled inconsistently
+(`2608.08574` and `2609.03064`), which is what forced the rule.
+
+**The three routes.** `hyperparameter-sweep`: a graded dose of an **upstream** stage's own parameter, with
+an adversarial outcome read at each setting and the downstream mechanism and the attack held fixed.
+`component-contrast`: an upstream stage removed, substituted or cumulatively built up across discrete
+arms, downstream fixed. `analytic`: the variation is characterized by proof rather than run.
+
+**Precedence when a row satisfies more than one: sweep > contrast > analytic.** The other routes are named
+in the record's C-d locator. The precedence is fixed rather than deferred to which finding the paper calls
+central, so the stratification does not depend on an author's emphasis; and it ranks the graded dose
+highest because that is the closest external analogue to this paper's own screen.
+
+**Two clauses in the sweep definition that do real work, with the rows they exclude:**
+
+- *The dose must be an upstream **defense** parameter.* A sweep of the **attack's** strength is not an
+  upstream dose: `2201.00763`'s poisoned-data-rate figure and `2603.04422`'s malicious-fraction figure are
+  component contrasts crossed with attack strength, and both keep `component-contrast`.
+- *An adversarial outcome must be read at **each** setting.* `2511.09294`'s server-dataset-size sweep and
+  `2603.04422`'s distillation-temperature sweep report no per-setting outcome under attack and do not
+  qualify.
+
+**Applied backward on 2026-09-10 across all 46 C-d = YES rows.** Sixteen name more than one route; four
+moved from `component-contrast` to `hyperparameter-sweep`: `2409.01435` (LASA), `2502.00587` (RKD),
+`2505.10297` (FeRA), `2604.03862` (SecureAFL). The stratification moves from 25 / 17 / 4 to **21 / 21 / 4**
+(contrast / sweep / analytic). **No rate moves**: primary, DESIGN, C-d presence and C-e-among-DESIGN are
+all unchanged, and the relabelled rows' C-d codes and locators' substance are unchanged.
+
+**The lower-bound disclosure, which matters more than the precedence rule.** The field records only routes
+that the record **quotes**. A route present in a paper but never located and quoted is not recorded, so
+the sweep column is a **floor, not a census**. LASA is the proof: its appendix sweep of the upstream
+sparsification level -- with accuracy under three attacks at every rung and the downstream filter fixed --
+was present in the paper and merely *pointed at* in one clause of the record until the backward pass
+quoted it, at which point the row's label changed.
+
+### Non-negotiables, extended
+
+14. **`c_d_route` decides nothing, and App. G says so where it reports it** -- as a floor, with the
+    backward pass and its four relabels disclosed, and with the precedence rule stated so a reader can
+    recompute the stratification under a different precedence from the locators alone.
+
+---
+
+## The amendment timeline, and what "pre-registered" therefore means here
+
+This section is written last, immediately before the commit that lets `analyze_literature_audit.py`
+score, and it exists so that no reader has to reconstruct the chronology from five amendment headers
+that all carry the same date.
+
+| what | committed / written | coded rows in hand at that moment |
+|---|---|---|
+| Base rubric: five criteria, four ambiguity rules, the 10-paper floor, the 12 non-negotiables | committed `9b8a395` | **0** |
+| Amendment 1 (retrieval endpoint) | committed `3c61301` | **0** |
+| Amendment 2 (blind-coding disclosure widened by one paper) | written after coding began | **5** |
+| Amendment 3 (purpose test for C-a) | written after coding began | **5** |
+| Amendment 4 (4a distinctness, 4b distributive test, 4c ordering) | written after coding finished | **59** |
+| Amendment 5 (`c_d_route` routes and precedence) | written after coding finished | **59** |
+
+**What is pre-registered without qualification:** the primary quantity and its definition, all five
+criteria's frozen text, the four ambiguity rules, the frame and its screening procedure, the 10-paper
+floor, the three admissible outcomes, and the single-coder limitation. **None of those changed.** The
+sentence the audit was built to change, the prohibition on sampling, and the outcome mapping were all
+fixed at `9b8a395` before any paper was retrieved.
+
+**What is not:** Amendments 2 through 5. They are adjudication rules for questions the frozen criteria
+underdetermine, and every one of them was written with some codes visible. Amendments 2 and 3 postdate
+5 rows; **Amendments 4 and 5 postdate all 59**, which is the weakest position an amendment can occupy
+and is why each one states the row that forced it and quantifies its exposure. The exposures, restated
+in one place: 4a is the only rule any headline number depends on (**primary = 6 with it, 5 without**);
+4b and 4c can only lower C-a and move no primary; Amendment 2 changed a disclosure and no code;
+Amendment 3 raises three codes and lowers none in the frame; Amendment 5 enters no rate at all.
+
+**What this does not license.** No amendment may be written after this commit. If a further question
+arises during drafting, the answer is to report the row as it stands and name the question in App. G,
+not to add Amendment 6. And no amendment relaxed a criterion to admit a row: every one of the five
+either widened a disclosure or resolved a granularity or purpose question in the direction that keeps
+the frame's coding uniform.
+
+### Non-negotiables, extended
+
+15. **App. G reproduces this timeline table** -- which amendments postdate how many coded rows, and
+    4a's six-or-five exposure -- and does not describe the audit as pre-registered without it. The
+    scoring script pins the commit hash of *this* file including this section, so a reader can verify
+    that no rule was added after the rate was emitted.
