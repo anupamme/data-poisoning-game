@@ -1,6 +1,17 @@
 """
-Score the pre-registered literature audit against the rubric frozen in
-`experiments/pre_registration_literature_audit.md` (freeze + Amendment 1).
+Score the pre-registered literature audit against the rubric in
+`experiments/pre_registration_literature_audit.md` (freeze + Amendments 1-5).
+
+WHICH PARTS OF THAT RUBRIC ARE PRE-REGISTERED, BECAUSE NOT ALL OF IT IS
+The primary quantity, the five criteria's frozen text, the four ambiguity rules, the frame and its
+screening procedure, the 10-paper floor and the three admissible outcomes were fixed at 9b8a395 and
+Amendment 1 at 3c61301, both before any paper was retrieved, and this script scores exactly them.
+Amendments 2-3 were written with 5 rows coded and Amendments 4-5 with all 59; they are adjudication
+rules for questions the criteria underdetermine, and the rubric's closing section tabulates that
+chronology. Only Amendment 4a moves anything printed here: primary = 6 with it and 5 without, and the
+LaTeX table is required to report both. So the hash gate below pins a document that is part
+pre-registration and part post-hoc adjudication record, and the [OK] line says so rather than calling
+the whole file frozen.
 
 WHAT IS COMPUTED, AND WHAT IS HAND INPUT
 The frame is retrieved by `experiments/retrieve_literature_audit.py`. The CODING is by one human coder
@@ -15,8 +26,10 @@ THE PRIMARY IS A CONJUNCTION AND ITS ¬C-d TERM IS THE PART THAT COULD BE TAUTOL
 C-e (an attribution claim is actually made) is what stops this from measuring "nobody runs the contrast
 we invented", which would be near-100% and worthless. The C-d presence rate is therefore printed
 SEPARATELY and never folded in, so a reader can see how much of the primary rides on the predictable
-absence of our own contrast. The count of C-e = NO is printed too: those papers have the design and make
-no attributional claim, and they are evidence AGAINST the sharp reading. They are reported as such.
+absence of our own contrast. The count of C-e = NO *among DESIGN papers* is printed too: those papers
+have the design and make no attributional claim, and they are evidence AGAINST the sharp reading. They
+are reported as such, next to the C-e = NO count over the whole frame, which is a different and much
+weaker thing -- a paper with no design and no claim is evidence in neither direction.
 
 TWO REFUSAL GATES, BOTH FROZEN
   * non-negotiable 3: no rate if any included paper codes YES or NO without a quotation AND a locator.
@@ -41,7 +54,12 @@ import sys
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(BASE, "results", "literature_audit")
 PREREG = "experiments/pre_registration_literature_audit.md"
-PREREG_COMMIT = None            # set to the Amendment 1 commit before scoring; see check_frozen()
+PREREG_COMMIT = "cafa771"       # freeze 9b8a395, Amendment 1 at 3c61301, Amendments 2-5 at cafa771.
+                                # The rubric this scores against -- five criteria, four ambiguity
+                                # rules, the 10-paper floor -- is unchanged by all five amendments.
+                                # A1 moved only the retrieval endpoint; A2-A3 postdate 5 coded rows,
+                                # A4-A5 postdate all 59. Scoring refuses if the document drifts from
+                                # this hash, which is what stops a rule being added after a rate.
 
 CRITERIA = ["C-a", "C-b", "C-c", "C-d", "C-e"]
 FLOOR = 10                      # frozen: non-negotiable 4. Not a tunable.
@@ -70,7 +88,10 @@ def check_frozen():
     if dirty:
         print(f"REFUSING TO SCORE: {PREREG} has uncommitted changes ({dirty.split()[0]}).")
         return False
-    print(f"[OK] {PREREG} frozen at {got}, working tree clean")
+    print(f"[OK] {PREREG} at {got}, working tree clean. Criteria, ambiguity rules, frame and floor "
+          f"pre-registered at 9b8a395/3c61301; Amendments 2-3 postdate 5 coded rows and 4-5 postdate "
+          f"all 59 (see that file's amendment timeline). Not a claim that the whole file predates "
+          f"coding.")
     return True
 
 
@@ -206,7 +227,13 @@ def main():
     prim = sum(1 for r in scorable if r["primary"] == "YES")
     design = sum(1 for r in scorable if r["design"])
     cd_yes = sum(1 for r in scorable if r["codes"]["C-d"] == "YES")
-    ce_no = sum(1 for r in scorable if r["codes"]["C-e"] == "NO")
+    # Two different counts, and the label used to conflate them. The pre-registered secondary is
+    # C-e = NO *among DESIGN papers*: those have the outcome-gated design and decline to make the
+    # attribution claim, which is what makes them evidence against the sharp reading. A C-e = NO row
+    # that is not DESIGN is not that -- it is a paper with no design and no claim, which says nothing
+    # either way. Both are printed because the difference is the whole informational content.
+    ce_no_design = sum(1 for r in scorable if r["design"] and r["codes"]["C-e"] == "NO")
+    ce_no_all = sum(1 for r in scorable if r["codes"]["C-e"] == "NO")
 
     print(f"\n=== PRIMARY: OUTCOME-GATED ATTRIBUTION (C-a & C-b & C-c & C-e & not C-d) ===")
     print(f"  {prim}/{n} = {100.0 * prim / n:.1f}%  of included, fully-coded papers")
@@ -217,12 +244,53 @@ def main():
     print(f"    C-d PRESENT (an identifying contrast)  {cd_yes}/{n} = {100.0 * cd_yes / n:.1f}%")
     print(f"      ^ read the primary against this: {n - cd_yes} of {n} papers lack the contrast, so that")
     print(f"        absence, not the attribution claim, is what most of the primary is made of.")
-    print(f"    C-e = NO (design, no attribution claim) {ce_no}/{n}")
-    print(f"      ^ these are EVIDENCE AGAINST the sharp reading and are reported as such.")
+    print(f"    C-e = NO among DESIGN papers            {ce_no_design}/{design}")
+    print(f"      ^ the pre-registered secondary: these HAVE the design and make no attributional")
+    print(f"        claim, so they are EVIDENCE AGAINST the sharp reading and are reported as such.")
+    print(f"    C-e = NO anywhere in the frame           {ce_no_all}/{n}")
+    print(f"      ^ printed only to keep the line above from being read as this one. A row with no")
+    print(f"        design and no claim is not evidence in either direction.")
+
+    bykey = {p["id"]: p for p in papers}
+    # ---- Amendment 4a's exposure, EMITTED and not transcribed (non-negotiable 13). A record whose
+    # amendment_4a_dependency says its primary is NO under the coarser reading drops out of the
+    # counterfactual count. The rule can move a row either way, so this is a recount, not a subtraction.
+    dep4a = [r for r in scorable
+             if bykey[r["id"]].get("amendment_4a_dependency", {}).get("primary_under_coarser_reading") == "NO"]
+    prim_no4a = sum(1 for r in scorable
+                    if r["primary"] == "YES"
+                    and bykey[r["id"]].get("amendment_4a_dependency", {}).get("primary_under_coarser_reading") != "NO")
+    print(f"\n  AMENDMENT 4a COUNTERFACTUAL (non-negotiable 13): primary = {prim}/{n} with the "
+          f"distinctness rule, {prim_no4a}/{n} without it")
+    for r in dep4a:
+        d = bykey[r["id"]].get("amendment_4a_dependency", {})
+        print(f"    {r['id']} turns on it via {d.get('criterion')}; primary {r['primary']} with, "
+              f"{d.get('primary_under_coarser_reading')} without")
+    if not dep4a:
+        print(f"    no coded record declares a 4a dependency, so the two counts coincide")
+
+    # ---- c_d_route stratification: a reporting field, a floor, and it enters no rate (Amendment 5,
+    # non-negotiable 14). Printed over the C-d = YES rows only; 'absent' must equal the C-d = NO count
+    # or a record's route contradicts its own code, which is worth failing loudly for.
+    routes = {}
+    for r in scorable:
+        rt = bykey[r["id"]].get("c_d_route") or "unlabelled"
+        routes.setdefault(rt, []).append(r["id"])
+    n_absent = len(routes.get("absent", []))
+    if n_absent != n - cd_yes:
+        print(f"REFUSING TO SCORE: {n_absent} records carry c_d_route 'absent' but {n - cd_yes} code "
+              f"C-d = NO. A route contradicts a code.")
+        return 1
+    print(f"\n  C-d ROUTE STRATIFICATION over the {cd_yes} rows that run a contrast (Amendment 5's "
+          f"precedence sweep > contrast > analytic):")
+    for rt in ("hyperparameter-sweep", "component-contrast", "analytic", "unlabelled"):
+        if routes.get(rt):
+            print(f"    {rt:22s} {len(routes[rt]):3d}/{cd_yes}")
+    print(f"      ^ a FLOOR, not a census: the field records only routes a record QUOTES, so a route "
+          f"present in a paper\n        but never located is not counted. Enters no rate; decides nothing.")
 
     print(f"\n=== per-paper table ({len(rows)} included) ===")
     print(f"  {'paper':30s} " + " ".join(f"{k:>7s}" for k in CRITERIA) + "  primary   blind")
-    bykey = {p["id"]: p for p in papers}
     for r in rows:
         b = "no" if bykey[r["id"]].get("blind") is False else "yes"
         print(f"  {r['id']:30s} " + " ".join(f"{r['codes'][k]:>7s}" for k in CRITERIA)
@@ -244,10 +312,21 @@ def main():
               "coding is not blind.} \\\\")
 
     json.dump({"prereg": PREREG, "prereg_commit": PREREG_COMMIT, "funnel": funnel,
-               "outcome": "i-rate-reported", "floor": FLOOR, "rate_reported": True,
+               # "rate-reported" distinguishes this from outcome (iii) and NOTHING else. The
+               # pre-registration deliberately set no numeric threshold between outcomes (i) and (ii),
+               # so this script does not decide between them: inventing a cutoff now, with the counts
+               # visible, is exactly the move the rubric's amendment timeline forbids. The prose
+               # reading must quote primary, DESIGN and C-d-present together.
+               "outcome": "rate-reported", "outcome_i_vs_ii_thresholded": False,
+               "floor": FLOOR, "rate_reported": True,
                "primary": {"numerator": prim, "denominator": n, "pct": 100.0 * prim / n},
                "secondaries": {"design": [design, n], "c_d_present": [cd_yes, n],
-                               "c_e_no": [ce_no, n]},
+                               "c_e_no_among_design": [ce_no_design, design],
+                               "c_e_no_anywhere": [ce_no_all, n]},
+               # Reporting-only, and the LaTeX table must say so where it prints them.
+               "amendment_4a": {"primary_with": prim, "primary_without": prim_no4a,
+                                "rows_that_turn_on_it": [r["id"] for r in dep4a]},
+               "c_d_route_floor": {rt: len(ids) for rt, ids in sorted(routes.items())},
                "n_unclear_excluded": len(unclear),
                "papers": [{"id": r["id"], "codes": r["codes"], "primary": r["primary"],
                            "unclear_on": r["unclear_on"],
