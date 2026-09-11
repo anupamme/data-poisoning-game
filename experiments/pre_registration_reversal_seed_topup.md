@@ -191,3 +191,86 @@ same loop the four published cells were run with, not merely the same at the ide
    they disagree, both appear, and the disagreement is the result.
 7. This file is committed before `results/reversal_seed_topup/` is written; if that ordering cannot be
    demonstrated from `git log`, the top-up is reported as non-prospective.
+
+---
+
+# AMENDMENT 1, correcting a false factual claim above, before any write to `results/reversal_seed_topup/`
+
+## What was wrong
+
+The Scope section says, of Table 1 (`tab:channels`):
+
+> *"Table 1 is the Mode-S channel suite with its own freeze and its own four aggregators; its rows are
+> n = 5 throughout and mixing one row to n = 20 would make the table's rows incomparable."*
+
+**"Its rows are n = 5 throughout" is false.** `experiments/build_channel_table.py` emits `n_seeds` per
+row and prints it in its own console table. The six rows the paper prints are:
+
+| Table 1 row | n |
+|---|---|
+| Krum | 5 |
+| Reputation | 5 |
+| Cosine-Krum | **8** |
+| Coord.\ median | 5 |
+| Krum (EMNIST-byclass) | **3** |
+| Krum, score-only | 5 |
+
+So Table 1 already spans **n ∈ {3, 5, 8}**. `n_seeds` is `min(n0, n2)` over the row's two rungs
+(`build_channel_table.py:239` and `:265`). `seeds_match` is emitted only on the paired branch (`:239`);
+the score-only row takes the other branch (`:265`) and carries no `seeds_match` field at all, which
+`:462` reads as `True` by default. None of these quantities is printed in the paper.
+
+This was found by running the emitter, not by reading the paper, and it was written into a frozen
+document. It is corrected here rather than edited in place: the original sentence stays above, wrong,
+with this amendment attached.
+
+## The decision it was offered as a reason for does not change
+
+Table 1 row 4's Mode-S endpoint ΔASR still **stays at its own frozen n and does not move to n = 20**.
+The stated reason was wrong; the operative reason was always the other clause, and it survives intact:
+Table 1 is a **different suite measuring a different quantity** — the four channels of one Mode-S
+intervention at the top rung, assembled from frozen artifacts with no ASR recomputed — and the
+comparability cell is a paired two-design contrast. They share the number `+0.098` and nothing else.
+Moving one row of one suite because a different suite gained seeds would be a category error whatever
+the other rows' n happened to be.
+
+If anything the correction **strengthens** the prohibition: a table whose rows already span three
+different n is one where an unannounced fourth would be least visible.
+
+The prohibition is also **enforced mechanically and not only by intent**, which is recorded here so it
+can be re-checked rather than re-argued. `build_channel_table.py` reads its Coord.\ median ASR from
+`results/dose_replication/summary.json` by an explicit path, with no glob and no merge list; the top-up
+writes only `results/reversal_seed_topup/` and non-negotiable 4 forbids rewriting `dose_replication`.
+So Table 1 row 4 cannot silently move to n = 20 even if someone later forgets this clause. The merge is
+in `analyze_comparability.py` alone, and it applies to the comparability cell alone.
+
+## What it does change: the consequence is larger than recorded
+
+The original Scope section required that *"every site quoting −0.272 or +0.098 carries an explicit n"*.
+That obligation now reaches further than one number, because the defect is not confined to the cell
+this top-up touches:
+
+1. **Table 1 must print `n` per row, or state the three values in its caption.** Six rows spanning
+   n = 3, 5 and 8 with no seed count anywhere is the reviewer's evidentiary-hierarchy complaint stated
+   exactly, and it is present in the main text independently of this top-up. The `n` is already emitted
+   per row, so this is a reporting gap and not a measurement one. Whether it becomes a column or a
+   caption sentence is decided by the overfull-hbox check and not by preference.
+   **The emitter's LaTeX block is not the paper's table.** It prints **seven** rows — a `Krum,
+   emit-only` row (n = 5, ΔASR −0.001) that Table 1 does not carry — so the `n` must be transcribed
+   per row into the existing six, never pasted wholesale. Pasting would add a row and call it
+   formatting.
+2. **Figure 1(c) prints no `n` on any row either.** Its rows already span n = 5, 8 and 20, and its two
+   draw-time guards read `published_cells_reproduce` and the reversal-row list, neither of which reads
+   `n`. After this top-up the panel would draw two sign-reversal rows at **different n** as visually
+   identical objects. The panel must carry per-row `n` before the topped-up artifact is drawn.
+
+Neither item is a new experiment, a new threshold, or a change to any decision rule, seed list,
+interval definition or demotion criterion above. They are reporting obligations, and they are recorded
+here so that they are met because they were pre-registered rather than because they were noticed late.
+
+## Non-negotiables, extending the seven above
+
+8. No number, rule or seed list above is altered by this amendment. It corrects one false statement of
+   fact and widens one reporting obligation.
+9. The false sentence is not deleted or rewritten in place. A frozen document that quietly becomes
+   correct cannot be audited.
