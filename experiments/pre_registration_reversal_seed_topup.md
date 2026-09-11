@@ -342,3 +342,78 @@ sweep them in.
     labelled as the frozen one.
 12. Every Class A and Class B site prints its own `n`. A site quoting either number with no `n` after
     this round is a defect, not a style choice.
+
+---
+
+# AMENDMENT 3, correcting one misclassified site and binding the adjacency, still before any row exists
+
+## The state of the run when this section was written, and the limit of that evidence
+
+At the moment this text was appended, `results/reversal_seed_topup/` **did not exist**: the runner's log
+showed `resuming: 0 rows already recorded (45 runs planned, shared rows counted once)` and not one
+`[i/45]` line, so zero of the 45 runs had been scored and no n = 20 quantity existed on disk to be seen.
+
+**That claim is about the append, not about the commit, and the distinction is the honest one.** Unlike
+Amendments 1 and 2, this section is written while the suite is already running, so **no claim is made
+about where its commit falls relative to the artifact's first write.** It may fall either side: the
+first of the 45 runs had not yet finished when this was appended, so the commit may well precede
+`results/reversal_seed_topup/summary.json`, but that would be a fact about run duration and not
+evidence of anything, and a later commit would equally be no cause for suspicion. The blindness argument
+deliberately does not rest on ordering at all: it rests on the correction being **decidable from
+`paper/main.tex` alone**, with no n = 20 number as an input, and on its moving a site *out* of scope,
+which no result could make attractive. A reader who distrusts the timestamp can re-derive the whole
+correction from line 1655 of the paper.
+
+## The defect
+
+Amendment 2 assigned `main.tex:1655` to Class B item 3, on the stated ground that it "quotes the frozen
+replication arm or a frozen table row". **It quotes neither.** The line reads
+
+> ASR rises $0.124 \to 0.315 \to 0.443$ into $r{=}1$ and falls $0.443 \to 0.296 \to 0.098$ past it
+
+so its `0.098` is a **mean ASR at an amplified Mode A rung** of the payload-dose curve, not a $\Delta$ASR
+at all. It shares three digits with the quantity this top-up extends and nothing else: different
+experiment (Mode A dose, not Mode S endpoint), different estimand (a level, not a paired difference),
+different table. Amendment 2 swept it in by grepping the digit string and then classifying the line
+without re-reading what the digits denote, which is the exact failure the Scope section warns about two
+sites down.
+
+## The correction
+
+`:1655` moves out of Class B and into the named-collision list, which now has **three** members:
+`:1655` (a Mode A rung level), `:1801` (a different cell's $+0.272$), `:2515` ($0.0988$, sharing three
+digits). Class B item 3 becomes five sites: `:699`, `:1684`, `:1773`, `:2273`, `:2314`.
+
+The split stays exhaustive and disjoint over the 22 non-comment sites: **6 Class A + 13 Class B + 3
+collisions = 22**. Non-negotiable 10 already requires a reclassification to be reported as such, and it
+will be. This correction moves a site *out* of scope, so it cannot flatter any result, and it is
+verifiable from `paper/main.tex` alone with no n = 20 number in hand.
+
+## Which Class B sites satisfy non-negotiable 12 today
+
+A site prints its own `n` if the `n` appears in the same sentence, or in an `$n$` column of its own row,
+or in its own float's caption. Audited at this commit:
+
+- **Satisfied (6):** `:403` and `:1746` (`tab:channels` `$n$` column, row 4 prints `5`), `:1665`
+  (`tab:targeted`'s caption, "$n{=}5$ per arm"), `:1684` (a row inside that same float), `:1773` (its
+  own sentence, "at $n{=}5$ a null from this test is not evidence of flatness"), `:2314`
+  (`tab:tost`'s `$n$` column prints `$5$`).
+- **Not satisfied (7):** `:437`, `:1693`, `:2185`, `:2273` in prose; `:1269` (`tab:can_cannot`, whose
+  caption states no `n`), `:2215` (`fig:story`, likewise), `:699` (`tab:tiers`, likewise).
+
+Those seven are the work non-negotiable 12 obliges, and the list is fixed here so it is not narrowed
+later to whatever turned out to be convenient to edit.
+
+## The adjacency, which the table-level split also hid
+
+`:437` (Class B, the frozen refutation) and `:445` (Class A, moves to n = 20) sit **eight lines apart in
+the same section**, and both quote $+0.098$. After the top-up one prints the frozen five-seed value and
+the other prints a twenty-seed value for what is arithmetically **one estimand**: the
+`dose_replication` Mode S endpoint $\Delta$ASR, interval $[+0.018,+0.178]$, which is simultaneously the
+comparability cell's controlled leg. The Class A / Class B split is by *reporting role*, not by
+quantity, and two different numbers for one estimand eight lines apart is a reader trap even when every
+site is individually correct.
+
+13. Where a Class A site and a Class B site quoting the same estimand fall in the same section, that
+    section states in one clause that the two differ in $n$ and not in quantity. Printing both numbers
+    with their $n$'s and no such clause is a defect, not compliance with 12.
