@@ -274,3 +274,71 @@ here so that they are met because they were pre-registered rather than because t
    fact and widens one reporting obligation.
 9. The false sentence is not deleted or rewritten in place. A frozen document that quietly becomes
    correct cannot be audited.
+
+---
+
+# AMENDMENT 2, fixing the reporting split site by site, before any write to `results/reversal_seed_topup/`
+
+## Why this cannot wait until the result exists
+
+Amendment 1 widened the obligation that *"every site quoting −0.272 or +0.098 carries an explicit n"*.
+A grep of the three sources for those two digit strings, comment lines excluded, returns **22 sites in
+`paper/main.tex`, 2 in `paper/supplementary.tex` and 22 in `workshop_paper/main.tex`**, and they do not
+all quote the same quantity.
+
+Every `:NNN` below is the line number **as of this commit**, and the classification is by the *sentence*
+at that line, not by the number itself: re-papering shifts every later line, so a site is located by
+grepping its quoted words and not by trusting these integers. The 22 `main.tex` sites are `:66`, `:129`,
+`:403`, `:437`, `:445`, `:699`, `:878`, `:1269`, `:1655`, `:1665`, `:1684`, `:1693`, `:1695`, `:1746`,
+`:1773`, `:1801`, `:1865`, `:2185`, `:2215`, `:2273`, `:2314`, `:2515`, and every one of them is
+assigned a class below, so the split is exhaustive rather than illustrative.
+
+The Scope section above splits the referents at the level of *tables* (the comparability cell
+moves, `tab:channels` row 4 stays). That is not fine-grained enough, because one class of site is
+**outcome-sensitive** and would otherwise be decided after the number is known:
+
+`main.tex:437` and `:1693` read *"We find $\Delta=+0.098$, which refutes the admission ordering"*,
+evaluated against thresholds frozen before those runs existed: **confirm if $\Delta > +0.178$, refute if
+$\Delta < +0.150$**. If the n = 20 controlled mean lands above $+0.178$, then whether that site is
+updated decides whether a frozen pre-registered verdict flips. Choosing then is choosing on the
+outcome. So it is chosen now, blind.
+
+## The split, fixed
+
+**Class A, moves to n = 20 (the sign-reversal pair, both legs, with n printed at every site):**
+`main.tex` `:66` (abstract), `:129` (§1), `:445` (§5's confounded leg), `:878` (the comparability
+table's ASR-effect row), `:1695` (App. E's central-result paragraph), `:1865` (the seven-cell table's
+`coord_median/pixel` row and its two intervals), Figure 1(c) (reads the artifact), and
+`supplementary.tex` `:386`, `:456`. These quote the two designs *against each other* on one cell, which
+is the quantity this top-up buys precision on.
+
+**Class B, stays at its own frozen n = 5, with `n=5` printed so it cannot be read as Class A:**
+
+1. `tab:channels` row 4 at `main.tex:403` and `:1746`, per the Scope section and Amendment 1. The `n`
+   column added in Round 63 already prints it.
+2. **`main.tex:437` and `:1693`, the admission-ordering refutation, and its dependants `:1269`,
+   `:1665`, `:2185`, `:2215`.** The frozen rule was stated over a five-seed arm and evaluated once;
+   re-evaluating it at n = 20 would revise a pre-registered decision after seeing new data, which
+   non-negotiable 1 forbids. The n = 20 controlled mean **may be reported beside it**, and if the two
+   fall on opposite sides of $+0.150$ or $+0.178$ that disagreement is reported in full (non-negotiable
+   6) as a disagreement between two n's, never as a re-run verdict.
+3. `:1773` (the score-only disclosure that the `coord_median` arm is not magnitude-controlled), `:699`,
+   `:1655`, `:1684`, `:2273`, `:2314`. Each of these quotes the frozen replication arm or a frozen
+   table row, not the paired contrast.
+
+**Class C, not touched at all:** every `workshop_paper/main.tex` site. That paper is out of scope for
+this round by standing rule, and its numbers stay as published.
+
+`main.tex:1801`'s $+0.272$ is a **different cell's** value that merely shares the digits, and `:2515`'s
+$0.0988$ shares three of them. Neither is in scope, and they are named here so a later grep does not
+sweep them in.
+
+## Non-negotiables, extending the nine above
+
+10. The class of each site is fixed by this amendment and is not reassigned after the n = 20 numbers
+    are known. A site moved between classes later is reported as such in the response letter.
+11. No frozen threshold is re-evaluated at n = 20. Where an n = 20 mean would change a frozen
+    verdict's side of a threshold, both n's and both readings are printed and the frozen verdict stays
+    labelled as the frozen one.
+12. Every Class A and Class B site prints its own `n`. A site quoting either number with no `n` after
+    this round is a defect, not a style choice.
