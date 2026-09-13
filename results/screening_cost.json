@@ -1,5 +1,5 @@
 {
-  "description": "Run-level cost of the screen. Replaces the pair-level 95.2% figure, which ignored the standalone evaluations C1 requires. Every number here is computed from the results files; the GPU-hour figures are estimates because no per-run timing telemetry was ever recorded.",
+  "description": "Run-level cost of the screen. Replaces the pair-level 95.2% figure, which ignored the standalone evaluations C1 requires. Every number here is computed from the results files, and the GPU-hour figures are now MEASURED from the per-run seconds the runners print into results/*.log rather than assumed at 11.0 min/run.",
   "defenses": [
     "coord_median",
     "fedavg",
@@ -46,12 +46,53 @@
     "fraction": 0.9523809523809523,
     "note": "This is the old 95.2%-style figure. It is a pair count and excludes the standalone runs C1 needs, so it overstates the saving."
   },
-  "gpu_hours_estimated": {
-    "minutes_per_run_assumed": 11.0,
-    "unscreened": 77.0,
-    "screened": 14.666666666666666,
-    "saved": 62.333333333333336,
-    "caveat": "ESTIMATE ONLY. No results file in this repo records wall-clock time; this is a per-run estimate on the hardware described in the paper."
+  "gpu_hours": {
+    "minutes_per_run_measured_median": 11.141666666666667,
+    "minutes_per_run_assumed_before_round52": 11.0,
+    "timing": {
+      "source": "per-run seconds printed by the runners into results/*.log",
+      "logs": {
+        "prospective_suite_run.log": {
+          "runs": 120,
+          "median_min": 11.05
+        },
+        "prospective_pilot_run.log": {
+          "runs": 24,
+          "median_min": 11.07
+        },
+        "metric_swap_suite.log": {
+          "runs": 36,
+          "median_min": 10.67
+        },
+        "metric_swap_baselines.log": {
+          "runs": 12,
+          "median_min": 20.97
+        },
+        "run_wave3_emergent.log": {
+          "runs": 24,
+          "median_min": 12.28
+        },
+        "headline_seed_topup.log": {
+          "runs": 12,
+          "median_min": 20.56
+        }
+      },
+      "runs_timed": 228,
+      "median_min": 11.141666666666667,
+      "mean_min": 13.072295321637426,
+      "iqr_min": [
+        10.7,
+        12.533333333333333
+      ],
+      "min_min": 10.566666666666666,
+      "max_min": 30.6,
+      "excluded": "EMNIST-byclass arms (52 min/run) and the dose ladders, which are not CIFAR-10 pair evaluations at the headline config"
+    },
+    "unscreened": 77.99166666666666,
+    "screened": 14.855555555555556,
+    "saved": 63.13611111111111,
+    "saved_at_mean": 74.07634015594542,
+    "caveat": "Measured, not assumed: per-run seconds come from the runner logs. The median carries the figure and the mean is reported beside it because the per-run distribution has a long right tail. Hardware is the single machine the paper describes, so these are wall-clock hours on it and not a portable cost."
   },
   "scaling": {
     "unscreened": "|attacks| * seeds * D(D-1)  -- quadratic in D",

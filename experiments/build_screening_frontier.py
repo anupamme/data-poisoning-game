@@ -28,7 +28,15 @@ Composition cells cost `2 attacks x 5 seeds = 10` runs per admitted pair. **C1 a
 the standalone measurements** (60 runs) because it is a condition *on measured standalone
 suppression*; C2 and C3 are read off the two defenses' definitions. So a C1-bearing variant carries a
 fixed +60 that a C2-only variant does not, and the table states that in its own column rather than
-burying it in a total.
+burying it in a total. The `runs` column is therefore **composition runs only**: the body used to quote
+`80` for C1&C2, which is this column's `20` plus those `60`. The emitted footnote says so, because two
+different totals for the same variant is exactly the kind of discrepancy a reader reads as an error.
+
+THE MEAN-ASR COLUMN IS A MEAN OVER THE SELECTED PAIRS, NOT A NEW MEASUREMENT
+`mean ASR` averages `max_committed_asr` over whichever pairs the variant admits, read from the same
+frozen ablation rows that produce every other column. It is what a screen's user actually gets: the
+average committed ASR of the compositions the screen tells them to run. It is not a per-pair number
+and it carries no interval; the frontier's claims rest on precision, recall and the FG->RFA reach.
 
 Run: python3 experiments/build_screening_frontier.py
 """
@@ -93,7 +101,7 @@ def main():
               f"low_asr={emergent['low_asr']}")
         print("  prop:emergent predicts NO C1-bearing variant reaches it. Checked per row below.\n")
 
-    hdr = (f"  {'variant':22s} {'sel':>4s} {'prec':>6s} {'recall':>7s} {'runs':>6s} "
+    hdr = (f"  {'variant':22s} {'sel':>4s} {'prec':>6s} {'recall':>7s} {'meanASR':>8s} {'runs':>6s} "
            f"{'+C1 standalone':>15s}  {'reaches FG->RFA':>16s}")
     print(hdr)
     print("  " + "-" * (len(hdr) - 2))
@@ -106,10 +114,14 @@ def main():
         rec = tp / n_low if n_low else float("nan")
         uses_c1 = "C1" in label
         runs = RUNS_PER_PAIR * len(sel)
+        # What the screen's user actually gets: mean committed ASR over the admitted pairs. Averaged
+        # from the same frozen rows as every other column; no new measurement.
+        mean_asr = (sum(r["max_committed_asr"] for r in sel) / len(sel)) if sel else float("nan")
         reaches = emergent is not None and (pred is None or pred(emergent))
         table.append({"label": label, "selected": len(sel), "tp": tp, "precision": prec,
-                      "recall": rec, "runs": runs, "uses_c1": uses_c1, "reaches_emergent": reaches})
-        print(f"  {label:22s} {len(sel):4d} {100*prec:5.0f}% {100*rec:6.0f}% {runs:6d} "
+                      "recall": rec, "mean_asr": mean_asr, "runs": runs, "uses_c1": uses_c1,
+                      "reaches_emergent": reaches})
+        print(f"  {label:22s} {len(sel):4d} {100*prec:5.0f}% {100*rec:6.0f}% {mean_asr:8.3f} {runs:6d} "
               f"{('yes, +' + str(STANDALONE_RUNS)) if uses_c1 else 'no':>15s}  "
               f"{('YES' if reaches else 'no'):>16s}")
 
@@ -160,14 +172,38 @@ def main():
             if k in cost:
                 print(f"\n  cross-check, results/screening_cost.json[{k}] = {cost[k]}")
 
-    print("\n--- LaTeX rows (variant, selected, precision, recall, composition runs) ---")
+    # What the screen's user gets at each end, in the units they care about. Stated because the mean-ASR
+    # column is the one a practitioner reads first and the frontier's point is that it trades off.
+    print(f"\n  MEAN COMMITTED ASR OF WHAT EACH DESIGN TELLS YOU TO RUN: unscreened "
+          f"{table[0]['mean_asr']:.3f} over {table[0]['selected']} pairs, "
+          f"{best_rec['label']} {best_rec['mean_asr']:.3f} over {best_rec['selected']}, "
+          f"{best_prec['label']} {best_prec['mean_asr']:.3f} over {best_prec['selected']}.")
+    print("    A lower mean is not a better screen: the C1-bearing end gets there by discarding the")
+    print(f"    menu's lowest-ASR composition ({EMERGENT}), which is the miss prop:emergent predicts.")
+
+    print("\n--- LaTeX rows (variant, selected, precision, recall, mean ASR, composition runs) ---")
     for t in table:
         star = "$^\\dagger$" if t["uses_c1"] else ""
         reach = "\\checkmark" if t["reaches_emergent"] else "---"
         print(f"{t['label'].replace('and', '$\\wedge$')}{star} & {t['selected']} & "
-              f"{100*t['precision']:.0f}\\% & {100*t['recall']:.0f}\\% & {t['runs']} & {reach} \\\\")
-    print("\\multicolumn{6}{l}{\\footnotesize $\\dagger$ additionally requires "
-          f"{STANDALONE_RUNS} standalone runs before the condition can be evaluated.}} \\\\")
+              f"{100*t['precision']:.0f}\\% & {100*t['recall']:.0f}\\% & "
+              f"${t['mean_asr']:.3f}$ & {t['runs']} & {reach} \\\\")
+    # NB: `}}` collapses to `}` only inside an f-string. These lines are f-strings for that reason;
+    # a plain string would emit two closing braces and break the \multicolumn.
+    c1_runs = RUNS_PER_PAIR * table[-1]["selected"]
+    print("\\multicolumn{7}{@{}l}{\\footnotesize $\\dagger$ additionally requires "
+          f"{STANDALONE_RUNS} standalone runs before the condition can be evaluated at all, so this "
+          f"row's}} \\\\")
+    print("\\multicolumn{7}{@{}l}{\\footnotesize evaluation budget is "
+          f"${c1_runs}{{+}}{STANDALONE_RUNS} = {c1_runs + STANDALONE_RUNS}$ runs, not the "
+          f"composition runs alone.}} \\\\")
+    # The denominators, emitted once. A bare "100% precision" over 2 selected pairs reads as a strong
+    # result and is not one; giving both counts in the footnote costs no column width.
+    hi = table[-1]
+    print("\\multicolumn{7}{@{}l}{\\footnotesize percentages are over small denominators: "
+          f"{n_low} of the {total} pairs are low-ASR, so the}} \\\\")
+    print("\\multicolumn{7}{@{}l}{\\footnotesize C1-bearing rows' precision is "
+          f"${hi['tp']}/{hi['selected']}$ and their recall ${hi['tp']}/{n_low}$.}} \\\\")
     return 0
 
 

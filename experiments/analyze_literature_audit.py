@@ -48,6 +48,7 @@ Run:    python3 experiments/analyze_literature_audit.py
 """
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -93,6 +94,25 @@ def check_frozen():
           f"all 59 (see that file's amendment timeline). Not a claim that the whole file predates "
           f"coding.")
     return True
+
+
+def short_of(p):
+    """A table row needs a human-readable handle. Most records carry `short_name`; where the paper has
+    no acronym, the title's head before the colon is the handle its own authors use."""
+    sn = (p.get("short_name") or "").strip()
+    if sn:
+        return sn
+    head = (p.get("title") or p["id"]).split(":")[0].strip()
+    return head if len(head) <= 24 else head[:21].rstrip() + "\\ldots"
+
+
+def latex_escape(s):
+    """Escape only what a title or acronym can plausibly contain and LaTeX would choke on. `$` and `^`
+    are left alone because arXiv titles carry real math (G$^2$uardFL), and doubling their escapes would
+    corrupt the row it is meant to protect."""
+    for a, b in (("&", "\\&"), ("%", "\\%"), ("#", "\\#"), ("~", "\\textasciitilde{}")):
+        s = s.replace(a, b)
+    return s
 
 
 def load(name, required=True):
@@ -166,10 +186,26 @@ def main():
     included = [p for p in papers if p.get("screen") == "include"]
 
     # ---- the funnel, PRISMA-style. Every stage, and the excluded lists ship (non-negotiable 6).
+    # The dedup key MUST be the screener's own key (`arxiv_id or norm(title)`, punctuation stripped and
+    # truncated at 80 chars), not a looser `(arxiv_id or title).lower()`. The loose key leaves two
+    # bibliography-line artifacts of the F3 capture class un-merged, which printed 595 deduplicated
+    # against 593 screened and put two records into the funnel that no stage ever dropped: a reader
+    # adding 59 + 534 finds 593 and cannot account for the pair. Cross-checked against screening.json,
+    # which defines the pool that was actually screened, and the run fails loudly on any disagreement.
     cand = raw.get("candidates", [])
+
+    def dedup_key(c):
+        return c.get("arxiv_id") or re.sub(r"[^a-z0-9]", "", (c.get("title") or "").lower())[:80]
+
+    n_dedup = len({dedup_key(c) for c in cand})
+    scr = load("screening.json") or {}
+    if scr.get("deduplicated") is not None and scr["deduplicated"] != n_dedup:
+        print(f"REFUSING TO SCORE: dedup key disagrees with the screened pool: "
+              f"{n_dedup} here against {scr['deduplicated']} in screening.json.")
+        return 1
     funnel = {
         "retrieved": len(cand),
-        "deduplicated": len({(c.get("arxiv_id") or c.get("title", "")).lower() for c in cand}),
+        "deduplicated": n_dedup,
         "screened": len(papers),
         "full_text_sought": sum(1 for p in papers if p.get("full_text_sought")),
         "full_text_obtained": sum(1 for p in papers if p.get("full_text_obtained")),
@@ -188,6 +224,31 @@ def main():
         if noreason:
             print(f"\nREFUSING TO SCORE: exclusions without a reason: {noreason}")
             return 1
+        # App. G quotes the shape of the 534, not the list. Bucketed HERE so those counts are emitted
+        # too: a category count summarized by hand out of the list above is a transcription, and the
+        # residual bucket is printed even when it is large precisely so it cannot hide a category.
+        def bucket(reason):
+            r = reason.lower()
+            if "single-mechanism or non-pipeline" in r:
+                return "single mechanism or non-pipeline on title/abstract"
+            if "no joint application" in r or "shows no joint" in r:
+                return "two mechanism families named, no joint application"
+            if "reference-line capture" in r:
+                return "F3 retrieval artifact: a bibliography line captured as a record"
+            if "no abstract" in r or "title-only" in r:
+                return "retrieval-stage loss: no abstract and no resolvable identifier"
+            if "survey" in r or "review" in r or "position paper" in r:
+                return "survey, review or position paper"
+            if "not federated" in r:
+                return "outside federated learning"
+            return "individually adjudicated on other stated grounds"
+        buckets = {}
+        for p in ex:
+            k = bucket(p.get("screen_reason", ""))
+            buckets[k] = buckets.get(k, 0) + 1
+        print(f"\n  the {len(ex)} exclusions by category (the reason strings above are the authority):")
+        for k in sorted(buckets, key=lambda k: -buckets[k]):
+            print(f"    {buckets[k]:5d}  {k}")
 
     # ---- gate 1: every YES/NO quotable and located
     bad = validate(papers)
@@ -244,6 +305,13 @@ def main():
     print(f"    C-d PRESENT (an identifying contrast)  {cd_yes}/{n} = {100.0 * cd_yes / n:.1f}%")
     print(f"      ^ read the primary against this: {n - cd_yes} of {n} papers lack the contrast, so that")
     print(f"        absence, not the attribution claim, is what most of the primary is made of.")
+    # The number the prose leads with, emitted rather than left as 33 - 6 in a reader's head: of the
+    # papers that HAVE the gated design, how many also run an identifying contrast. This is the figure
+    # that forbids any sentence implying the contrast goes unrun.
+    design_and_cd = sum(1 for r in scorable if r["design"] and r["codes"]["C-d"] == "YES")
+    print(f"    DESIGN papers that ALSO run a contrast  {design_and_cd}/{design}")
+    print(f"      ^ so the {prim} are papers that had the design and did NOT run the contrast, not")
+    print(f"        papers for which the contrast was unavailable or unheard of.")
     print(f"    C-e = NO among DESIGN papers            {ce_no_design}/{design}")
     print(f"      ^ the pre-registered secondary: these HAVE the design and make no attributional")
     print(f"        claim, so they are EVIDENCE AGAINST the sharp reading and are reported as such.")
@@ -296,20 +364,47 @@ def main():
         print(f"  {r['id']:30s} " + " ".join(f"{r['codes'][k]:>7s}" for k in CRITERIA)
               + f"  {r['primary']:8s} {b}")
 
-    print("\n--- LaTeX rows (paper, venue/year, C-a..C-e, primary) ---")
+    # ROWS ARE IDENTIFIED BY arXiv ID AND SHORT NAME, NOT BY \citet, AND THAT IS DELIBERATE. Citing all
+    # 59 would add 55 entries to a 37-entry bibliography -- most of them 2026 preprints no resolver
+    # carries -- which buys a reviewer nothing the identifier does not. The 24 papers the TEXT discusses
+    # by name do have entries and are cited there. Every row, cited or not, ships its own record under
+    # results/literature_audit/coding/, which is where a re-adjudication starts.
+    # Also WRITTEN to results/literature_audit/table_rows.tex, and App. G's table body is assembled from
+    # that file rather than pasted from this stdout. A number a human copies out of a terminal is a
+    # transcription no matter how it was computed, and non-negotiable 5 forbids one.
+    print("\n--- LaTeX rows (arXiv id, short name, year, C-a..C-e, route, primary) ---")
+    latex_rows = []
     for r in rows:
         p = bykey[r["id"]]
-        cells = " & ".join({"YES": "\\checkmark", "NO": "--",
+        # A NO cell is "$\times$" and an absent route is "---", NOT "--". The paper's punctuation
+        # inventory is that every standalone "--" is a range or a compound name and every "---" is a
+        # tabular absent-value cell; emitting "--" for a NO code would put an en dash in 60 new cells
+        # and break both halves of that check at once.
+        cells = " & ".join({"YES": "\\checkmark", "NO": "$\\times$",
                             "UNCLEAR": "?"}[r["codes"][k]] for k in CRITERIA)
-        vy = f"{p.get('venue', '?')} {p.get('year', '?')}"
         star = "$^{\\dagger}$" if p.get("blind") is False else ""
-        print(f"\\citet{{{p.get('bibkey', r['id'])}}}{star} & {vy} & {cells} & "
-              f"{ {'YES': 'yes', 'NO': 'no', 'UNCLEAR': 'unclear'}[r['primary']] } \\\\")
+        rt = {"hyperparameter-sweep": "sweep", "component-contrast": "contrast",
+              "analytic": "analytic", "absent": "---"}.get(p.get("c_d_route"), "?")
+        latex_rows.append(
+            f"\\texttt{{{r['id']}}}{star} & {latex_escape(short_of(p))} & {p.get('year', '?')} & "
+            f"{cells} & {rt} & "
+            f"{ {'YES': 'yes', 'NO': 'no', 'UNCLEAR': 'unclear'}[r['primary']] } \\\\")
+        print(latex_rows[-1])
     # Emitted only if some row actually carries the marker. A footnote explaining a symbol that appears
     # nowhere in its own table is the kind of thing that survives every check and confuses every reader.
     if any(bykey[r["id"]].get("blind") is False for r in rows):
-        print("\\multicolumn{8}{l}{\\footnotesize $\\dagger$ known to us before the rubric was frozen; "
-              "coding is not blind.} \\\\")
+        note = ("\\multicolumn{10}{l}{\\footnotesize $\\dagger$ known to us before the rubric was "
+                "frozen; coding is not blind.} \\\\")
+        print(note)
+    else:
+        note = None
+    with open(os.path.join(OUT, "table_rows.tex"), "w") as fh:
+        fh.write("% EMITTED by experiments/analyze_literature_audit.py. Do not edit; re-run instead.\n")
+        fh.write("% Column order: arXiv id, short name, year, C-a, C-b, C-c, C-d, C-e, C-d route,\n")
+        fh.write("% outcome-gated primary verdict.\n")
+        fh.write("\n".join(latex_rows) + "\n")
+        if note:
+            fh.write(note + "\n")
 
     json.dump({"prereg": PREREG, "prereg_commit": PREREG_COMMIT, "funnel": funnel,
                # "rate-reported" distinguishes this from outcome (iii) and NOTHING else. The
@@ -321,6 +416,7 @@ def main():
                "floor": FLOOR, "rate_reported": True,
                "primary": {"numerator": prim, "denominator": n, "pct": 100.0 * prim / n},
                "secondaries": {"design": [design, n], "c_d_present": [cd_yes, n],
+                               "design_and_c_d": [design_and_cd, design],
                                "c_e_no_among_design": [ce_no_design, design],
                                "c_e_no_anywhere": [ce_no_all, n]},
                # Reporting-only, and the LaTeX table must say so where it prints them.
@@ -328,6 +424,7 @@ def main():
                                 "rows_that_turn_on_it": [r["id"] for r in dep4a]},
                "c_d_route_floor": {rt: len(ids) for rt, ids in sorted(routes.items())},
                "n_unclear_excluded": len(unclear),
+               "exclusion_buckets": buckets,
                "papers": [{"id": r["id"], "codes": r["codes"], "primary": r["primary"],
                            "unclear_on": r["unclear_on"],
                            "blind": bykey[r["id"]].get("blind", True)} for r in rows]},

@@ -1,6 +1,9 @@
 {
   "description": "Sensitivity of the intervention conclusions to the two frozen thresholds. Read-only over results/comparability_six_cells.json; no ASR computed, no model trained, no frozen artifact written.",
   "source": "results/comparability_six_cells.json",
+  "n_cells_in_artifact": 7,
+  "n_cells_scored": 7,
+  "cells_skipped": [],
   "frozen_equivalence_margin": 0.15,
   "frozen_agree_tolerance": 0.05,
   "per_arm_minimum_margin": {
@@ -10,6 +13,7 @@
         0.012378680540304119
       ],
       "m_star": 0.03160090276252634,
+      "ci_contains_zero": true,
       "inside_frozen_margin": true,
       "headroom": 0.11839909723747366
     },
@@ -19,6 +23,7 @@
         -0.11763136144873765
       ],
       "m_star": 0.7316741941068179,
+      "ci_contains_zero": false,
       "inside_frozen_margin": false,
       "headroom": -0.5816741941068179
     },
@@ -28,17 +33,19 @@
         0.4691742850575674
       ],
       "m_star": 0.4691742850575674,
+      "ci_contains_zero": true,
       "inside_frozen_margin": false,
       "headroom": -0.3191742850575674
     },
     "coord_median / pixel": {
       "ci": [
-        0.017806027263397695,
-        0.17832730606993571
+        0.09541648019910051,
+        0.15470574202312173
       ],
-      "m_star": 0.17832730606993571,
+      "m_star": 0.15470574202312173,
+      "ci_contains_zero": false,
       "inside_frozen_margin": false,
-      "headroom": -0.02832730606993572
+      "headroom": -0.0047057420231217395
     },
     "coord_median / scaling": {
       "ci": [
@@ -46,6 +53,7 @@
         0.2802481497133719
       ],
       "m_star": 0.2802481497133719,
+      "ci_contains_zero": false,
       "inside_frozen_margin": false,
       "headroom": -0.13024814971337192
     },
@@ -55,12 +63,26 @@
         0.008691351055465415
       ],
       "m_star": 0.034313495883363555,
+      "ci_contains_zero": true,
       "inside_frozen_margin": true,
       "headroom": 0.11568650411663645
+    },
+    "coord_median / pixel, CIFAR-100": {
+      "ci": [
+        0.03117440135318436,
+        0.10999731581853278
+      ],
+      "m_star": 0.10999731581853278,
+      "ci_contains_zero": false,
+      "inside_frozen_margin": false,
+      "headroom": 0.04000268418146721
     }
   },
   "binding_equivalence_arm": "krum / scaling, EMNIST",
   "binding_m_star": 0.034313495883363555,
+  "binding_arm_matches_supplement": true,
+  "binding_arm_moved_to": null,
+  "equivalence_arm_requires_ci_containing_zero": true,
   "agree_tolerance_stable_range": [
     0.0,
     1.0
@@ -77,7 +99,8 @@
     "DISAGREE",
     "SIGN REVERSAL",
     "DISAGREE",
-    "DISAGREE"
+    "DISAGREE",
+    "SIGN REVERSAL"
   ],
   "verdicts_published": [
     "AGREE",
@@ -85,8 +108,86 @@
     "DISAGREE",
     "SIGN REVERSAL",
     "DISAGREE",
-    "DISAGREE"
+    "DISAGREE",
+    "SIGN REVERSAL"
   ],
   "reproduces_published": true,
-  "sign_reversal_is_threshold_free": true
+  "sign_reversal_is_threshold_free": true,
+  "margin_ladder": [
+    0.05,
+    0.1,
+    0.15,
+    0.2
+  ],
+  "margin_ladder_per_arm": {
+    "krum / scaling": {
+      "0.05": true,
+      "0.10": true,
+      "0.15": true,
+      "0.20": true
+    },
+    "cos_krum / pixel": {
+      "0.05": null,
+      "0.10": null,
+      "0.15": null,
+      "0.20": null
+    },
+    "reputation / scaling": {
+      "0.05": false,
+      "0.10": false,
+      "0.15": false,
+      "0.20": false
+    },
+    "coord_median / pixel": {
+      "0.05": null,
+      "0.10": null,
+      "0.15": null,
+      "0.20": null
+    },
+    "coord_median / scaling": {
+      "0.05": null,
+      "0.10": null,
+      "0.15": null,
+      "0.20": null
+    },
+    "krum / scaling, EMNIST": {
+      "0.05": true,
+      "0.10": true,
+      "0.15": true,
+      "0.20": true
+    },
+    "coord_median / pixel, CIFAR-100": {
+      "0.05": null,
+      "0.10": null,
+      "0.15": null,
+      "0.20": null
+    }
+  },
+  "margin_ladder_arms_scored": [
+    "krum / scaling",
+    "reputation / scaling",
+    "krum / scaling, EMNIST"
+  ],
+  "margin_ladder_verdicts_that_change": [],
+  "margin_ladder_absent_arms_with_m_star_inside_span": {
+    "coord_median / pixel": 0.15470574202312173,
+    "coord_median / pixel, CIFAR-100": 0.10999731581853278
+  },
+  "equivalence_arm_outside_this_artifact": {
+    "label": "krum / scaling, resnet18",
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "n": 3,
+    "mean": -0.04103703703703704,
+    "lo": -0.1829680485005434,
+    "hi": 0.10089397442646933,
+    "m_star": 0.1829680485005434,
+    "ci_contains_zero": true,
+    "in_ladder_artifact": false,
+    "reason_absent": "controlled leg only; no outcome-gated twin, so no comparability cell"
+  },
+  "ladder_covers_every_equivalence_reading_in_the_paper": false
 }

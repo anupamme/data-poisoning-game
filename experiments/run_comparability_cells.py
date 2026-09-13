@@ -60,14 +60,15 @@ ADV_FRACTION = 0.2
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(BASE, "results", "comparability_cells")
 PREREG = "experiments/pre_registration_comparability.md"
-PREREG_COMMIT = "f16083b"     # freeze c986ef4 + Amendment 1 (df00ef9), which named the gating
+PREREG_COMMIT = "9b8a395"     # freeze c986ef4 + Amendment 1 (df00ef9), which named the gating
                               # quantity as ΔΛ_a before any result existed, + Amendment 2 (1026a96),
                               # which completed cell 6's controlled ladder to the frozen seed set
                               # after the first scoring returned REFUTES, + Amendment 3 (f16083b),
                               # which withdrew Amendment 2's claim that cross-design pairing was the
-                              # frozen convention: it is not, and the refutation stands. The suite
-                              # refuses to start if this drifts, which is how the amendments stayed
-                              # auditable.
+                              # frozen convention: it is not, and the refutation stands, + Amendment 4
+                              # (9b8a395), which adds cell 7 (the reversal cell on a third dataset)
+                              # and its two-sided admissibility gate. The suite refuses to start if
+                              # this drifts, which is how the amendments stayed auditable.
 
 KAPPAS = [0.0, 0.5, 1.0, 2.0]        # the frozen grid, identical to both existing ladders
 SEEDS = [42, 43, 44, 45, 46]         # frozen; matches every arm this is compared against
@@ -87,6 +88,21 @@ CELLS = [
     # endpoints sit at n=5 would reproduce the same unequal-rung defect one level down.
     ("cell6b-krum/EMNIST ctrl",    "femnist", "simple_cnn", "krum",        "committed_scaling",
      ["controlled"], "|emnist", [45, 46]),
+    # Amendment 4 (Round 57). The sign reversal -- coord_median/pixel, the ONE cell where the signs
+    # differ and both intervals exclude zero -- exists only on CIFAR-10/cifar_cnn. Cell 6 added a
+    # second dataset and architecture to a DIFFERENT cell (krum/scaling), which the table explicitly
+    # does not count as a reversal. So this moves the reversal cell itself, unchanged in aggregator
+    # and attack, to a third dataset. Both ladders, 40 runs. The frozen ΔΛ_a rule is dead
+    # (Amendment 3) and generates no prediction here; this cell must not be used to revive it.
+    # ADMISSIBILITY GATE, frozen in Amendment 4 and read off the first five lines of the run log
+    # (todo order puts confounded/κ=0/seeds 42--46 first): rung-mean accuracy >= 0.35 and rung-mean
+    # ASR in [0.15, 0.85]. The interval is TWO-SIDED because both legs can die -- a floored identity
+    # rung bounds the confounded fall below the ±0.15 margin (the EMNIST defect, identity 0.027) and
+    # a saturated one bounds the Mode-S rise below it. If the gate fails, stop; do not substitute a
+    # cell (non-negotiable 4). There is no fallback dataset inside the compute budget: EMNIST is
+    # 2660 s/run and fails the gate a priori, resnet18 is 5900 s/run.
+    ("cell7-coord_median/CIFAR-100", "cifar100", "cifar_cnn", "coord_median", "committed_pixel",
+     ["confounded", "controlled"], "|cifar100", None),
 ]
 
 # The EMNIST cell carries a key suffix so its keys can never be pooled with a CIFAR cell's by a
@@ -165,7 +181,19 @@ def check_frozen():
         print(f"REFUSING TO RUN: {PREREG} last touched at {actual or 'UNTRACKED'}, "
               f"but PREREG_COMMIT is {PREREG_COMMIT}.")
         return False
-    print(f"[OK] {PREREG} frozen at {actual}")
+    # Round 57. The hash check above is necessary and NOT sufficient: `git log -1` reports the last
+    # commit that touched the file, which is unchanged by uncommitted edits to it. So an amendment
+    # written and not committed passed this gate, and the run it authorised would have been scored
+    # against a document the repository did not contain. Amendment 4 was written under exactly that
+    # condition. A freeze means the working tree matches the commit, so check that too.
+    dirty = subprocess.run(["git", "status", "--porcelain", "--", PREREG],
+                           cwd=BASE, capture_output=True, text=True, timeout=20)
+    if dirty.stdout.strip():
+        print(f"REFUSING TO RUN: {PREREG} has uncommitted changes "
+              f"({dirty.stdout.strip().split()[0]}), so it is not frozen at {actual} whatever "
+              f"`git log` says. Commit it and set PREREG_COMMIT to the new hash.")
+        return False
+    print(f"[OK] {PREREG} frozen at {actual}, working tree clean")
     return True
 
 
@@ -215,6 +243,19 @@ def main():
     todo = [(lbl, ds, mdl, d2, atk, fam, sfx, k, s)
             for (lbl, ds, mdl, d2, atk, fams, sfx, cell_seeds) in CELLS
             for fam in fams for k in KAPPAS for s in (cell_seeds or SEEDS)]
+    # ENDPOINT RUNGS OF BOTH DESIGNS FIRST. Scheduling only: run_one() re-seeds torch and numpy from
+    # `seed` on entry, so no run's result depends on what ran before it, and per-seed resume keys on
+    # (cell, family, kappa, seed). Nothing frozen moves -- the cell, the rungs, the seeds and the grid
+    # are unchanged, and this is not an amendment.
+    #
+    # Why it matters: the natural family-then-kappa order finishes ALL of `confounded` before starting
+    # `controlled`, so a run that stops halfway leaves a complete ladder with nothing to contrast it
+    # against -- strictly worse than the pre-registered endpoints-only fallback (kappa in {0, 2}, both
+    # designs, equal n). Endpoint-first makes that fallback the thing a truncation lands on. The sort is
+    # STABLE, so the first executed runs are still cell7/confounded/kappa=0/seeds 42--46, which is the
+    # sequence Amendment 4's admissibility gate is defined over.
+    ends = (KAPPAS[0], KAPPAS[-1])
+    todo.sort(key=lambda t: 0 if t[7] in ends else 1)
     done = sum(len(c.get("per_seed", [])) for c in cells.values())
     print(f"  resuming: {done} runs already done, {len(todo)} planned\n")
 

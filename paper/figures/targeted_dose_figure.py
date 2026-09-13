@@ -241,12 +241,31 @@ def draw_dag(ax, tag="(a) "):
 
     CH, BRK, CONF = "#1f5fa6", "#b03a2e", "#a9780a"
 
-    def box(x, y, s, ec, fs=6.3, weight="normal"):
+    def box(x, y, s, ec, fs=8.2, weight="normal"):      # Round 62: 6.3 -> 8.2, see the note below
         ax.text(x, y, s, ha="center", va="center", fontsize=fs, color=ec, fontweight=weight,
                 bbox=dict(boxstyle="round,pad=0.30", fc="white", ec=ec, lw=0.9), zorder=5)
 
-    XS = [0.055, 0.265, 0.470, 0.680, 0.905]
-    HW = [0.036, 0.048, 0.048, 0.050, 0.030]        # half-widths, so arrows stop at the box edge
+    # Round 62: XS and HW are now DERIVED from the measured half-widths at the box font size, not
+    # hand-placed. HW used to read [0.036, 0.048, 0.048, 0.050, 0.030] against true half-widths of
+    # [0.078, 0.060, 0.062, 0.074, 0.038] -- it was ~0.6x the real box, which is why arrows appeared to
+    # start inside their boxes and why raising the type made "not implied" print straight through
+    # "decision" and "admission". Anything that changes the box font size or a box's text MUST re-measure
+    # these five numbers (a text's bbox_patch window extent through ax.transData.inverted()); they are
+    # not guesses and they do not scale by eye.
+    HW = [0.0781, 0.0595, 0.0615, 0.0741, 0.0381]   # half-widths, so arrows stop at the box edge
+    # The four gaps are UNEQUAL on purpose, and that is what makes the annotations legible. Segments 2
+    # and 3 carry "not implied" at 6.0pt, which is 0.112 wide and sits at the boxes' own height, so those
+    # gaps have to exceed it; segment 0 is unannotated and segment 1's word moved to the caption, so both
+    # can be narrow. Equal gaps of 0.0905 (what the old spacing amounted to) cannot fit the label at any
+    # legible size -- that was the real constraint, not the vertical bands.
+    GAPS = [0.052, 0.088, 0.118, 0.118]
+    XS = [HW[0]]
+    for _i, _g in enumerate(GAPS):
+        XS.append(XS[-1] + HW[_i] + _g + HW[_i + 1])
+    assert XS[-1] + HW[-1] < 1.005, XS                # the row still fits the panel's x range
+    # Annotations centre on the GAP, not on the midpoint of two box centres: with unequal box widths the
+    # two differ by up to 0.006, which at these label widths is the whole clearance.
+    MID = [(XS[i] + HW[i] + XS[i + 1] - HW[i + 1]) / 2 for i in range(4)]
     Y = 0.62
     for x, s, ec, w in zip(XS,
                            ["upstream\n$T$", "statistic\n$S(d_2)$", "decision\n(P3)",
@@ -256,12 +275,15 @@ def draw_dag(ax, tag="(a) "):
 
     # (P1) and (P2) -- the statistic's value and the ordering it induces -- both live in the ONE
     # statistic box, and they are named in each document's CAPTION rather than in the artwork. Not a
-    # preference: this panel has no free band left. Measured with the renderer, a 4.6pt label centred
-    # under that box overlaps the box itself by 1.1pt at y=Y-0.30 and the attenuation box's top-left
-    # corner by 3.5pt, and there is no y between them (box bottom 256.0pt, attenuation top 255.6pt);
-    # a third line INSIDE the box costs 7.6pt of height and drives its rounded corner into the same
-    # attenuation box. The arrow annotations are what carry the hierarchy here, which is why the one
-    # link that holds by definition is labelled below and the two broken ones say "not implied".
+    # preference: this panel has no free band left. Measured with the renderer at the ORIGINAL sizes, a
+    # 4.6pt label centred under that box overlapped the box itself by 1.1pt at y=Y-0.30 and the
+    # attenuation box's top-left corner by 3.5pt, with no y between them (box bottom 256.0pt,
+    # attenuation top 255.6pt); a third line INSIDE the box cost 7.6pt of height and drove its rounded
+    # corner into the same attenuation box. Round 62 raised every size in this panel and so spent the
+    # little slack that existed -- the clearances above are now SMALLER, not larger, and the composite's
+    # height_ratios gave row 0 the height that paid for it. Do not read this note as free room.
+    # The arrow annotations are what carry the hierarchy here, which is why the two links that hold by
+    # definition needs no label and the two broken ones carry the nRightarrow glyph.
 
     # The reader's map, and the whole point of the panel: the left group is what a preservation check
     # can see, the right group is what security actually depends on. Set inside the existing headroom
@@ -271,7 +293,7 @@ def draw_dag(ax, tag="(a) "):
         # No span rule: the band between the box tops and the title is only a few points tall, and a
         # rule there strikes through the channel annotations. The label takes its group's colour
         # instead, which is the same cue the boxes already carry.
-        ax.text((x0 + x1) / 2, Y + 0.435, lab, ha="center", va="bottom", fontsize=5.2, color=col)
+        ax.text((x0 + x1) / 2, Y + 0.400, lab, ha="center", va="bottom", fontsize=8.0, color=col)
 
     for i in range(4):
         broken = i >= 2
@@ -280,21 +302,27 @@ def draw_dag(ax, tag="(a) "):
                                     color=BRK if broken else CH,
                                     ls=(0, (2.4, 1.7)) if broken else "-"))
         if broken:
-            ax.text((XS[i] + XS[i + 1]) / 2, Y - 0.20, r"$\nRightarrow$", ha="center", va="center",
-                    fontsize=10, color=BRK, zorder=6)
-            ax.text((XS[i] + XS[i + 1]) / 2, Y + 0.045, "not implied", ha="center", va="bottom",
-                    fontsize=4.6, color=BRK, zorder=6)
-        elif i == 1:
-            # The one link in the chain that needs no experiment: equal values induce the same ordering
-            # and a rule reading only that ordering cannot decide differently, so (P2)=>(P3) holds by
-            # definition. Set in the nRightarrow band BELOW the arrow, aligned with the two broken
-            # glyphs, so that band reads as one column: "what happens at this link". Deliberately NOT
-            # in the "not implied" band above (Y + 0.045), where it would print 4.7pt under this same
-            # segment's arm annotation and read as "Krum flips 0.80 by definition". Clearance is
-            # measured, not assumed: 258.5-263.5pt, under box bottoms at 256.0/257.9pt and over the
-            # attenuation box's top at 255.6pt. Segment 0 stays unannotated for the reason below.
-            ax.text((XS[i] + XS[i + 1]) / 2, Y - 0.20, "by definition", ha="center", va="center",
-                    fontsize=4.6, color=CH, zorder=6)
+            # "not implied" used to print here at 6.0pt beside this glyph. At main.tex's 0.80\linewidth
+            # that is 4.8pt on paper, i.e. the same illegibility Round 62 exists to fix, and the gap is
+            # 0.125 wide against a 0.112 label so it cannot be enlarged in place. The GLYPH is the one
+            # element that gets bigger for free -- 11pt here is ~8.8pt printed, larger than anything the
+            # panel had before -- and it is the standard notation for what the words said. The words are
+            # in each document's caption, which is set at body size on the same page.
+            ax.text(MID[i], Y - 0.20, r"$\nRightarrow$", ha="center", va="center",
+                    fontsize=11, color=BRK, zorder=6)
+    # Segment 1 -- the one link in the chain that needs no experiment, because equal values induce the
+    # same ordering and a rule reading only that ordering cannot decide differently, so (P2)=>(P3) holds
+    # by definition -- used to be labelled "by definition" at Y-0.20, in the nRightarrow band. Round 62
+    # took the words off the artwork and left them where they ALREADY were, in each document's caption
+    # ("both solid links hold \emph{by definition}" -- there are TWO, matching (P1)=>(P2)=>(P3) at
+    # main.tex:284, and the caption said "the solid link" until a pixel read of Round 62's own build
+    # caught it), because at a legible size they no longer fit: at
+    # 6.0pt the string is 0.125 wide against a 0.070 gap, it sits at the boxes' own height, and the band
+    # below the boxes is 0.076 tall against a 0.168-tall label. It cannot go in the number band above
+    # either -- there it prints under this same segment's own annotation and reads as "0.80 by
+    # definition", asserting the converse of what the panel says. The solid blue arrow against the two
+    # dashed red ones is the surviving visual cue, and the caption names both. If this label ever returns,
+    # it needs a band, not a nudge.
 
     # The T -> statistic segment is deliberately left UNANNOTATED. Its number (Delta agg. = 0.892) is
     # the one channel Mode S does not hold fixed, so printing it here invites reading the panel as a
@@ -302,35 +330,41 @@ def draw_dag(ax, tag="(a) "):
     # disclosed in prose -- the control paragraph of the targeted section names it as "the aggregate
     # the defense emits" -- and in the channel table, so nothing is lost by not repeating it inside
     # the diagram. None is the skip marker; the loop keeps its segment index either way.
-    # Each label names ITS OWN scope, because the three are not the same arm and a reader who assumes
-    # they are reads the panel as one experiment. Segment 2 is Krum alone (its decision flips); segment 3
-    # is POOLED over the four CIFAR-10 arms of the channel table, which is why it must NOT carry an arm
-    # name -- n_rounds is summed over ROWS above, so "Krum: 0/240" would be false; segment 4 is cos_krum,
-    # the only arm that holds admission and moves suppression. Widest label is 24 chars, one under the
-    # 25-char budget the layout note below fixes, so horizontal clearance is no worse than before.
-    for i, lab in enumerate([None, f"Krum: flips {dec:.2f}",
-                             f"unchanged, {n_changed}/{n_rounds}, 4 arms",
-                             f"cos_krum: falls {d_ck:.3f}"]):
+    # Round 62: these were sentences ("Krum: flips 0.80", "unchanged, 0/240, 4 arms",
+    # "cos_krum: falls 0.173"), and their 24-char width is what pinned the whole panel at 4.6pt -- ~3.7pt
+    # once main.tex includes the figure at 0.80\linewidth, which is below print legibility. The NUMBERS
+    # stay here, still recomputed above and still asserted; the scope and the direction move to each
+    # document's caption, which is the same division this panel already uses for (P1)/(P2) and for
+    # `lem:annihilation`'s number. Reading the bare numbers off the arrows therefore requires the
+    # caption, and that is the trade the round took deliberately: three annotations nobody can read are
+    # worth less than three anybody can, and the caption is on the same page.
+    #
+    # Two things the caption MUST carry, because dropping them from the artwork dropped them from view:
+    #  - segment 3 is POOLED over the four CIFAR-10 arms of the channel table, never Krum alone
+    #    (n_rounds is summed over ROWS above, so "Krum: 0/240" would be false);
+    #  - d_ck is POSITIVE and the word "falls" was carrying its direction, so the caption has to say
+    #    "falls". Printing "-0.173" here instead would put a sign in the artwork that the artifact does
+    #    not hold, and a mathtext hyphen renders as a true minus.
+    for i, lab in enumerate([None, f"{dec:.2f}", f"{n_changed}/{n_rounds}", f"{d_ck:.3f}"]):
         if lab is None:
             continue
         # ONE line each, and that is a layout constraint, not a style choice: two-line annotations reach
         # y=1.02, which leaves the group labels above them no room below the title at ylim=1.20 and they
-        # print through it. Kept short enough (<=25 chars at 4.6pt) to clear each other horizontally --
-        # the segment midpoints are only ~0.2 apart -- which is what broke the first one-line attempt.
-        # y is set from the box top (Y + ~0.18), not from Y: each annotation is WIDER than the gap it
-        # is centred in, so it passes over its neighbouring boxes and only vertical clearance keeps it
-        # off their rounded corners. 0.265 leaves ~4.5pt above the boxes, ~4.5pt below the group labels
-        # and ~4.5pt from label top to the title -- the three gaps this band has to divide.
-        ax.text((XS[i] + XS[i + 1]) / 2, Y + 0.265, lab, ha="center",
-                va="bottom", fontsize=4.6, color=BRK if i >= 2 else CH)
+        # print through it. At 5 chars the horizontal collision that broke the first one-line attempt is
+        # gone -- the segment midpoints are only ~0.2 apart and these labels are now NARROWER than the
+        # gaps they sit in, which is what pays for the type sizes raised throughout this function.
+        # y is still set from the box top (Y + ~0.18) rather than from Y, because at 6.0pt the label
+        # heights, not their widths, are what has to clear the boxes' rounded corners.
+        ax.text(MID[i], Y + 0.045, lab, ha="center",
+                va="bottom", fontsize=9.0, color=BRK if i >= 2 else CH)
 
     # the confounded path: T -> adversarial influence -> ASR, never touching d_2's statistic
-    YC = 0.13
+    YC = 0.12
     # NO lemma number here. This PDF is shared by paper/ and workshop_paper/, and
     # `lem:annihilation` is Lemma 2 in the main paper and Lemma 1 in the workshop, so no
     # hardcoded number can be right in both. Each document's caption carries the real \ref;
     # a number baked into a figure is a cross-reference LaTeX cannot check.
-    box(0.470, YC, "adversarial influence (attenuation)", CONF, fs=5.6)
+    box(0.470, YC, "adversarial influence (attenuation)", CONF, fs=7.0)
     for (x0, y0), (x1, y1), rad in (((XS[0], Y - 0.20), (0.283, YC), -0.28),
                                     ((0.657, YC), (XS[4], Y - 0.20), -0.28)):
         ax.annotate("", xy=(x1, y1), xytext=(x0, y0), zorder=3,
@@ -338,19 +372,29 @@ def draw_dag(ax, tag="(a) "):
                                     connectionstyle=f"arc3,rad={rad}"))
     for ys in ([YC + 0.20, YC + 0.02], [YC + 0.02, YC + 0.20]):   # the cut, struck across that arc
         ax.plot([0.132, 0.186], ys, color=BRK, lw=1.9, zorder=7, solid_capstyle="round")
-    ax.text(0.470, -0.11, f"Mode S cuts this path: every adversary pinned at $c{{=}}1.0$, "
-                          f"adversarial coefficient share $\\equiv {share:.6f}$",
-            fontsize=5.4, color=BRK, ha="center", va="center", fontweight="bold", zorder=8)
+    # Round 62: was a sentence ("Mode S cuts this path: every adversary pinned at c=1.0, adversarial
+    # coefficient share == 0.266667") at 5.4pt. The pinning is what the strike-through already says
+    # graphically, so the words go and the two numbers stay -- both still read from `adm` above, and the
+    # share still asserted constant across rungs at the top of this function.
+    ax.text(0.470, -0.185, f"cut: $c{{=}}1.0$, share $\\equiv {share:.6f}$",
+            fontsize=6.6, color=BRK, ha="center", va="center", fontweight="bold", zorder=8)
 
-    ax.set_title(f"{tag}two paths from the upstream transform to suppression, and the one Mode S cuts",
-                 fontsize=7.4, loc="left", pad=2.0)
+    # Round 62: title shortened from "two paths from the upstream transform to suppression, and the one
+    # Mode S cuts" (76 chars). It is set loc="left" and so does not wrap, but it was the other string
+    # setting this panel's horizontal budget, and the second clause is what the struck arc shows.
+    ax.set_title(f"{tag}two paths from the upstream transform to suppression",
+                 fontsize=8.0, loc="left", pad=2.0)
     ax.set_xlim(0, 1.0)
-    ax.set_ylim(-0.22, 1.20)
+    ax.set_ylim(-0.30, 1.22)
     ax.axis("off")
 
 
 def draw_reversal(ax, tag="(c) "):
-    """Six cells, two designs each: where closing the attenuation channel changes the answer.
+    """Every scored comparability cell, two designs each: where closing the attenuation channel
+    changes the answer. The cell count, the training/out-of-sample split and the number of sign
+    reversals are all READ FROM THE ARTIFACT and appear nowhere in this file as literals -- the
+    docstring used to say "Six cells ... four TRAINING ... two out-of-sample" and would have gone
+    silently stale the moment a seventh cell was scored.
 
     Read from results/comparability_six_cells.json, which analyze_comparability.py writes after
     asserting that the four published contrasts reproduce bit-identically. Nothing is recomputed here.
@@ -360,24 +404,45 @@ def draw_reversal(ax, tag="(c) "):
     analyzer classified as one. A chart of twelve numbers is exactly the kind of figure that keeps
     drawing after its premise stops holding, so the premise is checked.
 
-    Four cells are TRAINING -- the frozen rule was read off them -- and two are out-of-sample, marked
-    with a rule. Of the two, one confirms and one REFUTES, and the panel says so rather than showing
-    six undifferentiated rows: a reader must be able to see which rows could have falsified anything.
+    The TRAINING cells -- the frozen rule was read off them -- are separated from the out-of-sample
+    ones by a rule, and each out-of-sample row is annotated "confirms" or "REFUTES" from its own
+    prediction. A reader must be able to see which rows could have falsified anything, rather than a
+    block of undifferentiated ones. A row whose rule makes no prediction (`predicted` absent) carries
+    no verdict annotation and is not counted as confirming anything.
+
+    Round 61, the twenty-first review's clarity item on this figure: a reversal row is drawn with a
+    heavy connector in the reversal colour and both of its means printed at the ends of its own arms,
+    so the size of the reversal is readable off the panel rather than only off `tab:sixcell`. Every one of
+    those numbers is formatted from the artifact, and the row set they are drawn on is the artifact's
+    own `sign_reversal_cells`; nothing here is a literal.
     """
     # Same amber as draw_dag's confounded path and the same green as its admission arrow, so a reader
     # who has just read panel (a) meets the same two colours meaning the same two things.
     CONF, INSTR = "#a9780a", "#2f7d3f"
+    REV = "#8a2a2a"    # the reversal colour, used for the tag, the values and the heavy connector
     d = json.load(open(SIXCELL))
     a = d["assertions"]
-    cells = [c for c in d["cells"] if c["confounded"] and c["controlled"]]
+    # `complete` here must mean exactly what it means in analyze_comparability.py, which is BOTH designs
+    # present AND every frozen seed landed. Presence alone drew a mid-run cell: while cell 7's controlled
+    # kappa=2 rung sat at 4 of 5 seeds this filter admitted it, the analyzer's n_cells excluded it, the
+    # two counts disagreed, and the panel refused to draw for a reason that had nothing to do with its
+    # premise. Drawing it would have been worse than refusing: a dumbbell whose two ends are at n=5 and
+    # n=4 looks identical to one that is not.
+    cells = [c for c in d["cells"]
+             if c["confounded"] and c["controlled"] and not c.get("missing_frozen_seeds")]
     if not a["published_cells_reproduce"] or len(cells) != a["n_cells"]:
         raise SystemExit("panel (c) refuses to draw: results/comparability_six_cells.json no longer "
                          f"certifies reproducing published cells over {a['n_cells']} complete cells "
                          f"({a}). Re-run experiments/analyze_comparability.py and read its output.")
-    rev = [c["label"] for c in cells if c["observed"] == "SIGN REVERSAL"]
-    if rev != ([a["sign_reversal_cell"]] if a["sign_reversal_cell"] else []):
+    # Round 57: compare against the artifact's LIST, not its scalar. The scalar goes None as soon as a
+    # second cell reverses, so keying the guard on it made "the reversal replicated" indistinguishable
+    # from "the artifact is corrupt" -- a guard that fires hardest on the most interesting outcome.
+    rev = sorted(c["label"] for c in cells if c["observed"] == "SIGN REVERSAL")
+    want = sorted(a.get("sign_reversal_cells",
+                        [a["sign_reversal_cell"]] if a.get("sign_reversal_cell") else []))
+    if rev != want:
         raise SystemExit(f"panel (c) refuses to draw: sign-reversal rows {rev} disagree with the "
-                         f"artifact's own {a['sign_reversal_cell']!r}.")
+                         f"artifact's own {want}.")
 
     # Training cells first, then a rule, then the two that could have falsified the frozen rule. Within
     # each block the artifact's order is kept, which is the order the pre-registration lists them in.
@@ -386,17 +451,36 @@ def draw_reversal(ax, tag="(c) "):
 
     for c, y in zip(cells, ys):
         cf, ct = c["confounded"], c["controlled"]
+        is_rev = c["observed"] == "SIGN REVERSAL"
         # The dumbbell connector carries the panel's whole claim: its LENGTH is how much the answer
-        # moves when the attenuation channel is closed, on one cell at one seed set.
-        ax.plot([cf["mean"], ct["mean"]], [y, y], color="0.55", lw=1.0, zorder=2)
+        # moves when the attenuation channel is closed, on one cell at one seed set. On a reversal row
+        # it also CROSSES ZERO, so there it is drawn heavy and in the reversal colour: the one thing a
+        # reader skimming this panel should see is a dark bar straddling the zero line.
+        ax.plot([cf["mean"], ct["mean"]], [y, y], color=(REV if is_rev else "0.55"),
+                lw=(2.1 if is_rev else 1.0), zorder=(3 if is_rev else 2),
+                solid_capstyle="butt")
         for r, col, mk in ((cf, CONF, "o"), (ct, INSTR, "D")):
             ax.errorbar(r["mean"], y, xerr=(r["hi"] - r["lo"]) / 2.0, fmt=mk, ms=3.6,
                         color=col, ecolor=col, elinewidth=1.1, capsize=2.2, capthick=0.9,
                         zorder=5, mec=col, mfc=col)
-        if c["observed"] == "SIGN REVERSAL":
-            ax.text(max(cf["mean"], ct["mean"]) + 0.045, y, "sign\nreversal", fontsize=5.0,
-                    color="#8a2a2a", fontweight="bold", ha="left", va="center", zorder=6,
-                    linespacing=1.0)
+        if is_rev:
+            # Both means printed, each just outside its OWN arm's interval and in that arm's colour,
+            # so how far the answer moved is readable here and not only in the appendix table. Placed
+            # horizontally, never above the marker: the row pitch in the composite figure is ~7.4pt,
+            # so a label offset vertically lands on the neighbouring row's error bar. The tag then
+            # goes further out on the same side as the leftmost value, because the right margin of
+            # this panel is already occupied by the out-of-sample verdict annotations.
+            lo_arm, hi_arm = sorted((cf, ct), key=lambda r: r["mean"])
+            lo_col = CONF if lo_arm is cf else INSTR
+            hi_col = INSTR if lo_arm is cf else CONF
+            for arm, col, xend, dx, ha in ((lo_arm, lo_col, lo_arm["lo"], -2.5, "right"),
+                                           (hi_arm, hi_col, hi_arm["hi"], 2.5, "left")):
+                ax.annotate(f"${arm['mean']:+.3f}$", xy=(xend, y), xytext=(dx, 0),
+                            textcoords="offset points", fontsize=5.0, color=col,
+                            ha=ha, va="center", zorder=6)
+            ax.annotate("sign reversal", xy=(lo_arm["lo"], y), xytext=(-25, 0),
+                        textcoords="offset points", fontsize=5.0, color=REV,
+                        fontweight="bold", ha="right", va="center", zorder=6)
     ax.axvline(0.0, color="0.25", lw=1.0, zorder=4)
 
     # The out-of-sample block, separated by a rule so the four training rows cannot be read as evidence.
@@ -409,14 +493,49 @@ def draw_reversal(ax, tag="(c) "):
             c["predicted"] == "DISAGREE" and c["observed"] == "SIGN REVERSAL")
 
     ax.set_yticks(ys)
-    ax.set_yticklabels([f"$\\mathtt{{{c['label'].replace('_', chr(92) + '_')}}}$" for c in cells],
-                       fontsize=5.4)
+    # Plain monospace text, NOT mathtext. `$\mathtt{...}$` was used here until cell 7 arrived, and inside
+    # mathtext a hyphen is the binary minus operator: "CIFAR-100" rendered as CIFAR MINUS 100, in the same
+    # glyph and with the same operator spacing as the "-0.75" on the axis below it. Every earlier label
+    # was hyphen-free, so the defect could not appear before this cell, and it is invisible to every check
+    # this repository runs -- `pdftotext` drops the unmapped minus glyph entirely and extracts
+    # "CIFAR 100", so the source, the LaTeX build and a text grep of the rendered PDF all pass. Only
+    # pixels show it. Plain text with a monospace family renders the same DejaVu Sans Mono face, needs no
+    # `\_` escaping, and prints a real hyphen.
+    # The " / " is closed up explicitly: mathtext silently dropped literal spaces, so the labels the
+    # published panel shows are "krum/scaling", and plain text would widen every one of them.
+    # Round 63: every row label carries its own n, as `n=5` when the two legs agree and `n=5/20` as
+    # confounded/controlled when they do not. Until this round the panel rendered NO seed count at all
+    # while its rows already spanned n=5, 8 and 20, so a 20-seed interval and a 5-seed interval were
+    # drawn as visually identical objects and the two guards above -- which read
+    # `published_cells_reproduce` and the reversal-row list -- could not see it, neither of them reading
+    # n. `pdftotext` extracts nothing from a figure, so no LaTeX check, no gate and no text grep could
+    # either. The tag is read from the artifact, never a literal, so it follows a seed top-up on its own.
+    def n_tag(c):
+        n0, n2 = c["confounded"].get("n"), c["controlled"].get("n")
+        if n0 is None or n2 is None:
+            raise SystemExit(f"panel (c) refuses to draw: cell {c['label']!r} carries n="
+                             f"{n0}/{n2}, so its row would print a seed count it does not have. "
+                             "Re-run experiments/analyze_comparability.py.")
+        return f" n={n0}" if n0 == n2 else f" n={n0}/{n2}"
+
+    ax.set_yticklabels([c["label"].replace(" / ", "/") + n_tag(c) for c in cells],
+                       fontsize=5.4, family="monospace")
 
     # The two rows that could have falsified the frozen rule are the only ones carrying a verdict, and
     # one of them REFUTES. That word is the honest headline of this block and is not softened.
     xr = ax.get_xlim() if ax.get_xlim()[1] > ax.get_xlim()[0] + 1e-9 else None
     for c, y in zip(cells, ys):
         if c["training"]:
+            continue
+        # A cell the withdrawn rule makes NO prediction about (Amendment 4's cell 7) has predicted=None.
+        # is_hit() returns False for it, so annotating unconditionally would print "REFUTES" against a
+        # rule that never predicted anything here -- a false verdict, and the worst kind, because it
+        # reads as evidence. Such a row is drawn with its interval and no verdict.
+        if not c.get("predicted"):
+            ax.annotate("out of sample: rule makes no prediction",
+                        xy=(1.0, y), xycoords=("axes fraction", "data"),
+                        xytext=(-2, 0), textcoords="offset points",
+                        fontsize=5.0, ha="right", va="center", zorder=7, color="0.35")
             continue
         hit = is_hit(c)
         ax.annotate("out of sample: " + ("confirms" if hit else "REFUTES"),
@@ -430,8 +549,25 @@ def draw_reversal(ax, tag="(c) "):
                   "circle: outcome-gated ladder (adversary free to attenuate).   "
                   "diamond: Mode S (adversary pinned at $c{=}1$)",
                   fontsize=5.9, labelpad=1.5, linespacing=1.25)
-    ax.set_title(f"{tag}the two designs disagree on {a['n_disagree']} of {a['n_cells']} cells, "
-                 f"and on one they have OPPOSITE SIGNS",
+    # Every count in this title comes from the artifact. "on one they have OPPOSITE SIGNS" used to be
+    # literal text, and a count baked into a figure PDF passes every LaTeX check -- pdftotext is the
+    # only thing that sees it. n_rev is read, and the phrasing agrees with it in number.
+    #
+    # Round 61: the title names the FINDING and then counts, rather than counting only. The counts are
+    # nested and the wording says so: the reversals are a subset of the disagreements (a verdict is one
+    # of AGREE / DISAGREE / SIGN REVERSAL and n_disagree sums the last two), so "changes the answer ...
+    # and its SIGN on" must not read as two disjoint tallies that a reader would add.
+    #
+    # It is also kept SHORT, and that is a layout constraint and not taste: the title is the widest
+    # thing in this panel, savefig uses bbox_inches="tight", and a longer title silently widens the
+    # whole canvas. The first draft of this title ran 114 chars and grew modeS_causal.pdf from 5.88in
+    # to 7.64in, which at a fixed \includegraphics width shrinks every label in all three panels.
+    n_rev = a.get("n_sign_reversal", 0)
+    rev_clause = ("and no sign flips" if n_rev == 0 else
+                  "and its SIGN on 1" if n_rev == 1 else
+                  f"and its SIGN on {n_rev}")
+    ax.set_title(f"{tag}the design choice changes the answer on {a['n_disagree']} of "
+                 f"{a['n_cells']} cells, {rev_clause}",
                  fontsize=7.4, loc="left", pad=2.0)
     lo = min(min(c["confounded"]["lo"], c["controlled"]["lo"]) for c in cells)
     hi = max(max(c["confounded"]["hi"], c["controlled"]["hi"]) for c in cells)
@@ -444,12 +580,28 @@ def draw_reversal(ax, tag="(c) "):
         ax.spines[sp].set_visible(False)
 
 
+# Figures whose workshop copy is PINNED, with the reason, because this generator writes into both
+# papers and the two papers no longer agree about how many cells exist. The workshop is a SIX-cell
+# document: its Fig. 1 caption reads "Six cells, one contrast each" and "The designs disagree on 4 of 6
+# cells", and this round's seventh cell is added to the main paper only. Writing the 7-row panel there
+# would put a figure drawing 7 rows under a caption counting 6, inside a document nothing else this
+# round touches, and no check in this repository could see it: the caption is prose, the count is
+# pixels, and `pdftotext` of the figure reports whatever the figure says without ever reading the
+# caption. Whoever revives the workshop regenerates this figure and rewrites that caption together.
+WORKSHOP_PINNED = {"modeS_causal.pdf"}
+
+
 def save(fig, name):
-    for d in (HERE, os.path.join(REPO, "workshop_paper", "figures")):
-        if os.path.isdir(d):
-            out = os.path.join(d, name)
-            fig.savefig(out, bbox_inches="tight")
-            print("Saved:", out)
+    ws = os.path.join(REPO, "workshop_paper", "figures")
+    for d in (HERE, ws):
+        if not os.path.isdir(d):
+            continue
+        if d == ws and name in WORKSHOP_PINNED:
+            print(f"PINNED, not written (see WORKSHOP_PINNED): {os.path.join(d, name)}")
+            continue
+        out = os.path.join(d, name)
+        fig.savefig(out, bbox_inches="tight")
+        print("Saved:", out)
 
 
 # --- standalone panels: the Mode-S adjudication is the paper's centerpiece and carries its own float
@@ -475,8 +627,16 @@ save(fA, "targeted_modeA.pdf")
 # fund it; at hspace=0.62 panel (c)'s title printed straight through (b)'s x label. Measured, not
 # guessed: at these numbers there are 14.4pt of clear space below (b)'s x label, and panels (a) and (b)
 # are each ~0.06in TALLER than in the two-panel version this replaces, for +0.33in of total height.
+#
+# Round 62 reallocated row 0 from 0.92 to 1.12 to pay for draw_dag's raised type (boxes 6.3 -> 8.2pt;
+# at main.tex's 0.80\linewidth the old 4.6pt arrow labels printed at ~3.7pt). The ratios still SUM to
+# 3.82, so the figure's own height is untouched, and the 0.20 came from panel (b) (0.84 -> 0.76) and
+# from the (b)->(c) spacer (0.84 -> 0.72, spending ~7.6pt of the 14.4pt of clear space measured above
+# and leaving ~6.8pt). Because save() uses bbox_inches="tight", the NATIVE size is set by content and
+# not by figsize: the check that matters is that 423.4 x 237.6pt is unchanged, since main.tex includes
+# this at a fixed width and any aspect change silently moves every page after it.
 fC = plt.figure(figsize=(5.5, 3.36))
-_gs = fC.add_gridspec(5, 1, height_ratios=[0.92, 0.12, 0.84, 0.84, 1.10], hspace=0.0)
+_gs = fC.add_gridspec(5, 1, height_ratios=[1.12, 0.12, 0.76, 0.72, 1.10], hspace=0.0)
 cx, cbx, ccx = fC.add_subplot(_gs[0]), fC.add_subplot(_gs[2]), fC.add_subplot(_gs[4])
 draw_dag(cx)
 draw_modeS(cbx, tag="(b) ", compact=True)

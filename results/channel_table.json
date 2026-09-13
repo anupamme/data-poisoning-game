@@ -22,6 +22,7 @@
   "results/targeted_dose/summary.json",
   "results/dose_replication/summary.json",
   "results/dose_femnist/summary.json",
+  "results/dose_resnet18/summary.json",
   "results/dose_mask/summary.json"
  ],
  "rows": [
@@ -31,6 +32,7 @@
    "attack": "committed_scaling",
    "kind": "selector (pairwise distance)",
    "dataset": "cifar10",
+   "model": "cifar_cnn",
    "channel_source": "results/admission_measurement.json",
    "family": "doseS",
    "top_rung": 2.0,
@@ -68,6 +70,7 @@
    "attack": "committed_scaling",
    "kind": "weighted averager (cross-round state)",
    "dataset": "cifar10",
+   "model": "cifar_cnn",
    "channel_source": "results/admission_measurement.json",
    "family": "doseS",
    "top_rung": 2.0,
@@ -105,6 +108,7 @@
    "attack": "committed_pixel",
    "kind": "selector (cosine distance)",
    "dataset": "cifar10",
+   "model": "cifar_cnn",
    "channel_source": "results/admission_measurement.json",
    "family": "doseS",
    "top_rung": 2.0,
@@ -142,6 +146,7 @@
    "attack": "committed_pixel",
    "kind": "coordinate-wise order statistic",
    "dataset": "cifar10",
+   "model": "cifar_cnn",
    "channel_source": "results/admission_measurement.json",
    "family": "doseS",
    "top_rung": 2.0,
@@ -179,6 +184,7 @@
    "attack": "committed_scaling",
    "kind": "selector (pairwise distance)",
    "dataset": "femnist",
+   "model": "simple_cnn",
    "channel_source": "results/femnist_admission.json",
    "family": "doseS",
    "top_rung": 2.0,
@@ -216,6 +222,7 @@
    "attack": "committed_scaling",
    "kind": "selector, magnitude channel closed",
    "dataset": "cifar10",
+   "model": "cifar_cnn",
    "channel_source": "results/displacement_decomposition.json",
    "family": "doseS",
    "top_rung": 2.0,
@@ -251,6 +258,7 @@
    "attack": "committed_scaling",
    "kind": "selector, statistic channel closed",
    "dataset": "cifar10",
+   "model": "cifar_cnn",
    "channel_source": "results/displacement_decomposition.json",
    "family": "doseS",
    "top_rung": 2.0,
@@ -280,6 +288,44 @@
    },
    "borrowed_from": null,
    "closed_by_construction": "decision/admission/influence: the transform has no path to the selection (same-round, same-stack counterfactual)"
+  },
+  {
+   "label": "Krum (ResNet18)",
+   "arm": "krum",
+   "attack": "committed_scaling",
+   "kind": "selector (pairwise distance)",
+   "dataset": "cifar10",
+   "model": "resnet18",
+   "channel_source": "results/resnet18_admission.json",
+   "family": "doseS",
+   "top_rung": 2.0,
+   "rungs": [
+    0.0,
+    0.5,
+    1.0,
+    2.0
+   ],
+   "identity_displacement": 0.0,
+   "n_rounds": 18,
+   "d_agg_disp": 0.8244414821472282,
+   "d_decision": 0.5555555555555556,
+   "d_admission": 0.0,
+   "d_influence": 0.0,
+   "mass_is_binary": true,
+   "mean_mass_base": 0.0,
+   "mean_mass_post": 0.0,
+   "asr": {
+    "identity_asr": 0.07066666666666667,
+    "top_asr": 0.02962962962962963,
+    "delta_asr": -0.04103703703703704,
+    "identity_acc": 0.5358,
+    "top_acc": 0.5574333333333333,
+    "n_seeds": 3,
+    "seeds_match": true,
+    "n_shared": 3,
+    "paired_delta_asr": -0.04103703703703704,
+    "source": "results/dose_resnet18/summary.json"
+   }
   }
  ],
  "mask_rows": [
@@ -289,6 +335,7 @@
    "attack": "committed_scaling",
    "kind": "selector (pairwise distance)",
    "dataset": "cifar10",
+   "model": "cifar_cnn",
    "channel_source": "results/mask_admission.json",
    "family": "doseM",
    "top_rung": 0.8,
@@ -326,6 +373,7 @@
    "attack": "committed_scaling",
    "kind": "weighted averager (cross-round state)",
    "dataset": "cifar10",
+   "model": "cifar_cnn",
    "channel_source": "results/mask_admission.json",
    "family": "doseM",
    "top_rung": 0.8,
@@ -352,6 +400,7 @@
    "attack": "committed_pixel",
    "kind": "selector (cosine distance)",
    "dataset": "cifar10",
+   "model": "cifar_cnn",
    "channel_source": "results/mask_admission.json",
    "family": "doseM",
    "top_rung": 0.8,
@@ -378,6 +427,7 @@
    "attack": "committed_pixel",
    "kind": "coordinate-wise order statistic",
    "dataset": "cifar10",
+   "model": "cifar_cnn",
    "channel_source": "results/mask_admission.json",
    "family": "doseM",
    "top_rung": 0.8,
@@ -399,6 +449,6 @@
    "asr": null
   }
  ],
- "latex": "\\begin{tabular}{llrrrrr}\n\\toprule\nAggregator & Kind & $\\Delta$ agg. & $\\Delta$ dec. & $\\Delta$ adm. & $\\Delta \\Lambda_a$ & $\\Delta$ ASR \\\\\n\\midrule\nKrum & selector (pairwise distance) & 0.892 & 0.733 & 0.000 & 0.000 & $-0.026$ \\\\\nReputation & weighted averager (cross-round state) & 0.659 & 1.000 & 0.000 & 0.020 & $+0.178$ \\\\\nCosine-Krum & selector (cosine distance) & 1.297 & 0.000 & 0.000 & 0.000 & $-0.425$ \\\\\nCoord.\\ median & coordinate-wise order statistic & 0.670 & 0.482 & 0.000 & 0.033 & $+0.098$ \\\\\nKrum (EMNIST-byclass) & selector (pairwise distance) & 0.842 & 0.643 & 0.000 & 0.000 & $-0.017$ \\\\\nKrum, score-only & selector, magnitude channel closed & 0.986 & 0.733 & 0.000 & 0.000 & $-0.023$ \\\\\nKrum, emit-only & selector, statistic channel closed & 0.973 & 0.000 & 0.000 & 0.000 & $-0.001$ \\\\\n\\bottomrule\n\\end{tabular}",
+ "latex": "\\begin{tabular}{llrrrrrr}\n\\toprule\nAggregator & Kind & $\\Delta$ agg. & $\\Delta$ dec. & $\\Delta$ adm. & $\\Delta \\Lambda_a$ & $\\Delta$ ASR & $n$ \\\\\n\\midrule\nKrum & selector (pairwise distance) & 0.892 & 0.733 & 0.000 & 0.000 & $-0.026$ & 5 \\\\\nReputation & weighted averager (cross-round state) & 0.659 & 1.000 & 0.000 & 0.020 & $+0.178$ & 5 \\\\\nCosine-Krum & selector (cosine distance) & 1.297 & 0.000 & 0.000 & 0.000 & $-0.425$ & 8 \\\\\nCoord.\\ median & coordinate-wise order statistic & 0.670 & 0.482 & 0.000 & 0.033 & $+0.098$ & 5 \\\\\nKrum (EMNIST-byclass) & selector (pairwise distance) & 0.842 & 0.643 & 0.000 & 0.000 & $-0.017$ & 3 \\\\\nKrum, score-only & selector, magnitude channel closed & 0.986 & 0.733 & 0.000 & 0.000 & $-0.023$ & 5 \\\\\nKrum, emit-only & selector, statistic channel closed & 0.973 & 0.000 & 0.000 & 0.000 & $-0.001$ & 5 \\\\\nKrum (ResNet18) & selector (pairwise distance) & 0.824 & 0.556 & 0.000 & 0.000 & $-0.041$ & 3 \\\\\n\\bottomrule\n\\end{tabular}",
  "latex_mask": "\\begin{tabular}{llrrrrr}\n\\toprule\nAggregator & Kind & $\\Delta$ agg. & $\\Delta$ dec. & $\\Delta$ adm. & $\\Delta \\Lambda_a$ & $\\Delta$ ASR \\\\\n\\midrule\nKrum (mask) & selector (pairwise distance) & 1.095 & 0.467 & 0.000 & 0.000 & $-0.016$ \\\\\nReputation (mask) & weighted averager (cross-round state) & 0.817 & 0.533 & 0.000 & 0.004 & --- \\\\\nCosine-Krum (mask) & selector (cosine distance) & 1.161 & 0.467 & 0.333 & 0.333 & --- \\\\\nCoord.\\ median (mask) & coordinate-wise order statistic & 0.953 & 0.700 & 0.000 & 0.131 & --- \\\\\n\\bottomrule\n\\end{tabular}"
 }

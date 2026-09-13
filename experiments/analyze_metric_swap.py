@@ -31,6 +31,27 @@ pre-registration's second non-negotiable forbids changing the seed count of the 
 the top-up may inform the post-hoc contrast and nothing else. Cells absent from the top-up keep
 their n=3 values and are marked, so a mixed-n comparison is never reported as uniform.
 
+THE BASELINE HAS TO MOVE WITH THE COMPOSITION, AND FOR ONE CELL IT MATTERS ENORMOUSLY
+Delta subtracts a standalone from a composition, so topping up only the composed side reports a
+5-seed composition against a 3-seed baseline -- a mixed-n Delta of exactly the kind the paragraph
+above forbids, and the mixed leg is the *subtrahend*, where it is invisible. So under --with-topup
+the standalone is taken at the SAME five seeds from the dose ladder's kappa=0 rung
+(results/dose_response/summary.json), which is d2 standalone run fresh at seeds 42--46 under the
+identical config (N=10, K=5, f=0.2, alpha=0.5, 50 rounds) and cross-checked per seed against these
+published baselines. On cos_krum/pixel that is the whole result: the frozen baseline is 0.300 at
+n=3 and 0.490 at n=5, because two of its five seeds are high-ASR, so a 3-seed subtrahend
+manufactures Delta=+0.190 for norm_clip->cos_krum -- a cell where norm_clip is the EXACT identity
+on this attack (max client norm 3.04 < tau=5, 0/9 rounds bind) and the composition is therefore
+the same five runs as the baseline, Delta=0 by construction. Attributing that +0.190 to Lemma 2's
+magnitude channel is attributing an effect to a transform that did nothing. Cells with no kappa=0
+rung keep the frozen baseline and say so in the row.
+
+A second reason to recompute rather than transcribe: the STANDALONE dict below is not uniformly n=3.
+Its rows come from four different pre-freeze artifacts (pre_registration_metric_swap.md, Phase 0),
+so cos_krum's 0.300 is seeds 42--44 while reputation's 0.017 is a five-seed mean. The rows therefore
+report the frozen leg as "frozen", not with a seed count this script cannot establish; where the
+kappa=0 rung is available the leg's n is known exactly and printed.
+
 Run: python3 experiments/analyze_metric_swap.py [--with-topup]
 """
 import json
@@ -49,6 +70,7 @@ BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SWAP = os.path.join(BASE, "results", "metric_swap", "summary.json")
 INV = os.path.join(BASE, "results", "cos_invariance_check.json")
 TOPUP = os.path.join(BASE, "results", "metric_swap_topup", "summary.json")
+LADDER = os.path.join(BASE, "results", "dose_response", "summary.json")
 
 ATTACKS = ["committed_scaling", "committed_pixel"]
 D2S = ["reputation", "cos_reputation", "krum", "cos_krum"]
@@ -101,6 +123,29 @@ def load_topup():
     return {k: v["per_seed"] for k, v in json.load(open(TOPUP))["cells"].items()}
 
 
+def load_matched_standalone():
+    """{(d2, attack): (mean ASR, mean acc, n)} from the dose ladder's kappa=0 rung.
+
+    That rung is d2 standalone: the ladder's coefficient vector is c == 1 at kappa=0 and the
+    implementation short-circuits, so the rung is the defense alone, run fresh at all five seeds.
+    Returned so --with-topup can subtract a baseline measured on the same seeds as the composition
+    it is subtracted from. Recomputed from that artifact on every run; nothing is transcribed.
+    """
+    if not os.path.exists(LADDER):
+        return {}
+    out = {}
+    for key, cell in json.load(open(LADDER))["cells"].items():
+        name, attack = key.split("|")
+        if not name.startswith("dose_kappa0.0_then_"):
+            continue
+        rows = cell["per_seed"]
+        out[(name[len("dose_kappa0.0_then_"):], attack)] = (
+            float(np.mean([r["asr"] for r in rows])),
+            float(np.mean([r["accuracy"] for r in rows])),
+            len(rows))
+    return out
+
+
 def merged_rows(cell, extra):
     """Frozen per-seed rows plus any post-hoc rows, deduplicated by seed. Frozen values win."""
     rows = {r["seed"]: r for r in cell["per_seed"]}
@@ -149,6 +194,7 @@ def main():
     inv = json.load(open(INV))
     dist = disturbance_rates(inv)
     topup = load_topup() if with_topup else {}
+    matched = load_matched_standalone() if with_topup else {}
     if with_topup:
         if not topup:
             print(f"note: --with-topup given but {TOPUP} is absent -- reporting frozen n=3 only\n")
@@ -159,6 +205,15 @@ def main():
             for k in sorted(topup):
                 seeds = sorted(r["seed"] for r in topup[k])
                 print(f"    {k:44s} + seeds {seeds}")
+            print("    The subtrahend moves with them: every topped-up cell's standalone is taken")
+            print("    at the same five seeds from the ladder's kappa=0 rung, so no Delta below is")
+            print("    a 5-seed composition minus a 3-seed baseline.")
+            for (d2, attack), (a, ac, n) in sorted(matched.items()):
+                frozen = STANDALONE.get(d2, {}).get(attack)
+                if frozen is None:
+                    continue
+                print(f"    standalone {d2:14s} {attack.replace('committed_',''):8s} "
+                      f"frozen {frozen[0]:.3f} -> matched n={n} {a:.3f}")
             print()
 
     print("=== WITHIN-DEFENSE PRESERVATION (C1 held exactly fixed) ===")
@@ -181,6 +236,11 @@ def main():
                 accs = [r["accuracy"] for r in per]
                 seeds = [r["seed"] for r in per]
                 s_asr, s_acc = STANDALONE[d2][attack]
+                s_n = None                       # frozen leg: mixed provenance, n not asserted
+                # Only where the composed side actually gained seeds: otherwise swapping the
+                # baseline would create the mixed-n comparison in the other direction.
+                if k in topup and (d2, attack) in matched:
+                    s_asr, s_acc, s_n = matched[(d2, attack)]
                 m, lo, hi = ci(asrs)
                 d = m - s_asr
                 nd, tot = dist[(d1, d2)]
@@ -193,7 +253,7 @@ def main():
                       f"{np.mean(accs):.2f}  {flag}")
                 rows.append(dict(attack=attack, d1=d1, d2=d2, c2=C2[d2], nd=nd, tot=tot,
                                  delta=d, lo=lo - s_asr, hi=hi - s_asr, hollow=hollow,
-                                 s_asr=s_asr, s_acc=s_acc, mean=m, asrs=asrs, seeds=seeds,
+                                 s_asr=s_asr, s_acc=s_acc, s_n=s_n, mean=m, asrs=asrs, seeds=seeds,
                                  suppressing=(s_asr < 0.5 and s_acc >= ACC_FLOOR)))
         print()
 
@@ -226,15 +286,21 @@ def main():
     powered = [r for r in rows if r["suppressing"] and not r["hollow"]]
     pz = [r for r in powered if r["nd"] == 0]
     pp = [r for r in powered if r["nd"] > 0]
-    print(f"  {'pair':26s} {'attack':9s} {'disturb':>8} {'standalone':>11} {'composed':>9} {'Delta':>8}")
+    print(f"  {'pair':26s} {'attack':9s} {'disturb':>8} {'standalone':>11} {'composed':>9} "
+          f"{'Delta':>8}  legs")
     for r in sorted(powered, key=lambda r: r["nd"]):
         print(f"  {r['d1']+'->'+r['d2']:26s} {r['attack'].replace('committed_',''):9s} "
               f"{str(r['nd'])+'/'+str(r['tot']):>8} {r['s_asr']:11.3f} {r['mean']:9.3f} "
-              f"{r['delta']:+8.3f}")
+              f"{r['delta']:+8.3f}  standalone "
+              f"{'frozen' if r['s_n'] is None else 'n=' + str(r['s_n'])}"
+              f", composed n={len(r['asrs'])}"
+              f"{'  <-- MIXED n' if r['s_n'] is not None and r['s_n'] != len(r['asrs']) else ''}")
     if pz and pp:
-        print(f"\n  undisturbed (0/9): n={len(pz)}  Delta in "
+        # "cells=", not "n=": the seed counts are in the legs column and confusing the two is how
+        # a 5-seed composition came to be published against a 3-seed baseline.
+        print(f"\n  undisturbed (0/9): cells={len(pz)}  Delta in "
               f"[{min(r['delta'] for r in pz):+.3f}, {max(r['delta'] for r in pz):+.3f}]")
-        print(f"  disturbed  (>0/9): n={len(pp)}  Delta in "
+        print(f"  disturbed  (>0/9): cells={len(pp)}  Delta in "
               f"[{min(r['delta'] for r in pp):+.3f}, {max(r['delta'] for r in pp):+.3f}]")
         sep = min(r["delta"] for r in pp) - max(r["delta"] for r in pz)
         print(f"  separation gap: {sep:+.3f}  "

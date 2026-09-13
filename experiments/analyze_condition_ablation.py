@@ -33,6 +33,16 @@ preservation", `c2_provenance` records per row which kind of evidence its verdic
 the census at the end scores C2 restricted to the algebraically settled region. Emitting it here
 rather than in the frontier script keeps the semantics with the table that defines them.
 
+C1'S QUANTIFIER IS NOT THE SAME AS C1'S DIRECTION, AND SUBSTITUTING ONE FOR THE OTHER IS NOT FREE
+The last section prices a proposed substitution of C1 by the directional C1' ("the DOWNSTREAM d2
+suppresses a"), which is often assumed equivalent on the grounds that C0 forces d2 anyway. It does
+not: C0 is existential over attacks while C1 is universal over them, so Lemma 2 pins d2 only on the
+witnessing attack a*. Off a*, the suppressing constituent may be d1 -- and on all four pairs where
+the two definitions disagree, d2 is coord_median (model-scaling 0.519, above threshold) while the
+upstream foolsgold (0.200) or reputation (0.017) is what holds that arm. Both pairs the criterion
+certifies are of that kind, so C1' would empty the certified set and leave precision undefined.
+Reported as a scope fact; the paper keeps C1.
+
 No new compute. Output: results/condition_ablation/summary.json
 """
 import json
@@ -221,6 +231,80 @@ if __name__ == "__main__":
     print("  and the algebraically settled sub-region discriminates nothing. Disclosed, not fixed:")
     print("  fixing it needs an invariance result for the conditional classes, which we do not have.")
 
+    # ---- C1's quantifier: would a DIRECTIONAL C1 move any label? -------------------
+    # A reviewer asked us to replace C1's "some constituent suppresses a" with the directional
+    # "the downstream d2 suppresses a", on the grounds that C0 forces d2 anyway so the change is
+    # notational. C0 does NOT force it: C0 is existential over attacks ("ASR(d1,a) >= 0.5 for at
+    # least one committed a") while C1 is universal over them, so Lemma 2 pins d2 only on the
+    # witnessing attack a*. Off a*, the suppressing constituent may be d1. This census prices the
+    # substitution instead of arguing about it.
+    def c1_directional(d2):
+        """d2 alone suppresses EVERY committed attack -- the reviewer's C1'."""
+        return all(single.get(d2, {}).get(a, 1.0) < THRESH for a in ATTACKS)
+
+    def witnesses_c0(d1):
+        """Attacks a with ASR(d1,a) >= 0.5; any one of them can serve as a*."""
+        return [a for a in ATTACKS if single.get(d1, {}).get(a, 1.0) >= THRESH]
+
+    flips = [r for r in rows if r["C1"] != c1_directional(r["d2"])]
+    print("\n=== C1's QUANTIFIER: SYMMETRIC vs DIRECTIONAL (would C1' move a label?) ===")
+    print("    C1  (as used):  min over {d1,d2} of ASR(d,a) < 0.5, for every committed a")
+    print("    C1' (proposed): ASR(d2,a) < 0.5, for every committed a")
+    print(f"\n  The two disagree on {len(flips)} of {len(rows)} pairs, and never in the other")
+    print("  direction: C1' is strictly stronger, so every disagreement is a pair C1 admits")
+    print("  and C1' rejects.\n")
+    for r in sorted(flips, key=lambda r: r["pair"]):
+        d1a = {a: single.get(r["d1"], {}).get(a, 1.0) for a in ATTACKS}
+        d2a = {a: single.get(r["d2"], {}).get(a, 1.0) for a in ATTACKS}
+        # the attack C1 satisfies via d1 rather than d2 is what C1' loses
+        via_d1 = [a for a in ATTACKS if d1a[a] < THRESH <= d2a[a]]
+        print(f"  {r['pair']:34s} stored={r['stored_category']:8s} "
+              f"{'LOW' if r['low_asr'] else 'HIGH':4s} ASR {r['max_committed_asr']:.3f}")
+        print(f"      d1={r['d1']:14s} " + "  ".join(f"{a.replace('committed_','')}={d1a[a]:.3f}"
+                                                    for a in ATTACKS))
+        print(f"      d2={r['d2']:14s} " + "  ".join(f"{a.replace('committed_','')}={d2a[a]:.3f}"
+                                                    for a in ATTACKS))
+        print(f"      C0 witnessed by {[a.replace('committed_','') for a in witnesses_c0(r['d1'])]}"
+              f"; C1 met via d1 (not d2) on "
+              f"{[a.replace('committed_','') for a in via_d1]}")
+
+    clean = [r for r in rows if r["C1"] and r["C2"] and r["C3"]]
+    clean_dir = [r for r in rows if c1_directional(r["d2"]) and r["C2"] and r["C3"]]
+    tp, tp_dir = sum(r["low_asr"] for r in clean), sum(r["low_asr"] for r in clean_dir)
+    print(f"\n  Clean C1^C2^C3 selects {len(clean)} pairs "
+          f"({', '.join(sorted(r['pair'] for r in clean))}), "
+          f"precision {tp}/{len(clean)}, recall {tp}/{len(lows)}.")
+    print(f"  Clean C1'^C2^C3 selects {len(clean_dir)} pairs"
+          f"{' (' + ', '.join(sorted(r['pair'] for r in clean_dir)) + ')' if clean_dir else ''}, "
+          f"precision {tp_dir}/{len(clean_dir) if clean_dir else 0}"
+          f"{' -- UNDEFINED' if not clean_dir else ''}, recall {tp_dir}/{len(lows)}.")
+    if clean and not clean_dir:
+        print("  => The proposed substitution EMPTIES the certified set. Both certified pairs are")
+        print("     pairs whose model-scaling arm is held by the UPSTREAM defense, and the same")
+        print("     precision it would delete is the statistic the same review asks us to lead")
+        print("     with. We therefore keep C1 and disclose the asymmetry rather than adopt C1'.")
+
+    c1_quantifier = {
+        "definition_symmetric": "min_{d in {d1,d2}} ASR(d,a) < 0.5 for every committed a",
+        "definition_directional": "ASR(d2,a) < 0.5 for every committed a",
+        "n_pairs": len(rows),
+        "n_disagreements": len(flips),
+        "disagreements": [
+            {"pair": r["pair"], "d1": r["d1"], "d2": r["d2"],
+             "stored_category": r["stored_category"], "low_asr": r["low_asr"],
+             "d1_standalone": {a: single.get(r["d1"], {}).get(a) for a in ATTACKS},
+             "d2_standalone": {a: single.get(r["d2"], {}).get(a) for a in ATTACKS},
+             "c0_witnesses": witnesses_c0(r["d1"]),
+             "c1_met_via_d1_on": [a for a in ATTACKS
+                                  if single.get(r["d1"], {}).get(a, 1.0) < THRESH
+                                  <= single.get(r["d2"], {}).get(a, 1.0)]}
+            for r in sorted(flips, key=lambda r: r["pair"])],
+        "clean_symmetric": {"pairs": sorted(r["pair"] for r in clean),
+                            "true_positives": tp, "n_low_asr": len(lows)},
+        "clean_directional": {"pairs": sorted(r["pair"] for r in clean_dir),
+                              "true_positives": tp_dir, "n_low_asr": len(lows)},
+    }
+
     provenance = {
         "c2_admitted": len(admitted),
         "n_pairs": len(rows),
@@ -242,6 +326,6 @@ if __name__ == "__main__":
     json.dump({"description": "Factorial C1/C2/C3 ablation over the 42 evaluated pairs",
                "threshold": THRESH, "cells": cells, "marginal": marg,
                "base_rate_low_asr": total_low / len(rows), "rows": rows,
-               "c2_provenance": provenance},
+               "c2_provenance": provenance, "c1_quantifier": c1_quantifier},
               open("results/condition_ablation/summary.json", "w"), indent=2)
     print("\nSaved to results/condition_ablation/summary.json")

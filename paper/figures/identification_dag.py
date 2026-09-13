@@ -14,6 +14,13 @@ different consequence:
       the contrast needs is not merely undersampled, it is EMPTY for every defense menu the screen
       could range over. No adjustment set, no reweighting and no sample size recovers it.
 
+  (c) the design that repairs it -- hold d_2 and a fixed and intervene on the upstream transform.
+      The gate then takes one value for every arm rather than selecting them, so it is a constant
+      and not a conditioning event, and BOTH rows are occupied by construction: T=id is run as the
+      control whatever its outcome. Panel (c) asserts nothing beyond the within-design corollary,
+      which is what the caption points at; it is the same 2x2 as (b) with the column that (b) leaves
+      empty no longer needed, because nothing varies across it.
+
 NO theorem, proposition, corollary or lemma NUMBER is drawn into this PDF, and none should be added:
 the two papers number the same results differently, so a baked number is wrong in one document while
 still resolving to a real result in both -- a defect no build warning or `??` scan can see. The
@@ -44,7 +51,10 @@ BOX = dict(boxstyle="round,pad=0.09", linewidth=0.7)
 # the point sizes below are the point sizes on the page. A wider figure would be downscaled by
 # \includegraphics and the labels would shrink with it.
 fig = plt.figure(figsize=(5.51, 1.66))
-gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.52], wspace=0.06)
+# Panel (b) carries a 2x2 grid beside its graph, so it stays the widest; (c) needs only a
+# single column and is the narrowest. Height is UNCHANGED at 1.66in: the strip must not grow
+# vertically, because it now lands in the body rather than the appendix.
+gs = fig.add_gridspec(1, 3, width_ratios=[0.92, 1.46, 0.92], wspace=0.06)
 
 
 def node(ax, x, y, text, fc, ec, w, h, fs):
@@ -123,6 +133,34 @@ bx.annotate("", xy=(X0 + CW + 0.14, Y0 + 0.08), xytext=(X0 + 2 * CW - 0.14, Y0 +
             arrowprops=dict(arrowstyle="-", color=RED_E, linewidth=1.2, alpha=0.9))
 bx.text(X0 + CW, Y0 - 0.62, "the contrast that would identify $P$",
         ha="center", va="center", fontsize=5.0, style="italic", color=RED_E)
+
+# ----------------------------------------------------------------- panel (c)
+cx = fig.add_subplot(gs[0, 2])
+cx.set_xlim(0, 10.0)
+cx.set_ylim(0, 6.4)
+cx.axis("off")
+cx.set_title("(c) the design that repairs it", fontsize=7.0, loc="left", color=INK, pad=3)
+
+node(cx, 2.60, 5.05, "$\\mathrm{do}(T)$\nupstream\ntransform", GREEN_F, GREEN_E, 4.30, 1.62, 5.5)
+node(cx, 7.40, 5.05, "$d_2$, $a$\nheld fixed", BLUE_F, BLUE_E, 4.30, 1.62, 5.5)
+arrow(cx, 2.60, 4.15, 4.20, 3.70, color=GREEN_E)
+arrow(cx, 7.40, 4.15, 5.80, 3.70)
+cx.text(5.00, 3.18, "$G$ is a constant,\nnot a conditioning event", ha="center", va="center",
+        fontsize=5.2, style="italic", color=GREEN_E, linespacing=1.25)
+
+# The same 2x2 as panel (b), except that with $d_2$ fixed the column is a constant, so only
+# the rows vary and both are occupied.
+CX0, CY0, CCW, CRH = 3.05, 0.92, 3.90, 0.78
+for i, lab in enumerate(["$P$", "$\\neg P$"]):
+    cx.text(CX0 - 0.22, CY0 + (1 - i) * CRH + CRH / 2, lab,
+            ha="right", va="center", fontsize=5.6, color=INK)
+    cx.add_patch(FancyBboxPatch((CX0, CY0 + (1 - i) * CRH), CCW, CRH,
+                                boxstyle="square,pad=0", facecolor=GREEN_F,
+                                edgecolor=GREEN_E, linewidth=0.7))
+    cx.text(CX0 + CCW / 2, CY0 + (1 - i) * CRH + CRH / 2, "observed",
+            ha="center", va="center", fontsize=5.2, color=GREEN_E)
+cx.text(5.00, 0.30, "$T{=}\\mathrm{id}$ is the control, run\nwhatever the outcome",
+        ha="center", va="center", fontsize=5.0, style="italic", color=INK, linespacing=1.3)
 
 fig.subplots_adjust(left=0.008, right=0.995, top=0.90, bottom=0.03)
 out = os.path.join(HERE, "identification_dag.pdf")

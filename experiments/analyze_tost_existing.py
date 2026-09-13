@@ -65,6 +65,13 @@ ARMS = [
     ("Krum / scaling (flagship)",       "targeted_dose",   "doseS_kappa{r}_then_krum|committed_scaling"),
     ("Krum / scaling (score-only)",     "score_only",      "doseS_kappa{r}_then_krum|committed_scaling"),
     ("Krum / scaling (EMNIST-byclass)", "dose_femnist",    "doseS_kappa{r}_then_krum|committed_scaling"),
+    # The architecture-alone arm (pre_registration_dose_resnet18.md, 89046f6). Listed for the same
+    # reason as cell 7 below: the comment above says EVERY Mode-S arm in the paper and this is one.
+    # It is the arm this script exists for. Its frozen rule is the POINT-estimate rule (|Delta| <
+    # 0.15), which it passes at -0.041; the TOST row here is post hoc for this arm, as for every other
+    # row, and it is the row that shows what n=3 on two endpoint rungs actually buys. Two rungs only,
+    # so IDENTITY_RUNG/TOP_RUNG are the only rungs it has -- nothing is dropped by pairing them.
+    ("Krum / scaling (ResNet18)",        "dose_resnet18",   "doseS_kappa{r}_then_krum|committed_scaling"),
     ("Reputation / scaling",            "targeted_dose",   "doseS_kappa{r}_then_reputation|committed_scaling"),
     ("cos_krum / pixel",                "targeted_dose",   "doseS_kappa{r}_then_cos_krum|committed_pixel"),
     ("coord_median / pixel",            "dose_replication", "doseS_kappa{r}_then_coord_median|committed_pixel"),
@@ -78,6 +85,16 @@ ARMS = [
     ("Krum / scaling (EMNIST-byclass, $n{=}5$)", "dose_femnist",
      "doseS_kappa{r}_then_krum|committed_scaling",
      [("comparability_cells", "doseS_kappa{r}_then_krum|committed_scaling|emnist")]),
+    # Cell 7 of the comparability table (Amendment 4, 9b8a395): the same coord_median/pixel arm on
+    # CIFAR-100. Listed because the header above says EVERY Mode-S arm in the paper, and this is one;
+    # omitting it would make that comment false and leave a reader to wonder whether the arm was
+    # scored and dropped. It is scored here and it does NOT pass: the arm is a detected rise inside a
+    # sign reversal, so the row's equivalence verdict is expected to fail and is reported as a
+    # failure, not as support. The paper makes no equivalence claim about it, which is why
+    # analyze_margin_sensitivity.py excludes it from the binding-arm search on the separate ground
+    # that its interval does not contain zero.
+    ("coord_median / pixel (CIFAR-100)", "comparability_cells",
+     "doseS_kappa{r}_then_coord_median|committed_pixel|cifar100"),
 ]
 IDENTITY_RUNG, TOP_RUNG = "0.0", "2.0"
 
@@ -152,14 +169,19 @@ def tost(d, margin=MARGIN):
     hw90 = t_crit90(n) * se
     hw95 = t_crit(n) * se
     lo90, hi90 = m - hw90, m + hw90
+    lo95, hi95 = m - hw95, m + hw95
     equiv = bool(lo90 > -margin and hi90 < margin)
     return {"n": n, "mean": m, "sd": sd, "se": float(se),
-            "ci90": (lo90, hi90), "ci95": (m - hw95, m + hw95),
+            "ci90": (lo90, hi90), "ci95": (lo95, hi95),
             "p_lower": p_lo, "p_upper": p_hi,
             "p_tost": (max(p_lo, p_hi) if sps is not None else float("nan")),
             "equivalent": equiv,
             # The distinction that is the whole point of the script.
-            "point_inside_margin": bool(abs(m) < margin)}
+            "point_inside_margin": bool(abs(m) < margin),
+            # An interval can lie inside the margin AND exclude zero: equivalence and detection are
+            # not exclusive, and a bare checkmark on such an arm reads as "no effect" when the paper
+            # reports a measured one. Scored and marked separately so the table cannot say otherwise.
+            "detected": not (lo95 <= 0.0 <= hi95)}
 
 
 def main():
@@ -167,7 +189,7 @@ def main():
     print("Equivalence requires the 90% interval on the PAIRED difference inside the margin.")
     print("Reads frozen artifacts only; adds no runs; revises no published verdict.\n")
 
-    rows, n_equiv, n_inside_only = [], 0, 0
+    rows, n_equiv, n_inside_only, n_both = [], 0, 0, 0
     for label, dirname, keyfmt, *rest in ARMS:
         extra = rest[0] if rest else ()
         cells = load(dirname)
@@ -193,6 +215,12 @@ def main():
         verdict = ("EQUIVALENT at the frozen margin" if r["equivalent"] else
                    "NOT established -- interval wider than the margin")
         print(f"  -> {verdict}")
+        if r["equivalent"] and r["detected"]:
+            n_both += 1
+            print("     AND THE EFFECT IS DETECTED: the 95% interval excludes zero, so this arm is"
+                  "\n           practically equivalent and statistically nonzero at once. The"
+                  " checkmark here\n           does NOT mean 'no effect'; it means 'no effect larger"
+                  f" than {MARGIN}'.")
         if r["point_inside_margin"] and not r["equivalent"]:
             n_inside_only += 1
             print(f"     note: the point estimate {r['mean']:+.4f} IS inside +/-{MARGIN}, which is what"
@@ -212,6 +240,7 @@ def main():
     print(f"  arms scored: {len(rows)}")
     print(f"  equivalence ESTABLISHED by TOST at existing n: {n_equiv}")
     print(f"  point estimate inside margin but TOST inconclusive: {n_inside_only}")
+    print(f"  equivalent AND detected (95% interval excludes zero): {n_both}")
     if n_inside_only:
         print("\n  This is the honest reading and the argument for the seed top-up: at n=3-8 the")
         print("  frozen point-estimate rule passes while the equivalence test does not, because the")
@@ -221,7 +250,9 @@ def main():
     # LaTeX, emitted rather than transcribed, so the paper cannot disagree with this script.
     print("\n--- LaTeX rows (arm, n, paired Delta, 95% CI, 90% CI, TOST verdict) ---")
     for label, _, p, r in rows:
-        v = "\\checkmark" if r["equivalent"] else "not est."
+        # The table's own vocabulary, so a row can be checked against it without translation.
+        v = ("equivalent$^{\\dagger}$" if r["equivalent"] and r["detected"]
+             else "equivalent" if r["equivalent"] else "not est.")
         print(f"{label.replace('_', chr(92) + '_')} & ${r['n']}$ & ${r['mean']:+.3f}$ & "
               f"$[{r['ci95'][0]:+.3f},\\,{r['ci95'][1]:+.3f}]$ & "
               f"$[{r['ci90'][0]:+.3f},\\,{r['ci90'][1]:+.3f}]$ & {v} \\\\")

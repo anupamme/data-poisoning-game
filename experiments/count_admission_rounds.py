@@ -33,7 +33,7 @@ base = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.ins
 # Single-sourced from the emitter of the published table: same per-round rows, same indicator, same
 # adversarial-mass field per aggregator. A second copy is how the count and the table drift apart.
 from experiments.build_channel_table import (  # noqa: E402
-    ROWS, MASS, ADM_FEMNIST, channel_rows,
+    ROWS, MASS, SRC_REGIME, channel_rows,
 )
 
 RUNGS = (0.0, 0.5, 1.0, 2.0)
@@ -57,13 +57,16 @@ def main():
     print("=== ADMISSION: THE COUNT BEHIND `Delta adm. = 0.000` ===")
     print("    Per-round support-change indicator, re-derived from the frozen channel measurements.")
     print("    Each arm under ITS OWN committed attack -- the cells the channel table prints.\n")
-    print(f"  {'aggregator':16s} {'attack':18s} {'dataset':8s} {'rounds':>7s} {'changed':>8s} "
-          f"{'mass present':>13s}")
-    print("  " + "-" * 74)
+    # The MODEL is part of the key, not decoration. The ResNet18 row varies architecture alone, so it
+    # shares (arm, attack, dataset) with the flagship CIFAR-10 Krum row: keying on those three alone
+    # let it overwrite that row in `totals`, which silently dropped 60 rounds from the pooled count.
+    print(f"  {'aggregator':16s} {'attack':18s} {'dataset':8s} {'model':10s} {'rounds':>7s} "
+          f"{'changed':>8s} {'mass present':>13s}")
+    print("  " + "-" * 85)
 
     totals = {}
     for label, arm, attack, src in ROWS:
-        dataset = "femnist" if src == ADM_FEMNIST else "cifar10"
+        dataset, model = SRC_REGIME[src]
         n = c = p = 0
         missing = False
         for rung in RUNGS:
@@ -73,24 +76,27 @@ def main():
                 continue
             n += got[0]; c += got[1]; p += got[2]
         if missing and n == 0:
-            print(f"  {arm:16s} {attack:18s} {dataset:8s} {'--':>7s}   no channel measurement")
+            print(f"  {arm:16s} {attack:18s} {dataset:8s} {model:10s} {'--':>7s}   "
+                  f"no channel measurement")
             continue
-        print(f"  {arm:16s} {attack:18s} {dataset:8s} {n:7d} {c:8d} {p:13d}")
-        totals[(arm, dataset)] = (n, c, p)
+        print(f"  {arm:16s} {attack:18s} {dataset:8s} {model:10s} {n:7d} {c:8d} {p:13d}")
+        assert (arm, dataset, model) not in totals, (
+            f"{(arm, dataset, model)} counted twice; one row would shadow the other")
+        totals[(arm, dataset, model)] = (n, c, p)
 
     n = sum(v[0] for v in totals.values())
     c = sum(v[1] for v in totals.values())
     p = sum(v[2] for v in totals.values())
-    print("  " + "-" * 74)
-    print(f"  {'ALL ROWS':16s} {'':18s} {'':8s} {n:7d} {c:8d} {p:13d}")
+    print("  " + "-" * 85)
+    print(f"  {'ALL ROWS':16s} {'':18s} {'':8s} {'':10s} {n:7d} {c:8d} {p:13d}")
 
     print(f"\n  rounds        measured rounds pooled over rungs {list(RUNGS)}")
     print("  changed       rounds in which the SUPPORT of the adversarial mass changed")
     print("  mass present  rounds with adversarial mass at baseline, i.e. a change was possible")
 
     print("\n=== WHAT THE PAPER MAY SAY ===")
-    for (arm, dataset), (rn, rc, rp) in totals.items():
-        tag = f"{arm} ({dataset})"
+    for (arm, dataset, model), (rn, rc, rp) in totals.items():
+        tag = f"{arm} ({dataset}/{model})"
         if rc == 0 and rp > 0:
             print(f"  {tag:26s} \"changed in none of the {rn} measured rounds\" "
                   f"({rp} with mass present, so a change was possible)")

@@ -223,3 +223,15 @@ data/
 *.bak_*
 paper/.round36/
 texput.log
+
+# The blanket *.log above comes from the Python template ("Django stuff"), but seven of the runner
+# logs under results/ are EVIDENCE, not build noise: they carry the per-run seconds behind the paper's
+# GPU-hour figures (experiments/analyze_screening_cost.py reads exactly these) and the per-seed record
+# of the pre-registered seed top-ups. 44 KB in total. Everything else under results/*.log stays ignored.
+!results/prospective_suite_run.log
+!results/prospective_pilot_run.log
+!results/metric_swap_suite.log
+!results/metric_swap_baselines.log
+!results/run_wave3_emergent.log
+!results/headline_seed_topup.log
+!results/rep_cm_resolution.log

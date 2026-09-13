@@ -642,5 +642,110 @@
       "precision": 0.0,
       "recall": 0.0
     }
+  },
+  "c1_quantifier": {
+    "definition_symmetric": "min_{d in {d1,d2}} ASR(d,a) < 0.5 for every committed a",
+    "definition_directional": "ASR(d2,a) < 0.5 for every committed a",
+    "n_pairs": 42,
+    "n_disagreements": 4,
+    "disagreements": [
+      {
+        "pair": "coord_median_then_foolsgold",
+        "d1": "coord_median",
+        "d2": "foolsgold",
+        "stored_category": "DEGEN",
+        "low_asr": false,
+        "d1_standalone": {
+          "committed_scaling": 0.5185777777777778,
+          "committed_pixel": 0.4425111111111111
+        },
+        "d2_standalone": {
+          "committed_scaling": 0.2,
+          "committed_pixel": 0.7315555555555556
+        },
+        "c0_witnesses": [
+          "committed_scaling"
+        ],
+        "c1_met_via_d1_on": [
+          "committed_pixel"
+        ]
+      },
+      {
+        "pair": "coord_median_then_reputation",
+        "d1": "coord_median",
+        "d2": "reputation",
+        "stored_category": "DEGEN",
+        "low_asr": false,
+        "d1_standalone": {
+          "committed_scaling": 0.5185777777777778,
+          "committed_pixel": 0.4425111111111111
+        },
+        "d2_standalone": {
+          "committed_scaling": 0.017044444444444445,
+          "committed_pixel": 0.8421555555555555
+        },
+        "c0_witnesses": [
+          "committed_scaling"
+        ],
+        "c1_met_via_d1_on": [
+          "committed_pixel"
+        ]
+      },
+      {
+        "pair": "foolsgold_then_coord_median",
+        "d1": "foolsgold",
+        "d2": "coord_median",
+        "stored_category": "PASS",
+        "low_asr": true,
+        "d1_standalone": {
+          "committed_scaling": 0.2,
+          "committed_pixel": 0.7315555555555556
+        },
+        "d2_standalone": {
+          "committed_scaling": 0.5185777777777778,
+          "committed_pixel": 0.4425111111111111
+        },
+        "c0_witnesses": [
+          "committed_pixel"
+        ],
+        "c1_met_via_d1_on": [
+          "committed_scaling"
+        ]
+      },
+      {
+        "pair": "reputation_then_coord_median",
+        "d1": "reputation",
+        "d2": "coord_median",
+        "stored_category": "PASS",
+        "low_asr": true,
+        "d1_standalone": {
+          "committed_scaling": 0.017044444444444445,
+          "committed_pixel": 0.8421555555555555
+        },
+        "d2_standalone": {
+          "committed_scaling": 0.5185777777777778,
+          "committed_pixel": 0.4425111111111111
+        },
+        "c0_witnesses": [
+          "committed_pixel"
+        ],
+        "c1_met_via_d1_on": [
+          "committed_scaling"
+        ]
+      }
+    ],
+    "clean_symmetric": {
+      "pairs": [
+        "foolsgold_then_coord_median",
+        "reputation_then_coord_median"
+      ],
+      "true_positives": 2,
+      "n_low_asr": 5
+    },
+    "clean_directional": {
+      "pairs": [],
+      "true_positives": 0,
+      "n_low_asr": 5
+    }
   }
 }

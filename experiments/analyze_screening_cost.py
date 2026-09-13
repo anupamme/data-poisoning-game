@@ -23,18 +23,29 @@ The admitted set is recomputed here from results/condition_ablation/summary.json
 this round recommends, C1&C2, and under the frozen C1&C2&C3 -- they coincide, which is why the
 demotion changes no number.
 
-TWO CAVEATS, REPORTED WITH THE NUMBERS.
-  1. NO PER-RUN TIMING TELEMETRY WAS EVER RECORDED. Not one results JSON in this repo carries a
-     wall-clock field. Every GPU-hour figure below is therefore an ESTIMATE at MIN_PER_RUN minutes
-     on the hardware the paper describes, and is labelled as such wherever it appears.
-  2. The standalone baselines are not pure screening overhead -- they have independent value (they
-     are the single-defense results the paper reports anyway). Counting them as screening cost is
-     the conservative choice.
+TIMING IS NOW MEASURED, AND THE OLD CAVEAT WAS WRONG. Through Round 51 this script and the paper
+both said "no per-run timing telemetry exists in any results file", and the GPU-hour figures were an
+assumption at MIN_PER_RUN = 11.0. No results JSON does carry a wall-clock field -- but the RUNNER
+LOGS in results/*.log print per-run seconds on every line ("s45: acc=... ASR=... (1231s)"), and
+results/*.log are results files. So the caveat was true of one artifact type and false as stated.
+The distribution over the pair-evaluation logs (PAIR_EVAL_LOGS below, n=228) has median 11.1 min,
+which is why the assumed 11.0 held up; the mean is 13.1 min because the tail is long (max 30.6),
+so both are reported and the median carries the headline. EMNIST arms run 52 min/run and are
+excluded, because the 420/80 run counts this file accounts for are CIFAR-10 pair evaluations.
+
+  Lesson worth keeping: an assumption that turns out to be right is still worth replacing with the
+  measurement, because the paper was paying a credibility cost for a number it could have measured.
+
+ONE CAVEAT REMAINS. The standalone baselines are not pure screening overhead -- they have
+independent value (they are the single-defense results the paper reports anyway). Counting them as
+screening cost is the conservative choice.
 
 No new compute. Output: results/screening_cost.json
 """
 import json
 import os
+import re
+import statistics
 import sys
 
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -43,10 +54,50 @@ os.chdir(base_dir)
 
 ATTACKS = ("committed_scaling", "committed_pixel")
 SEEDS_PER_CELL = 5      # the headline protocol's seed count
-MIN_PER_RUN = 11.0      # estimate only; see caveat 1. No timing telemetry exists.
+MIN_PER_RUN_ASSUMED = 11.0   # the pre-Round-52 assumption, kept only for the comparison
+
+# The logs whose runs are CIFAR-10 pair evaluations at the headline config, which is what the
+# 420-run and 80-run counts below are counting. Dose ladders and the comparability harness run
+# heavier configs and the femnist arms are a different dataset, so neither belongs in this pool.
+PAIR_EVAL_LOGS = ("results/prospective_suite_run.log", "results/prospective_pilot_run.log",
+                  "results/metric_swap_suite.log", "results/metric_swap_baselines.log",
+                  "results/run_wave3_emergent.log", "results/headline_seed_topup.log")
+RUN_SECONDS = re.compile(r"\((\d{2,5})s\)")
 
 ABLATION = "results/condition_ablation/summary.json"
 PAIR_FILES = ("results/all_compositions/summary.json", "results/wave2_held_out/summary.json")
+
+
+def measured_minutes_per_run():
+    """Per-run wall clock, measured from the runner logs' own per-run seconds.
+
+    Returns None if no log carries timings, so the caller degrades to the assumption rather than
+    inventing one.
+    """
+    secs, per_log = [], {}
+    for path in PAIR_EVAL_LOGS:
+        if not os.path.exists(path):
+            continue
+        v = [int(x) for x in RUN_SECONDS.findall(open(path, errors="ignore").read())]
+        if v:
+            per_log[os.path.basename(path)] = {"runs": len(v),
+                                               "median_min": round(statistics.median(v) / 60, 2)}
+            secs += v
+    if not secs:
+        return None
+    secs.sort()
+    return {
+        "source": "per-run seconds printed by the runners into results/*.log",
+        "logs": per_log,
+        "runs_timed": len(secs),
+        "median_min": statistics.median(secs) / 60,
+        "mean_min": statistics.mean(secs) / 60,
+        "iqr_min": [secs[len(secs) // 4] / 60, secs[3 * len(secs) // 4] / 60],
+        "min_min": secs[0] / 60,
+        "max_min": secs[-1] / 60,
+        "excluded": "EMNIST-byclass arms (52 min/run) and the dose ladders, which are not "
+                    "CIFAR-10 pair evaluations at the headline config",
+    }
 
 
 def load_rows():
@@ -85,6 +136,10 @@ def main():
     n_pairs = len(rows)
     assert n_pairs == D * (D - 1), f"{n_pairs} rows but D(D-1) = {D * (D - 1)}"
 
+    timing = measured_minutes_per_run()
+    mpr = timing["median_min"] if timing else MIN_PER_RUN_ASSUMED
+    mpr_mean = timing["mean_min"] if timing else MIN_PER_RUN_ASSUMED
+
     adm_c12 = admitted(rows, ("C1", "C2"))
     adm_c123 = admitted(rows, ("C1", "C2", "C3"))
 
@@ -100,8 +155,9 @@ def main():
     out = {
         "description": "Run-level cost of the screen. Replaces the pair-level 95.2% figure, which "
                        "ignored the standalone evaluations C1 requires. Every number here is "
-                       "computed from the results files; the GPU-hour figures are estimates "
-                       "because no per-run timing telemetry was ever recorded.",
+                       "computed from the results files, and the GPU-hour figures are now MEASURED "
+                       "from the per-run seconds the runners print into results/*.log rather than "
+                       "assumed at 11.0 min/run.",
         "defenses": defenses,
         "n_defenses": D,
         "n_ordered_pairs": n_pairs,
@@ -122,13 +178,18 @@ def main():
             "fraction": (n_pairs - len(adm_c12)) / n_pairs,
             "note": "This is the old 95.2%-style figure. It is a pair count and excludes the "
                     "standalone runs C1 needs, so it overstates the saving."},
-        "gpu_hours_estimated": {
-            "minutes_per_run_assumed": MIN_PER_RUN,
-            "unscreened": unscreened_runs * MIN_PER_RUN / 60.0,
-            "screened": screened_runs * MIN_PER_RUN / 60.0,
-            "saved": (unscreened_runs - screened_runs) * MIN_PER_RUN / 60.0,
-            "caveat": "ESTIMATE ONLY. No results file in this repo records wall-clock time; this "
-                      "is a per-run estimate on the hardware described in the paper."},
+        "gpu_hours": {
+            "minutes_per_run_measured_median": mpr,
+            "minutes_per_run_assumed_before_round52": MIN_PER_RUN_ASSUMED,
+            "timing": timing,
+            "unscreened": unscreened_runs * mpr / 60.0,
+            "screened": screened_runs * mpr / 60.0,
+            "saved": (unscreened_runs - screened_runs) * mpr / 60.0,
+            "saved_at_mean": (unscreened_runs - screened_runs) * mpr_mean / 60.0,
+            "caveat": "Measured, not assumed: per-run seconds come from the runner logs. The median "
+                      "carries the figure and the mean is reported beside it because the per-run "
+                      "distribution has a long right tail. Hardware is the single machine the paper "
+                      "describes, so these are wall-clock hours on it and not a portable cost."},
         "scaling": {
             "unscreened": "|attacks| * seeds * D(D-1)  -- quadratic in D",
             "screened": "|attacks| * seeds * ((D-1) + |admitted|)  -- linear in D plus the "
@@ -156,10 +217,19 @@ def main():
           f"{100 * out['pair_level_figure_for_contrast']['fraction']:.1f}% of PAIRS "
           f"(overstates: excludes C1's standalone runs)")
     print()
-    g = out["gpu_hours_estimated"]
-    print(f"  estimated GPU-hours at {MIN_PER_RUN:g} min/run: "
-          f"{g['unscreened']:.0f} h -> {g['screened']:.0f} h, saving {g['saved']:.0f} h")
-    print("  ESTIMATE ONLY: no per-run timing telemetry exists in any results file.")
+    g = out["gpu_hours"]
+    if timing:
+        print(f"  measured per-run wall clock over {timing['runs_timed']} logged pair-evaluation "
+              f"runs: median {timing['median_min']:.2f} min, mean {timing['mean_min']:.2f}, "
+              f"IQR {timing['iqr_min'][0]:.1f}--{timing['iqr_min'][1]:.1f}, "
+              f"range {timing['min_min']:.1f}--{timing['max_min']:.1f}")
+    else:
+        print(f"  NO LOG TIMINGS FOUND; falling back to the {MIN_PER_RUN_ASSUMED:g} min/run assumption")
+    print(f"  GPU-hours at the measured median {mpr:.2f} min/run: "
+          f"{g['unscreened']:.0f} h -> {g['screened']:.0f} h, saving {g['saved']:.0f} h "
+          f"({g['saved_at_mean']:.0f} h at the mean)")
+    print(f"  for contrast, the pre-Round-52 assumption of {MIN_PER_RUN_ASSUMED:g} min/run gave "
+          f"{(unscreened_runs - screened_runs) * MIN_PER_RUN_ASSUMED / 60.0:.1f} h saved")
     print()
     sp = out["actually_spent_in_this_paper"]
     print(f"  actually spent on composition cells: {sp['runs']} runs over {sp['cells']} cells "

@@ -94,7 +94,7 @@ The NormClip row is the sharpest form of the point: NC$\to$Krum is bit-identical
 
 One prediction in the suite was genuinely two-sided, and it is the round's only prospective positive result. \texttt{cos\_krum}'s C1 verdict on model-scaling turns entirely on whether the accuracy gate is applied: $0.078$ passes the numeric threshold, $0.146$ accuracy fails the gate. Rather than choose a reading after the fact we froze \emph{both}, with a resolution rule fixed in advance. Primary (accuracy-gated) $\Rightarrow$ C1 fails $\Rightarrow$ HIGH; secondary (numeric C1 only) $\Rightarrow$ the pair is certified $\Rightarrow$ LOW; and if the outcome had been LOW at accuracy $\ge 0.35$, the gate would have been wrong and our two primary labels for those cells would have been recorded as misses. Both pairs came out \textbf{HIGH} (NormClip$\to$\texttt{cos\_krum} $0.508$, RFA$\to$\texttt{cos\_krum} $0.566$), refuting the secondary reading and vindicating the accuracy gate against a pre-registered alternative that would have overturned it. This is a small result but a real one: the gate is usually defended by argument, and here it beat a competing specification of itself on data neither of us had seen. We flag the weaker half honestly: NormClip$\to$\texttt{cos\_krum}'s $0.508$ sits barely above threshold on per-seed values $0.084 / 0.676 / 0.766$, so that cell is threshold-noise even though its label is correct, and the RFA arm at $0.566$ (per-seed $1.000 / 0.121 / 0.576$) is what carries the conclusion.
 
-The pattern holds across the suite once cells without power are excluded. $\Delta$ is only observable where the standalone $d_2$ genuinely suppresses the attack, since a baseline already above $0.5$ has no suppression left to lose and will show $\Delta \approx 0$ whatever the transform did: a ceiling effect, not preservation. Restricting to standalone ASR $< 0.5$ at accuracy $\ge 0.35$ leaves six cells, and measured disturbance splits them perfectly at both seed counts. At the frozen $n{=}3$: undisturbed ($0/9$) $\Delta \in [-0.027, +0.001]$, disturbed ($>0/9$) $\Delta \in [+0.630, +0.865]$, a separation of $+0.629$. At $n{=}5$ after the post-hoc top-up: $[+0.001, +0.190]$ versus $[+0.718, +0.878]$, a separation of $+0.527$. Neither has any overlap, but the two extra seeds move both halves toward each other. Two of the three undisturbed cells are \texttt{cos\_krum} on the pixel backdoor, where the mirror suppresses standalone ($0.300$ at $0.598$ accuracy) and carries that suppression through under \emph{both} upstreams: at $n{=}3$ intact ($0.300$, $\Delta = +0.000$ under NormClip; $0.273$, $\Delta = -0.027$ under RFA), at $n{=}5$ degraded but still under threshold ($0.490$, $\Delta = +0.190$; $0.447$, $\Delta = +0.147$; both at $0.61$ accuracy, on new per-seed values $0.864 / 0.686$ and $0.849 / 0.565$). So the confirming half of the split is contributed by the invariant construction behaving as C2 predicts (which is the one thing the metric-swap arm does deliver, even though C1's failure on model-scaling denied it a frozen LOW label) but only weakly at $n{=}5$: exact invariance of the \emph{selection} leaves the magnitude channel (Lemma~\ref{lem:annihilation}) free to move $\Delta$, and two seeds are enough to see it move. That is a limitation of this post-hoc contrast and a direct motivation for arm 3 of the ladder.
+The pattern holds across the suite once cells without power are excluded. $\Delta$ is only observable where the standalone $d_2$ genuinely suppresses the attack, since a baseline already above $0.5$ has no suppression left to lose and will show $\Delta \approx 0$ whatever the transform did: a ceiling effect, not preservation. Restricting to standalone ASR $< 0.5$ at accuracy $\ge 0.35$ leaves six cells, and measured disturbance splits them perfectly at both seed counts. At the frozen $n{=}3$: undisturbed ($0/9$) $\Delta \in [-0.027, +0.001]$, disturbed ($>0/9$) $\Delta \in [+0.630, +0.865]$, a separation of $+0.629$. At $n{=}5$ after the post-hoc top-up, with each standalone recomputed at the same five seeds from the dose ladder's $\kappa{=}0$ rung (\texttt{results/dose\_response/summary.json}, that $d_2$ alone under the identical configuration, bit-identical to the published standalone baselines on every seed they share, largest deviation $0.00\mathrm{e}{+}00$): $[-0.044, +0.001]$ versus $[+0.717, +0.878]$, a separation of $+0.716$. Neither has any overlap, and the extra seeds widen the split rather than narrow it. At both seed counts the two extremes are the two Krum cells, which share a standalone, so the width of the split is algebraically the Krum contrast's own gap and not independent evidence beyond it; the other four cells extend the halves outward, not the distance between them. Two of the three undisturbed cells are \texttt{cos\_krum} on the pixel backdoor, where the mirror suppresses standalone ($0.300$ at $0.598$ accuracy on the frozen three seeds, $0.490$ at $0.607$ on all five) and carries that suppression through under \emph{both} upstreams: at $n{=}3$ intact ($0.300$, $\Delta = +0.000$ under NormClip; $0.273$, $\Delta = -0.027$ under RFA), at $n{=}5$ still intact ($0.490$, $\Delta = +0.000$; $0.447$, $\Delta = -0.044$; both at $0.61$ accuracy, on new per-seed values $0.864 / 0.686$ and $0.849 / 0.565$ against a baseline that moves to $0.490$ on those same seeds). The NormClip arm is intact \emph{exactly}: NormClip never binds on this attack ($0/9$ rounds; max client norm $3.04$ against $\tau = 5$), so its composition is the same five runs as the \texttt{cos\_krum} baseline, bit-identical per seed, and $\Delta = +0.000$ is an identity rather than a measurement. Had the frozen three-seed baseline been kept under the five-seed compositions, the same two rows would have read $\Delta = +0.190$ and $+0.147$, and the natural reading of that, the magnitude channel of Lemma~\ref{lem:annihilation} moving $\Delta$ where the selection is exactly invariant, would have credited an effect to a transform that provably did nothing: the movement is entirely the baseline's seed set, which is why the subtrahend has to move with the composition. So the confirming half of the split is contributed by the invariant construction behaving as C2 predicts (which is the one thing the metric-swap arm does deliver, even though C1's failure on model-scaling denied it a frozen LOW label), and this contrast has no power on the magnitude channel in either direction: its only exactly-invariant downstream sits under an upstream that never rescales. That is a limitation of this post-hoc contrast and a direct motivation for arm 3 of the ladder, which moves that dial on purpose.
 
 \textbf{Excluded cells.} All four \texttt{cos\_*} model-scaling cells are excluded as uninterpretable (hollow standalone baseline), and the six Reputation / \texttt{cos\_reputation} / Krum pixel cells for lack of power (standalone $\ge 0.5$).
 
@@ -183,8 +183,9 @@ because it is the only policy under which both conditions retain a usable model 
 $0.66$ composed, $0.77$ mixed), giving $0.099 \pm 0.020$ against $0.679 \pm 0.159$, a $6.9\times$
 suppression. On committed scaling the mixed model is \emph{destroyed} ($0.11$ clean accuracy,
 CIFAR-10 chance), so its ASR is not a meaningful backdoor comparison and we exclude it from the
-headline. Two limits on the claim: the mixed standard deviations exceed their means, which is the
-per-seed instability the pixel anchor avoids, and this is independence from the survivor scan rather
+headline. Two limits on the claim: on that excluded scaling column the mixed
+condition's standard deviation exceeds its mean ($0.327 \pm 0.417$), which is the per-seed
+instability the pixel anchor avoids, and this is independence from the survivor scan rather
 than full data-independence, since fg$\to$cm also appears in the development set at $0.107$
 (Table~\ref{tab:composability}).
 
@@ -382,7 +383,7 @@ $\pm0.15$ equivalence margin}, a margin frozen before the runs (Table~\ref{tab:s
 claim that suppression is unchanged. Two design choices do more for precision than seeds would: the
 identity rungs are imported \textbf{bit-identical per seed} (largest deviation $0.00\mathrm{e}{+}00$),
 so the contrast is within-seed rather than across noise, and the central claim is a \textbf{sign
-reversal} ($-0.272$ against $+0.098$ on the identical cell, Table~\ref{tab:comparability}), which is not
+reversal} ($-0.273$ against $+0.125$ at $n{=}20$ on the identical cell, Table~\ref{tab:comparability}), which is not
 a null result. Finally, Proposition~\ref{prop:identification_full} says the cell that would validate the
 criterion is \emph{empty by design}: more seeds cannot repair it (Table~\ref{tab:can_cannot}).
 
@@ -416,7 +417,26 @@ preservation, not security}; it bounds no ASR.
 Two thresholds are frozen in this paper and a reader is entitled to ask how much rests on them.
 Both are swept here by \texttt{experiments/analyze\_margin\_sensitivity.py}, which reads
 \texttt{results/comparability\_six\_cells.json} and computes no ASR; as a provenance check it
-reproduces that table's published verdict column exactly.
+reproduces that table's published verdict column exactly. \textbf{Two things about that path are
+worth stating rather than leaving a reader to notice}: the name is frozen from when the table held
+six cells and we do not rename it, because two pre-registrations refer to that exact path; and its
+hash \emph{did} move when the seventh cell was added, so the clause in
+\texttt{pre\_registration\_randomized\_composition.md} that four artifact hashes do not move is a
+constraint on \emph{that} document's analysis, which never writes here, and not a global freeze.
+What the hash was there to protect was checked directly instead, and the check is reported at the
+precision it holds at rather than rounded up to ``unchanged'': \textbf{no value inside the six
+published cells moved}, and every field the earlier file carried is still there carrying the same
+number, but the records are \emph{not} byte-identical, because two provenance fields
+(\texttt{missing\_frozen\_seeds} and \texttt{rung\_coverage}) were added to each of them. The
+seventh cell is added alongside the six under Amendment~4 of the comparability pre-registration.
+\textbf{The hash has since moved a second time, and that move \emph{did} change a published cell},
+which is why the sentence above is dated rather than standing: the pre-registered endpoint top-up of
+\texttt{coord\_median}/pixel (seeds $47$--$61$, both designs,
+\texttt{experiments/\allowbreak pre\_registration\_reversal\_seed\_topup.md}) takes that cell to
+$n{=}20$ on both legs, so its two means and both intervals move by design, and with them the single
+$m^{\ast}$ this section derives from that row ($0.178 \to 0.155$, an arm that carries no equivalence
+reading either before or after). The md5 is \texttt{6e25ef3a}, from \texttt{2e8cced3}. No other cell
+moved, and the binding equivalence arm named below is unchanged.
 
 \textbf{The $\pm0.15$ practical-equivalence margin is not load-bearing.} A reading of no evidence of a practically meaningful change requires the paired $95\%$ interval to lie inside
 $[-m,+m]$, so the smallest margin under which each frozen reading survives is
@@ -425,25 +445,38 @@ reading this is $m^{\ast}{=}0.032$ (Krum, CIFAR-10, at that arm's $n{=}20$) and 
 EMNIST-byclass, at that arm's pooled $n{=}5$), each read off Table~\ref{tab:sixcell}'s \emph{Mode-S} interval for that
 arm (the equivalence reading is a statement about the controlled estimate, so $m^{\ast}$ is not
 computed from the confounded column), against the frozen $0.15$: headroom of $+0.118$
-and $+0.116$. The margin could
+and $+0.116$. \textbf{The CIFAR-100 arm is deliberately not among them, and the reason is worth
+stating because arithmetic alone would include it.} Its controlled interval $[+0.031,+0.110]$ lies
+inside $\pm0.15$ and so passes an equivalence test at the frozen margin while \emph{also} excluding
+zero, which is a real and familiar joint outcome; but that arm is reported as a detected rise inside a
+sign reversal, and no equivalence reading is made about it, so scoring it here would make this
+paragraph's binding number rest on a claim the paper does not make. The margin could
 have been fixed anywhere in $(0.034, 0.5)$ without changing either reading, so the pre-registered
 value is a conservative choice rather than a tuned one.
+\textbf{That range is this table's and not the paper's, and one arm outside the table is why.} The
+\texttt{resnet18} architecture-alone arm of §\ref{app:resnet18_dose} is not scored here, because this
+ladder is built over the comparability design's cells and that arm has only the controlled leg, no
+outcome-gated twin to compare it with. Its own $m^{\ast}$ is $0.183$ at $n{=}3$ (paired $95\%$ interval
+$[-0.183,+0.101]$), \emph{wider} than the frozen margin, so for that arm the frozen $0.15$ \textbf{is}
+load-bearing: it clears TOST at $\pm0.15$ ($p{=}0.040$, the $90\%$ interval $\alpha{=}0.05$ reads) and
+clears nothing tighter than $0.137$. We state it here rather than let the range above be read as a
+claim about every equivalence reading in the paper, which is what the body sentence used to say.
 
 \textbf{The $\pm0.05$ near-zero tolerance in the AGREE definition carries no verdict at all.}
-Sweeping it over $[0,1]$, both endpoints included, all six cells of Table~\ref{tab:sixcell} keep the
+Sweeping it over $[0,1]$, both endpoints included, all seven cells of Table~\ref{tab:sixcell} keep the
 verdict they are published with at every value, the tolerance-free limit $\epsilon{=}0$ among them. Every cell is decided by
 its two intervals, and the tolerance is a tie-break that never fires on this table.
 
 \textbf{The central claim turns on neither.} SIGN REVERSAL is defined as opposite signs with both
 intervals excluding zero, which reads the intervals alone: \texttt{coord\_median}/pixel is
-$-0.272$ $[-0.422,-0.122]$ against $+0.098$ $[+0.018,+0.178]$. No margin and no tolerance enters
+$-0.273$ $[-0.334,-0.213]$ against $+0.125$ $[+0.095,+0.155]$ at $n{=}20$. No margin and no tolerance enters
 that determination. \textbf{The $\delta_2$ disturbance threshold of
 §\ref{sec:composability_criterion} is not swept here, and the reason is worse for us than a sweep
 would be}: no label in the $42$-pair table is computed from it. \texttt{c2\_holds} decides by
 invariance \emph{class}, returning True for the exactly invariant statistics and False for the
 non-invariant ones, and for the three conditional classes it defers to the stored per-pair call, so
 there is no numeric $\delta_2$ anywhere in that column whose value could be varied. Its provenance
-is censused in main \S\ref{app:frontier} ($3$ of the $14$ admissions rest on algebra and $11$ on
+is censused in main §\ref{app:frontier} ($3$ of the $14$ admissions rest on algebra and $11$ on
 that call), and we state that rather than report a stability interval the code does not support.
 
 % This document has exactly one \citep (the DBA attack, §S1). Until now it rendered only because
@@ -451,8 +484,17 @@ that call), and we state that rather than report a stability interval the code d
 % citation resolved by accident of build order and broke silently whenever main.aux was absent or
 % stale, while pdflatex still reported a clean run. `bibtex supplementary' was the only check that
 % saw it, reporting "I found no \bibdata command". The supplement now carries its own bibliography.
-\section{Screening for a seventh comparability cell, and why we do not run one}
+\section{Screening for a further downstream defense in the comparability table, and why we do not add one}
 \label{app:cell7}
+
+\textbf{Which axis this section is about, since the table can grow along two.} A cell is a
+(downstream defense, attack, dataset) triple, so a new cell can add a \emph{defense} the table does not
+yet contain or move an existing defense to a new \emph{dataset}. This section is about the first axis
+only, and it declines. The second axis is pre-registered separately, in Amendment~4 of
+\texttt{experiments/\allowbreak pre\_registration\_comparability.md}, which fixes a cell holding
+\texttt{coord\_median} and the pixel backdoor unchanged and varying the dataset; that cell is the
+CIFAR-100 row of main~§\ref{app:sixcell}, it adds no defense, and nothing below bears on it. Read the
+argument here as about defenses, never as a claim that the table is closed at seven cells.
 
 Table~\ref{tab:sixcell} rests on four downstream defenses, and a reader may ask why not more. The
 contrast is interpretable only where the downstream defense suppresses the attack on its own,

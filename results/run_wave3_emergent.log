@@ -1,0 +1,48 @@
+=== Wave 3: emergent-suppression cells with an admissible d1 ===
+  Pre-registration committed at 96f8856
+  Pairs: 4   attacks: ['committed_scaling', 'committed_pixel']   seeds: [42, 43, 44]
+  Total runs: 24
+  FL config: N=10, K=5, f=0.2, rounds=50, cifar_cnn, tau=5.0
+
+[1/4] reputation_then_cos_krum
+    committed_scaling seed=42: acc=0.275 ASR=0.000 (738s) [1/24]
+    committed_scaling seed=43: acc=0.636 ASR=0.065 (740s) [2/24]
+    committed_scaling seed=44: acc=0.586 ASR=0.127 (738s) [3/24]
+    committed_pixel seed=42: acc=0.397 ASR=0.000 (740s) [4/24]
+    committed_pixel seed=43: acc=0.656 ASR=0.107 (732s) [5/24]
+    committed_pixel seed=44: acc=0.684 ASR=0.681 (735s) [6/24]
+[2/4] reputation_then_cos_reputation
+    committed_scaling seed=42: acc=0.786 ASR=0.015 (803s) [7/24]
+    committed_scaling seed=43: acc=0.794 ASR=0.016 (802s) [8/24]
+    committed_scaling seed=44: acc=0.790 ASR=0.014 (801s) [9/24]
+    committed_pixel seed=42: acc=0.780 ASR=0.833 (798s) [10/24]
+    committed_pixel seed=43: acc=0.779 ASR=0.732 (801s) [11/24]
+    committed_pixel seed=44: acc=0.783 ASR=0.796 (801s) [12/24]
+[3/4] foolsgold_then_cos_krum
+    committed_scaling seed=42: acc=0.100 ASR=0.000 (635s) [13/24]
+    committed_scaling seed=43: acc=0.100 ASR=0.000 (637s) [14/24]
+    committed_scaling seed=44: acc=0.100 ASR=0.000 (639s) [15/24]
+    committed_pixel seed=42: acc=0.100 ASR=0.000 (636s) [16/24]
+    committed_pixel seed=43: acc=0.421 ASR=0.252 (639s) [17/24]
+    committed_pixel seed=44: acc=0.245 ASR=0.006 (638s) [18/24]
+[4/4] foolsgold_then_cos_reputation
+    committed_scaling seed=42: acc=0.100 ASR=0.000 (717s) [19/24]
+    committed_scaling seed=43: acc=0.100 ASR=0.000 (720s) [20/24]
+    committed_scaling seed=44: acc=0.100 ASR=1.000 (731s) [21/24]
+    committed_pixel seed=42: acc=0.727 ASR=0.812 (734s) [22/24]
+    committed_pixel seed=43: acc=0.714 ASR=0.834 (771s) [23/24]
+    committed_pixel seed=44: acc=0.729 ASR=0.826 (807s) [24/24]
+
+==============================================================================
+WAVE 3 RESULTS (raw; scored against the pre-registration separately)
+==============================================================================
+Pair                                scaling    pixel     max  min acc
+------------------------------------------------------------------------------
+  reputation_then_cos_krum            0.064    0.263   0.263    0.499
+  reputation_then_cos_reputation      0.015    0.787   0.787    0.781
+  foolsgold_then_cos_krum             0.000    0.086   0.086    0.100
+  foolsgold_then_cos_reputation       0.333    0.824   0.824    0.100
+
+Completed: 24 new runs, 0 cached
+Wall time: 4.87 h
+Output: /Users/mediratta/code/paper_writing/AI-Researcher/code/data_poisoning_game/results/wave3_emergent/summary.json

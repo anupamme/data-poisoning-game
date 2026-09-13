@@ -35,9 +35,11 @@ single formula, because a selector has no weights:
 SOURCES, all read-only:
   results/admission_measurement.json   channels for the CIFAR-10 arms (frozen, POST-HOC for `dose`)
   results/femnist_admission.json       channels for the FEMNIST arm, if it has been measured
+  results/resnet18_admission.json      channels for the ResNet18 arm, measured PROSPECTIVELY
   results/targeted_dose/summary.json   ASR for the three Round-12 Mode-S arms
   results/dose_replication/summary.json  ASR for the Round-15 coord_median arm
   results/dose_femnist/summary.json     ASR for the FEMNIST arm, if it has been run
+  results/dose_resnet18/summary.json    ASR for the ResNet18 arm, if it has been run
   results/displacement_decomposition.json  the score-only row's aggregate displacement
   results/score_only/summary.json          the score-only row's ASR, read separately (see below)
 
@@ -73,9 +75,14 @@ from experiments.measure_admission import DECISION_KEY
 R = os.path.join(base, "results")
 ADM = os.path.join(R, "admission_measurement.json")
 ADM_FEMNIST = os.path.join(R, "femnist_admission.json")
+ADM_RESNET18 = os.path.join(R, "resnet18_admission.json")
 ASR_SOURCES = [os.path.join(R, "targeted_dose", "summary.json"),
                os.path.join(R, "dose_replication", "summary.json"),
                os.path.join(R, "dose_femnist", "summary.json"),
+               # Safe to merge in ONLY because the key carries the model: this arm is CIFAR-10 and
+               # reuses run_targeted_dose's cell_key, so it collides with the flagship row on
+               # (dataset, key) and is separated from it by `model` alone. See _asr_cells().
+               os.path.join(R, "dose_resnet18", "summary.json"),
                # Safe to merge in: Mode M's cells are keyed `doseM_m<m>_then_...`, a disjoint namespace
                # from `doseS_kappa<k>_then_...`, and its score-only control carries a `|score_only`
                # suffix. _asr_cells() asserts non-shadowing anyway, so a future collision fails loudly
@@ -116,13 +123,25 @@ KIND = {
 # "femnist" key: torchvision EMNIST split="byclass" under this paper's own label-Dirichlet partition,
 # NOT LEAF FEMNIST's by-writer partition. The dataset KEY, the artifact paths and ADM_FEMNIST keep the
 # `femnist` spelling because they are frozen; only the display string is corrected.
+#
+# The ResNet18 row varies ARCHITECTURE alone: dataset, N, K, f, alpha, attack and defense are the
+# frozen CIFAR-10 values, so it is the only row in the table that differs from row 1 in one factor.
+# Its channels were measured PROSPECTIVELY -- results/resnet18_admission.json states "No ASR. Freezes
+# nothing." and was written before run_dose_resnet18.py produced any ASR -- which is why the row can
+# be read as a prediction that was then scored rather than as a fit.
 ROWS = [
     ("Krum",                     "krum",         "committed_scaling", ADM),
     ("Reputation",               "reputation",   "committed_scaling", ADM),
     ("Cosine-Krum",              "cos_krum",     "committed_pixel",   ADM),
     ("Coord.\\ median",          "coord_median", "committed_pixel",   ADM),
     ("Krum (EMNIST-byclass)",    "krum",         "committed_scaling", ADM_FEMNIST),
+    ("Krum (ResNet18)",          "krum",         "committed_scaling", ADM_RESNET18),
 ]
+# (dataset, model) of each channel source, so the ASR lookup uses the same triple the artifact is
+# stored under. Keyed on the source path because that is what a ROWS entry names.
+SRC_REGIME = {ADM: ("cifar10", "cifar_cnn"),
+              ADM_FEMNIST: ("femnist", "simple_cnn"),
+              ADM_RESNET18: ("cifar10", "resnet18")}
 
 # Mode M, coordinate masking: the SECOND transformation class, emitted as its own block rather than
 # appended to the rows above. Two reasons, both substantive. (i) The top rung is a drop rate m=0.8, not
@@ -182,11 +201,17 @@ def channels(path, arm, attack, rung, family="doseS"):
 
 
 def _asr_cells():
-    """{(dataset, cell_key): cell} over every ASR source that exists.
+    """{(dataset, model, cell_key): cell} over every ASR source that exists.
 
     The dataset is part of the key on purpose. run_dose_femnist.py reuses run_targeted_dose's
     cell_key, so the FEMNIST krum arm and the CIFAR-10 krum arm have the SAME string key -- merging
     the files into one flat dict would silently let one overwrite the other.
+
+    The MODEL is part of the key for the same reason and one step further: the ResNet18 arm varies
+    architecture alone, so it shares the flagship arm's dataset AND its cell_key and is distinguished
+    by nothing else. `cifar_cnn` is the default because the two sources that predate the field
+    (targeted_dose, dose_replication) are both CIFAR-10 `cifar_cnn` arms; widening the key cannot
+    move an existing row, since a row is looked up by the same triple it is stored under.
     """
     cells = {}
     for p in ASR_SOURCES:
@@ -194,14 +219,15 @@ def _asr_cells():
             continue
         d = json.load(open(p))
         ds = d.get("dataset", "cifar10")
+        md = d.get("model", "cifar_cnn")
         for k, c in d.get("cells", {}).items():
             # Keying on (dataset, key) is not enough on its own: two suites can share BOTH, as the
             # score-only arm shares them with targeted_dose. A shadowed cell is a silently wrong
             # published number, so refuse rather than resolve it by file order.
-            assert (ds, k) not in cells, (
-                f"cell {(ds, k)} appears in {cells[(ds, k)]['_source']} and "
+            assert (ds, md, k) not in cells, (
+                f"cell {(ds, md, k)} appears in {cells[(ds, md, k)]['_source']} and "
                 f"{os.path.relpath(p, base)}; one would shadow the other")
-            cells[(ds, k)] = dict(c, _source=os.path.relpath(p, base))
+            cells[(ds, md, k)] = dict(c, _source=os.path.relpath(p, base))
     return cells
 
 
@@ -213,7 +239,8 @@ def mean_asr(cell):
             len(rows))
 
 
-def asr_delta(arm, attack, dataset="cifar10", family="doseS", top=None, suffix=""):
+def asr_delta(arm, attack, dataset="cifar10", family="doseS", top=None, suffix="",
+              model="cifar_cnn"):
     """Identity -> top-rung ASR contrast for one arm, in one transformation family.
 
     `family` picks the cell-key spelling, which differs because the two dials are different quantities:
@@ -223,8 +250,8 @@ def asr_delta(arm, attack, dataset="cifar10", family="doseS", top=None, suffix="
     cells = _asr_cells()
     keyfmt = ("doseS_kappa{r}_then_{a}|{k}" if family == "doseS" else "doseM_m{r}_then_{a}|{k}")
     hi_rung = TOP if top is None else top
-    lo = cells.get((dataset, keyfmt.format(r=IDENTITY, a=arm, k=attack) + suffix))
-    hi = cells.get((dataset, keyfmt.format(r=hi_rung, a=arm, k=attack) + suffix))
+    lo = cells.get((dataset, model, keyfmt.format(r=IDENTITY, a=arm, k=attack) + suffix))
+    hi = cells.get((dataset, model, keyfmt.format(r=hi_rung, a=arm, k=attack) + suffix))
     if lo is None or hi is None:
         return None
     a0, c0, n0 = mean_asr(lo)
@@ -340,10 +367,11 @@ def main():
         # The identity rung's own displacement must be exactly zero: T is the identity there, so a
         # nonzero value would mean the measurement is not comparing what it claims to compare.
         base_ch = channels(src, arm, attack, IDENTITY)
-        dataset = "femnist" if src == ADM_FEMNIST else "cifar10"
-        asr = asr_delta(arm, attack, dataset)
+        dataset, model = SRC_REGIME[src]
+        asr = asr_delta(arm, attack, dataset, model=model)
         table.append({"label": label, "arm": arm, "attack": attack, "kind": KIND[arm],
-                      "dataset": dataset, "channel_source": os.path.relpath(src, base),
+                      "dataset": dataset, "model": model,
+                      "channel_source": os.path.relpath(src, base),
                       "family": "doseS", "top_rung": TOP, "rungs": [0.0, 0.5, 1.0, 2.0],
                       "identity_displacement": None if base_ch is None else base_ch["d_agg_disp"],
                       **ch, "asr": asr})
@@ -362,6 +390,16 @@ def main():
     else:
         table.append(eo)
 
+    # DISPLAY ORDER IS NOT `ROWS` ORDER, and the reason is the paper rather than the data. Four sites
+    # index the score-only control as "row 6" of this table (main.tex:378 in the body, plus the two
+    # captions and the provenance paragraph), so the ResNet18 row is emitted AFTER it: inserting it
+    # beside the other replication, where it belongs by subject, would silently move score-only to
+    # row 7 and falsify all four. Reordering here rather than in ROWS keeps the channel loop, the
+    # round counter that imports ROWS, and the two controls that read the Krum row all unaffected.
+    LAST_ROWS = ("Krum (ResNet18)",)
+    table = ([t for t in table if t["label"] not in LAST_ROWS]
+             + [t for t in table if t["label"] in LAST_ROWS])
+
     # The Mode-M block, built separately and never appended to `table`: see MASK_ROWS for why.
     mask_table = []
     for label, arm, attack in MASK_ROWS:
@@ -372,7 +410,8 @@ def main():
             continue
         base_ch = channels(MASK, arm, attack, IDENTITY, family="doseM")
         mask_table.append({"label": label, "arm": arm, "attack": attack, "kind": KIND[arm],
-                           "dataset": "cifar10", "channel_source": os.path.relpath(MASK, base),
+                           "dataset": "cifar10", "model": "cifar_cnn",
+                           "channel_source": os.path.relpath(MASK, base),
                            "family": "doseM", "top_rung": MASK_TOP,
                            "rungs": [0.0, 0.2, 0.5, 0.8],
                            "identity_displacement": (None if base_ch is None
@@ -487,7 +526,8 @@ def main():
         cells = _asr_cells()
         for k in t.get("rungs", [0.0, 0.5, 1.0, 2.0]):
             ch = channels(os.path.join(base, t["channel_source"]), t["arm"], t["attack"], k, fam)
-            c = cells.get((t["dataset"], keyfmt.format(r=k, a=t["arm"], k=t["attack"])))
+            c = cells.get((t["dataset"], t.get("model", "cifar_cnn"),
+                           keyfmt.format(r=k, a=t["arm"], k=t["attack"])))
             a, ac, _ = mean_asr(c) if c else (float("nan"), float("nan"), 0)
             if ch is None:
                 continue
@@ -504,16 +544,22 @@ def main():
     # text-mode HYPHEN, which is visibly shorter than the true minus every other signed number in
     # both papers gets from math mode. The absent-value cell stays "---", which is the papers'
     # convention for a missing tabular entry and is correct in text mode.
-    print("\n=== LATEX (copy verbatim; regenerate rather than edit) ===\n")
-    lines = [r"\begin{tabular}{llrrrrr}", r"\toprule",
+    # The `n` column is emitted too. It was added to both paper tables by hand in Round 63, which left
+    # the one number in them that this script could not check -- and n is load-bearing here, because
+    # rows carry 3, 5 and 8 seeds. Only the ROWS are copy-verbatim: the two paper tables use different
+    # tabular preambles on purpose (tab:channels is tight-set with @{}, tab:channels_full is centred),
+    # so the preamble below matches neither and is not meant to be.
+    print("\n=== LATEX (copy the ROWS verbatim; regenerate rather than edit) ===\n")
+    lines = [r"\begin{tabular}{llrrrrrr}", r"\toprule",
              r"Aggregator & Kind & $\Delta$ agg. & $\Delta$ dec. & $\Delta$ adm. "
-             r"& $\Delta \Lambda_a$ & $\Delta$ ASR \\", r"\midrule"]
+             r"& $\Delta \Lambda_a$ & $\Delta$ ASR & $n$ \\", r"\midrule"]
     for t in table:
         a = t["asr"]
         dasr = "---" if a is None else f"${a['delta_asr']:+.3f}$"
+        ncol = "---" if a is None else f"{a['n_seeds']}"
         lines.append(f"{t['label']} & {t['kind']} & {t['d_agg_disp']:.3f} & "
                      f"{t['d_decision']:.3f} & {t['d_admission']:.3f} & "
-                     f"{t['d_influence']:.3f} & {dasr} \\\\")
+                     f"{t['d_influence']:.3f} & {dasr} & {ncol} \\\\")
     lines += [r"\bottomrule", r"\end{tabular}"]
     print("\n".join(lines))
 

@@ -62,9 +62,26 @@ ETHICS_MARK = "THICS STATEMENT"
 RUNNING_HEADER = "Under review as a conference paper at ICLR"
 
 
+# A LaTeX comment renders as nothing, so it must not be counted as body prose.
+# Round 61 found this the hard way: that round adds ~90 lines of provenance comments
+# inside the body window, and every char measure here and in measure_clarity_load
+# read them as text a reviewer has to hold in working memory. body chars "rose" 1868
+# in a round that pulled the whole Ethics statement up onto p9. Worse, the (P#) and
+# C0-C3 token gates counted the labels used INSIDE those comments to justify not
+# renaming them, so documenting the constraint spent the budget the constraint
+# protects. Everything below now measures the rendered part of each line only.
+# An escaped \% (as in "88.1\%") is not a comment and is kept.
+COMMENT_RE = re.compile(r"(?<!\\)%.*$")
+
+
+def uncomment(line):
+    """The rendered part of one source line: everything before an unescaped %."""
+    return COMMENT_RE.sub("", line)
+
+
 def body_chars(tex_path):
     """Chars between the Introduction heading and the Ethics statement."""
-    lines = Path(tex_path).read_text().split("\n")
+    lines = [uncomment(l) for l in Path(tex_path).read_text().split("\n")]
     try:
         a = next(i for i, l in enumerate(lines) if l.startswith(BODY_START))
     except StopIteration:

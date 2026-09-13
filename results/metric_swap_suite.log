@@ -1,0 +1,79 @@
+=== PHASE 2: metric-swap suite (8 pairs, 2 reused, 36 new runs) ===
+    predictions frozen in pre_registration_metric_swap.md @ 356897b
+
+  [reuse] norm_clip->reputation       committed_scaling  ASR=0.792 (development suite)
+  [reuse] norm_clip->reputation       committed_pixel    ASR=0.819 (development suite)
+  [1/36] norm_clip->cos_reputation   committed_scaling  s42: acc=0.777 ASR=0.932 (718s)
+  [2/36] norm_clip->cos_reputation   committed_scaling  s43: acc=0.711 ASR=0.980 (720s)
+  [3/36] norm_clip->cos_reputation   committed_scaling  s44: acc=0.740 ASR=0.892 (720s)
+  [4/36] norm_clip->cos_reputation   committed_pixel    s42: acc=0.790 ASR=0.838 (716s)
+  [5/36] norm_clip->cos_reputation   committed_pixel    s43: acc=0.803 ASR=0.660 (720s)
+  [6/36] norm_clip->cos_reputation   committed_pixel    s44: acc=0.793 ASR=0.766 (733s)
+  [reuse] rfa->reputation       committed_scaling  ASR=0.882 (development suite)
+  [reuse] rfa->reputation       committed_pixel    ASR=0.821 (development suite)
+  [7/36] rfa->cos_reputation   committed_scaling  s42: acc=0.780 ASR=0.889 (741s)
+  [8/36] rfa->cos_reputation   committed_scaling  s43: acc=0.775 ASR=0.851 (752s)
+  [9/36] rfa->cos_reputation   committed_scaling  s44: acc=0.778 ASR=0.844 (731s)
+  [10/36] rfa->cos_reputation   committed_pixel    s42: acc=0.783 ASR=0.840 (748s)
+  [11/36] rfa->cos_reputation   committed_pixel    s43: acc=0.783 ASR=0.742 (740s)
+  [12/36] rfa->cos_reputation   committed_pixel    s44: acc=0.785 ASR=0.789 (724s)
+  [13/36] norm_clip->krum             committed_scaling  s42: acc=0.536 ASR=0.120 (644s)
+  [14/36] norm_clip->krum             committed_scaling  s43: acc=0.614 ASR=0.018 (638s)
+  [15/36] norm_clip->krum             committed_scaling  s44: acc=0.580 ASR=0.047 (647s)
+  [16/36] norm_clip->krum             committed_pixel    s42: acc=0.396 ASR=0.779 (636s)
+  [17/36] norm_clip->krum             committed_pixel    s43: acc=0.592 ASR=0.039 (636s)
+  [18/36] norm_clip->krum             committed_pixel    s44: acc=0.467 ASR=0.932 (636s)
+  [19/36] norm_clip->cos_krum         committed_scaling  s42: acc=0.537 ASR=0.084 (640s)
+  [20/36] norm_clip->cos_krum         committed_scaling  s43: acc=0.700 ASR=0.676 (646s)
+  [21/36] norm_clip->cos_krum         committed_scaling  s44: acc=0.524 ASR=0.766 (637s)
+  [22/36] norm_clip->cos_krum         committed_pixel    s42: acc=0.528 ASR=0.003 (634s)
+  [23/36] norm_clip->cos_krum         committed_pixel    s43: acc=0.620 ASR=0.269 (636s)
+  [24/36] norm_clip->cos_krum         committed_pixel    s44: acc=0.647 ASR=0.630 (637s)
+  [25/36] rfa->krum             committed_scaling  s42: acc=0.576 ASR=0.974 (637s)
+  [26/36] rfa->krum             committed_scaling  s43: acc=0.429 ASR=0.116 (640s)
+  [27/36] rfa->krum             committed_scaling  s44: acc=0.375 ASR=0.982 (640s)
+  [28/36] rfa->krum             committed_pixel    s42: acc=0.639 ASR=0.928 (636s)
+  [29/36] rfa->krum             committed_pixel    s43: acc=0.681 ASR=0.263 (639s)
+  [30/36] rfa->krum             committed_pixel    s44: acc=0.443 ASR=0.983 (640s)
+  [31/36] rfa->cos_krum         committed_scaling  s42: acc=0.100 ASR=1.000 (638s)
+  [32/36] rfa->cos_krum         committed_scaling  s43: acc=0.694 ASR=0.121 (640s)
+  [33/36] rfa->cos_krum         committed_scaling  s44: acc=0.563 ASR=0.576 (641s)
+  [34/36] rfa->cos_krum         committed_pixel    s42: acc=0.501 ASR=0.004 (636s)
+  [35/36] rfa->cos_krum         committed_pixel    s43: acc=0.630 ASR=0.070 (639s)
+  [36/36] rfa->cos_krum         committed_pixel    s44: acc=0.689 ASR=0.747 (640s)
+
+=== RESULTS vs FROZEN PREDICTIONS (max-committed) ===
+pair                               category            pred  maxASR    acc  actual  hit   source
+norm_clip->reputation              C1-fail(pixel)/C2-fail  HIGH   0.819   0.78    HIGH  OK    all_compositions
+norm_clip->cos_reputation          C1-fail(both)/C2-hold  HIGH   0.935   0.74    HIGH  OK    metric_swap
+rfa->reputation                    C1-fail(pixel)/C2-fail  HIGH   0.882   0.78    HIGH  OK    all_compositions
+rfa->cos_reputation                C1-fail(both)/C2-hold  HIGH   0.861   0.78    HIGH  OK    metric_swap
+norm_clip->krum                    C1-fail(pixel)/C2-fail  HIGH   0.583   0.49    HIGH  OK    metric_swap
+norm_clip->cos_krum                C1-fail(acc-gate)/C2-hold  HIGH   0.508   0.59    HIGH  OK    metric_swap
+rfa->krum                          C1-fail(pixel)/C2-fail  HIGH   0.725   0.59    HIGH  OK    metric_swap
+rfa->cos_krum                      C1-fail(acc-gate)/C2-hold  HIGH   0.566   0.45    HIGH  OK    metric_swap
+
+  Confusion matrix: TP=0 FP=0 TN=8 FN=0  (8/8 correct)
+
+=== SECONDARY (numeric-C1) READING of pairs 6 and 8 ===
+    pre-registered alternative label; resolution rule fixed before the run
+  norm_clip->cos_krum     primary=HIGH secondary=LOW actual=HIGH maxASR=0.508 minacc=0.587
+      -> secondary REFUTED; accuracy gate vindicated
+  rfa->cos_krum     primary=HIGH secondary=LOW actual=HIGH maxASR=0.566 minacc=0.453
+      -> secondary REFUTED; accuracy gate vindicated
+
+=== PER-ATTACK CONTRAST (control vs test, d_1 fixed) -- CONFOUNDED, NOT A TEST ===
+    C1 differs between the arms (see below), so no gap here is attributable to C2 alone.
+  -- committed_scaling --
+    norm_clip reputation     0.792 (standalone 0.017)   vs   cos_reputation 0.935 (standalone 0.982)
+    norm_clip krum           0.062 (standalone 0.061)   vs   cos_krum       0.508 (standalone 0.078)
+    rfa       reputation     0.882 (standalone 0.017)   vs   cos_reputation 0.861 (standalone 0.982)
+    rfa       krum           0.691 (standalone 0.061)   vs   cos_krum       0.566 (standalone 0.078)
+  -- committed_pixel --
+    norm_clip reputation     0.819 (standalone 0.842)   vs   cos_reputation 0.754 (standalone 0.754)
+    norm_clip krum           0.583 (standalone 0.583)   vs   cos_krum       0.300 (standalone 0.300)
+    rfa       reputation     0.821 (standalone 0.842)   vs   cos_reputation 0.791 (standalone 0.754)
+    rfa       krum           0.725 (standalone 0.583)   vs   cos_krum       0.273 (standalone 0.300)
+
+Wall time: 6.7 h
+Saved to /Users/mediratta/code/paper_writing/AI-Researcher/code/data_poisoning_game/results/metric_swap/summary.json

@@ -1,0 +1,64 @@
+=== Rep->CM committed-pixel seed resolution: n=5 -> n=30 (25 new runs) ===
+    seeds 47--71, pre-registered at de77a7f
+    resolves the one certified pair whose 95% interval crosses the 0.5 threshold
+
+Pre-flight:
+  [OK] pre-registration experiments/pre_registration_rep_cm_resolution.md committed at de77a7f, clean
+  [OK] run_one is experiments.run_all_compositions.run_one, not forked
+  [md5] results/all_compositions/summary.json 2f4d9920063a40749a3c96ca2549359c
+  [md5] results/headline_seed_topup/summary.json a07178935e3886e82e78465c641d6408
+  frozen n=5: mean 0.423333  sd 0.154861  per-seed s42=0.4318 s43=0.2342 s44=0.3907 s45=0.6647 s46=0.3953
+  running identity guard: seed 42 must return ASR 0.43177777777777776
+=== Rep->CM committed-pixel seed resolution: n=5 -> n=30 (25 new runs) ===
+    seeds 47--71, pre-registered at de77a7f
+    resolves the one certified pair whose 95% interval crosses the 0.5 threshold
+
+Pre-flight:
+  [OK] pre-registration experiments/pre_registration_rep_cm_resolution.md committed at de77a7f, clean
+  [OK] run_one is experiments.run_all_compositions.run_one, not forked
+  [md5] results/all_compositions/summary.json 2f4d9920063a40749a3c96ca2549359c
+  [md5] results/headline_seed_topup/summary.json a07178935e3886e82e78465c641d6408
+  frozen n=5: mean 0.423333  sd 0.154861  per-seed s42=0.4318 s43=0.2342 s44=0.3907 s45=0.6647 s46=0.3953
+  running identity guard: seed 42 must return ASR 0.43177777777777776
+  guard returned acc=0.7647 ASR=0.43177777777777776 (730s)
+  [OK] frozen cell reproduces exactly
+
+  [1/25] s47: acc=0.744 ASR=0.341 (725s)
+  [2/25] s48: acc=0.769 ASR=0.722 (743s)
+  [3/25] s49: acc=0.746 ASR=0.465 (731s)
+  [4/25] s50: acc=0.734 ASR=0.439 (732s)
+  [5/25] s51: acc=0.749 ASR=0.451 (734s)
+  [6/25] s52: acc=0.759 ASR=0.248 (729s)
+  [7/25] s53: acc=0.778 ASR=0.645 (720s)
+  [8/25] s54: acc=0.753 ASR=0.338 (719s)
+  [9/25] s55: acc=0.730 ASR=0.335 (696s)
+  [10/25] s56: acc=0.750 ASR=0.441 (713s)
+  [11/25] s57: acc=0.765 ASR=0.424 (705s)
+  [12/25] s58: acc=0.785 ASR=0.656 (711s)
+  [13/25] s59: acc=0.758 ASR=0.399 (710s)
+  [14/25] s60: acc=0.762 ASR=0.393 (699s)
+  [15/25] s61: acc=0.743 ASR=0.668 (694s)
+  [16/25] s62: acc=0.750 ASR=0.553 (702s)
+  [17/25] s63: acc=0.740 ASR=0.530 (713s)
+  [18/25] s64: acc=0.745 ASR=0.518 (709s)
+  [19/25] s65: acc=0.775 ASR=0.415 (709s)
+  [20/25] s66: acc=0.765 ASR=0.485 (702s)
+  [21/25] s67: acc=0.760 ASR=0.466 (718s)
+  [22/25] s68: acc=0.759 ASR=0.304 (702s)
+  [23/25] s69: acc=0.715 ASR=0.255 (728s)
+  [24/25] s70: acc=0.757 ASR=0.667 (720s)
+  [25/25] s71: acc=0.727 ASR=0.606 (717s)
+
+--- n=30 ---
+  mean 0.462711  sd 0.136086  95% CI [0.4119, 0.5135]
+  frozen n=5 beside it: mean 0.423333  (never replaced)
+  mean clean accuracy 0.7546 (floor 0.35)
+  VERDICT: STILL UNRESOLVED at n=30. Upper bound 0.5135 >= 0.5. Reported as unresolved; no claim is upgraded and the seed count is NOT extended.
+
+Frozen artifacts, after:
+  [md5] results/all_compositions/summary.json 2f4d9920063a40749a3c96ca2549359c unchanged
+  [md5] results/headline_seed_topup/summary.json a07178935e3886e82e78465c641d6408 unchanged
+
+Wall time: 4.97 h
+Saved to /Users/mediratta/code/paper_writing/AI-Researcher/code/data_poisoning_game/results/rep_cm_resolution/summary.json
+Run experiments/analyze_headline_cis.py to merge and report the interval.

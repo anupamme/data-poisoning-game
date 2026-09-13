@@ -1,0 +1,40 @@
+=== PHASE 0: prospective-suite pilot (C1 inputs + FedAvg sanity gate) ===
+  defenses=['fltrust', 'krum', 'multi_krum', 'fedavg']  attacks=['committed_scaling', 'committed_pixel']  seeds=[42, 43, 44]  total=24
+
+  [1/24] fltrust      committed_scaling  s42: acc=0.553 ASR=0.052 (660s)
+  [2/24] fltrust      committed_scaling  s43: acc=0.600 ASR=0.046 (668s)
+  [3/24] fltrust      committed_scaling  s44: acc=0.570 ASR=0.045 (698s)
+  [4/24] fltrust      committed_pixel    s42: acc=0.553 ASR=0.049 (720s)
+  [5/24] fltrust      committed_pixel    s43: acc=0.602 ASR=0.047 (722s)
+  [6/24] fltrust      committed_pixel    s44: acc=0.569 ASR=0.043 (729s)
+  [7/24] krum         committed_scaling  s42: acc=0.541 ASR=0.115 (734s)
+  [8/24] krum         committed_scaling  s43: acc=0.610 ASR=0.021 (738s)
+  [9/24] krum         committed_scaling  s44: acc=0.580 ASR=0.047 (754s)
+  [10/24] krum         committed_pixel    s42: acc=0.396 ASR=0.779 (665s)
+  [11/24] krum         committed_pixel    s43: acc=0.592 ASR=0.039 (656s)
+  [12/24] krum         committed_pixel    s44: acc=0.467 ASR=0.932 (657s)
+  [13/24] multi_krum   committed_scaling  s42: acc=0.100 ASR=0.000 (658s)
+  [14/24] multi_krum   committed_scaling  s43: acc=0.214 ASR=0.995 (648s)
+  [15/24] multi_krum   committed_scaling  s44: acc=0.102 ASR=0.730 (650s)
+  [16/24] multi_krum   committed_pixel    s42: acc=0.784 ASR=0.823 (645s)
+  [17/24] multi_krum   committed_pixel    s43: acc=0.797 ASR=0.739 (648s)
+  [18/24] multi_krum   committed_pixel    s44: acc=0.799 ASR=0.788 (663s)
+  [19/24] fedavg       committed_scaling  s42: acc=0.100 ASR=0.000 (644s)
+  [20/24] fedavg       committed_scaling  s43: acc=0.100 ASR=1.000 (661s)
+  [21/24] fedavg       committed_scaling  s44: acc=0.100 ASR=1.000 (694s)
+  [22/24] fedavg       committed_pixel    s42: acc=0.787 ASR=0.837 (656s)
+  [23/24] fedavg       committed_pixel    s43: acc=0.804 ASR=0.693 (723s)
+  [24/24] fedavg       committed_pixel    s44: acc=0.796 ASR=0.774 (741s)
+
+=== C1 INPUTS (max-committed ASR per defense) ===
+  fltrust      max=0.048 {'committed_scaling': 0.048, 'committed_pixel': 0.046}  -> suppresses both: True
+  krum         max=0.583 {'committed_scaling': 0.061, 'committed_pixel': 0.583}  -> suppresses both: False
+  multi_krum   max=0.783 {'committed_scaling': 0.575, 'committed_pixel': 0.783}  -> suppresses both: False
+  fedavg       max=0.768 {'committed_scaling': 0.667, 'committed_pixel': 0.768}  -> suppresses both: False
+
+=== SANITY GATE ===
+  fedavg vs committed_scaling: ASR=0.667 -> INFORMATIVE (>=0.5)
+  fedavg vs committed_pixel: ASR=0.768 -> INFORMATIVE (>=0.5)
+
+Wall time: 4.6 h
+Saved to /Users/mediratta/code/paper_writing/AI-Researcher/code/data_poisoning_game/results/prospective_pilot/summary.json

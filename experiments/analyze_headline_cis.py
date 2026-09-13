@@ -30,6 +30,11 @@ TOPUP = os.path.join(BASE, "results", "headline_seed_topup", "summary.json")
 # FG->RFA was separately measured on 30 seeds (42--71) for the flagship/adaptive study. That is the
 # largest measurement of any composition in the paper and supersedes the n=5 cell for this pair.
 FLAGSHIP = os.path.join(BASE, "results", "fg_rfa_flagship", "summary.json")
+# Rep->CM's committed-pixel cell was pre-registered for a top-up to n=30 (seeds 47--71,
+# experiments/run_rep_cm_resolution.py, prereg de77a7f) because its n=5 interval crossed the 0.5
+# label threshold. Merged here for the same reason FLAGSHIP is: the paper must report the interval
+# at the seed count that exists, and every number it prints has to be emitted, not transcribed.
+RESOLUTION = os.path.join(BASE, "results", "rep_cm_resolution", "summary.json")
 
 PAIRS = [("foolsgold", "rfa"), ("foolsgold", "coord_median"), ("reputation", "coord_median")]
 ATTACKS = ["committed_scaling", "committed_pixel"]
@@ -46,8 +51,8 @@ def t_crit(n):
     return T95[n - 1]
 
 
-def collect(dev, topup, d1, d2, attack):
-    """Per-seed rows for one cell, development seeds plus any top-up seeds."""
+def collect(dev, topup, d1, d2, attack, resolution=None):
+    """Per-seed rows for one cell: development seeds, then top-up, then resolution seeds."""
     rows = {}
     cell = dev["pairs"].get(f"{d1}_then_{d2}", {}).get(attack)
     if cell:
@@ -59,6 +64,14 @@ def collect(dev, topup, d1, d2, attack):
             if r["seed"] in rows:                     # never overwrite an existing value
                 continue
             rows[r["seed"]] = (r["asr"], r["accuracy"], "topup")
+    # The resolution artifact names its own pair and attack; merge only into that one cell, so a
+    # future top-up of a different cell cannot silently inflate this one's n.
+    if (resolution and resolution.get("pair") == f"{d1}_then_{d2}"
+            and resolution.get("attack") == attack):
+        for r in resolution["per_seed"]:
+            if r["seed"] in rows:
+                continue
+            rows[r["seed"]] = (r["asr"], r["accuracy"], "resolution")
     return [(s,) + rows[s] for s in sorted(rows)]
 
 
@@ -77,6 +90,10 @@ def main():
     topup = json.load(open(TOPUP)) if os.path.exists(TOPUP) else None
     if topup is None:
         print(f"note: {TOPUP} absent -- reporting development seeds only\n")
+    res = json.load(open(RESOLUTION)) if os.path.exists(RESOLUTION) else None
+    if res:
+        print(f"note: merging {len(res['per_seed'])} resolution seeds into "
+              f"{res['pair']}|{res['attack']} (prereg {res['prereg_commit']})\n")
 
     warnings = []
     tex = []
@@ -85,14 +102,14 @@ def main():
         print(f"=== {SHORT[d1]}->{SHORT[d2]} ===")
         maxcell = None
         for attack in ATTACKS:
-            rows = collect(dev, topup, d1, d2, attack)
+            rows = collect(dev, topup, d1, d2, attack, res)
             if not rows:
                 print(f"  {attack:18s} MISSING")
                 continue
             asrs = [r[1] for r in rows]
             accs = [r[2] for r in rows]
             m, lo, hi, n = ci(asrs)
-            src = "".join("t" if r[3] == "topup" else "d" for r in rows)
+            src = "".join({"dev": "d", "topup": "t", "resolution": "r"}[r[3]] for r in rows)
             per = ", ".join(f"s{r[0]}:{r[1]:.3f}" for r in rows)
             print(f"  {attack:18s} n={n} ({src})  mean={m:.3f}  95% CI [{lo:.3f}, {hi:.3f}]"
                   f"  sd={np.std(asrs, ddof=1) if n > 1 else float('nan'):.3f}")
@@ -123,7 +140,7 @@ def main():
     ns = set()
     for d1, d2 in PAIRS:
         for attack in ATTACKS:
-            rows = collect(dev, topup, d1, d2, attack)
+            rows = collect(dev, topup, d1, d2, attack, res)
             if rows:
                 ns.add(len(rows))
     print(f"\nseed counts present across headline cells: {sorted(ns)}")
@@ -164,7 +181,7 @@ def main():
         print("\n=== COST OF THE FALSE NEGATIVE: FG->RFA (rejected) vs FG->CM (certified) ===")
         verdicts = {}
         for attack in ATTACKS:
-            rows = collect(dev, topup, "foolsgold", "coord_median", attack)
+            rows = collect(dev, topup, "foolsgold", "coord_median", attack, res)
             if not rows or attack not in big:
                 continue
             rfa_a, rfa_acc = big[attack]

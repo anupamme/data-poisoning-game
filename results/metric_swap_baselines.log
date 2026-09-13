@@ -1,0 +1,23 @@
+=== PHASE 0: metric-swap standalone baselines (12 runs) ===
+    C0/C1 inputs -- must complete BEFORE the Phase 2 predictions are frozen
+
+  [1/12] fedavg->cos_reputation  committed_scaling  s42: acc=0.100 ASR=1.000 (1836s)
+  [2/12] fedavg->cos_reputation  committed_scaling  s43: acc=0.336 ASR=0.982 (723s)
+  [3/12] fedavg->cos_reputation  committed_scaling  s44: acc=0.252 ASR=0.965 (731s)
+  [4/12] fedavg->cos_reputation  committed_pixel    s42: acc=0.790 ASR=0.838 (726s)
+  [5/12] fedavg->cos_reputation  committed_pixel    s43: acc=0.803 ASR=0.660 (1034s)
+  [6/12] fedavg->cos_reputation  committed_pixel    s44: acc=0.793 ASR=0.766 (1360s)
+  [7/12] fedavg->cos_krum        committed_scaling  s42: acc=0.122 ASR=0.000 (1264s)
+  [8/12] fedavg->cos_krum        committed_scaling  s43: acc=0.212 ASR=0.214 (1265s)
+  [9/12] fedavg->cos_krum        committed_scaling  s44: acc=0.103 ASR=0.021 (1269s)
+  [10/12] fedavg->cos_krum        committed_pixel    s42: acc=0.528 ASR=0.003 (1264s)
+  [11/12] fedavg->cos_krum        committed_pixel    s43: acc=0.620 ASR=0.269 (1202s)
+  [12/12] fedavg->cos_krum        committed_pixel    s44: acc=0.647 ASR=0.630 (1252s)
+
+=== STANDALONE BASELINES (max-committed ASR) ===
+defense                     scaling            pixel     max  C1 gate
+cos_reputation     0.982 (acc 0.23) 0.754 (acc 0.80)   0.982  FAILS scaling -> C1 fails, no positive test
+cos_krum           0.078 (acc 0.15) 0.300 (acc 0.60)   0.300  suppresses scaling
+
+Wall time: 3.9 h
+Saved to /Users/mediratta/code/paper_writing/AI-Researcher/code/data_poisoning_game/results/metric_swap_baselines/summary.json

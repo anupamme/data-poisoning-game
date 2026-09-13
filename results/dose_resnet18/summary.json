@@ -1,0 +1,200 @@
+{
+  "description": "Second-ARCHITECTURE replication arm for the flagship negative: CIFAR-10/resnet18, krum under Mode S (statistic-only, adversary pinned at c=1). Architecture varies alone against the frozen cifar_cnn arm. Rules frozen at 89046f6 (experiments/pre_registration_dose_resnet18.md).",
+  "prereg_commit": "89046f6",
+  "dataset": "cifar10",
+  "model": "resnet18",
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 50,
+    "kappas_run": [
+      0.0,
+      2.0
+    ],
+    "kappas_frozen_ladder": [
+      0.0,
+      0.5,
+      1.0,
+      2.0
+    ],
+    "endpoint_only": true,
+    "endpoint_only_reason": "resnet18 costs 1.63-1.72 h/run at this regime; two rungs x 3 seeds is ~10 h. A two-rung ladder has no trend to test and is never displayed as four.",
+    "no_secondary_trend_test": true,
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "rhos": {
+      "0.0": 1.0,
+      "2.0": 54.598150033144236
+    },
+    "acc_floor": 0.35,
+    "suppress_asr": 0.5,
+    "equiv_margin": 0.15,
+    "replicate_within": 0.15
+  },
+  "arm": {
+    "mode": "S",
+    "d2": "krum",
+    "attack": "committed_scaling",
+    "prop1_class": "c) not invariant",
+    "predicted_outcome": "FLAT if the CIFAR-10/cifar_cnn negative is a property of the mechanism; RISING if it was specific to the shallow-CNN family",
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "varies": "architecture alone"
+  },
+  "cifar_cnn_comparison": {
+    "d2": "krum",
+    "attack": "committed_scaling",
+    "mode_s_delta": -0.026088888888888898,
+    "n_kappa0": 5,
+    "n_kappa2": 5
+  },
+  "femnist_comparison": {
+    "d2": "krum",
+    "attack": "committed_scaling",
+    "mode_s_delta": -0.01665083600946824,
+    "n_kappa0": 3,
+    "n_kappa2": 3,
+    "note": "EMNIST-byclass/simple_cnn: a second dataset and a differently configured CNN, not a second family"
+  },
+  "standalone_krum_resnet18_prior": null,
+  "standalone_krum_resnet18_prior_note": "No artifact in results/ contains both resnet18 and krum, so this arm has no independent published figure to cross-check its kappa=0 rung against. That rung is the first such measurement and is scored as the pre-registered gate.",
+  "prospective_premise_resnet18": {
+    "by_kappa": {
+      "0.0": {
+        "decision": 0.0,
+        "admission": 0.0
+      },
+      "0.5": {
+        "decision": 0.3333333333333333,
+        "admission": 0.0
+      },
+      "1.0": {
+        "decision": 0.6111111111111112,
+        "admission": 0.0
+      },
+      "2.0": {
+        "decision": 0.5555555555555556,
+        "admission": 0.0
+      }
+    },
+    "eligibility": {
+      "decision_change_at_max_kappa": 0.5555555555555556,
+      "admission_change_at_max_kappa": 0.0,
+      "verdict": "ELIGIBLE: the decision is disturbed and the admitted adversarial mass is not, which is the same premise the cifar_cnn flagship arm rests on. A flat ASR curve here replicates the negative; a rise refutes it.",
+      "scope": "channels only; standalone suppression at usable accuracy is the arm's own kappa=0 rung and is a separate pre-registered branch"
+    },
+    "nonfinite_rounds_excluded": 0,
+    "n_rounds_total": 18
+  },
+  "verdict": {
+    "identity_mean_asr": 0.07066666666666667,
+    "kappa2_mean_asr": 0.02962962962962963,
+    "delta": -0.04103703703703704,
+    "n_kappa0": 3,
+    "n_kappa2": 3,
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "replicate_within": 0.15,
+    "cifar_cnn_delta": -0.026088888888888898,
+    "cifar_cnn_n": [
+      5,
+      5
+    ],
+    "verdict": "FLAGSHIP NEGATIVE REPLICATED on a second architecture family",
+    "gate_passed": true,
+    "per_rung_mean_acc": {
+      "0.0": 0.5358,
+      "2.0": 0.5574333333333333
+    },
+    "accuracy_gate_ok": true,
+    "endpoint_only": true,
+    "no_secondary_trend_test": true,
+    "rungs_run": [
+      0.0,
+      2.0
+    ],
+    "rungs_in_frozen_ladder": [
+      0.0,
+      0.5,
+      1.0,
+      2.0
+    ]
+  },
+  "cells": {
+    "doseS_kappa0.0_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 0.0,
+      "dial": 1.0,
+      "prop1_class": "c) not invariant",
+      "dataset": "cifar10",
+      "model": "resnet18",
+      "predicted_outcome": "FLAT if the CIFAR-10/cifar_cnn negative is a property of the mechanism; RISING if it was specific to the shallow-CNN family",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4955,
+          "asr": 0.11388888888888889
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5649,
+          "asr": 0.050444444444444445
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.547,
+          "asr": 0.04766666666666667
+        }
+      ],
+      "mean_asr": 0.07066666666666667,
+      "mean_acc": 0.5358,
+      "std_asr": 0.030583758028470485,
+      "n": 3
+    },
+    "doseS_kappa2.0_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 2.0,
+      "dial": 54.598150033144236,
+      "prop1_class": "c) not invariant",
+      "dataset": "cifar10",
+      "model": "resnet18",
+      "predicted_outcome": "FLAT if the CIFAR-10/cifar_cnn negative is a property of the mechanism; RISING if it was specific to the shallow-CNN family",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5173,
+          "asr": 0.007555555555555556
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5906,
+          "asr": 0.03388888888888889
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5644,
+          "asr": 0.04744444444444444
+        }
+      ],
+      "mean_asr": 0.02962962962962963,
+      "mean_acc": 0.5574333333333333,
+      "std_asr": 0.016560733302518543,
+      "n": 3
+    }
+  }
+}
