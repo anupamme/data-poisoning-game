@@ -229,9 +229,54 @@ suppresses the attack.**
    asserts the tensor changed — via `manipulate_update` when `ca is None`, via `criterion_aware_updates`
    otherwise — and that **exactly one** of the two ran. It fails loudly; it does not warn. A composition
    arm in this repo has already come out bit-identical to another because a manipulation hook was silently
-   never called.
+   never called. **Superseded by Amendment 1 below**, which corrects the `ca is None` half of this
+   sentence: for this arm's attack the correct assertion is that the update is **unchanged**.
 5. **Every comparison number is recomputed from per-seed rows at run time.** Nothing is transcribed,
    including the frozen Δs, the measured sds of §2 and the prospective figures of §3.
 6. **All outcomes above are written now and none is renegotiated afterwards.** A failure to reproduce, a
    reversal, a void regime and a failed gate each have a named home in the paper, and it is the same place a
    reproduction would have gone.
+
+# AMENDMENT 1, before `results/regime_dissociation/` exists and before any run of this arm
+
+**Disclosed as an edit rather than folded in silently, and it corrects a false statement in the freeze.**
+§6.4 as committed says the runner "asserts the tensor changed — via `manipulate_update` when `ca is None`".
+**For this arm's attack that assertion is false by design, so as written §6.4 demands an invariant the
+correct configuration cannot satisfy.**
+
+`AttackStrategy.manipulate_update` is `return update` — the identity (`attacks/attack_strategies.py:61`–
+`:63`) — and `BackdoorPixelAttack` **does not override it** (`:94`): the committed pixel backdoor lives
+entirely in `poison_dataset`, so nothing happens to the update in update space. Only
+`ModelScalingAttack` overrides it (`:135`–`:137`, an elementwise ×10). Both this arm's regimes use
+`backdoor_pixel`. A runner that asserted "changed" would therefore abort on the first round of every
+`ca is None` leg of both regimes.
+
+**The corrected assertion is attack-conditional, and it is strictly stronger than the one it replaces**, not
+a weakening to make the run pass:
+
+> At the first adversarial update of the first round, the adversarial update must have **changed if and
+> only if** the configuration says it should — changed when `ca` is set, changed when the attack class
+> overrides `AttackStrategy.manipulate_update`, and **unchanged** when it inherits the identity. Exactly
+> one of the two paths runs. It fails loudly; it does not warn.
+
+The predicate is `type(atk).manipulate_update is not AttackStrategy.manipulate_update`, not a name test.
+
+**Why stronger.** The defect §6.4 exists to catch is a hook that is never called, and in this repo it has
+already happened: a cross-distribution arm came out bit-identical to another because `manipulate_update` was
+never invoked. The original assertion could not have caught it here, because pixel's hook is a **no-op
+anyway** — "nothing changed" is both the failure symptom and the correct behaviour, which is precisely how
+those two arms silently collapsed onto one computation. Pinning the *expected* behaviour per attack instead
+catches four distinct failures, all four verified by deliberately breaking each one before this arm ran:
+
+| broken deliberately | caught |
+|---|---|
+| an attack that overrides `manipulate_update` but returns the update unmodified | yes |
+| an attack that inherits the identity yet whose update comes back modified | yes |
+| `criterion_aware_updates` returning its input unchanged | yes |
+| — and both correct configurations (`backdoor_pixel` unchanged, `model_scaling` changed) pass | yes |
+
+**Nothing else moves.** No estimand, gate, threshold, regime, seed count, outcome or limitation in §§1–5
+changes, and no result exists at the time of this amendment — which is the condition that makes an amendment
+legitimate rather than a renegotiation. The assertion lives in `experiments/adversary_hook.py`, shared by
+both runners so the two ladders cannot differ in the adversary they apply, and it is on for the first round
+of **every** run of this arm.
