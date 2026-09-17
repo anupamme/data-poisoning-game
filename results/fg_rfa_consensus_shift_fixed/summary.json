@@ -1,0 +1,195 @@
+{
+  "description": "The fg->rfa consensus-shift arm re-run with ConsensusShiftAttack actually applied. Supersedes results/fg_rfa_flagship/summary.json's adaptive_consensus_shift cells, which are VOID: that runner passed a backdoor_pixel attack whose inherited manipulate_update is the identity, so its Phase-1 shift was arithmetically zero at every rate and its rows are bit-identical to base_composition/committed_pixel.",
+  "prereg_commit": "784a201",
+  "supersedes": "results/fg_rfa_flagship/summary.json :: adaptive_consensus_shift/*",
+  "defense": "foolsgold_then_rfa",
+  "config": {
+    "num_clients": 10,
+    "clients_per_round": 5,
+    "adversarial_fraction": 0.2,
+    "num_rounds": 50,
+    "dataset": "cifar10",
+    "model": "cifar_cnn",
+    "dirichlet": 0.5,
+    "d1": "foolsgold",
+    "d2": "rfa",
+    "tau": 5.0,
+    "shift_rates": [
+      0.01,
+      0.05
+    ],
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "shift_rounds": 25,
+    "scale_factor": 1.0,
+    "shift_rounds_counts": "adversary-update events, not rounds"
+  },
+  "rates": {
+    "rate_0.01": {
+      "shift_rate": 0.01,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4691,
+          "asr": 0.033666666666666664,
+          "wall_time_s": 1389.0544838905334
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5321,
+          "asr": 0.051666666666666666,
+          "wall_time_s": 1394.5034911632538
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5045,
+          "asr": 0.04066666666666666,
+          "wall_time_s": 1381.5954179763794
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.4616,
+          "asr": 0.061,
+          "wall_time_s": 1363.379054069519
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.5098,
+          "asr": 0.05455555555555556,
+          "wall_time_s": 1364.7798001766205
+        }
+      ]
+    },
+    "rate_0.05": {
+      "shift_rate": 0.05,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4768,
+          "asr": 0.030111111111111113,
+          "wall_time_s": 1358.6602771282196
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5242,
+          "asr": 0.04844444444444444,
+          "wall_time_s": 1365.288037776947
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.5097,
+          "asr": 0.03666666666666667,
+          "wall_time_s": 1414.1314980983734
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.4682,
+          "asr": 0.057777777777777775,
+          "wall_time_s": 1368.8509228229523
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.5043,
+          "asr": 0.05,
+          "wall_time_s": 1350.2697961330414
+        }
+      ]
+    }
+  },
+  "analysis": {
+    "prereg_commit": "784a201",
+    "base_leg": {
+      "label": "committed_pixel (results/fg_rfa_flagship, REUSED)",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "mean_asr": 0.045222222222222226,
+      "sd_asr_ddof0": 0.011812318324424333
+    },
+    "rates": {
+      "rate_0.01": {
+        "shift_rate": 0.01,
+        "n": 5,
+        "seeds": [
+          42,
+          43,
+          44,
+          45,
+          46
+        ],
+        "mean_asr": 0.04831111111111111,
+        "sd_asr_ddof0": 0.009840305124246485,
+        "median_asr": 0.051666666666666666,
+        "max_asr": 0.061,
+        "mean_acc": 0.49542,
+        "min_acc": 0.4616,
+        "seeds_below_acc_floor": [],
+        "primary_paired_difference": {
+          "n": 5,
+          "mean": 0.0030888888888888862,
+          "sd": 0.0028818289802840383,
+          "hw95": 0.0035782632937989556,
+          "lo": -0.0004893744049100693,
+          "hi": 0.006667152182687841
+        },
+        "per_seed_difference": {
+          "42": 0.007999999999999997,
+          "43": 0.0005555555555555522,
+          "44": 0.0021111111111111053,
+          "45": 0.001777777777777774,
+          "46": 0.0030000000000000027
+        }
+      },
+      "rate_0.05": {
+        "shift_rate": 0.05,
+        "n": 5,
+        "seeds": [
+          42,
+          43,
+          44,
+          45,
+          46
+        ],
+        "mean_asr": 0.044599999999999994,
+        "sd_asr_ddof0": 0.009904133069171267,
+        "median_asr": 0.04844444444444444,
+        "max_asr": 0.057777777777777775,
+        "mean_acc": 0.49664,
+        "min_acc": 0.4682,
+        "seeds_below_acc_floor": [],
+        "primary_paired_difference": {
+          "n": 5,
+          "mean": -0.000622222222222224,
+          "sd": 0.0028723887766022595,
+          "hw95": 0.00356654173275158,
+          "lo": -0.004188763954973804,
+          "hi": 0.0029443195105293557
+        },
+        "per_seed_difference": {
+          "42": 0.004444444444444445,
+          "43": -0.0026666666666666713,
+          "44": -0.0018888888888888913,
+          "45": -0.0014444444444444496,
+          "46": -0.001555555555555553
+        }
+      }
+    },
+    "verdicts": {
+      "rate_0.01": "ATTACK INEFFECTIVE: the paired 95% CI contains zero (the predicted outcome)",
+      "rate_0.05": "ATTACK INEFFECTIVE: the paired 95% CI contains zero (the predicted outcome)"
+    },
+    "complete": true,
+    "void_row_withdrawn": "tab:fg_rfa_flagship's Consensus-shift row (0.045 +/- 0.012) is superseded regardless of outcome, and the defect is disclosed in the paper, not only in the response letter.",
+    "count_consequence": "main.tex:2242's count stays 'three of the six'; consensus-shift remains among the arms level with the base, now for a measured reason. A 5-seed null on a right-skewed denominator is weak evidence of a null and is reported as such.",
+    "no_claim_at_n30": "This arm is n=5. No statement about consensus-shift at n=30 is made, and rates 0.1 and 0.2 remain unmeasured against this composition."
+  }
+}

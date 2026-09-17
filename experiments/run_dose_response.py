@@ -77,6 +77,7 @@ from fl_core import get_federated_dataset, get_model, FederatedServer, Federated
 from attacks import get_attack
 from experiments.run_payoff_matrix import evaluate_backdoor
 from experiments.run_all_compositions import generic_compose
+from experiments.adversary_hook import apply_adversary
 
 # experiments/pre_registration_dose_response.md, committed before results/dose_response/ existed.
 PREREG_COMMIT = "e711a95"
@@ -158,35 +159,50 @@ def rho(kappa):
     return float(np.exp(2.0 * kappa))
 
 
-def run_one(seed, d2, attack_name, kappa):
-    """One 50-round FL run of dose_kappa<kappa> -> d2 under attack_name."""
+def run_one(seed, d2, attack_name, kappa, fl_config=None, alpha=0.5, ca=None):
+    """One 50-round FL run of dose_kappa<kappa> -> d2 under attack_name.
+
+    fl_config/alpha/ca are the regime knobs of pre_registration_regime_dissociation.md, added as
+    defaulted arguments so that every existing call site is bit-identical: fl_config=None means the
+    frozen FL_CONFIG, alpha=0.5 is the frozen Dirichlet concentration (it was a hardcoded literal
+    before and is now this argument's default), and ca=None means the frozen adversary.
+    --harness-check proves the default path unchanged rather than assuming it. ca=(eps,
+    decorrelate) SUBSTITUTES the criterion-aware construction for manipulate_update; the shared
+    implementation is experiments/adversary_hook.py, so this runner and run_targeted_dose.py cannot
+    drift in the adversary they apply.
+    """
+    cfg = fl_config or FL_CONFIG
     torch.manual_seed(seed); np.random.seed(seed)
     dev = "mps" if torch.backends.mps.is_available() else "cpu"
-    cd, td, nc = get_federated_dataset("cifar10", FL_CONFIG.num_clients, 0.5, seed)
+    cd, td, nc = get_federated_dataset("cifar10", cfg.num_clients, alpha, seed)
     srv = FederatedServer(get_model("cifar_cnn", nc), dev,
                           clean_holdout_dataset=Subset(td, list(range(100))), holdout_batch_size=32)
-    adv = set(range(int(FL_CONFIG.num_clients * ADV_FRACTION)))
+    adv = set(range(int(cfg.num_clients * ADV_FRACTION)))
     atk = get_attack(ATTACK_MAP[attack_name])
     cl = [FederatedClient(i, atk.poison_dataset(cd[i]) if i in adv else cd[i], dev)
-          for i in range(FL_CONFIG.num_clients)]
+          for i in range(cfg.num_clients)]
     d1 = d1_name(kappa)
-    lr = FL_CONFIG.learning_rate
-    for rnd in range(FL_CONFIG.num_rounds):
-        pids = np.random.choice(FL_CONFIG.num_clients,
-                                size=min(FL_CONFIG.clients_per_round, FL_CONFIG.num_clients),
+    lr = cfg.learning_rate
+    for rnd in range(cfg.num_rounds):
+        pids = np.random.choice(cfg.num_clients,
+                                size=min(cfg.clients_per_round, cfg.num_clients),
                                 replace=False)
         ups = []
         for cid in pids:
-            u = cl[cid].train(srv.global_model, FL_CONFIG.local_epochs, lr, FL_CONFIG.local_batch_size)
-            if cid in adv:
-                u = atk.manipulate_update(u, srv.global_model)
-            ups.append(u)
+            ups.append(cl[cid].train(srv.global_model, cfg.local_epochs, lr, cfg.local_batch_size))
+        # The adversarial step is hoisted out of the training loop so that this runner and
+        # run_targeted_dose.py share ONE implementation (experiments/adversary_hook.py) -- the
+        # design comparison between the two ladders is void if they apply different adversaries.
+        # Bit-neutral for this suite's two attacks: backdoor_pixel inherits the identity
+        # manipulate_update and model_scaling is an elementwise multiply, so neither consumes RNG
+        # nor reads another client's update. --harness-check is the proof, not this comment.
+        ups = apply_adversary(ups, pids, adv, atk, srv.global_model, ca=ca, verify=(rnd == 0))
         # dose_key = (seed, round): every arm at a given (seed, round) receives the IDENTICAL
         # coefficient vector, so the arms differ in d2 and nothing else. Keying on the round rather
         # than fixing one vector per seed keeps the dose uncorrelated with client identity, and so
         # with adversary status, across the trajectory.
         srv.apply_update(generic_compose(srv, ups, d1, d2, tau=5.0, dose_key=(seed, rnd)))
-        lr *= getattr(FL_CONFIG, "lr_decay", 1.0)
+        lr *= getattr(cfg, "lr_decay", 1.0)
     return float(srv.evaluate(td)["accuracy"]), float(evaluate_backdoor(srv.global_model, td, device=dev))
 
 

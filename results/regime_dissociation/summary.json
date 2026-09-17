@@ -1,0 +1,515 @@
+{
+  "description": "Does the design disagreement on coord_median x committed pixel survive an adaptive adversary (regime A) and survive scale (regime B)? Primary estimand D = dASR(confounded) - dASR(instrument), paired by seed.",
+  "prereg": "experiments/pre_registration_regime_dissociation.md",
+  "prereg_commit": "f4c3fec",
+  "prereg_freeze_commit": "b317af0",
+  "prereg_amendments": "Amendment 1 (at prereg_commit) corrected section 6.4's hook assertion to the attack-conditional form, before any result existed; the pre-amendment text is at prereg_freeze_commit.",
+  "cell": {
+    "d2": "coord_median",
+    "attack": "committed_pixel",
+    "kappas": [
+      0.0,
+      2.0
+    ],
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "rhos": {
+      "0.0": 1.0,
+      "2.0": 54.598150033144236
+    },
+    "dials_instrument": {
+      "0.0": 1.0,
+      "2.0": 54.598150033144236
+    },
+    "acc_floor": 0.35
+  },
+  "regimes": {
+    "A_adaptive": {
+      "num_clients": 10,
+      "clients_per_round": 5,
+      "num_rounds": 50,
+      "alpha": 0.5,
+      "adaptive": true,
+      "what_changed": "adversary (criterion-aware, calibrated to coord_median)"
+    },
+    "B_scale": {
+      "num_clients": 100,
+      "clients_per_round": 20,
+      "num_rounds": 50,
+      "alpha": 0.5,
+      "adaptive": false,
+      "what_changed": "N and K (100 clients, 20 per round = 20% participation)"
+    }
+  },
+  "endpoint_only": "kappa in {0, 2} only. These two rungs must never be displayed or described as a four-rung ladder and no trend statistic is computed here (prereg section 5).",
+  "identity_rung_provenance": "kappa=0 is COMPUTED ONCE per regime per seed, under the confounded ladder's d1 string, and SHARED by both legs -- at kappa=0 both d1 transforms return the update list unwrapped, so both rungs are coord_median alone. The instrument's kappa=0 rung is run at one seed per regime and asserted equal to TOL as a gate (prereg section 4.3); it is proof, not assumption.",
+  "calibration": {
+    "ca_eps1_decorr": {
+      "eps": 1.0,
+      "decorrelate": true,
+      "seed": 42,
+      "accuracy": 0.7702,
+      "asr": 0.15
+    },
+    "ca_eps1_nodecorr": {
+      "eps": 1.0,
+      "decorrelate": false,
+      "seed": 42,
+      "accuracy": 0.7725,
+      "asr": 0.3982222222222222
+    },
+    "ca_eps2_decorr": {
+      "eps": 2.0,
+      "decorrelate": true,
+      "seed": 42,
+      "accuracy": 0.7686,
+      "asr": 0.19166666666666668
+    },
+    "ca_eps2_nodecorr": {
+      "eps": 2.0,
+      "decorrelate": false,
+      "seed": 42,
+      "accuracy": 0.7671,
+      "asr": 0.4298888888888889
+    },
+    "ca_eps4_decorr": {
+      "eps": 4.0,
+      "decorrelate": true,
+      "seed": 42,
+      "accuracy": 0.7668,
+      "asr": 0.19944444444444445
+    },
+    "ca_eps4_nodecorr": {
+      "eps": 4.0,
+      "decorrelate": false,
+      "seed": 42,
+      "accuracy": 0.7639,
+      "asr": 0.4057777777777778
+    }
+  },
+  "calibration_winner": {
+    "label": "ca_eps2_nodecorr",
+    "eps": 2.0,
+    "decorrelate": false,
+    "seed": 42,
+    "asr": 0.4298888888888889,
+    "accuracy": 0.7671,
+    "reference_plain_asr": 0.39455555555555555,
+    "reference_source": "results/dose_response/summary.json dose_kappa0.0_then_coord_median|committed_pixel s42",
+    "gate_4_1_pass": true,
+    "verdict": "adversary is stronger than the plain backdoor against coord_median"
+  },
+  "identity_gate": {
+    "A_adaptive": {
+      "seed": 42,
+      "d_acc": 0.0,
+      "d_asr": 0.0,
+      "tolerance": 1e-06,
+      "pass": true
+    },
+    "B_scale": {
+      "seed": 42,
+      "d_acc": 0.0,
+      "d_asr": 0.0,
+      "tolerance": 1e-06,
+      "pass": true
+    }
+  },
+  "harness_check": {
+    "tolerance": 1e-06,
+    "worst_abs_deviation": 0.0,
+    "pass": true,
+    "checks": {
+      "dose_kappa0.0|s42|results/dose_response": {
+        "acc": 0.7691,
+        "asr": 0.39455555555555555,
+        "stored_acc": 0.7691,
+        "stored_asr": 0.39455555555555555,
+        "d_acc": 0.0,
+        "d_asr": 0.0,
+        "ok": true
+      },
+      "dose_kappa0.0|s47|results/reversal_seed_topup": {
+        "acc": 0.7482,
+        "asr": 0.2907777777777778,
+        "stored_acc": 0.7482,
+        "stored_asr": 0.2907777777777778,
+        "d_acc": 0.0,
+        "d_asr": 0.0,
+        "ok": true
+      },
+      "doseS_kappa0.0|s47|results/reversal_seed_topup": {
+        "acc": 0.7482,
+        "asr": 0.2907777777777778,
+        "stored_acc": 0.7482,
+        "stored_asr": 0.2907777777777778,
+        "d_acc": 0.0,
+        "d_asr": 0.0,
+        "ok": true
+      },
+      "frozen_regime_identity_s47": {
+        "d_acc": 0.0,
+        "d_asr": 0.0,
+        "ok": true
+      }
+    }
+  },
+  "cells": {
+    "A_adaptive|dose_kappa0.0_then_coord_median|committed_pixel": {
+      "regime": "A_adaptive",
+      "ladder": "conf",
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "kappa": 0.0,
+      "shared_by_both_ladders": true,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7671,
+          "asr": 0.4298888888888889,
+          "provenance": "the winning calibration run (ca_eps2_nodecorr); not recomputed (prereg 3)"
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.771,
+          "asr": 0.29
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7688,
+          "asr": 0.4408888888888889
+        }
+      ],
+      "mean_asr": 0.3869259259259259,
+      "mean_accuracy": 0.7689666666666667,
+      "n_below_acc_floor": 0
+    },
+    "A_adaptive|doseS_kappa0.0_then_coord_median|committed_pixel": {
+      "regime": "A_adaptive",
+      "ladder": "inst",
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "kappa": 0.0,
+      "shared_by_both_ladders": false,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7671,
+          "asr": 0.4298888888888889,
+          "provenance": "identity gate only (prereg 4.3); NOT a leg of any Delta -- the kappa=0 leg used by both Deltas is the conf row at this seed"
+        }
+      ],
+      "mean_asr": 0.4298888888888889,
+      "mean_accuracy": 0.7671,
+      "n_below_acc_floor": 0
+    },
+    "A_adaptive|dose_kappa2.0_then_coord_median|committed_pixel": {
+      "regime": "A_adaptive",
+      "ladder": "conf",
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "kappa": 2.0,
+      "shared_by_both_ladders": false,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6855,
+          "asr": 0.16466666666666666
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6922,
+          "asr": 0.0758888888888889
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6962,
+          "asr": 0.19211111111111112
+        }
+      ],
+      "mean_asr": 0.14422222222222222,
+      "mean_accuracy": 0.6913,
+      "n_below_acc_floor": 0
+    },
+    "A_adaptive|doseS_kappa2.0_then_coord_median|committed_pixel": {
+      "regime": "A_adaptive",
+      "ladder": "inst",
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "kappa": 2.0,
+      "shared_by_both_ladders": false,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6948,
+          "asr": 0.5517777777777778
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7005,
+          "asr": 0.2992222222222222
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6749,
+          "asr": 0.5537777777777778
+        }
+      ],
+      "mean_asr": 0.4682592592592593,
+      "mean_accuracy": 0.6900666666666666,
+      "n_below_acc_floor": 0
+    },
+    "B_scale|dose_kappa0.0_then_coord_median|committed_pixel": {
+      "regime": "B_scale",
+      "ladder": "conf",
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "kappa": 0.0,
+      "shared_by_both_ladders": true,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4773,
+          "asr": 0.4261111111111111
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.4855,
+          "asr": 0.5532222222222222
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.4598,
+          "asr": 0.5631111111111111
+        }
+      ],
+      "mean_asr": 0.5141481481481481,
+      "mean_accuracy": 0.4742,
+      "n_below_acc_floor": 0
+    },
+    "B_scale|doseS_kappa0.0_then_coord_median|committed_pixel": {
+      "regime": "B_scale",
+      "ladder": "inst",
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "kappa": 0.0,
+      "shared_by_both_ladders": false,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4773,
+          "asr": 0.4261111111111111,
+          "provenance": "identity gate only (prereg 4.3); NOT a leg of any Delta -- the kappa=0 leg used by both Deltas is the conf row at this seed"
+        }
+      ],
+      "mean_asr": 0.4261111111111111,
+      "mean_accuracy": 0.4773,
+      "n_below_acc_floor": 0
+    },
+    "B_scale|dose_kappa2.0_then_coord_median|committed_pixel": {
+      "regime": "B_scale",
+      "ladder": "conf",
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "kappa": 2.0,
+      "shared_by_both_ladders": false,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4293,
+          "asr": 0.15022222222222223
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.4286,
+          "asr": 0.22033333333333333
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.4199,
+          "asr": 0.19655555555555557
+        }
+      ],
+      "mean_asr": 0.18903703703703703,
+      "mean_accuracy": 0.42593333333333333,
+      "n_below_acc_floor": 0
+    },
+    "B_scale|doseS_kappa2.0_then_coord_median|committed_pixel": {
+      "regime": "B_scale",
+      "ladder": "inst",
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "kappa": 2.0,
+      "shared_by_both_ladders": false,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4448,
+          "asr": 0.24288888888888888
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.444,
+          "asr": 0.3407777777777778
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.435,
+          "asr": 0.3616666666666667
+        }
+      ],
+      "mean_asr": 0.3151111111111111,
+      "mean_accuracy": 0.4412666666666667,
+      "n_below_acc_floor": 0
+    }
+  },
+  "analysis": {
+    "A_adaptive": {
+      "regime": "A_adaptive",
+      "gate_4_1": {
+        "label": "ca_eps2_nodecorr",
+        "eps": 2.0,
+        "decorrelate": false,
+        "seed": 42,
+        "asr": 0.4298888888888889,
+        "accuracy": 0.7671,
+        "reference_plain_asr": 0.39455555555555555,
+        "reference_source": "results/dose_response/summary.json dose_kappa0.0_then_coord_median|committed_pixel s42",
+        "gate_4_1_pass": true,
+        "verdict": "adversary is stronger than the plain backdoor against coord_median"
+      },
+      "gate_4_3": {
+        "seed": 42,
+        "d_acc": 0.0,
+        "d_asr": 0.0,
+        "tolerance": 1e-06,
+        "pass": true
+      },
+      "seeds": [
+        42,
+        43,
+        44
+      ],
+      "gate_4_2": {
+        "acc_floor": 0.35,
+        "pass": true,
+        "rungs": {
+          "kappa=0 (shared)": {
+            "mean_accuracy": 0.7689666666666667,
+            "mean_asr": 0.3869259259259259
+          },
+          "kappa=2 confounded": {
+            "mean_accuracy": 0.6913,
+            "mean_asr": 0.14422222222222222
+          },
+          "kappa=2 instrument": {
+            "mean_accuracy": 0.6900666666666666,
+            "mean_asr": 0.4682592592592593
+          }
+        }
+      },
+      "primary_D": {
+        "per_seed": {
+          "42": -0.3871111111111112,
+          "43": -0.22333333333333333,
+          "44": -0.3616666666666667
+        },
+        "mean": -0.32403703703703707,
+        "sd": 0.08813502080900715,
+        "se": 0.05088477798911355,
+        "ci95": [
+          -0.5429765659545918,
+          -0.10509750811948232
+        ],
+        "n": 3,
+        "excludes_zero": true,
+        "verdict": "THE DESIGN DISAGREEMENT REPRODUCES: the confounded design reads lower than the instrument on the same cell and the same seeds."
+      },
+      "secondary_deltas": {
+        "confounded": {
+          "mean": -0.24270370370370373,
+          "half_width": 0.06481444254404016,
+          "inferential": false
+        },
+        "instrument": {
+          "mean": 0.08133333333333337,
+          "half_width": 0.15553676524688018,
+          "inferential": false
+        }
+      },
+      "base_rung_diagnostic": {
+        "mean_asr": 0.3869259259259259,
+        "is_a_gate": false
+      }
+    },
+    "B_scale": {
+      "regime": "B_scale",
+      "gate_4_3": {
+        "seed": 42,
+        "d_acc": 0.0,
+        "d_asr": 0.0,
+        "tolerance": 1e-06,
+        "pass": true
+      },
+      "seeds": [
+        42,
+        43,
+        44
+      ],
+      "gate_4_2": {
+        "acc_floor": 0.35,
+        "pass": true,
+        "rungs": {
+          "kappa=0 (shared)": {
+            "mean_accuracy": 0.4742,
+            "mean_asr": 0.5141481481481481
+          },
+          "kappa=2 confounded": {
+            "mean_accuracy": 0.42593333333333333,
+            "mean_asr": 0.18903703703703703
+          },
+          "kappa=2 instrument": {
+            "mean_accuracy": 0.4412666666666667,
+            "mean_asr": 0.3151111111111111
+          }
+        }
+      },
+      "primary_D": {
+        "per_seed": {
+          "42": -0.09266666666666665,
+          "43": -0.12044444444444447,
+          "44": -0.16511111111111113
+        },
+        "mean": -0.1260740740740741,
+        "sd": 0.03654885675422904,
+        "se": 0.02110149228562721,
+        "ci95": [
+          -0.2168664674586152,
+          -0.03528168068953297
+        ],
+        "n": 3,
+        "excludes_zero": true,
+        "verdict": "THE DESIGN DISAGREEMENT REPRODUCES: the confounded design reads lower than the instrument on the same cell and the same seeds."
+      },
+      "secondary_deltas": {
+        "confounded": {
+          "mean": -0.3251111111111111,
+          "half_width": 0.11385054041325403,
+          "inferential": false
+        },
+        "instrument": {
+          "mean": -0.199037037037037,
+          "half_width": 0.03666365734386984,
+          "inferential": false
+        }
+      },
+      "base_rung_diagnostic": {
+        "mean_asr": 0.5141481481481481,
+        "is_a_gate": false
+      }
+    }
+  }
+}

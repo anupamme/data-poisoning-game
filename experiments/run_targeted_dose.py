@@ -76,6 +76,7 @@ from fl_core import get_federated_dataset, get_model, FederatedServer, Federated
 from attacks import get_attack
 from experiments.run_payoff_matrix import evaluate_backdoor
 from experiments.run_all_compositions import generic_compose
+from experiments.adversary_hook import apply_adversary
 
 # experiments/pre_registration_targeted_dose.md, committed before results/targeted_dose/ existed.
 PREREG_COMMIT = "5130cec"
@@ -138,7 +139,7 @@ def dial(mode, val):
 
 
 def run_one(seed, mode, d2, attack_name, val, dataset="cifar10", model="cifar_cnn",
-            score_only=False, emit_only=False):
+            score_only=False, emit_only=False, fl_config=None, alpha=0.5, ca=None):
     """One 50-round FL run of the targeted dose into d2 under attack_name.
 
     dataset/model default to the CIFAR-10 configuration this suite was frozen on, so every existing
@@ -151,29 +152,41 @@ def run_one(seed, mode, d2, attack_name, val, dataset="cifar10", model="cifar_cn
     are passed straight through to generic_compose (see its docstring) and both default to False, so
     no existing call site changes and --harness-check still verifies bit-equality against the frozen
     ladders.
+
+    fl_config/alpha/ca are the regime knobs of pre_registration_regime_dissociation.md, added the
+    same way: fl_config=None means the frozen FL_CONFIG, alpha=0.5 is the frozen Dirichlet
+    concentration (it was a hardcoded literal before and is now the default of a named argument),
+    and ca=None means the frozen adversary. So every existing call site is bit-identical, which
+    --harness-check proves rather than assumes. ca=(eps, decorrelate) SUBSTITUTES the
+    criterion-aware construction for manipulate_update; see experiments/adversary_hook.py.
     """
+    cfg = fl_config or FL_CONFIG
     torch.manual_seed(seed); np.random.seed(seed)
     dev = "mps" if torch.backends.mps.is_available() else "cpu"
-    cd, td, nc = get_federated_dataset(dataset, FL_CONFIG.num_clients, 0.5, seed)
+    cd, td, nc = get_federated_dataset(dataset, cfg.num_clients, alpha, seed)
     srv = FederatedServer(get_model(model, nc), dev,
                           clean_holdout_dataset=Subset(td, list(range(100))), holdout_batch_size=32)
-    adv = set(range(int(FL_CONFIG.num_clients * ADV_FRACTION)))
+    adv = set(range(int(cfg.num_clients * ADV_FRACTION)))
     atk = get_attack(ATTACK_MAP[attack_name])
     cl = [FederatedClient(i, atk.poison_dataset(cd[i]) if i in adv else cd[i], dev)
-          for i in range(FL_CONFIG.num_clients)]
+          for i in range(cfg.num_clients)]
     d1 = d1_name(mode, val)
-    lr = FL_CONFIG.learning_rate
-    for rnd in range(FL_CONFIG.num_rounds):
-        pids = np.random.choice(FL_CONFIG.num_clients,
-                                size=min(FL_CONFIG.clients_per_round, FL_CONFIG.num_clients),
+    lr = cfg.learning_rate
+    for rnd in range(cfg.num_rounds):
+        pids = np.random.choice(cfg.num_clients,
+                                size=min(cfg.clients_per_round, cfg.num_clients),
                                 replace=False)
         ups = []
         for cid in pids:
-            u = cl[cid].train(srv.global_model, FL_CONFIG.local_epochs, lr,
-                              FL_CONFIG.local_batch_size)
-            if cid in adv:
-                u = atk.manipulate_update(u, srv.global_model)
-            ups.append(u)
+            ups.append(cl[cid].train(srv.global_model, cfg.local_epochs, lr,
+                                     cfg.local_batch_size))
+        # The adversarial step is hoisted out of the training loop so that both dose runners can
+        # share one implementation (experiments/adversary_hook.py). It is bit-neutral for this
+        # suite's two attacks: backdoor_pixel inherits the identity manipulate_update and
+        # model_scaling is an elementwise multiply, so neither consumes RNG nor reads another
+        # client's update, and srv.global_model is not mutated mid-round. --harness-check is the
+        # proof, not this comment.
+        ups = apply_adversary(ups, pids, adv, atk, srv.global_model, ca=ca, verify=(rnd == 0))
         # adv_mask is the whole point of this suite: the coefficient a client receives depends on
         # whether it is adversarial. dose_key still seeds the permutation of the BENIGN clients in
         # mode S; mode A needs no permutation, since the assignment is determined by adversary
@@ -181,7 +194,7 @@ def run_one(seed, mode, d2, attack_name, val, dataset="cifar10", model="cifar_cn
         srv.apply_update(generic_compose(srv, ups, d1, d2, tau=5.0, dose_key=(seed, rnd),
                                          adv_mask=[bool(cid in adv) for cid in pids],
                                          score_only=score_only, emit_only=emit_only))
-        lr *= getattr(FL_CONFIG, "lr_decay", 1.0)
+        lr *= getattr(cfg, "lr_decay", 1.0)
     return (float(srv.evaluate(td)["accuracy"]),
             float(evaluate_backdoor(srv.global_model, td, device=dev)))
 

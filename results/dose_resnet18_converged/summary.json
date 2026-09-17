@@ -1,0 +1,210 @@
+{
+  "description": "The ResNet18/Mode-S/krum replication arm at a 4x longer horizon: 200 rounds instead of 50, everything else carried over from pre_registration_dose_resnet18.md @ 89046f6. Answers the ninth review's objection to disclosure (ii) of main.tex:1534, that the published arm evaluates security on a model at 0.536-0.557 clean accuracy. Rules frozen at ca89f96 (experiments/pre_registration_dose_resnet18_converged.md).",
+  "prereg_commit": "ca89f96",
+  "dataset": "cifar10",
+  "model": "resnet18",
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 200,
+    "rounds_parent": 50,
+    "differs_from_frozen_config_in": [
+      "num_rounds"
+    ],
+    "kappas_run": [
+      0.0,
+      2.0
+    ],
+    "kappas_frozen_ladder": [
+      0.0,
+      0.5,
+      1.0,
+      2.0
+    ],
+    "endpoint_only": true,
+    "endpoint_only_reason": "Same restriction as the 50-round parent at four times the price: ~6.7-8.9 h/run, so two rungs x 3 seeds is 40-54 h and four rungs would be 80-108 h. A two-rung ladder has no trend to test and is never displayed as four.",
+    "no_secondary_trend_test": true,
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "rhos": {
+      "0.0": 1.0,
+      "2.0": 54.598150033144236
+    },
+    "acc_floor": 0.35,
+    "suppress_asr": 0.5,
+    "converged_acc": 0.65,
+    "informative_asr": 0.15,
+    "equiv_margin": 0.15,
+    "replicate_within": 0.15
+  },
+  "arm": {
+    "mode": "S",
+    "d2": "krum",
+    "attack": "committed_scaling",
+    "prop1_class": "c) not invariant",
+    "predicted_outcome": "FLAT if the 50-round negative is a property of the mechanism; RISING if it was specific to short-horizon training",
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "varies": "the round count alone"
+  },
+  "no_cross_horizon_delta": "200 rounds is four times the backdoor injection exposure, so no Delta is taken across horizons. ASR_200(kappa) - ASR_50(kappa) is not computed, not reported and not described. The parent's figures appear only as context, labelled with their own round count.",
+  "parent_50round_comparison": {
+    "d2": "krum",
+    "attack": "committed_scaling",
+    "mode_s_delta": -0.04103703703703704,
+    "n_kappa0": 3,
+    "n_kappa2": 3,
+    "rounds": 50
+  },
+  "cifar_cnn_comparison": {
+    "d2": "krum",
+    "attack": "committed_scaling",
+    "mode_s_delta": -0.026088888888888898,
+    "n_kappa0": 5,
+    "n_kappa2": 5
+  },
+  "femnist_comparison": {
+    "d2": "krum",
+    "attack": "committed_scaling",
+    "mode_s_delta": -0.01665083600946824,
+    "n_kappa0": 3,
+    "n_kappa2": 3
+  },
+  "verdict": {
+    "rounds": 200,
+    "identity_mean_asr": 0.04466666666666667,
+    "kappa2_mean_asr": 0.023000000000000003,
+    "delta": -0.021666666666666664,
+    "n_kappa0": 3,
+    "n_kappa2": 3,
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "replicate_within": 0.15,
+    "paired_interval": {
+      "seeds": [
+        42,
+        43,
+        44
+      ],
+      "n": 3,
+      "per_seed_diff": [
+        -0.09611111111111112,
+        0.01477777777777778,
+        0.01633333333333333
+      ],
+      "mean": -0.021666666666666667,
+      "sd": 0.0644754714581684,
+      "hw95": 0.16016595013211818,
+      "lo": -0.18183261679878485,
+      "hi": 0.1384992834654515,
+      "m_star": 0.18183261679878485,
+      "m_star_note": "the smallest margin this arm's interval fits inside; no equivalence claim is made at any margin tighter than the frozen 0.15"
+    },
+    "verdict": "THE NEGATIVE SURVIVES A 4x LONGER HORIZON -- WITH THE MARGIN NOT BINDING: the identity rung has less headroom (0.0447) than the margin (0.15), so this is not a strengthened replication.",
+    "validity_gate_passed": true,
+    "per_rung_mean_acc": {
+      "0.0": 0.6518666666666667,
+      "2.0": 0.6883666666666667
+    },
+    "accuracy_floor_ok": true,
+    "convergence_label_gate_passed": true,
+    "informativeness_condition_met": false,
+    "endpoint_only": true,
+    "no_secondary_trend_test": true,
+    "rungs_run": [
+      0.0,
+      2.0
+    ],
+    "rungs_in_frozen_ladder": [
+      0.0,
+      0.5,
+      1.0,
+      2.0
+    ]
+  },
+  "cells": {
+    "doseS_kappa0.0_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 0.0,
+      "dial": 1.0,
+      "prop1_class": "c) not invariant",
+      "dataset": "cifar10",
+      "model": "resnet18",
+      "rounds": 200,
+      "predicted_outcome": "FLAT if the 50-round negative is a property of the mechanism; RISING if it was specific to short-horizon training",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6464,
+          "asr": 0.111,
+          "wall_time_s": 51535.51911997795
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6061,
+          "asr": 0.011888888888888888,
+          "wall_time_s": 32734.565138101578
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7031,
+          "asr": 0.011111111111111112,
+          "wall_time_s": 25586.455806970596
+        }
+      ],
+      "mean_asr": 0.04466666666666667,
+      "mean_acc": 0.6518666666666667,
+      "std_asr": 0.04690582457009815,
+      "n": 3
+    },
+    "doseS_kappa2.0_then_krum|committed_scaling": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 2.0,
+      "dial": 54.598150033144236,
+      "prop1_class": "c) not invariant",
+      "dataset": "cifar10",
+      "model": "resnet18",
+      "rounds": 200,
+      "predicted_outcome": "FLAT if the 50-round negative is a property of the mechanism; RISING if it was specific to short-horizon training",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6417,
+          "asr": 0.014888888888888889,
+          "wall_time_s": 23835.057584047318
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7307,
+          "asr": 0.02666666666666667,
+          "wall_time_s": 27265.12981081009
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6927,
+          "asr": 0.027444444444444445,
+          "wall_time_s": 23958.224276781082
+        }
+      ],
+      "mean_asr": 0.023000000000000003,
+      "mean_acc": 0.6883666666666667,
+      "std_asr": 0.005744204450893314,
+      "n": 3
+    }
+  }
+}

@@ -1,0 +1,317 @@
+{
+  "description": "Seed top-up of the adaptive FoolsGold->RFA arm to n=30: condition ca_eps1_decorr at seeds 47-71. The numerator only; the committed_pixel denominator is REUSED from results/fg_rfa_flagship/, which already spans seeds 42-71, after a per-seed value comparison against results/criterion_aware_adversary/ on the five overlapping seeds.",
+  "prereg_commit": "580854a",
+  "defense": "foolsgold_then_rfa",
+  "config": {
+    "num_clients": 10,
+    "clients_per_round": 5,
+    "adversarial_fraction": 0.2,
+    "num_rounds": 50,
+    "model": "cifar_cnn",
+    "defense": [
+      "foolsgold",
+      "rfa"
+    ],
+    "condition": "ca_eps1_decorr",
+    "eps": 1.0,
+    "decorrelate": true,
+    "seeds_new": [
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71
+    ],
+    "seeds_frozen": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ]
+  },
+  "conditions": {
+    "ca_eps1_decorr": {
+      "eps": 1.0,
+      "decorrelate": true,
+      "per_seed": [
+        {
+          "seed": 47,
+          "accuracy": 0.536,
+          "asr": 0.1328888888888889,
+          "wall_time_s": 649.9959669113159
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.5863,
+          "asr": 0.036333333333333336,
+          "wall_time_s": 668.7326190471649
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.55,
+          "asr": 0.14933333333333335,
+          "wall_time_s": 651.8794250488281
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.5858,
+          "asr": 0.08533333333333333,
+          "wall_time_s": 633.1928429603577
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.5551,
+          "asr": 0.3527777777777778,
+          "wall_time_s": 636.8626978397369
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.5078,
+          "asr": 0.107,
+          "wall_time_s": 655.769339799881
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.6146,
+          "asr": 0.11944444444444445,
+          "wall_time_s": 662.7158768177032
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.5749,
+          "asr": 0.18455555555555556,
+          "wall_time_s": 647.9780468940735
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.4731,
+          "asr": 0.18655555555555556,
+          "wall_time_s": 631.9641079902649
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.5459,
+          "asr": 0.1678888888888889,
+          "wall_time_s": 658.322046995163
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.5071,
+          "asr": 0.04744444444444444,
+          "wall_time_s": 639.498893737793
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.6194,
+          "asr": 0.172,
+          "wall_time_s": 641.6604709625244
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.5339,
+          "asr": 0.178,
+          "wall_time_s": 675.4926917552948
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.5717,
+          "asr": 0.15733333333333333,
+          "wall_time_s": 2194.042018890381
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.5091,
+          "asr": 0.20933333333333334,
+          "wall_time_s": 2232.924940109253
+        },
+        {
+          "seed": 62,
+          "accuracy": 0.5091,
+          "asr": 0.07644444444444444,
+          "wall_time_s": 2236.125836133957
+        },
+        {
+          "seed": 63,
+          "accuracy": 0.5737,
+          "asr": 0.16011111111111112,
+          "wall_time_s": 2216.383352994919
+        },
+        {
+          "seed": 64,
+          "accuracy": 0.5134,
+          "asr": 0.14777777777777779,
+          "wall_time_s": 2219.8741891384125
+        },
+        {
+          "seed": 65,
+          "accuracy": 0.5857,
+          "asr": 0.17333333333333334,
+          "wall_time_s": 1990.4798107147217
+        },
+        {
+          "seed": 66,
+          "accuracy": 0.5294,
+          "asr": 0.21566666666666667,
+          "wall_time_s": 1948.7034130096436
+        },
+        {
+          "seed": 67,
+          "accuracy": 0.5724,
+          "asr": 0.20833333333333334,
+          "wall_time_s": 2178.2480471134186
+        },
+        {
+          "seed": 68,
+          "accuracy": 0.499,
+          "asr": 0.023666666666666666,
+          "wall_time_s": 2111.2379319667816
+        },
+        {
+          "seed": 69,
+          "accuracy": 0.5251,
+          "asr": 0.30622222222222223,
+          "wall_time_s": 2201.7950689792633
+        },
+        {
+          "seed": 70,
+          "accuracy": 0.5452,
+          "asr": 0.10433333333333333,
+          "wall_time_s": 2167.253109931946
+        },
+        {
+          "seed": 71,
+          "accuracy": 0.5358,
+          "asr": 0.17844444444444443,
+          "wall_time_s": 2183.341591835022
+        }
+      ],
+      "mean_asr": 0.15522222222222223,
+      "std_asr": 0.07523907027252033,
+      "max_asr": 0.3527777777777778,
+      "mean_acc": 0.54638,
+      "n": 25
+    }
+  },
+  "analysis": {
+    "prereg_commit": "580854a",
+    "denominator_reuse_check": {
+      "shared_seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "worst_abs_dev_asr": 0.0,
+      "worst_abs_dev_acc": 0.0,
+      "conclusion": "the two runners compute the same committed_pixel cell; the flagship denominator at seeds 42-71 is reusable"
+    },
+    "seeds_scored": [
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71
+    ],
+    "n": 30,
+    "numerator": {
+      "label": "ca_eps1_decorr",
+      "mean_asr": 0.15714444444444442,
+      "sd_asr": 0.07427696692846279,
+      "median_asr": 0.1587222222222222,
+      "max_asr": 0.3527777777777778,
+      "mean_acc": 0.5489833333333334,
+      "min_acc": 0.4731
+    },
+    "denominator": {
+      "label": "committed_pixel (results/fg_rfa_flagship, REUSED)",
+      "mean_asr": 0.06442592592592593,
+      "sd_asr": 0.04044660306787681,
+      "median_asr": 0.051722222222222225,
+      "max_asr": 0.2
+    },
+    "primary_paired_difference": {
+      "n": 30,
+      "mean": 0.0927185185185185,
+      "sd": 0.07175309311455225,
+      "hw95": 0.026793045300349184,
+      "lo": 0.06592547321816933,
+      "hi": 0.11951156381886768
+    },
+    "secondary_unpaired_difference": {
+      "n_per_leg": 30,
+      "mean_diff": 0.09271851851851849,
+      "pooled_sd": 0.05980382728480819,
+      "hw95": 0.030909083771823522,
+      "lo": 0.061809434746694966,
+      "hi": 0.12362760229034202
+    },
+    "ratio_descriptive": {
+      "at_n": 30,
+      "ratio": 2.4391491807990797,
+      "published_n5_ratio": 3.687469287469287,
+      "published_n5_seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "note": "A ratio of means gets no confidence statement at these sample sizes. It is reported as a point figure with its n attached, per the freeze."
+    },
+    "accuracy_gate": {
+      "floor": 0.35,
+      "mean_acc": 0.5489833333333334,
+      "seeds_below_floor": [],
+      "ok": true
+    },
+    "verdict": "ADAPTIVE GAIN CONFIRMED at n=30",
+    "no_reranking_claim": "Only ca_eps1_decorr is measured at n>5. The other five adaptive conditions stay at n=5 and no statement of the form 'X is the strongest adaptive attack' is licensed at this n."
+  }
+}
