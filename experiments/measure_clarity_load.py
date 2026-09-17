@@ -49,6 +49,37 @@ and cross-references as the mechanism, which is what the last three measures add
                               while both values wrapped onto p2 -- a sentence's
                               page is not its numbers' page.
 
+  spine span               -- ADDED IN ROUND 67. The twenty-fourth review supplied its
+                              own acceptance test: by page 2 a reader should conclude
+                              that the paper proposes no defense, proves the natural
+                              evaluation unidentified, says why, replaces it with a
+                              controlled intervention, and shows the bad design can
+                              reverse the conclusion. All five of those beats ALREADY
+                              rendered by p2 and the reviewer still did not assemble
+                              them, so rendered position was never the binding variable.
+                              What was binding is CONTIGUITY: the five beats were spread
+                              over four \\noindent paragraphs and a bulleted list. So
+                              this counts the body paragraphs a reader must join, not
+                              the page they land on.
+
+  body questions           -- ADDED IN ROUND 67, and it is what that review's
+                              "declarative headings" item actually reduces to. All seven
+                              section headings were already declarative; the essay-like
+                              voice is the italic question opening most sections and
+                              several paragraphs, 13 of them, each of which a reader must
+                              hold open until its answer arrives. Three earn their keep
+                              and are allowlisted BY PHRASE, never by line number.
+
+  provenance framing       -- ADDED IN ROUND 67, a CEILING rather than a count of load.
+                              Every pattern anchors on the FRAMING ("a methodological
+                              correction", "we report our own", "we had predicted") and
+                              never on the disclosed fact, because the fact is what
+                              measure_negation_density's PROTECTED floor exists to keep.
+                              A ceiling anchored on a disclosure would set the two
+                              instruments against each other, which is the inverse of
+                              Round 66's trap (a floor anchored on a negation fires on
+                              exactly the rewrites it exists to permit).
+
   negation density         -- delegated to measure_negation_density.py so the
                               series stays comparable against its FROZEN marker
                               list. Compression must not buy clarity by turning
@@ -179,6 +210,64 @@ Q5_TEST = (
     ("Q5 what happens?", ("0.273", "0.125")),
 )
 
+# The twenty-fourth review's own acceptance test, and deliberately NOT a page test. It
+# asks that a reader reach five conclusions by p2; all five beats already rendered by p2
+# before this round, and that reviewer still reported the paper as proposing a defense
+# and the boundary as being about our own criterion. Position was not the binding
+# variable. What was binding is that the beats sat in four separate \noindent paragraphs
+# with a bulleted list between two of them, so a reader had to assemble the core message
+# rather than read it. Keyed on SOURCE phrases (this measure is about paragraph
+# structure, which the PDF cannot report) and each beat is credited to its EARLIEST
+# paragraph, since that is where a reader meets it.
+SPINE_TEST = (
+    ("no new defense", ("propose no new defense",)),
+    ("the gate cannot answer", ("cannot answer the question at any sample size",)),
+    ("why: no counterfactual",
+     ("removes the counterfactual support identification requires",)),
+    ("what replaces it", ("intervene on the upstream transform",)),
+    ("and it reverses a sign", ("-0.273", "+0.125")),
+)
+
+# The italic question openers. Three are sanctioned, matched on a distinctive PHRASE
+# rather than a line number, so a reworded keeper fails loudly instead of passing as
+# sanctioned: the paper's own question (Q5_TEST's Q1 is keyed on the same sentence), the
+# FL motivation, and the Conclusion's open problem, which is a question because it is
+# genuinely open.
+SANCTIONED_QUESTIONS = (
+    "mechanism what suppressed it",
+    "compose them for stronger robustness",
+    "without knowing which clients are malicious",
+)
+QUESTION_RE = re.compile(r"[^.!?]*\?")
+
+# Research-history FRAMING, ceiling-gated. "our own criterion" is deliberately absent:
+# it is the PROTECTED anchor of the false-negative disclosure, so listing it here would
+# make the ceiling and the floor unsatisfiable together. "the fault is ours" is absent
+# for a different reason -- the review names that sentence as the paper's transparency,
+# not as its research history.
+PROVENANCE_RE = tuple(re.compile(p, re.I) for p in (
+    r"methodological correction", r"we report our own", r"our own refutations",
+    r"we had predicted", r"earlier version", r"previously named",
+    r"this amendment", r"process failure", r"nearly reversed", r"was corrected",
+))
+
+# The two facts the ceiling's target sentence carries, each asserted present in the BODY
+# WINDOW at its destination. This is a floor, and it exists because
+# measure_negation_density's PROTECTED floor cannot do this job: protected() tests
+# rx.search(text) over the WHOLE FILE and reports its body count as commentary only, so
+# the false-negative disclosure is held up by three appendix twins and stays 16/16 even
+# when both body statements are deleted. Falsification-probed: deleting the fact from the
+# body left that floor at 16/16 and exit 0.
+# Each pattern is keyed on wording UNIQUE TO THE DESTINATION, never on wording shared
+# with the sentence being cut -- a floor that the doomed sentence can satisfy tests
+# nothing about whether the fact survived the cut.
+BODY_HOMES = (
+    ("false-negative disclosure -> the emergent witness",
+     r"emergent and a false negative"),
+    ("collapsed cross-arm admission ordering -> the replication",
+     r"refutes the admission"),
+)
+
 # The abstract target was first priced at 1400 against review #12's own suggested
 # draft. That draft reached 1400 by dropping the FL setup, the replication in a
 # second invariance class, and one of the two dissociations, i.e. by dropping
@@ -221,6 +310,13 @@ Q5_TEST = (
 # count expresses -- the first causal word must arrive after the FL problem -- and
 # that one is gated as a boolean.
 #
+# Round 67 re-baselines three ratchets DOWNWARD to its own measurement, which is the only direction
+# this file permits: p_tokens 12 -> 7, because E3 retired the centred chain display that spent 7 of the
+# 12 tokens into a table whose level column spends 5; fig1_caption 1480 -> 1153; and emph_runs 62 -> 60,
+# which E9's ten question-opener rewrites paid for. The italic ratchet had been at its cap for three
+# rounds, which is why Round 66's caption fix had to be reverted; closing the 2 runs of slack now means a
+# later round cannot spend them silently.
+#
 # Round 62 closes the two ratchets this round proved slack rather than leaving headroom
 # a later round could spend: p_tokens 20 -> 12 and causal_sec1 8 -> 6, both set to the
 # measurement. It adds two assertions that are not counts of load but names of a
@@ -236,12 +332,27 @@ Q5_TEST = (
 #                    would silently restore the misreading, so its five terms are
 #                    asserted present. This gates the TERMS, not the sentence, so the
 #                    prose around them can still be rewritten.
-TARGETS = {"p_tokens": 12, "c_tokens": 8, "abstract": 1600, "prop_page": 3,
+#
+# Round 67 adds five, four of them new measures and one a gate line on a number this
+# file already printed. spine_span is the twenty-fourth review's acceptance test as a
+# CONTIGUITY bound (2, so the core message may occupy at most two adjacent paragraphs);
+# body_questions and provenance are gated at ZERO because both are complete rather than
+# ratcheted -- every unsanctioned question was converted and the one framing sentence was
+# cut, so there is no residue to grandfather. fig1_caption becomes a ratchet at the
+# post-cut measurement so a later round cannot restore the caption that was doing the
+# figure's job. body_homes is the FLOOR that composes with the provenance ceiling, and it
+# is here rather than in measure_negation_density because that file's PROTECTED floor is
+# a whole-file presence test: the probe deleted the false-negative disclosure from the
+# body and it still read 16/16, held up by three appendix twins. A ceiling on framing is
+# only safe next to a floor measured in the same window the framing was cut from.
+TARGETS = {"p_tokens": 7, "c_tokens": 8, "abstract": 1600, "prop_page": 3,
            "q5_pages": 3,
-           "bold_runs": 39, "emph_runs": 62, "max_xrefs": 5,
+           "bold_runs": 39, "emph_runs": 60, "max_xrefs": 5,
            "long_bold": 0, "joined": 0,
            "abs_sentence": 200, "causal_sec1": 6, "long_para": 850,
-           "jargon_front": 0, "design_vocab": 5}
+           "jargon_front": 0, "design_vocab": 5,
+           "spine_span": 2, "body_questions": 0, "provenance": 0,
+           "fig1_caption": 1153}
 
 # The phrase the twenty-second review quoted as the paper's least readable, matched on
 # the two words that carry it so a rewording that keeps the jargon still trips.
@@ -480,6 +591,120 @@ def paragraphs(text):
     return [(n, p) for n, p in out if not p.lstrip().startswith(skip)]
 
 
+# Lines a reader does not read as prose. Wider than paragraphs()' `skip`, and used
+# differently: these lines are DROPPED from a block rather than used to discard the whole
+# block, because the four question openers that matter most sit on the first prose line
+# after a heading.
+STRUCTURE = ("\\section", "\\subsection", "\\label", "\\begin{", "\\end{",
+             "\\bibliography", "\\vspace", "\\includegraphics", "\\centering",
+             "\\toprule", "\\midrule", "\\bottomrule", "\\phantomsection")
+
+
+def first_prose_line(text, start):
+    """The first line at or after `start` that a reader actually reads.
+
+    A block's recorded line is its FIRST line, which is routinely a provenance comment or
+    a \\section head -- :133 for the contributions paragraph, :272 for §3's opener. Citing
+    those in a response letter lands a reviewer on a comment, so every line reported here
+    is resolved to rendered prose first (see cited_lines_vs_iclr_margin_numbers).
+    """
+    lines = text.split("\n")
+    for i in range(start - 1, min(start + 40, len(lines))):
+        s = lines[i]
+        if not s.strip() or s.lstrip().startswith("%") or s.lstrip().startswith(STRUCTURE):
+            continue
+        return i + 1
+    return start
+
+
+def prose_blocks(text):
+    """(first rendered line, rendered text) per body block, structure lines dropped.
+
+    paragraphs() discards a block that OPENS with \\section or \\subsection, which is
+    right for the emphasis and cross-reference ratchets calibrated on it and wrong here:
+    it was blind to four of the body's thirteen question sentences, among them the paper's
+    own core question at :109 and the three subsection openers, i.e. precisely the sites
+    the twenty-fourth review's item 15 is about.
+    """
+    lines, a, b = body_window(text)
+    out, cur, start = [], [], None
+    for i in range(a, b + 1):
+        if i >= b or lines[i].strip() == "":
+            if cur:
+                out.append((start, "\n".join(cur)))
+            cur, start = [], None
+            continue
+        s = lines[i]
+        if s.lstrip().startswith("%") or s.lstrip().startswith(STRUCTURE):
+            continue
+        if start is None:
+            start = i + 1
+        cur.append(s)
+    return out
+
+
+def spine_paragraphs(text):
+    """(span, [(label, index, line), ...]) for SPINE_TEST over body paragraphs.
+
+    `span` is how many CONSECUTIVE body paragraphs a reader must read to meet all five
+    beats: the index distance from the earliest to the latest, inclusive. 1 means one
+    paragraph carries the whole core message. A beat present in several paragraphs is
+    credited to the earliest; a beat present in none returns None, so a reworded beat
+    fails loudly rather than shrinking the span.
+    """
+    paras = paragraphs(text)
+    found = []
+    for label, phrases in SPINE_TEST:
+        i = next((k for k, (_, p) in enumerate(paras)
+                  if all(x in p for x in phrases)), None)
+        found.append((label, i,
+                      None if i is None else first_prose_line(text, paras[i][0])))
+    idx = [i for _, i, _ in found]
+    span = None if any(i is None for i in idx) else max(idx) - min(idx) + 1
+    return span, found
+
+
+def body_questions(text):
+    """(n, unsanctioned, all) question sentences in rendered body prose.
+
+    Cross-reference arguments and inline macro wrappers go first, so
+    `\\emph{Preserved in which sense?}` is one question and not a brace soup. A
+    \\paragraph{...?} head counts: it is a question a reader is asked and must hold open,
+    which is the whole complaint.
+    """
+    out = []
+    for n, p in prose_blocks(text):
+        s = INLINE_MACRO.sub("", REF_ARG.sub(" ", p)).replace("}", " ")
+        s = " ".join(s.split())
+        out.extend((n, m.group(0).strip()) for m in QUESTION_RE.finditer(s)
+                   if m.group(0).strip())
+    bad = [(n, q) for n, q in out
+           if not any(k in q for k in SANCTIONED_QUESTIONS)]
+    return len(out), bad, out
+
+
+def provenance(text):
+    """(hits, [(line, pattern), ...]) for research-history framing in the body window."""
+    lines, a, b = body_window(text)
+    hits = []
+    for i in range(a, b):
+        s = uncomment(lines[i])
+        for rx in PROVENANCE_RE:
+            hits.extend((i + 1, rx.pattern) for _ in rx.finditer(s))
+    return len(hits), hits
+
+
+def body_homes(text):
+    """(present, total, [(name, line-or-None), ...]). A FLOOR over the body window."""
+    lines, a, b = body_window(text)
+    where = []
+    for name, pat in BODY_HOMES:
+        rx = re.compile(pat, re.I)
+        hit = next((i + 1 for i in range(a, b) if rx.search(uncomment(lines[i]))), None)
+        where.append((name, hit))
+    return sum(1 for _, h in where if h), len(BODY_HOMES), where
+
+
 def emphasis(text):
     """Bold/italic run counts, and the paragraphs breaking the one-long-bold rule.
 
@@ -630,6 +855,16 @@ def measure(text, pdf=None, tex_path=None):
     dv, dv_missing = design_vocabulary(text)
     out.update({"jargon_front": jf, "jargon_where": jf_where,
                 "design_vocab": dv, "design_missing": dv_missing})
+    span, spine_where = spine_paragraphs(text)
+    nq, bad_q, all_q = body_questions(text)
+    nprov, prov_where = provenance(text)
+    nhome, thome, home_where = body_homes(text)
+    out.update({"spine_span": span, "spine_where": spine_where,
+                "questions": nq, "body_questions": len(bad_q),
+                "questions_bad": bad_q, "questions_all": all_q,
+                "provenance": nprov, "provenance_where": prov_where,
+                "body_homes": nhome, "body_homes_total": thome,
+                "body_homes_where": home_where})
     # Which front-matter blocks are actually outside measure_body_chars' window, so
     # the "front matter funds the body" claim is measured and not recited.
     lines, a, _ = body_window(text)
@@ -691,6 +926,28 @@ def report(tag, m):
     jn = m["joined"]
     print(f"  comment-joined paras: {len(jn):>6}"
           + ("".join(f"\n{'':>26}lines {i}-{j}" for i, j in jn) if jn else ""))
+    sp = m.get("spine_span")
+    print(f"  spine span (paras)  : {sp if sp else '   n/a':>6}   "
+          f"(the review's five beats, in {sp} adjacent paragraph(s); "
+          f"its own threshold is {TARGETS['spine_span']})")
+    for label, i, line in m.get("spine_where", []):
+        print(f"{'':>26}{label:<24} "
+              f"{'para %d, :%d' % (i, line) if i is not None else 'NOT PRESENT'}")
+    print(f"  body questions      : {m.get('questions', 0):>6}   "
+          f"({m.get('body_questions', 0)} unsanctioned; "
+          f"{len(SANCTIONED_QUESTIONS)} are allowlisted by phrase)")
+    for n_, q in m.get("questions_bad", []):
+        print(f"{'':>26}:{n_} {q[:70]}")
+    print(f"  provenance framing  : {m.get('provenance', 0):>6}   "
+          f"(research-history framing in the body; the FACTS it frames are kept by "
+          f"body_homes below, since PROTECTED is a whole-file test)")
+    for n_, pat in m.get("provenance_where", []):
+        print(f"{'':>26}:{n_} {pat}")
+    print(f"  body homes (floor)  : "
+          f"{m.get('body_homes', 0)}/{m.get('body_homes_total', 0):<4}   "
+          f"(each fact the cut framing carried, at its destination IN THE BODY)")
+    for name, ln in m.get("body_homes_where", []):
+        print(f"{'':>26}{(':%d' % ln) if ln else 'NO BODY HOME':<13} {name}")
     n, tot, pct = m["negation"]
     print(f"  negation density    : {pct:>5.1f}%   ({n}/{tot} body sentences)")
     pg = m["prop_page"]
@@ -791,6 +1048,39 @@ def main():
                          f"{TARGETS['design_vocab']} design words in italics; "
                          f"missing {', '.join(now['design_missing'])} -- without them "
                          f"the five objects read as five contributions")
+        gone = [lbl for lbl, i, _ in now.get("spine_where", []) if i is None]
+        if gone:
+            fails.append("the review's five-beat core message cannot be located in the "
+                         f"body: {', '.join(gone)} not present -- either a beat was "
+                         "dropped or the phrase it is keyed on was reworded")
+        elif now["spine_span"] > TARGETS["spine_span"]:
+            fails.append(f"the core message is spread over {now['spine_span']} adjacent "
+                         f"paragraphs > {TARGETS['spine_span']}: a reader has to assemble "
+                         "it rather than read it ("
+                         + ", ".join(f"{lbl} :{ln}"
+                                     for lbl, _, ln in now["spine_where"]) + ")")
+        if now["body_questions"] > TARGETS["body_questions"]:
+            fails.append(f"{now['body_questions']} unsanctioned question sentence(s) in "
+                         f"the body > {TARGETS['body_questions']}: a reader is asked to "
+                         "hold a question open instead of being told the answer; lines "
+                         + ", ".join(str(n) for n, _ in now["questions_bad"]))
+        if now["provenance"] > TARGETS["provenance"]:
+            fails.append(f"{now['provenance']} research-history framing phrase(s) in the "
+                         f"body > {TARGETS['provenance']}: lines "
+                         + ", ".join(f"{n} ({p})" for n, p in now["provenance_where"])
+                         + " -- the DISCLOSED FACTS must stay (body_homes below is the "
+                         "floor for that); it is the framing that goes")
+        if now.get("body_homes", 0) < now.get("body_homes_total", 0):
+            lost = [nm for nm, ln in now["body_homes_where"] if ln is None]
+            fails.append("a fact the removed framing carried has NO BODY HOME: "
+                         + "; ".join(lost) + " -- measure_negation_density's PROTECTED "
+                         "floor cannot catch this, it searches the whole file and each of "
+                         "these has appendix twins, so it stays 16/16 with the body "
+                         "statement deleted. Restore the fact at its destination")
+        if now["fig1_caption"] > TARGETS["fig1_caption"]:
+            fails.append(f"Fig. 1 caption {now['fig1_caption']} chars > "
+                         f"{TARGETS['fig1_caption']} (ratchet: a caption that describes "
+                         "what the panels already draw may fall but not rise)")
         if len(now["joined"]) > TARGETS["joined"]:
             fails.append(f"{len(now['joined'])} comment block(s) weld two prose "
                          f"paragraphs into one (a comment line does not end a "
@@ -807,12 +1097,17 @@ def main():
               "§1 causal tokens <= %d and none before the FL problem, "
               "longest body paragraph <= %d, no paragraph with two long bold runs, "
               "no comment-joined paragraphs, the quoted jargon absent from the "
-              "abstract and §§1-2, and all %d design words fixed early"
+              "abstract and §§1-2, all %d design words fixed early, the five-beat core "
+              "message within %d adjacent paragraph(s), %d unsanctioned body questions, "
+              "%d research-history framing phrases, every fact that framing carried "
+              "still homed in the body, and Fig. 1's caption <= %d chars"
               % (TARGETS["p_tokens"], TARGETS["c_tokens"], TARGETS["abstract"],
                  TARGETS["abs_sentence"], TARGETS["prop_page"], TARGETS["q5_pages"],
                  TARGETS["bold_runs"], TARGETS["emph_runs"], TARGETS["max_xrefs"],
                  TARGETS["causal_sec1"], TARGETS["long_para"],
-                 TARGETS["design_vocab"]))
+                 TARGETS["design_vocab"], TARGETS["spine_span"],
+                 TARGETS["body_questions"], TARGETS["provenance"],
+                 TARGETS["fig1_caption"]))
     return 0
 
 
