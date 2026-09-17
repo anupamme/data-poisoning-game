@@ -256,3 +256,71 @@ sentence in the paper may say that it is. The paper's existing (L1) scope statem
   as frozen.
 - **No amendment to this document after any artifact for this arm exists.** An amendment before that
   point is appended, dated, and never a rewrite.
+
+## Amendment 1 (2026-09-17), appended before either runner existed and before any artifact for this arm
+
+Three facts surfaced while writing `measure_admission_normclip_cifar100.py` and
+`run_normclip_cifar100.py`. None of them moves a number, threshold, seed list, interval convention,
+premise, demotion clause or verdict literal. Nothing above is rewritten; this section is appended.
+
+### 1. The two existing instruments train a different number of local epochs, and this arm's dose is the first one that does not survive the difference
+
+`measure_admission.py:132` trains **one** local epoch per client per round
+(`cl[cid].train(srv.global_model, 1, 0.01, 64)`). Every ASR ladder in the paper trains
+`FLConfig.local_epochs = 2` (`config.py:9`, and `run_all_compositions.py:67` /
+`run_comparability_cells.py:57` both instantiate `FLConfig` without overriding it). So in this
+repository every channel premise has always been measured at 1 epoch and every ASR ladder run at 2.
+That is a pre-existing property of the instrument pair and it is harmless for the dose families,
+because kappa is a **scale-free** dispersion dial: the same kappa means the same dispersion whatever
+the update norms are.
+
+`norm_clip`'s dose is not scale-free. It is a **norm threshold**, so a tau measured on 1-epoch updates
+does not transfer to a 2-epoch ladder -- it would clip very nearly every client, and stage 1's premise
+checks would then certify a regime stage 2 does not run in. This arm is the first in the paper whose
+dose has units.
+
+Resolution, fixed here before any number exists:
+
+- Stage 1 traverses the **same seeds and the same rounds at both epoch counts**. The 1-epoch pass is
+  the like-for-like comparison against the frozen CIFAR-10 baselines, which are all 1-epoch numbers.
+  The 2-epoch pass is the configuration stage 2 actually runs.
+- **Premise 1 is evaluated on the 1-epoch pass**, because that is the configuration in which the
+  0.05 floor was calibrated and in which all seven existing rows in the table above were measured.
+  The 2-epoch number is printed beside it, and **if the two passes disagree on either half of
+  condition 1, the arm is NOT eligible.** That is the conservative direction and it is fixed now
+  rather than after the numbers are seen.
+- **tau\* is the median client update norm of the 2-epoch pass**, because the clip must be a threshold
+  on the updates it will actually face. Both medians are recorded in the artifact. The rule frozen
+  above -- the median client update norm measured in stage 1, roughly half the clients clipping -- is
+  unchanged; this fixes which of stage 1's two passes instantiates it, which the frozen text left
+  open, and it is the only reading under which the rule's stated purpose holds in stage 2.
+- **Premises 2 and 3 are evaluated at both epoch counts and must pass at both.**
+
+### 2. The tau = infinity leg already has a published bit-exact anchor, so the harness check gains a second leg
+
+Cell 7 of the comparability suite already publishes `coord_median` standalone on
+CIFAR-100 / `cifar_cnn` / `committed_pixel` at **seeds 42--46**, under key
+`dose_kappa0.0_then_coord_median|committed_pixel|cifar100` in
+`results/comparability_cells/summary.json`, mean ASR **0.7033939393939395**. `doseS_kappa0.0` carries
+the identical mean, which is the identity rung's bit-identity already realized on this dataset.
+
+At kappa = 0 `apply_d1_transform` returns the update list unwrapped, and at tau = infinity it returns
+`{k: u[k] * 1.0}`. Multiplying a float32 tensor by exactly `1.0` is bit-identical, and `CifarCNN` uses
+GroupNorm (`fl_core/models.py:26`) so no update entry is an integer buffer that promotion could
+disturb. So this arm's identity leg **is** that published rung, computed again.
+
+Stage 2 still runs all ten runs as registered and transcribes nothing. What changes is only the check:
+`--harness-check` gains a **second** check, reproducing that published CIFAR-100 row at seed 42 to
+< 1e-9. The registered CIFAR-10 check is unchanged and remains check 1. After the ladder completes,
+all five identity seeds are compared against the five published values and the comparison is written
+into the artifact. A mismatch is reported, not absorbed.
+
+### 3. One loop reproduces both anchors, and that is asserted rather than assumed
+
+The two published anchors were produced by two loops that differ in one argument:
+`run_all_compositions.run_one` constructs `FederatedServer` without a clean holdout, and
+`run_comparability_cells.run_one` constructs it with `clean_holdout_dataset=Subset(td, range(100))`.
+`clean_holdout_dataset` is read only by `_fltrust` (`fl_core/federated.py:225`), so it is inert for
+`coord_median`: it consumes no RNG and touches no update. Stage 2 therefore carries **one** loop and
+reproduces both anchors with it. If either check fails, that inference was wrong and the runner
+refuses to start.
