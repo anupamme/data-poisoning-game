@@ -46,7 +46,7 @@ from experiments.analyze_targeted_dose import (  # noqa: E402
 # and the SAME arm/attack pairing the published channel table uses, or the figure and the table can
 # disagree about what "the support of the adversarial mass changed" means.
 from experiments.build_channel_table import (  # noqa: E402
-    ADM_FEMNIST, MASS, ROWS, channel_rows)
+    MASS, ROWS, SRC_REGIME, channel_rows)
 # Panel (c) reads BOTH its point estimates and its intervals from this artifact and computes neither,
 # so the figure cannot report a different number, or a differently-derived interval, from the caption
 # and the body that quote the same generator.
@@ -226,11 +226,22 @@ def draw_dag(ax, tag="(a) "):
     assert abs(d_ck - (ck[0]["mean"] - ck[1]["mean"])) < 1e-3, (d_ck, ck[0]["mean"], ck[1]["mean"])
     assert ck[1]["acc"] >= ACC_FLOOR, ck[1]["acc"]                   # the rung's own gate, not assumed
 
-    # pooled over the channel table's own cells: each arm under ITS OWN committed attack
+    # pooled over the channel table's own cells: each arm under ITS OWN committed attack.
+    # Round 70: the filter used to read `if srcf == ADM_FEMNIST: continue`, i.e. it excluded by DATASET,
+    # and that silently went wrong when Round 68/69 added ("Krum (ResNet18)", ..., ADM_RESNET18) to ROWS
+    # -- a CIFAR-10 row that the dataset test therefore ADMITS. The pool grew 240 -> 312 rounds with no
+    # edit to this file, and because nothing regenerated the PDF the committed artwork still printed
+    # 0/240 while the generator would have drawn 0/312. The intended pool is the one this function's own
+    # comment below and `main.tex`'s "$240$ in total" both name: the FOUR cifar_cnn arms, which is the
+    # only homogeneous pool here (60 measured rounds each, against ResNet18's 72 and EMNIST's 56, so a
+    # mixed denominator would also falsify "60 measured rounds each"). Exclude by (dataset, model), and
+    # assert the pool, because the failure mode is a row joining ROWS upstream and nothing here noticing.
     n_rounds = n_changed = n_present = 0
+    n_arms = 0
     for _, arm, attack, srcf in ROWS:
-        if srcf == ADM_FEMNIST:
-            continue                                    # CIFAR-10 arms only, so one dataset is counted
+        if SRC_REGIME[srcf] != ("cifar10", "cifar_cnn"):
+            continue                        # one dataset AND one architecture, so the horizon is uniform
+        n_arms += 1
         field, _ = MASS[arm]
         for rung in (0.0, 0.5, 1.0, 2.0):
             for r in channel_rows(srcf, arm, attack, rung):
@@ -238,6 +249,9 @@ def draw_dag(ax, tag="(a) "):
                 n_rounds += 1
                 n_changed += int((b > 0.0) != (q > 0.0))
                 n_present += int(b > 0.0)
+    # The three numbers `main.tex` quotes in prose for this annotation, pinned here so a change upstream
+    # fails loudly instead of redrawing the panel under a caption that no longer describes it.
+    assert (n_arms, n_rounds, n_present) == (4, 240, 100), (n_arms, n_rounds, n_present)
 
     CH, BRK, CONF = "#1f5fa6", "#b03a2e", "#a9780a"
 
@@ -615,12 +629,14 @@ draw_modeA(bxA, tag="")
 fA.tight_layout()
 save(fA, "targeted_modeA.pdf")
 
-# --- the body float for BOTH papers: the causal structure (a), the Mode-S evidence (b), the reversal (c).
+# --- the body float for BOTH papers: the causal structure (a) and the reversal (b). Round 70 dropped
+# the Mode-S evidence panel from between them; see the note above fC below for what moved where.
 # Emitted under a NEW name so nothing that references targeted_modeS.pdf changes. Sized at the printed
 # width (5.5in ~ NeurIPS \linewidth) rather than 6.4in, so labels render at their nominal point size
 # instead of being downscaled -- the previous single panel was set at 0.37\linewidth from a 6.4in
 # canvas, a 0.32x reduction that left its axis labels near-illegible.
-# FIVE rows, two of them empty spacers, because the two gaps need very different sizes and a single
+# Until Round 70 this was FIVE rows, two of them empty spacers, because the two gaps needed very
+# different sizes and a single
 # hspace cannot give them: panel (b) carries a two-line x tick band (rho over kappa) AND an x label
 # beneath it, so the (b)->(c) gap has ~11pt more to clear than the (a)->(b) gap does. With one hspace,
 # buying enough room below (b) meant paying for the same room below (a) and shrinking every panel to
@@ -633,14 +649,34 @@ save(fA, "targeted_modeA.pdf")
 # 3.82, so the figure's own height is untouched, and the 0.20 came from panel (b) (0.84 -> 0.76) and
 # from the (b)->(c) spacer (0.84 -> 0.72, spending ~7.6pt of the 14.4pt of clear space measured above
 # and leaving ~6.8pt). Because save() uses bbox_inches="tight", the NATIVE size is set by content and
-# not by figsize: the check that matters is that 423.4 x 237.6pt is unchanged, since main.tex includes
-# this at a fixed width and any aspect change silently moves every page after it.
-fC = plt.figure(figsize=(5.5, 3.36))
-_gs = fC.add_gridspec(5, 1, height_ratios=[1.12, 0.12, 0.76, 0.72, 1.10], hspace=0.0)
-cx, cbx, ccx = fC.add_subplot(_gs[0]), fC.add_subplot(_gs[2]), fC.add_subplot(_gs[4])
+# not by figsize: the check that matters is the native size, since main.tex includes this at a fixed
+# width and any aspect change silently moves every page after it. That size has moved twice since this
+# note was written (423.4 x 237.6 -> 431.5 x 238.3 in Round 63, -> 431.5 x 175.1 in Round 70); the
+# CURRENT value is recorded with the Round 70 note below rather than restated here in three places.
+#
+# Round 70, the tenth review's item (6): "simplify Figure 1 to just the two designs and the two numbers,
+# move the channel dissociations to Figure 2". The middle panel is DROPPED from this composite, so the
+# body float is now the vocabulary/level chain (a) and the seven-cell reversal (b). Three consequences,
+# all checked rather than assumed:
+#  * No evidence leaves the paper. draw_modeS's content is already emitted standalone as
+#    targeted_modeS.pdf above, which until this round was referenced by NOTHING in main.tex,
+#    supplementary.tex or workshop_paper/main.tex; it now carries its own appendix float, where the
+#    Mode-S dose evidence is already discussed at length.
+#  * The panel LETTER of the reversal changes (c) -> (b). Every surviving \ref in both documents names
+#    panel (a) -- main.tex's Mode-S instrument paragraph, its App. J pointer, its lower-arc paragraph and
+#    supplementary.tex -- so no cross-reference breaks; the one sentence that went false is main.tex's
+#    "Mode~S itself is Figure~\ref{fig:modeS}", which is repointed in the same round.
+#  * The native size MOVES, and that is a page-budget item, not only a figure edit: dropping a row and
+#    its spacer takes the ratios from 3.82 to 2.52 units, and figsize's height is cut in the same
+#    proportion (3.36 -> 2.22in) so each surviving panel keeps its absolute height rather than being
+#    stretched to fill the old canvas. The (a)->(b) gap is raised 0.12 -> 0.30 because it now has to
+#    clear draw_dag's "cut: c=1.0, share" annotation above draw_reversal's title; at 0.12 the old panel
+#    (b)'s title already printed into that annotation.
+fC = plt.figure(figsize=(5.5, 2.22))
+_gs = fC.add_gridspec(3, 1, height_ratios=[1.12, 0.30, 1.10], hspace=0.0)
+cx, ccx = fC.add_subplot(_gs[0]), fC.add_subplot(_gs[2])
 draw_dag(cx)
-draw_modeS(cbx, tag="(b) ", compact=True)
-draw_reversal(ccx, tag="(c) ")
+draw_reversal(ccx, tag="(b) ")
 save(fC, "modeS_causal.pdf")
 
 # --- combined two-panel layout, kept so the ICLR paper's existing float need not change

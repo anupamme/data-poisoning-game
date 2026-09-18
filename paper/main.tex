@@ -63,11 +63,109 @@ Paper under double-blind review}
 % do-not-claims are separate sentences precisely so neither can be read as a subordinate clause of
 % the other. Only the bold shrank, from the thesis-plus-consequence to the thesis alone.
 \begin{abstract}
-\textbf{A preserved statistic is not preserved suppression.} No test that admits a composition because one constituent already suppresses the attack can identify whether the downstream mechanism caused its success. Federated learning composes defenses never designed together, so requiring the downstream \emph{statistic} to survive the upstream stage is the natural repair. It fails structurally rather than statistically: the gate selects on the very outcome to be explained, so the comparison identification needs is missing at any $n$. The repair is a design, not a better criterion: hold the downstream defense and the attack fixed and intervene on the upstream transform. Ignoring this costs not power but the sign. On one cell the outcome-gated design moves $-0.273$ where the within-defense design moves $+0.125$ at $n{=}20$, both $95\%$ intervals excluding zero. The two designs disagree on five of seven cells, and the reversal replicates on CIFAR-100. Two dissociations say why, with the adversary's coefficient pinned so the attack cannot weaken. Krum's decision flips in up to $80\%$ of rounds while it admits no adversary at all and suppression stays inside a pre-registered $\pm0.15$ margin. Conversely \texttt{cos\_krum}'s selection is bit-identical while ASR falls $0.173$. The negative replicates in a second invariance class and outside the theory's rescaling family. We do \emph{not} claim that admission predicts security. And no gate of this shape can certify \emph{emergent} suppression, so recall is capped structurally, our own lowest-ASR composition the witness.
+\textbf{A preserved statistic is not preserved suppression.} No test that admits a composition because a constituent already suppresses the attack can identify whether the downstream mechanism caused it. Federated learning composes defenses never designed together, so requiring the downstream \emph{statistic} to survive that stage is the natural repair. It fails structurally, not statistically: the gate selects on the outcome to be explained, so identification's comparison is missing at any $n$. The repair is a design, not a better criterion: hold the downstream defense and attack fixed and intervene on the upstream transform. Ignoring this costs not power but the sign. On one cell the outcome-gated design moves $-0.273$ where the within-defense design moves $+0.125$ ($n{=}20$, both $95\%$ intervals excluding zero). The designs disagree on five of seven cells, and the reversal replicates on CIFAR-100. Two dissociations say why, the adversary's coefficient pinned so the attack cannot weaken. Krum's decision flips in up to $80\%$ of rounds while it admits no adversary and suppression stays inside a pre-registered $\pm0.15$ margin. Conversely \texttt{cos\_krum}'s selection is bit-identical while ASR falls $0.173$. The negative replicates in a second invariance class and outside the rescaling family; inside it, an oracle-free replication was attempted and did not carry. We do \emph{not} claim that admission predicts security. No gate of this shape can certify \emph{emergent} suppression, so recall is capped structurally, our own lowest-ASR composition the witness.
 \end{abstract}
 
+\section{Introduction}
+\label{sec:intro}
+% Round 58, reviewer item #1. The words are the ones that were here; what changed is that the four
+% bolded run-in heads ("The question." / "Why the natural answer fails." / "What replaces it." /
+% "Whether it matters.") became paragraph breaks, so a reader meets one idea per paragraph instead of
+% four in an eleven-line block. No number and no clause was dropped.
+\noindent A composition of two defenses suppresses an attack. \textbf{Is the downstream defense's mechanism what suppressed it?} Everything below is an answer to that one question.
+
+% Round 61, reviewer "don't lead with causal". The order was question, evaluation failure, corrected
+% design, measured facts, FL grounding; it is now question, FL grounding, measured facts, evaluation
+% failure, corrected design, which is the review's requested chain (FL problem -> evaluation failure ->
+% causal explanation -> corrected design). :85 is unmoved and unedited; the review says keep it.
+% Three things changed inside the moved text and nothing was dropped. (1) The second measured fact used
+% to read "a composition can leave a downstream statistic bit-identical while the suppression that
+% follows it moves", which is true and unusable: both dissociations are now named with their numbers
+% here, where the story needs them, rather than only inside contribution item (3) at :114. Those numbers
+% are tab:channels rows 1 and 6 and are stated again at :305 and :373. (2) "committed (non-adaptive)"
+% is added at the first statement of the finding: every C1-bearing claim in the paper assumes a
+% committed adversary, and the caveat previously first surfaced on p6. box:scope now carries it too.
+% (3) The FL grounding paragraph gains \noindent, matching the four paragraphs it now sits among.
+\noindent Federated learning~\citep{mcmahan2017communication} is vulnerable to data poisoning~\citep{chen2017targeted,bagdasaryan2020backdoor}, and an arms race has produced defenses~\citep{fung2020foolsgold,pillutla2022robust,yin2018byzantine,blanchard2017machine} with accuracy/robustness trade-offs and no dominant member (Appendix~\ref{app:related}). \emph{Can we compose them for stronger robustness?} Composition does not even commute: FoolsGold$\to$CoordMedian suppresses a pixel backdoor to ASR $0.099$ while the reverse reaches $0.732$, that order collapsing to FoolsGold alone bit-identically, since a rank aggregator emits one vector rather than per-client updates.
+
+% Round 67, the twenty-fourth review's #1 and its own acceptance test. The five beats were already
+% on pages 1-2 and the reviewer still did not assemble them: they were spread over :127, :129, :137
+% and a bulleted list, so measure_clarity_load gates CONTIGUITY (spine_span), not position. This
+% paragraph is the review's own "core message in three sentences", in our numbers; :127 and :129 are
+% absorbed here rather than duplicated, and "propose no new defense" moves up from :137. Nothing is
+% dropped: the attenuation reason is :129's last sentence, kept because this is its only page-1
+% statement (its downstream homes are :361, :384 and :484). It stays BELOW :123 so the FL problem is
+% still the first thing a reader meets -- causal_after_grounding is a gated boolean, and a spine
+% above :123 would put "counterfactual" ahead of "federated" and flip it.
+\noindent \textbf{We propose no new defense.} Preserving what the downstream defense reads leaves open whether the composition still suppresses the attack. The natural test admits a composition because one constituent already suppresses the attack, and so cannot answer the question at any sample size: it removes the counterfactual support identification requires.
+
+% Round 67, from the 300-dpi read of pp1--2 and not from any gate: the spine's two paragraphs are
+% adjacent in the source (spine_span reads 2, which is what it measures) but Figure 1 floated to the
+% top of p2 BETWEEN them, so "What replaces it" was a definite reference separated from its
+% antecedent by a page break and a full figure with a 9-line caption. spine_span cannot see this;
+% only pixels can. Naming the antecedent costs 12 chars and the page gate still passes.
+% Round 70, the tenth review's items (1) and (6), and its own acceptance test. Two changes here.
+% (1) The float itself is moved BELOW this paragraph (see the figure block), which is what actually
+% closes the Round 67 note above: the two spine paragraphs are now adjacent in PIXELS as well as in
+% the source, so the figure lands where panel (a) illustrates a reversal the reader has just read.
+% (2) The reversal was the last 96 chars of this paragraph's third sentence, so nothing a reader's
+% eye lands on carried the paper's central empirical result, and the CIFAR-100 replication lived
+% only in §5 and inside Figure 1's panel. Both are now a display. The display is INSIDE this
+% paragraph, with no blank line above or below it, because spine_span is a ceiling of 2 SOURCE
+% paragraphs and paragraphs() ends a paragraph at a blank line and nowhere else -- a blank line
+% here would read as a third paragraph and fail a hard gate. No \textbf is spent (bold is at its
+% 39 cap) and no \emph (59 of 60). prose_len stops at the first \begin{, so this paragraph's
+% long_para reading is its lead-in alone; that is the instrument's own rule, not a re-baseline.
+% Every number is transcribed from a body site rather than from memory: the CIFAR-10 row from
+% :499 and Table~\ref{tab:sixcell}'s coord_median/pixel row, the CIFAR-100 row from the same
+% table's cell-7 row and its §\ref{app:sixcell} paragraph. Both rows' intervals exclude zero,
+% which is why the sentence below states that of both, and only the first pair is disjoint.
+% The FORM is a tabular rather than two centred prose lines, and the lead-in ends in a full stop
+% rather than a colon, because the prose form failed twice in ways only a pixel read sees. Each
+% row was wider than the column at \small, so it wrapped and left "within-defense" on one line
+% with its number centred on the next; and the two rows are separated by a page break, which put
+% the CIFAR-10 row at the foot of p1 and the CIFAR-100 row on p2 below the whole figure and its
+% caption. A tabular is a single unbreakable box, so it cannot wrap and cannot split; the full
+% stop means a break before it leaves p1 ending on a sentence rather than on a dangling colon.
+\noindent What replaces the gated test is a design rather than a better test: hold the downstream defense and the attack fixed and intervene on the upstream transform, instead of comparing across a menu of defenses. The transform can weaken the attack itself, so an outcome-gated comparison credits the downstream defense with a fall in ASR that attenuation upstream produced. On one cell that change reverses the \emph{sign}, and the reversal replicates on a third dataset.
+\begin{center}\small\vspace{-3pt}
+\begin{tabular}{@{}l@{\quad}c@{\quad}c@{}}
+\toprule
+$\Delta$ASR, one cell & outcome-gated & within-defense \\
+\midrule
+CIFAR-10, $n{=}20$ & $-0.273\ [-0.334,-0.213]$ & $+0.125\ [+0.095,+0.155]$ \\
+CIFAR-100, $n{=}5$ & $-0.213\ [-0.284,-0.141]$ & $+0.071\ [+0.031,+0.110]$ \\
+\bottomrule
+\end{tabular}\vspace{-3pt}
+\end{center}
+\noindent Both paired $95\%$ intervals exclude zero on each row and are disjoint on the first; the rows hold aggregator, attack and rung grid fixed and differ in dataset at the $n$ shown (§\ref{sec:targeted}, App.~\ref{app:sixcell}).
+
+% Round 70, the tenth review's items (1)/(5): the four-step story (question -> problem -> repair ->
+% evidence) inside the first pages. This paragraph was :133, ABOVE the problem, where it spent five
+% numbers and two mechanisms before a reader knew why any of them mattered -- the density the review
+% calls "too many concepts competing for the reader's attention". It is moved WHOLE and unedited:
+% every number, the "committed (non-adaptive)" caveat and both \ref targets travel with it, so no
+% definite reference is stranded -- contribution item (3) below still reads "the two measured facts
+% above", and this paragraph is still above it. Round 61's order (question, FL grounding, measured
+% facts, evaluation failure, corrected design) answered a reviewer who asked not to lead with causal
+% language; that constraint is about what precedes the FL grounding at :131, which is unmoved, and
+% causal_after_grounding still finds its first causal token after it. The two reviews are recorded
+% together rather than one silently overwriting the other.
+\noindent Two measured facts put the question there in the first place. Two defenses that each fail alone can jointly suppress a committed (non-adaptive) attack: FoolsGold$\to$RFA reaches ASR $0.093$ where FoolsGold alone reaches $0.732$ and RFA alone $0.845$. And the link an evaluator leans on breaks in both directions: Krum's selection flips in $0.733$ of rounds while its admission is unchanged and its suppression does not follow ($|\Delta|{=}0.026$), while \texttt{cos\_krum}'s selection is bit-identical at every rung and its ASR nonetheless \emph{falls} $0.173$ (both drawn in Fig.~\ref{fig:story}, App.~\ref{app:story}).
+
+% Placement is a pixel finding, not a preference, and BOTH obvious options failed first. Declared just
+% below the repair paragraph with [t], the float is placed at the TOP of the page the display falls on,
+% because LaTeX flushes the [t] queue before typesetting that page's text -- so page 1 ended on the
+% display's own colon ("...on a third dataset:") and the reader had to cross a full figure and a 9-line
+% caption to reach the two numbers that colon promises: the Round 67 defect above, reintroduced by the
+% move meant to close it. [b] at the same point was worse and silently so: LaTeX could not seat a bottom
+% float there and DEFERRED it to page 72, at which point the body page gate passed only because the
+% figure had left the body altogether. That is a false pass no gate here can see -- measure_body_chars
+% reads the Conclusion's page, not whether Figure 1 is still on page 2 -- and only the pixel read caught
+% it. The float is therefore declared after the measured-facts paragraph and kept [t], which puts the two
+% numbers directly after the colon at the top of page 2 and the figure at the top of page 3, one page
+% below the claim its panel (b) quantifies. Re-check the PAGE, not just the gate, after any edit above.
 \begin{figure}[t]
-\centering
 % Round 58 cut this to 0.80\linewidth (the comment used to say 0.85, which was never what the line
 % below read). At full width it renders ~222pt tall, close to half of page 1's text block, and that
 % round needed the space to seat fig:identification in the body. Nothing was cropped or redrawn;
@@ -104,59 +202,41 @@ Paper under double-blind review}
 % CIFAR-10 arms rather than Krum alone; the per-row $n$ note (Round 63 -- the panel prints no $n$ and
 % the order is not guessable); and the dashed rule's meaning, which has no second home anywhere.
 % "solid links" stays plural: the generator draws TWO of them.
-\caption{\textbf{The paper in one figure. Preserving the statistic a downstream defense reads does not identify preserved attack suppression.} \textbf{(a)} The chain a preservation check reasons along, at the levels of Def.~\ref{def:levels}: solid links hold by definition, each dashed link is marked $\nRightarrow$ for not implied, and the lower arc is the attenuation channel Mode~S (§\ref{sec:targeted}) cuts by construction. Its three numbers are three scopes, not one experiment (App.~\ref{app:story}), and the middle one pools four CIFAR-10 arms rather than Krum alone. \textbf{(b)} Krum under model scaling (§\ref{sec:targeted}): the decision flips while admission does not, and ASR stays inside the pre-registered $\pm0.15$ margin (Student-$t$ $95\%$ bars, $n{=}5$). \textbf{(c)} Seven cells, one contrast each, estimated both ways (App.~\ref{app:sixcell}): the design choice changes the answer on $5$ of $7$ and its sign on $2$. Row labels carry $n$ per cell, outcome-gated/Mode~S where the two differ, and the four cells above the dashed rule are training data for a since-withdrawn rule rather than evidence for it (Table~\ref{tab:sixcell}).}
+% Round 70, the tenth review's item (6) ("Figure 1 tries to do too much") and its item (10) (a
+% canonical terminology diagram). Three panels become two: the middle Mode-S dose panel is dropped
+% from the composite and is now Fig.~\ref{fig:modeS_dose}, which is the SAME artwork the generator
+% already emitted standalone as targeted_modeS.pdf and which nothing referenced. No evidence leaves
+% the paper and no generator is added. What is cut here is that panel's sentence only; every
+% disclosure the Round 67 note above lists is kept verbatim, including the middle number's pooling.
+% Panel (a) is now NAMED as the vocabulary map, which is where the review's asked-for terminology
+% diagram already existed, and the vocabulary table's own paragraph (:490) points at it rather than a
+% new float being added. That table is a bare center+tabular with no \label, deliberately -- a \label
+% inside center numbers the SECTION, not a table -- so the pointer runs from the prose to this figure
+% and not the other way.
+% fig1_caption is re-baselined DOWNWARD (1153 -> the new measurement) because a ceiling that a
+% deletion loosens must be retightened or it stops measuring anything.
+% Native size moved 431.5 x 238.3 -> 431.5 x 175.1 pt, so at this fixed width the render is 26%
+% SHORTER and every page after this float moves: that is a page-budget item, measured after a
+% fixpoint build and never predicted from the source.
+% The bold head is now the abstract's own thesis sentence, verbatim, for two reasons. (i) The float
+% moved INSIDE §1, so its caption entered measure_clarity_load's §1 window and the old head's "does
+% not identify" took causal_sec1 from 6 to 7, failing a ratchet -- and the two §1 tokens that could
+% otherwise have been spent are both SPINE_TEST literals ("removes the counterfactual support
+% identification requires", "intervene on the upstream transform") and cannot be touched. (ii) The
+% tenth review's whole complaint is that the one central idea is hard to find; repeating the abstract's
+% thesis word for word under the figure is the cheapest possible answer to it, and it is 62 chars
+% shorter than the sentence it replaces.
+\caption{\textbf{The paper in one figure. A preserved statistic is not preserved suppression.} \textbf{(a)} The chain a preservation check reasons along, and the map of this paper's vocabulary, at the levels of Def.~\ref{def:levels}: solid links hold by definition, each dashed link is marked $\nRightarrow$ for not implied, and the lower arc is the attenuation channel Mode~S cuts by construction. Its three numbers are three scopes, not one experiment (App.~\ref{app:story}), and the middle one pools four CIFAR-10 arms rather than Krum alone. \textbf{(b)} Seven cells, one contrast each, estimated both ways (App.~\ref{app:sixcell}): the design choice changes the answer on $5$ of $7$ and its sign on $2$. Row labels carry $n$ per cell, outcome-gated/Mode~S where the two differ, and the four cells above the dashed rule are training data for a since-withdrawn rule rather than evidence for it (Table~\ref{tab:sixcell}). The Mode~S dose evidence is Fig.~\ref{fig:modeS_dose}.}
 \label{fig:modeS}
 \end{figure}
 
-\section{Introduction}
-\label{sec:intro}
-% Round 58, reviewer item #1. The words are the ones that were here; what changed is that the four
-% bolded run-in heads ("The question." / "Why the natural answer fails." / "What replaces it." /
-% "Whether it matters.") became paragraph breaks, so a reader meets one idea per paragraph instead of
-% four in an eleven-line block. No number and no clause was dropped.
-\noindent A composition of two defenses suppresses an attack. \textbf{Is the downstream defense's mechanism what suppressed it?} Everything below is an answer to that one question.
-
-% Round 61, reviewer "don't lead with causal". The order was question, evaluation failure, corrected
-% design, measured facts, FL grounding; it is now question, FL grounding, measured facts, evaluation
-% failure, corrected design, which is the review's requested chain (FL problem -> evaluation failure ->
-% causal explanation -> corrected design). :85 is unmoved and unedited; the review says keep it.
-% Three things changed inside the moved text and nothing was dropped. (1) The second measured fact used
-% to read "a composition can leave a downstream statistic bit-identical while the suppression that
-% follows it moves", which is true and unusable: both dissociations are now named with their numbers
-% here, where the story needs them, rather than only inside contribution item (3) at :114. Those numbers
-% are tab:channels rows 1 and 6 and are stated again at :305 and :373. (2) "committed (non-adaptive)"
-% is added at the first statement of the finding: every C1-bearing claim in the paper assumes a
-% committed adversary, and the caveat previously first surfaced on p6. box:scope now carries it too.
-% (3) The FL grounding paragraph gains \noindent, matching the four paragraphs it now sits among.
-\noindent Federated learning~\citep{mcmahan2017communication} is vulnerable to data poisoning~\citep{chen2017targeted,bagdasaryan2020backdoor}, and an arms race has produced defenses~\citep{fung2020foolsgold,pillutla2022robust,yin2018byzantine,blanchard2017machine} with accuracy/robustness trade-offs and no dominant member (Appendix~\ref{app:related}). \emph{Can we compose them for stronger robustness?} Composition does not even commute: FoolsGold$\to$CoordMedian suppresses a pixel backdoor to ASR $0.099$ while the reverse reaches $0.732$, that order collapsing to FoolsGold alone bit-identically, since a rank aggregator emits one vector rather than per-client updates.
-
-\noindent Two measured facts put the question there in the first place. Two defenses that each fail alone can jointly suppress a committed (non-adaptive) attack: FoolsGold$\to$RFA reaches ASR $0.093$ where FoolsGold alone reaches $0.732$ and RFA alone $0.845$. And the link an evaluator leans on breaks in both directions: Krum's selection flips in $0.733$ of rounds while its admission is unchanged and its suppression does not follow ($|\Delta|{=}0.026$), while \texttt{cos\_krum}'s selection is bit-identical at every rung and its ASR nonetheless \emph{falls} $0.173$ (both drawn in Fig.~\ref{fig:story}, App.~\ref{app:story}).
-
-% Round 67, the twenty-fourth review's #1 and its own acceptance test. The five beats were already
-% on pages 1-2 and the reviewer still did not assemble them: they were spread over :127, :129, :137
-% and a bulleted list, so measure_clarity_load gates CONTIGUITY (spine_span), not position. This
-% paragraph is the review's own "core message in three sentences", in our numbers; :127 and :129 are
-% absorbed here rather than duplicated, and "propose no new defense" moves up from :137. Nothing is
-% dropped: the attenuation reason is :129's last sentence, kept because this is its only page-1
-% statement (its downstream homes are :361, :384 and :484). It stays BELOW :123 so the FL problem is
-% still the first thing a reader meets -- causal_after_grounding is a gated boolean, and a spine
-% above :123 would put "counterfactual" ahead of "federated" and flip it.
-\noindent \textbf{We propose no new defense.} Preserving what the downstream defense reads leaves open whether the composition still suppresses the attack. The natural test admits a composition because one constituent already suppresses the attack, and so cannot answer the question at any sample size: it removes the counterfactual support identification requires.
-
-% Round 67, from the 300-dpi read of pp1--2 and not from any gate: the spine's two paragraphs are
-% adjacent in the source (spine_span reads 2, which is what it measures) but Figure 1 floats to the top
-% of p2 BETWEEN them, so "What replaces it" was a definite reference separated from its antecedent by a
-% page break and a full figure with a 9-line caption. spine_span cannot see this; only pixels can.
-% Naming the antecedent costs 12 chars and the page gate still passes.
-\noindent What replaces the gated test is a design rather than a better test: hold the downstream defense and the attack fixed and intervene on the upstream transform, instead of comparing across a menu of defenses. The transform can weaken the attack itself, so an outcome-gated comparison credits the downstream defense with a fall in ASR that attenuation upstream produced. On one cell that change reverses the \emph{sign}: $-0.273$ outcome-gated against $+0.125$ within-defense at $n{=}20$.
-
-\textbf{Why the question is sharper without a trusted coordinator.} A contributor clips, a scheduler reweights by reputation, and whoever merges aggregates robustly: three independently developed mechanisms, nobody owning the stack, so the only check at each seam is that the next stage still reads what it expects. We claim no transfer beyond the controlled setting we study (p\pageref{box:scope}), though the seam, rather than the scale, is what the problem is about.
+\textbf{Why the question is sharper without a trusted coordinator.} A contributor clips, a scheduler reweights by reputation, and whoever merges aggregates robustly: three independently developed mechanisms, nobody owning the stack, so the only check at each seam is that the next stage still reads what it expects. We claim no transfer beyond the controlled setting we study (page~\pageref{box:scope}).
 
 % Round 58, reviewer items #1/#6/#11. This preamble used to recite the five preservation levels in
 % prose before Def.~\ref{def:levels} states them, so a reader met P1--P5 twice before either
 % mention was usable. The recital is deleted, not moved: :174--:185 is its home, and "suppression
 % = max-committed ASR, never the statistic or the decision" is fixed at :187 and again at :267.
-\noindent\textbf{Contributions.} The question is scientific rather than operational: whether an evaluation can identify that a mechanism \emph{caused} an observed suppression, not whether a deployment can detect malicious clients. Preservation is a hierarchy, and statistic-level invariance is not a causal surrogate for security-level preservation (§\ref{sec:framework}). The single central contribution is therefore that evaluation-design result; the screen it implies is priced rather than validated, and we do not claim it certifies security.
+\noindent\textbf{Contributions.} The question is scientific rather than operational: whether an evaluation can identify that a mechanism \emph{caused} an observed suppression, not whether a deployment can detect malicious clients. Preservation is a hierarchy, and statistic-level invariance is not a causal surrogate for security-level preservation (§\ref{sec:framework}). The screen that result implies is priced rather than validated, and we do not claim it certifies security.
 
 % Round 61, reviewer item #7. The list was already THREE items; what was wrong is that each item was a
 % four-sentence paragraph doing the narrative's job, so the two dissociations a reader should remember
@@ -167,8 +247,8 @@ Paper under double-blind review}
 % §\ref{sec:testability} where a reviewer can point at it, and "the two are not the same intervention"
 % is :306's whole subject. 2122 chars to ~1150, which is what funds this round's additions.
 \begin{enumerate}[noitemsep,topsep=2pt,leftmargin=*,label=\textbf{(\arabic*)}]
-\item \textbf{Two impossibility results (§\ref{sec:testability}).} An inherited-suppression gate selects on the very outcome to be explained, so one cell of the relevant $2\times2$ is empty for \emph{every} menu and no sample size repairs it (Prop.~\ref{prop:identification}). The gate it describes is a documented convention whose prevalence we measured rather than assumed, at $6$ of $59$ coded composed-defense papers ($10.2\%$) gating attribution on the composed outcome while running no identifying contrast, against $46$ ($78\%$) that do run one (one coder, no inter-rater statistic; App.~\ref{app:audit}). Emergent suppression fails such a gate by definition, so any evaluator using one accepts a blind spot for emergent synergy (Prop.~\ref{prop:emergent}, Cor.~\ref{cor:zero_recall}).
-\item \textbf{The design it forces, and a sign reversal (§\ref{sec:protocol}--§\ref{sec:targeted}).} Every clause of the design is forced by a term in the proposition (Cor.~\ref{cor:within_design}), and the screen that follows is a consequence we price rather than a third contribution (§\ref{sec:strategies}).
+\item \textbf{Three impossibility results (§\ref{sec:testability}, §\ref{sec:targeted}).} An inherited-suppression gate selects on the very outcome to be explained, so one cell of the relevant $2\times2$ is empty for \emph{every} menu and no sample size repairs it (Prop.~\ref{prop:identification}). Emergent suppression fails such a gate by definition, so any evaluator using one accepts a blind spot for emergent synergy (Prop.~\ref{prop:emergent}, Cor.~\ref{cor:zero_recall}). And no statistic-level reading of a composition can identify what it does to attack suppression: both directions of that implication fail, each by a counterexample among the mechanisms we run (Prop.~\ref{prop:nonidentifiability}).
+\item \textbf{The design it forces, and a sign reversal (§\ref{sec:protocol}--§\ref{sec:targeted}).} Every clause of the design is forced by a term in the proposition (Cor.~\ref{cor:within_design}); on the cell displayed above, running the outcome-gated design in place of the within-defense one reverses the sign of the conclusion rather than blunting it, and the screen that follows is a consequence we price rather than a third contribution (§\ref{sec:strategies}).
 \item \textbf{The preservation hierarchy, and the two links that break (§\ref{sec:framework}, §\ref{sec:targeted}).} Both breaks are the two measured facts above, at fixed downstream defense and attack; the demonstration is a sign inversion and two exact invariances, not small $n{=}5$ mean differences. Which level a composition preserves is settled by algebra before any run, and is reusable without our screen (Prop.~\ref{prop:invariance}).
 \end{enumerate}
 
@@ -195,7 +275,7 @@ Paper under double-blind review}
 % we price rather than a third contribution"). What stays is the sentence Round 58's items #11/#12 asked
 % for, which is the only part of this paragraph a reviewer ever pointed at. One bold run is spent rather
 % than added, and five cross-references leave the paragraph.
-\noindent \textbf{The main text carries two propositions, one definition, one numbered table and two figures}: the theorem, corollaries, lemmas, screening conditions, limitations (L1)--(L6) and the 59-paper audit are appendix, each cited from the sentence that needs it.
+\noindent \textbf{In the appendix}: the theorem, corollaries, lemmas, screening conditions, limitations (L1)--(L6) and the 59-paper audit, each cited from the sentence that needs it.
 
 % Two boxes became one (Round 58, reviewer item #7). This one restated the abstract, :64 and the
 % contributions for a fourth time; its only non-duplicated clause, that what carries beyond the paper
@@ -248,6 +328,61 @@ Suppose the screen is applied only where the downstream mechanism is load-bearin
 
 \noindent \textbf{Nothing in this statement is about federated learning.} $M$ is any outcome metric, $\theta$ any threshold, $P$ any condition on the two mechanisms' definitions, and $\mathcal{D}$ any menu; App.~\ref{app:mapping} substitutes our protocol into each, term by term. The proof is short (App.~\ref{app:boundary}).
 
+% Round 61, review §21.2, which calls this "probably the most important reviewer objection" and asks for
+% a place a reviewer can point at. The concession itself is not new -- the "Only half of this is ordinary
+% collider bias" paragraph concedes the textbook half in its own words -- but it was a clause inside two
+% other arguments and had no home of its own. Deliberately plain: no \textbf at all, because the bold
+% ratchet is at its cap and a defence written in bold reads as protesting.
+% Round 71 moved this block UP, from below the collider paragraph to directly after the proposition's
+% generality note, on review P1 ("sharpen the novelty argument in the first 2--3 pages"): the objection it
+% answers lands the moment the reader finishes Prop.~\ref{prop:identification}, and here it renders on the
+% proposition's own page instead of the next one. Two consequences of the move, both deliberate: the
+% concession now precedes its own elaboration rather than following it, and the first reason names the
+% estimand one paragraph before "What we estimate instead" formalises it -- the word is already in
+% Fig.~\ref{fig:identification}'s caption on the same page, so nothing here is a forward reference to
+% unmet notation. The comment above said "the paragraph above concedes"; that went false with the move
+% and is corrected rather than left, because a stale comment is what a later round reads as fact.
+% Round 68, Phase 5: the audit's two rates were CITED here and restated in §1's contribution item (1).
+% Round 71, review §11 ("do not make 6/59 a major pillar"): item (1) no longer states them, so this
+% paragraph is now their SOLE body home and states them in full rather than pointing at §1. That
+% direction of the fix was forced, not chosen -- the sentence here read "the $10.2\%$ and $78\%$ of
+% §\ref{sec:intro}", a definite reference to numbers §1 would no longer contain, which is the
+% strand-a-referent failure a Round-70 demotion already hit once. The audit is now SUPPORTING evidence
+% for the four reasons above it, which is what review §11 asks for and what the outcome the audit landed
+% on (ii) can bear. Outcome (ii) and the kept decline stay in full, and nothing here implies the
+% identifying contrast is unrun.
+% The four reasons are numbered because the opener counts them. Before this round it said "four things"
+% above three sentences, and whether the count was right turned on reading one sentence as two claims --
+% a self-count no gate can see, in the one paragraph the review says must be unmistakable.
+% Split into two paragraphs rather than one: the combined text is 1174 chars against long_para's 850
+% ceiling. Blank lines are load-bearing here -- a comment block adjacent to prose welds paragraphs and
+% kills the second one's \noindent, which `joined` gates at 0.
+\paragraph{Why this is more than a standard positivity violation.} The violation itself is standard; four things around it are not. First, the estimand: which \emph{level} of a preservation hierarchy an upstream transform leaves intact, with no analogue outside composed defenses. Second, the levels below it are not surrogates for it, a failure exhibited by counterexample in both directions (Prop.~\ref{prop:nonidentifiability}). Third, the invariance conditions are derived per mechanism, not assumed (Prop.~\ref{prop:invariance}). Fourth, choosing between the two admissible designs does not blunt the effect on one cell but reverses its sign (§\ref{sec:targeted}).
+
+% Round 71, review #11 item 11 ("I would not lean on the 6/59 prevalence as a pillar") plus Phase E.
+% The body paragraph that stood here carried four numbers, one caveat and one pre-registration fact, and
+% EVERY clause of it has an appendix home that states the same thing more fully, checked by content:
+% Named by CONTENT, not by line number, because a line number in a comment goes stale silently -- as
+% the numbers first written here did, inside this very round, when the comment block itself shifted
+% everything below it (the precedent for this discipline is the comment above the contributions list):
+%   6/59 and 10.2%                      -- the "holds for $6$ of $59$ papers, $10.2\%$" sentence in
+%                                          App. "the audit's frame", and again in "The result, with
+%                                          the secondaries it must be read against"
+%   46/59 = 78.0% (contrast present)    -- that same "The result ..." paragraph, which also carries the
+%                                          sentence forbidding any claim that the contrast is rare in
+%                                          this literature ("is false against our own audit")
+%   one coder, no inter-rater statistic -- the "What this audit does not establish" paragraph
+%   the outcome-(ii) decline            -- the audit-frame paragraph, stronger: "A low rate was
+%                                          pre-registered as meaning that the decline above is kept
+%                                          and evidenced rather than replaced, and that is what we do
+%                                          with it."
+% So nothing loses its last home, and the audit keeps a BODY pointer: the "In the appendix: ... and the
+% 59-paper audit" paragraph at the end of the contributions. The "Why this is more than a standard
+% positivity violation" paragraph directly above keeps its own concession that the violation itself is
+% standard, which is the thing this deleted paragraph was supporting rather than carrying.
+% This is a deletion of a duplicate, not of a disclosure, and it funds ~5 rendered lines of the page
+% budget that Phase B's body proposition spends. Reported in the response letter as a decline-by-move.
+
 \paragraph{What we estimate instead.} Fix a downstream defense $d_2$ and a committed attack $a$. The \textbf{treatment} $T$ is the upstream per-client transformation applied before $d_2$ aggregates, with $T{=}\mathrm{id}$ the control that is bit-identical to $d_2$ standalone. The \textbf{outcome} $Y$ is $\mathrm{ASR}(T,d_2,a)$. The \textbf{mechanism-preservation variable} $P\in\{0,1\}$ records whether $T$ preserves the statistic $d_2$ reads, at whichever level is at issue. Which of the five levels is at issue is §\ref{sec:framework}'s subject; the boundary below holds for any such condition. $P$ is a deterministic function of $T$ and $d_2$'s definition, not a measured covariate. The causal quantity is
 \[
 \tau(T)\;=\;\mathbb{E}\!\left[Y \mid \mathrm{do}(T),\,d_2,\,a\right]\;-\;\mathbb{E}\!\left[Y \mid \mathrm{do}(T{=}\mathrm{id}),\,d_2,\,a\right].
@@ -264,19 +399,6 @@ Suppose the screen is applied only where the downstream mechanism is load-bearin
 % dropped the floor to 14/16 with the caveat still fully present in the text. The phrase must render
 % mid-sentence. Same length, same claim, same citation.
 \paragraph{Only half of this is ordinary collider bias.} We claim no credit for it: that half is textbook~\citep{elwert2014endogenous,pearl2009causality}. What the gate adds is a structural \emph{positivity} violation rather than a confounding one (Fig.~\ref{fig:identification}b), while reading as a reasonableness filter. The gate also earns its keep: it stops the screen certifying pairs no constituent suppresses, so wherever our conditions certify a pair, a low composition ASR is attributable to $d_2$'s standalone strength rather than to preservation, the reading we held ourselves (§\ref{sec:dose_response}).
-
-% Round 61, review §21.2, which calls this "probably the most important reviewer objection" and asks for
-% a place a reviewer can point at. The concession itself is not new -- the paragraph above concedes the
-% textbook half, and contribution item (1) says "half of the first result is textbook positivity" -- but
-% it was a clause inside two other arguments and had no home of its own. Deliberately plain: no \textbf
-% at all, because the bold ratchet is at its cap and a defence written in bold reads as protesting.
-% Round 68, Phase 5: the audit's two rates are cited here rather than restated. Both numbers, and the
-% clause that says what they count, are §1's contribution item (1) verbatim ("$6$ of $59$ coded
-% composed-defense papers ($10.2\%$) gating attribution on the composed outcome while running no
-% identifying contrast, against $46$ ($78\%$) that do run one"), so this paragraph was the second emitter
-% of a pair that must agree. Outcome (ii) and the kept decline stay in full: nothing here implies the
-% identifying contrast is unrun, which is the reading the audit actually landed on.
-\paragraph{Why this is more than a standard positivity violation.} The violation itself is standard; four things around it are not. The estimand is specific to composed defenses, being which \emph{level} of a preservation hierarchy an upstream transform leaves intact, and that hierarchy has no analogue outside this setting. The gate that empties the cell is a documented convention, not an analyst's slip, and its prevalence is measured, not asserted, at the $10.2\%$ and $78\%$ of §\ref{sec:intro} (App.~\ref{app:audit}). A low rate was pre-registered as outcome (ii), so our decline to call the gate common stays, evidenced not hedged.
 
 % Round 67, Phase C: the page gate spilled 25 words onto p10, and this paragraph is the reserve the
 % plan named first, cut only after both of its clauses were grepped to a surviving home. The bypassing
@@ -310,10 +432,10 @@ beyond this paper is the design they license and not our screen. Thm.~\ref{thm:b
 named rank and geometric aggregators, and bound no ASR.
 
 \emph{Empirically.} We identify the effect of intervening on the upstream transform at fixed downstream
-defense and attack, and offer no causal model of FL; on one cell that design change flips the
+defense and attack, and offer no causal model of FL; on one cell that change flips the
 \emph{sign} of the estimated effect. The experiments are four aggregators of three structural kinds
 under two committed attacks on CIFAR-10, three arms replicated, on EMNIST-byclass ($n{=}3$ frozen,
-$n{=}5$ pooled), \texttt{resnet18} ($n{=}3$) and CIFAR-100, at $n{=}5$ seeds, $n{=}20$ on the CIFAR-10 sign-reversal cell and on
+$n{=}5$ pooled), \texttt{resnet18} ($n{=}3$) and CIFAR-100, at $n{=}5$, $n{=}20$ on the CIFAR-10 sign-reversal cell and
 Krum/scaling's Mode~S leg, $n{=}8$ for \texttt{cos\_krum}.
 
 % Round 61, A9/B9 (review §11 and §21.5). Split rather than compressed: the three DENIALS are now the
@@ -326,14 +448,21 @@ Krum/scaling's Mode~S leg, $n{=}8$ for \texttt{cos\_krum}.
 % exclusions are retrospective"), and "measurement devices rather than defenses" has six homes including
 % tab:tiers' Both-instruments row and the Conclusion. The confidentiality/availability clause is NOT
 % demoted and is kept word for word: :215 is its only home in either document.
+% Round 71, review P4, which asks for the threat-model boundary in a box. This box already denied adaptive
+% robustness in its FIRST sentence and already carried the oracle clause -- but as the LAST clause of the
+% paragraph, so the review's third boundary is the one a reader of one sentence missed. The clause is
+% MOVED here, not copied: its pointer to §\ref{sec:conclusion} travels with it, and the threat-model
+% paragraph and Mode~S's own definition keep their separate statements of it. The
+% confidentiality/availability clause stays word for word -- this is its only home in either document --
+% and the sentence stays a three-denial list, now in boundary order rather than in the order they accrued.
 \emph{Not established.} We do \emph{not} establish that admission predicts security, we claim nothing
-about adaptive robustness, and we claim nothing about confidentiality or availability. This is a
+about adaptive robustness, our instruments read adversary identity (§\ref{sec:conclusion}), and we claim
+nothing about confidentiality or availability. This is a
 methodology for identifying what a composition preserves, not for choosing a defense to deploy: the
 screen prioritizes what to evaluate, and nothing here is a deployment recommendation. Claims
 do not transfer upward either: scope conditions in Table~\ref{tab:scope_levels}, evidence tiers in
-Table~\ref{tab:tiers}, limits in §\ref{sec:limitations}, (L1)--(L6), and every claim we have withdrawn
-or refuted in Table~\ref{tab:status}. The criterion's empirical validation is exploratory (L4), and our
-instruments read adversary identity (§\ref{sec:conclusion}).
+Table~\ref{tab:tiers}, limits in §\ref{sec:limitations}, (L1)--(L6), and every withdrawn
+or refuted claim in Table~\ref{tab:status}. The criterion's validation is exploratory (L4).
 }}
 \end{center}
 
@@ -368,7 +497,7 @@ instruments read adversary identity (§\ref{sec:conclusion}).
 % navigation. Neither figure is orphaned -- fig:story is cited at :133 in the body and again in the
 % appendix, and fig:modeS keeps five other body references -- and three cross-references leave a
 % paragraph that was at the five-reference cap.
-\noindent The algebra cuts one place later, everything up to admission being \emph{observable} and attack suppression \emph{mechanistic}. These are five different claims, and preservation at one level does not imply preservation at the next. \textbf{Where that chain breaks is this paper's subject}: the first two implications are logical and need no experiment, while both failures start at admission, whose preservation implies neither a preserved decision (witness Krum, §\ref{sec:targeted}) nor preserved suppression (witness \texttt{cos\_krum}, §\ref{sec:targeted_rest}).
+\noindent The algebra cuts one place later, everything up to admission being \emph{observable} and attack suppression \emph{mechanistic}. These are five different claims, and preservation at one level does not imply preservation at the next. \textbf{Where that chain breaks is this paper's subject}: the first two implications are logical and need no experiment, while both failures start at admission, whose preservation implies neither a preserved decision (Krum, §\ref{sec:targeted}) nor preserved suppression (\texttt{cos\_krum}, §\ref{sec:targeted_rest}).
 
 % Round 68. W4 (the eighth review's §12, theory scope) is the closing clause, and it is stated here in one
 % clause rather than implied across :279 and this line. Phase 5 then trimmed its second half: "which is why
@@ -382,10 +511,10 @@ instruments read adversary identity (§\ref{sec:conclusion}).
 For an upstream transform $T$ and a downstream defense $d_2$ reading statistic $S$:
 \begin{enumerate}[noitemsep,topsep=2pt,label=(P\arabic*)]
 \item \textbf{Value invariance:} $S(T(U)) = S(U)$.
-\item \textbf{Ordering invariance:} $S(T(U)) = \varphi(S(U))$ for some $\varphi$ preserving the ordering $S$ induces on clients.
+\item \textbf{Ordering invariance:} $S(T(U)) = \varphi(S(U))$ for a $\varphi$ preserving $S$'s client ordering.
 \item \textbf{Decision invariance:} the client or coordinate $d_2$ actually selects is unchanged.
-\item \textbf{Adversarial contribution (admission) invariance:} the adversarial input $d_2$ admits into its aggregate is unchanged. \emph{Admission} is the pre-registered term throughout for whether adversarial input survives $d_2$, the support of the admitted mass rather than the mass itself. The mass is influence $\Lambda_a$, defined with the vocabulary at the end of this section and in App.~\ref{app:notation}, which a preserved support leaves free to move (Table~\ref{tab:channels}).
-\item \textbf{Attack-suppression preservation:} ASR stays below threshold, for the fixed committed attack the arm is run against.
+\item \textbf{Adversarial contribution (admission) invariance:} the adversarial input $d_2$ admits into its aggregate is unchanged. \emph{Admission} is the pre-registered term throughout for whether adversarial input survives $d_2$: the support of the admitted mass, not the mass itself. The mass is influence $\Lambda_a$, defined at the end of this section and in App.~\ref{app:notation}, which a preserved support leaves free to move (Table~\ref{tab:channels}). This level is instantiated defense-specifically and is not a single metric, so we never compare its magnitude across aggregators.
+\item \textbf{Attack-suppression preservation:} ASR stays below threshold for the arm's committed attack.
 \end{enumerate}
 The screening conditions the levels induce, and their names, are in App.~\ref{app:framework} and~\ref{app:conditions}.
 \end{definition}
@@ -398,7 +527,16 @@ The screening conditions the levels induce, and their names, are in App.~\ref{ap
 % pre-registration, so the glossary is the answer instead. Influence ($\Lambda_a$) and attenuation cannot
 % leave the main text -- $\Delta\Lambda_a$ is a column header of Table~\ref{tab:channels} and attenuation
 % is what protocol clause (3) closes -- so they follow the table as the two words that are NOT these four.
-\noindent \textbf{Five words, fixed here and used in one sense throughout}, in the order the chain runs.
+% Round 70, the tenth review's item (3) ("stop making the reader reconcile admission vs influence -- make
+% one table the canonical vocabulary") and its item (10). Influence was defined in the PROSE below this
+% table, so the one word the review names as the reconciliation cost was the one word the canonical table
+% did not carry. It is now a row. Its level cell is "---", the paper's tabular absent-value form, and NOT
+% "(P4)$\to$(P5)": p_tokens is a ceiling of 7 and a sixth (P#) here would make it 8 and fail a hard gate.
+% Both self-counts move with the row and neither has an emitter: this lead-in ("Five" -> "Six") and the
+% sentence below the table ("Two further words ... those five" -> one word, "those six"). That sentence's
+% Round 67 note records the same class of defect in the other direction, a stale "those four" under a
+% five-row table, which is why they are edited in one pass.
+\noindent \textbf{Six words, fixed here and used in one sense throughout}, in the order the chain runs.
 \begin{center}\small\vspace{-4pt}
 % Round 67: this is the review's #3 table, and it now absorbs the retired chain display, so its ROW
 % ORDER is the chain (statistic -> ordering -> decision -> admission -> suppression) and the security
@@ -415,6 +553,7 @@ statistic & (P1) & what the defense computes from the updates it reads & no \\
 ordering & (P2) & the ranking that statistic induces over clients & no \\
 decision & (P3) & which client or coordinate it selects & no \\
 admission & (P4) & whether adversarial input enters its aggregate at all & yes \\
+influence & --- & the weight the adversary's direction carries in the aggregate ($\Lambda_a$) & yes \\
 suppression & (P5) & whether the attack still succeeds, i.e.\ max-committed ASR & yes \\
 \bottomrule
 \end{tabular}\vspace{-4pt}
@@ -426,7 +565,7 @@ suppression & (P5) & whether the attack still succeeds, i.e.\ max-committed ASR 
 % count. No instrument sees it: the glossary rows are a bare tabular, so no counter reads their number, and
 % "four" also appears twice nearby in senses that ARE correct (four aggregators, four within-family
 % statements), so a bare grep for the word does not isolate it either. The fix is length-neutral.
-\noindent Two further words are needed, each distinct from those five. \emph{Influence} is $\Lambda_a$, the weight the adversary's direction carries in the aggregate. \emph{Attenuation} is the adversary's own update shrunk upstream, reaching ASR without passing through the statistic at all, and it is the channel an intervention on $T$ must close before either of the other two can be read.
+\noindent \emph{Influence} appears there with no level of its own, because $\Lambda_a$ is not a step in the chain but the quantity crossing from admission to suppression; Figure~\ref{fig:modeS}(a) draws that chain, and the arc beneath it is the one channel these rows do not name. One further word is needed beside those six. \emph{Attenuation} is the adversary's own update shrunk upstream, reaching ASR without passing through the statistic, and it is the channel an intervention on $T$ must close before either of the other two can be read.
 
 % Round 61, funding B5 (review §21.4: reduce terminology in the main narrative). 708 chars to ~460. The
 % three per-aggregator instantiations move to App.~\ref{app:notation}'s $\Lambda_a$ row, which already
@@ -484,7 +623,7 @@ suppression & (P5) & whether the attack still succeeds, i.e.\ max-committed ASR 
 % (2)'s own title and §\ref{sec:dose_response}'s whole subject, whose lead sentence is "The inadmissible
 % design still told us something" and which reports the reversal with both numbers; it is also what
 % §\ref{sec:targeted}'s heading and Table~\ref{tab:comparability} carry. Nothing here was its only home.
-\noindent \textbf{Operationally, before any of that}, name the downstream mechanism's invariance class and the level of Def.~\ref{def:levels} the claim asserts (§\ref{sec:framework}; Table~\ref{tab:tiers}'s Formal row names the transforms the algebra does not reach).
+\noindent \textbf{Operationally, before any of that}, name $d_2$'s invariance class and the level of Def.~\ref{def:levels} the claim asserts (§\ref{sec:framework}; Table~\ref{tab:tiers}'s Formal row names the transforms the algebra does not reach).
 
 \paragraph{Threat model: committed, not adaptive.} Every clause holds the attack fixed, so the protocol establishes attack-suppression preservation under a fixed committed attack and nothing wider, which is why we do not call the object ``security''. One whitebox composition-aware \emph{adaptive} stress test measures that boundary: solving the joint FoolsGold/RFA constraint knowing both stages raises FG$\to$RFA to ASR $0.157 \pm 0.073$ at $n{=}30$, $2.4\times$ its seed-matched $0.064$ (paired $+0.093$, $[+0.066, +0.120]$). \textbf{Inherited robustness is not adaptive robustness}, and a protocol stated against an adaptive adversary is the sharpest thing this framework lacks (App.~\ref{app:secondary}).
 
@@ -496,7 +635,34 @@ suppression & (P5) & whether the attack still succeeds, i.e.\ max-committed ASR 
 % review's #14 "so what" as its closing clause. Both numbers already appear on p1 in the spine, so this
 % is not a forward reference, and "outcome-gated"/"within-defense" are the spine's own words. Mode S is
 % named below, not here, because it is defined below.
-\emph{Disturbing what a defense reads need not cost suppression}, and \textbf{on one cell the two designs disagree in sign}: the outcome-gated design gives $\Delta$ASR${=}{-}0.273$ ($[-0.334,-0.213]$) where the within-defense design gives $+0.125$ ($[+0.095,+0.155]$) at $n{=}20$, disjoint and both excluding zero, so an evaluator choosing between the two designs is choosing the sign of the conclusion rather than its precision. We adjudicate the implication that losing the decision means losing suppression by oracle intervention on two arms in two invariance classes rather than by a general law.
+% Round 71: the closing sentence ("We adjudicate the implication ... rather than by a general law") is
+% deleted from this opener because Prop.~\ref{prop:nonidentifiability}, which now stands immediately
+% below, says all three of its parts in the statement itself: "established by exhibited counterexample"
+% is the not-a-general-law clause, "within that class on the defenses and attacks we run" is its scope,
+% and the two named witnesses are the two arms in two invariance classes. It is absorbed, not dropped.
+\emph{Disturbing what a defense reads need not cost suppression}, and \textbf{on one cell the two designs disagree in sign}: the outcome-gated design gives $\Delta$ASR${=}{-}0.273$ where the within-defense design gives $+0.125$ at $n{=}20$, with disjoint intervals both excluding zero, so choosing between the designs chooses the sign of the conclusion, not its precision.
+
+% Round 71, review P2, which asks for this result as the theoretical centerpiece -- "more memorable than
+% Proposition 1" -- stated cleanly and followed immediately by the two counterexamples. Until this round it
+% was appendix-only and rendered on p33, while this section's TITLE has always been its claim; the body had
+% no numbered home for it. No claim is new: the appendix statement is compressed into one sentence, and
+% the two witnesses are named in it rather than in a following paragraph, because §5's own prose already
+% states both informally and the page budget is measured in rendered lines. The appendix keeps the full
+% statement as
+% Prop.~\ref{prop:nonidentifiability_full}, restated with the proof, which is the same body/appendix pair
+% Prop.~\ref{prop:identification} and Prop.~\ref{prop:identification_full} already form.
+% Two things are deliberate about the form. The scope clause is INSIDE the statement, because it is a
+% disclosure and the reader of the body must not have to reach p33 for it. And the block is separated by
+% blank lines on both sides: a proposition environment whose block begins with \begin{...} is exempt from
+% paragraphs() and so from long_para, max_xrefs and the bold/italic ratchets, but one welded to the prose
+% above it is not -- the exemption is a property of the blank line, not of the environment.
+% Renumbering: this insertion shifts every theorem-like result after it by one (Criterion 3 -> 4, Thm 8 ->
+% 9, the appendix restatement itself 11 -> 12). Safe to do mechanically because no prose in either document
+% hardcodes a result number and no figure PDF bakes one; both were checked, not assumed.
+\begin{proposition}[Statistic-level non-identifiability]
+\label{prop:nonidentifiability}
+Within the positive per-client rescaling class, on the defenses and attacks we run, there are transforms that change the statistic and the \emph{decision} at $d_2$ arbitrarily at \emph{unchanged} admitted adversarial mass and suppression, and transforms that change suppression at unchanged statistic, decision and admitted mass. Hence no predicate of the statistic identifies admitted mass and none of admitted mass identifies suppression: exhibited counterexamples, not a general law (Mode~S into Krum and \texttt{cos\_krum} under the pixel backdoor, both below; proof, Prop.~\ref{prop:nonidentifiability_full}).
+\end{proposition}
 
 % Round 58, reviewer item #4. The worked example is not new material: Krum under model scaling is
 % already this section's subject and already row 1 (with row 6 its control) of tab:channels. What was
@@ -516,7 +682,7 @@ suppression & (P5) & whether the attack still succeeds, i.e.\ max-committed ASR 
 % theorem's two regimes") and Table~\ref{tab:scope_levels} keeps seven other references, so nothing is
 % orphaned. And W3's own middle clause ("what it identifies is the mechanism's contribution under a known
 % adversary") is dropped as a restatement of its own second half.
-\paragraph{The instrument, as a counterfactual.} The clean question asks what happens when the downstream statistic changes but the adversary cannot become weaker. \textbf{Mode S} enforces exactly that: it pins every adversary's coefficient at $c{=}1.0$ and spreads only the benign clients over $\rho = e^{2\kappa}$, holding the adversarial coefficient share constant at $0.266667$ to within float32 read-back noise, closing Figure~\ref{fig:modeS}(a)'s attenuation path, so a rise in ASR here cannot be attenuation. Pinning $c$ requires knowing which clients are adversarial, so Mode~S is a measurement device and not a defense, never a quantity a deployed evaluator could compute without that ground truth.
+\paragraph{The instrument, as a counterfactual.} The clean question asks what happens when the downstream statistic changes but the adversary cannot become weaker. \textbf{Mode S} enforces exactly that: it pins every adversary's coefficient at $c{=}1.0$ and spreads only the benign clients over $\rho = e^{2\kappa}$, holding the adversarial coefficient share constant at $0.266667$ to within float32 read-back noise, closing Figure~\ref{fig:modeS}(a)'s attenuation path, so a rise in ASR here cannot be attenuation. Pinning $c$ requires knowing which clients are adversarial, so Mode~S is a measurement device and not a defense.
 
 \paragraph{Two readings of preservation, frozen against each other.} \emph{The statistic reading}: what matters is disturbance of $d_2$'s statistic, read off its \emph{decisions}. \emph{The admission reading}: what matters is the \emph{adversarial input $d_2$ admits}. Mode~S disturbs Krum's selection heavily while leaving that admission untouched, so that arm adjudicates (Table~\ref{tab:targeted}): as $\rho$ climbs to $54.6$ the decision changes in up to $0.80$ of rounds, the adversarial mass admitted in none, and ASR shows no evidence of the predicted increase, staying inside the pre-registered practical-equivalence margin ($|\Delta|{=}0.026<0.15$).
 
@@ -529,9 +695,33 @@ suppression & (P5) & whether the attack still succeeds, i.e.\ max-committed ASR 
 % comparability arms; the body sentence was the only unscoped site), and the exception is named with
 % its number rather than left to the appendix. Disclosure (v) of app:resnet18_dose carries the full
 % reading, including that TOST at the 90% interval alpha=.05 reads does reject at p=0.040.
-\noindent \textbf{Here practical equivalence is established, not merely consistent}: TOST against that frozen $\pm0.15$ margin, an evaluation-design tolerance conjoined with every rung below $0.5$, not a claim that $15$ ASR points are negligible, gives $p{=}0.0014$ at $n{=}5$, and a pre-registered top-up to $n{=}20$ confirms it at $\Delta{=}-0.010$, $95\%$ CI $[-0.032,+0.012]$ (App.~\ref{app:tost} scores every arm this way, us included). \emph{The margin is not load-bearing} for any reading in Table~\ref{tab:margin_ladder}: each would survive at $\pm0.05$, the binding arm needing $m^\ast{=}0.034$, where $m^\ast$ is the smallest margin an arm's interval fits inside; \texttt{resnet18}'s $n{=}3$ replication is the one arm that needs it, at $m^\ast{=}0.183$ (App.~\ref{app:targeted_full}).
+% Round 71, review P5, which asks for a compact margin-sensitivity result brought forward. It was already
+% here and already complete -- every reading surviving at the smallest margin, the binding arm's $m^\ast$,
+% and the one arm that fails -- but unnamed, so a reader scanning for it had nothing to scan for, and the
+% ladder's SPAN lived only as that table's column headers, in the appendix. The finding is named inside
+% the \emph run this sentence already had (bold_runs is at 39/39 and emph_runs at 59/60, so a new run
+% would fail the gate) and the span is now stated in prose. The claim also got STRONGER without a new
+% number: the table's four verdict columns are identical row for row, so "each survives the whole ladder"
+% is what it shows, where the old clause named only the smallest margin. Paid for by dropping "this way"
+% from the App. F pointer, because the paragraph was at 859 of a hard 850. "the one arm that needs it" is a
+% whole-file case-sensitive PROTECTED regex and is byte-identical; it is also why the clause was not moved
+% to the front of the sentence, which would capitalize it and drop the floor to 15/16.
+\noindent \textbf{Here practical equivalence is established, not merely consistent}: TOST against that frozen $\pm0.15$ margin, an evaluation-design tolerance conjoined with every rung below $0.5$, not a claim that $15$ ASR points are negligible, gives $p{=}0.0014$ at $n{=}5$, and a pre-registered top-up to $n{=}20$ confirms it at $\Delta{=}-0.010$, $95\%$ CI $[-0.032,+0.012]$ (App.~\ref{app:tost} scores every arm, us included). \emph{Margin sensitivity: the margin is not load-bearing} for any reading in Table~\ref{tab:margin_ladder}: each survives the whole $\pm0.05$--$\pm0.20$ ladder, the binding arm needing $m^\ast{=}0.034$, the smallest margin its interval fits inside; \texttt{resnet18}'s $n{=}3$ replication is the one arm that needs it, at $m^\ast{=}0.183$ (App.~\ref{app:targeted_full}).
 
 \noindent The statistic reading is refuted: statistic and decision disturbance need not change suppression once the adversarial coefficient share is held fixed. \emph{The zero is a floor here}, Krum admitting no adversary at any rung, so unchanged admission is not by itself decisive, and we claim no per-channel decomposition of $\Delta$ASR (§\ref{app:factorial}).
+
+% Round 72, the twelfth review's §9/§18.2 and its objection (c): that the headline is an artifact of
+% Krum never admitting an adversary. Half right, and the half that is right was already disclosed one
+% line above. What the paper never printed is a baseline LEVEL, so a reader met a Delta adm. column of
+% all zeros with no way to tell which arms had room. The levels are emitted by build_channel_table.py
+% (base_adm_adv), which also asserts they do not depend on the rung that reports them. The channel
+% distinction is the actual answer: the refutation is about the DECISION channel, where Krum sits at
+% 0.733 and no floor binds, and the admission-level reading is carried by the two arms with room.
+% Baselines are conditional on an adversary being sampled; rounds with none are structural zeros and
+% pooling them understates every arm (coord. median reads 0.2284 unconditionally against 0.2855).
+% A separate paragraph, not an extension of the one above: appended there it would run to ~960 chars
+% against the hard 850. No new \emph or \textbf run either, both being at their gated ceilings.
+\noindent The floor bounds which channel this arm can speak to, and the two differ. Krum's decision channel has room and uses it, changing on $0.733$ of rounds, so the refutation just stated does not rest on the floor. Its admission channel has none, nor do the paper's three other Krum rows; but that floor is the attack's, not Krum's, since under the pixel backdoor the same Krum admits baseline mass $0.333$ in $4$ of $12$ adversary rounds. The admission reading rests on the two arms with the most room, reputation and coord.\ median, at baseline $0.0014$ and $0.286$, whose admitted support holds across all $48$ adversary rounds while suppression moves in both.
 
 \begin{table}[t]
 % 3.5pt, not 4.5: naming row 5 correctly made column 1 five characters wider than "Krum (FEMNIST)"
@@ -592,7 +782,7 @@ Krum (ResNet18) & selector (pairwise distance) & 0.824 & 0.556 & 0.000 & 0.000 &
 % dropped rather than relocated, because the two clauses that follow ARE the bracket: each names its
 % variant, its channel reading and the half of the implication it refutes. The signpost announced them
 % and carried no claim of its own, so there is nothing to give a home to.
-\noindent \textbf{The table contains its own positive control}, without which ``we moved something and nothing happened'' could not be told from too blunt an instrument: suppression moves in exactly the two arms whose \emph{influence} channel moves, reputation and coord.\ median. Krum changes the decision at $\Delta\Lambda_a{=}0.000$ and suppression does not follow, so a decision change is not \emph{sufficient}; \texttt{cos\_krum}'s selection is bit-identical at every rung, also at $\Delta\Lambda_a{=}0.000$, yet ASR \emph{falls}, so it is not \emph{necessary} either. Neither reading rests on Krum's admission floor; both are taken across all four kinds (App.~\ref{app:channel_table}).
+\noindent \textbf{The table contains its own positive control}, which tells ``we moved something and nothing happened'' from too blunt an instrument: suppression moves in exactly the two arms whose \emph{influence} channel moves, reputation and coord.\ median. Krum changes the decision at $\Delta\Lambda_a{=}0.000$ and suppression does not follow, so a decision change is not \emph{sufficient}; \texttt{cos\_krum}'s selection is bit-identical at every rung, also at $\Delta\Lambda_a{=}0.000$, yet ASR \emph{falls}, so it is not \emph{necessary} either. Neither reading rests on Krum's admission floor; both are taken across all four kinds (App.~\ref{app:channel_table}).
 
 % Round 61, page gate: two paragraphs consolidated into one, and every clause of what left has a
 % verbatim home in the appendix this paragraph already cited. :1681 names channels (a)--(d) in full,
@@ -625,11 +815,41 @@ Krum (ResNet18) & selector (pairwise distance) & 0.824 & 0.556 & 0.000 & 0.000 &
 % Funded HERE rather than from the plan's named reserve because that reserve is on pp4--5, behind
 % Table~A2's float: cutting :241 freed six lines and moved the page gate by zero words. p8 is past the
 % last float, so a line cut here reaches the tail.
-\paragraph{The design choice, not the defense, sets the inferred direction.} The sign disagreement this section opens with is measured on this identical cell (matched aggregate displacement, decision change and clean accuracy, Table~\ref{tab:comparability}): the $-0.273$ is the outcome-gated ladder of §\ref{sec:dose_response}, whose adversary may attenuate, and the $+0.125$ is the Mode~S intervention above, which pins that adversary at $c{=}1$; both intervals are paired. The $n{=}5$ above is the same estimand at its frozen threshold's own $n$: the two differ in $n$ alone. Collider bias is usually taught as attenuation; \textbf{here the confounded design does not lose power, it points the other way}: a criterion calibrated against that contrast would be calibrated against the confound.
+% Round 71, review §9, which offers "the two admissible estimands can yield opposite empirical conclusions
+% on the same defense/attack cell" over the old head, "The design choice, not the defense, sets the
+% inferred direction." This is a WORDING change and not a claim change: the same two numbers, the same two
+% intervals, the same non-match. What the estimand form buys is that the old head could be read as a
+% complaint about analysts, where the reversal is a property of the two estimands themselves, each of which
+% this paper argues is admissible. Both copies of the head are changed together (this one and the appendix
+% twin), and the design-choice sentence is NOT lost: it moves into this paragraph's prose, where the old
+% head was NOT its only body home: §\ref{sec:targeted}'s opening paragraph says it in the evaluator's
+% voice ("choosing between the two designs is choosing the sign of the conclusion rather than its
+% precision"), two paragraphs above this one and in the same section, and the appendix twin states it in
+% prose and now states it in the estimand form too. That was checked before the head was changed, because
+% a retitle that strands a claim is the same failure as a demotion that strands a definite reference. "no $p$-value attaches" and "The two designs are not the same intervention" are
+% untouched -- the first is a whole-file PROTECTED regex, the second is the honesty this result rests on.
+\paragraph{Two admissible estimands, opposite conclusions on the same cell.} The sign disagreement this section opens with is measured on this identical cell (matched aggregate displacement, decision change and clean accuracy, Table~\ref{tab:comparability}): the $-0.273$ is the outcome-gated ladder of §\ref{sec:dose_response}, whose adversary may attenuate, and the $+0.125$ is the Mode~S intervention above, which pins that adversary at $c{=}1$; both intervals are paired. The $n{=}5$ above is the same estimand at its frozen threshold's own $n$: the two differ in $n$ alone. Collider bias is usually taught as attenuation; \textbf{here the confounded design does not lose power, it points the other way}: a criterion calibrated against that contrast would be calibrated against the confound.
 
-\noindent The two designs are not the same intervention: $\Lambda_a$ moves in \emph{both}, $0.081$ against $0.033$ ($2.4\times$), so neither is a clean statistic-only intervention and no $p$-value attaches to their difference. What the pair does establish, \emph{within the rescaling class and defense family measured here} and by counterexample rather than by law, is that \textbf{statistic preservation is not sufficient to identify attack-suppression preservation}, which is not the claim that a preserved statistic is uninformative (Prop.~\ref{prop:nonidentifiability}, App.~\ref{app:proofs}; Table~\ref{tab:scope_levels}).
+\noindent The two designs are not the same intervention: $\Lambda_a$ moves in \emph{both}, $0.081$ against $0.033$ ($2.4\times$), so neither is a clean statistic-only intervention and no $p$-value attaches to their difference. What the pair establishes, \emph{within the rescaling class and defense family measured here} and by counterexample, not by law, is that \textbf{statistic preservation is not sufficient to identify attack-suppression preservation}, which is not the claim that a preserved statistic is uninformative (Prop.~\ref{prop:nonidentifiability}, App.~\ref{app:proofs}; Table~\ref{tab:scope_levels}).
 
 \noindent \textbf{Seven cells, not one (App.~\ref{app:sixcell}).} To separate a property of the design from one of this aggregator and attack, we ran the contrast on seven cells. They disagree on five, across two attacks, three datasets and two CNN configurations, and \textbf{the reversal replicates}: the same cell on CIFAR-100 ($n{=}5$) reads $-0.213$ against $+0.071$, both intervals excluding zero. \texttt{coord\_median} under \emph{model scaling} disagrees too, so it is not specific to the pixel backdoor. A mechanism frozen for when they disagree is refuted out of sample and withdrawn, so §\ref{sec:protocol} says to intervene rather than consult a rule.
+
+% Round 72, P0.4, the demotion edit. The freeze for the CIFAR-100 norm_clip arm required that if its
+% premise failed "the paper says the composition-level replication was attempted and did not carry -- in
+% the abstract and §5, not in a footnote", so this paragraph and the abstract's new clause are MANDATED and
+% may not be moved to the appendix or softened. Detail lives in App. \ref{app:normclip_cifar100}; only the
+% arm's existence and its verdict have to be here. Two instrument facts shaped the form and are worth
+% recording so a later round does not "improve" it into a failure. (1) bold_runs was at its 39/39 ceiling,
+% so this uses a \paragraph run-in head and NOT \textbf, which is why the sentence carrying the mandated
+% words is not bolded. (2) The page budget could not fund the long form: the full paragraph cost ten
+% rendered lines against about one line of slack, only §5's heading wraps and that heading is PROTECTED, so
+% the plan's own fallback applies -- the arm's EXISTENCE and verdict are here and the numbers, the sign
+% inversion and the structural argument are in App. \ref{app:normclip_cifar100}. Nothing was deleted to buy
+% the lines: the baseline replication and $\Delta_c$ both still have a home, and the widow trims below the
+% §5 heading are rewordings. If a later round frees lines, the two facts to restore here first are
+% $\Delta_c = +0.037$ and that the clip binds on BENIGN clients, since that direction is what a reader will
+% disbelieve.
+\paragraph{The oracle-free version, attempted.} We pre-registered this contrast with norm clipping upstream on CIFAR-100, a real defense needing no adversary mask; its premise failed, so the two-defense replication on a second dataset was attempted and did not carry (App.~\ref{app:normclip_cifar100}).
 
 \section{What the Boundary Licenses, and What We Found}
 \label{sec:validation}
@@ -641,7 +861,7 @@ Krum (ResNet18) & selector (pairwise distance) & 0.824 & 0.556 & 0.000 & 0.000 &
 % carries the datasets, aggregators, attacks and seed counts, which is why this sentence delegates only
 % those. Checked before cutting rather than assumed. This is the plan's reserve item 2 in kind, a
 % contentless signpost, taken on p8 because p4--p5's named reserve is behind Table~A2's float.
-The regime is CIFAR-10, a 4-layer CNN, $N{=}10$ clients, $f{=}0.2$ adversarial, with the attacks and seed counts of page~\pageref{box:scope}; \emph{ASR} means \emph{max-committed ASR}, and the protocol is fixed in the supplement (§\ref{app:details}).
+The regime: CIFAR-10, a 4-layer CNN, $N{=}10$ clients, $f{=}0.2$ adversarial, with page~\pageref{box:scope}'s attacks and seed counts; \emph{ASR} means \emph{max-committed ASR}, and the protocol is fixed in the supplement (§\ref{app:details}).
 
 % Round 58: this blank line is LOAD-BEARING. A comment-only line comments out its own newline, so
 % without it the paragraph above ran straight into the run-in head below and \noindent became a no-op:
@@ -753,7 +973,7 @@ The regime is CIFAR-10, a 4-layer CNN, $N{=}10$ clients, $f{=}0.2$ adversarial, 
 % open-problem row of Table~\ref{tab:can_cannot}; the oracle fact itself stays, because it is what
 % App.~\ref{app:conclusion} -- cited in this same sentence, and the section box:scope sends a reader to
 % for it -- states as the open problem, and because the Ethics statement promises it at each use.
-\textbf{Preserving a defense statistic does not suffice to identify preserved attack suppression}, and the reason is structural: an outcome-gated cross-defense comparison conditions on the outcome it seeks to explain, which no additional data repairs (Prop.~\ref{prop:identification}), and a screen of that shape also misses emergent suppression (Prop.~\ref{prop:emergent}). §\ref{sec:targeted}'s dissociations witness both directions. \emph{What transports is one rule, and it is not our screen}: to attribute an outcome to an upstream mechanism in a composed pipeline, hold the downstream mechanism and the threat fixed and intervene on the upstream component. Holding the threat fixed is what that rule costs: it is a diagnostic under a committed attack and not a guarantee against an adversary that adapts (§\ref{sec:validation}).
+\textbf{Preserving a defense statistic does not suffice to identify preserved attack suppression}, the reason structural: an outcome-gated cross-defense comparison conditions on what it explains, which no data repairs (Prop.~\ref{prop:identification}), and a screen of that shape misses emergent suppression (Prop.~\ref{prop:emergent}). §\ref{sec:targeted}'s dissociations witness both directions. \emph{What transports is one rule, and it is not our screen}: to attribute an outcome to an upstream mechanism in a composed pipeline, hold the downstream mechanism and the threat fixed and intervene upstream. Holding the threat fixed is its cost: a diagnostic under a committed attack, not a guarantee against an adversary that adapts (§\ref{sec:validation}).
 
 \textbf{What changes for an evaluator}, without using our criterion at all: \emph{do not} read a preserved statistic or an unchanged decision as evidence that suppression survived (Table~\ref{tab:channels}); \emph{do not} select the pairs you compare on the outcome you are about to attribute, the design that reversed our own sign; \emph{do} run §\ref{sec:protocol}'s four clauses and report where the chain broke. Both instruments read adversary identity, leaving the open question (App.~\ref{app:conclusion}): \textbf{can admission (P4) be estimated without knowing which clients are malicious?}
 
@@ -777,8 +997,12 @@ mistakes them for a recommendation.
 
 Every claim in the paper is tagged \emph{general}, \emph{formal} or \emph{empirical} at the
 point it is made, and Table~\ref{tab:scope_levels} states the scope conditions on each.
-For the formal claims, Propositions~\ref{prop:identification} and~\ref{prop:emergent} are
-stated in full in the body and proved in the appendix, and
+% Round 71: the list is TWO -> THREE (Phase B stated prop:nonidentifiability in the body). The
+% labels are ordered so the rendered numbers ascend: prop:emergent is 2 and the new one is 3, so
+% listing it second printed "Propositions 1, 3 and 2". No gate can see either the stale count or
+% the scrambled order -- both \ref{}s resolve, so the build is clean either way.
+For the formal claims, Propositions~\ref{prop:identification}, \ref{prop:emergent}
+and~\ref{prop:nonidentifiability} are stated in full in the body and proved in the appendix, and
 Proposition~\ref{prop:invariance} and Theorem~\ref{thm:bounded_reweight} are stated and
 proved in the appendix and referenced from the body. For the empirical
 claims: each pre-registered arm has a decision rule git-committed before the corresponding
@@ -794,7 +1018,16 @@ submission}, and throughout this paper ``the supplement'' means the companion PD
 will be released on publication is specific rather than a general promise: every experiment
 runner and measurement script, the \texttt{results/} JSON artifacts every reported number is
 read from, the simulator itself, the generators that emit the figures, and the
-$26$ pre-registration documents fixing the decision rules for every pre-registered arm, seed
+% Round 71: 26 -> 27. The round wrote experiments/pre_registration_cell7_seed_topup.md, and this
+% sentence stakes itself on the GLOB, not on how many arms have run, so the glob is what it is
+% checked against: `ls experiments/pre_registration_*.md | wc -l` is 28 on this tree. The 27th
+% fixes the decision rules for the CIFAR-100 reversal seed top-up and the 28th those for the
+% norm_clip/coord_median composition arm on CIFAR-100; whether either arm runs is a separate
+% question and no result from either is claimed anywhere in this paper.
+% This number went stale once already: it read 27 while the glob read 28, because the round that
+% added the 28th document did not re-run the glob. No gate, hash or build can see that happen, so
+% the glob is re-counted in the verification list of every round that adds or removes a document.
+$28$ pre-registration documents fixing the decision rules for every pre-registered arm, seed
 top-up and audit, which is the count of \texttt{experiments/\allowbreak pre\_registration\_*.md}
 and is checkable as one rather than taken on trust.
 Everything this paper's tables and figures are computed from runs from the repository root on
@@ -1429,12 +1662,28 @@ All 80 runs completed (16.5 h wall clock). Table~\ref{tab:dose_outcome} is the w
 
 \textbf{What Mode~S does to the ladder's confirmation.} Reputation was the ladder's one confirmed arm (§\ref{sec:dose_outcome}); Mode~S shows most of that confirmation was attenuation. With the adversary's share held fixed, reputation's rise at $\rho{=}54.6$ shrinks from the ladder's $+0.762$ to $+0.178$ (one-sided Welch $t{=}{-}5.22$, $p{=}0.0017$ that it is smaller), and what remains tracks a small \emph{admission} change ($0.000 \to 0.020$) rather than the large decision change ($0.000 \to 1.000$), so H-admission is confirmed here too (Table~\ref{tab:targeted}). The confound is thus \emph{explained}, not explained away: a genuine, much smaller, admission-driven effect survives it. The class-(a) control cuts the other way and refutes us: \texttt{cos\_krum}'s selection is bit-identical at every rung (decision and admission both $0.000$), yet ASR is $0.584$ at the identity (it never suppresses) and \emph{falls} $0.425$ across the ladder ($p_{\downarrow}{=}0.0008$; the $\kappa{=}2$ rung is below the accuracy gate). Exact invariance of the statistic neither implies suppression nor holds it fixed; the magnitude channel moves it regardless. We report this as a refutation of Proposition~\ref{prop:invariance}'s practical content, not a confirmation of its algebra.
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.62\linewidth]{figures/targeted_modeS.pdf}
+% This artwork is not new and no generator was added for it: targeted_dose_figure.py has emitted
+% targeted_modeS.pdf as a standalone file all along, and until this round NOTHING in main.tex,
+% supplementary.tex or workshop_paper/main.tex referenced it -- a file on disk that no document drew,
+% which builds clean and passes every gate, because LaTeX warns about a \ref with no \label and never
+% about the reverse. It lands here, beside the Mode-S paragraph above and ahead of its Mode-A
+% companion, now that the tenth review's item (6) cut the body composite from three panels to two.
+% The standalone draw is the FULLER one (a three-series legend, "decision 0.80", "admission never
+% changes", "ASR flat", the suppression rule), so this caption states only what the panel does not
+% print: the section, the pinning, the margin's provenance and the interval convention.
+\caption{\textbf{Mode~S, the $\Delta_c$-pinned dose: Krum's statistic is disturbed, its admission of adversarial input is not, and suppression does not follow either.} The instrument of §\ref{sec:targeted} at the four rungs of the benign-dispersion dose, with every adversary's own weight pinned ($\Delta_c$ exactly $0$ at every rung, so the attenuation channel is cut by construction rather than controlled for): the selected client flips in up to $0.80$ of rounds, the admitted adversarial support changes in none of them, and max-committed ASR stays inside the pre-registered $\pm0.15$ practical-equivalence margin. It is the $\Delta_c$-pinned companion to the $\Delta_c$-swept Mode~A (Figure~\ref{fig:modeA}), and the same evidence Figure~\ref{fig:modeS}(a)'s middle annotation pools over four arms rather than Krum alone. Bars are Student-$t$ $95\%$ intervals, $n{=}5$; numbers recomputed per seed by \texttt{analyze\_targeted\_dose.py}.}
+\label{fig:modeS_dose}
+\end{figure}
+
 \textbf{Mode A: the two regimes, and where they hold.} The payload dose gives Theorem~\ref{thm:bounded_reweight} a single falsifiable shape: ASR single-peaked at $r{=}1$, since an over-attenuated adversary carries no payload (Regime~B) and an over-amplified one is discarded by a rank aggregator (Regime~A). It is \textbf{confirmed for \texttt{coord\_median}}, the rank aggregator the regimes are stated for: ASR rises $0.124 \to 0.315 \to 0.443$ into $r{=}1$ and falls $0.443 \to 0.296 \to 0.098$ past it, both sides significant ($p_{\downarrow}{=}3.0{\times}10^{-4}$ amplified, $6.4{\times}10^{-4}$ attenuated) at accuracy $\ge 0.74$ throughout (Figure~\ref{fig:modeA}). It is \textbf{refuted for reputation}, which is monotone: ASR is maximal at the most attenuated rung ($0.894$ at $r{=}0.135$) and near zero once $r \ge 1$, because an attenuated adversary reads as \emph{consistent} to a reputation score and stops being down-weighted. Reputation is not a rank aggregator, so the two-regime shape was never licensed for it; the split is the theorem behaving exactly where it applies and not where it does not.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.62\linewidth]{figures/targeted_modeA.pdf}
-\caption{\textbf{Mode~A, the payload dose: the two mechanism-preserving regimes, and where they hold.} With dispersion fixed and only the adversary/benign weight ratio $r$ swept, \texttt{coord\_median} (a rank aggregator, the case Theorem~\ref{thm:bounded_reweight}'s regimes are stated over) is \textbf{single-peaked at $r{=}1$} as the theorem predicts (over-attenuated adversaries carry no payload, over-amplified ones are discarded) while reputation is monotone, off-spec and refuted for that shape. Mode~A is the $\Delta_c$-\emph{swept} companion to Mode~S's $\Delta_c$-pinned design (Proposition~\ref{prop:rho_deltac}); Mode~S itself is Figure~\ref{fig:modeS}. Bars are Student-$t$ $95\%$ intervals; numbers recomputed per seed by \texttt{analyze\_targeted\_dose.py}.}
+\caption{\textbf{Mode~A, the payload dose: the two mechanism-preserving regimes, and where they hold.} With dispersion fixed and only the adversary/benign weight ratio $r$ swept, \texttt{coord\_median} (a rank aggregator, the case Theorem~\ref{thm:bounded_reweight}'s regimes are stated over) is \textbf{single-peaked at $r{=}1$} as the theorem predicts (over-attenuated adversaries carry no payload, over-amplified ones are discarded) while reputation is monotone, off-spec and refuted for that shape. Mode~A is the $\Delta_c$-\emph{swept} companion to Mode~S's $\Delta_c$-pinned design (Proposition~\ref{prop:rho_deltac}); Mode~S itself is Figure~\ref{fig:modeS_dose}. Bars are Student-$t$ $95\%$ intervals; numbers recomputed per seed by \texttt{analyze\_targeted\_dose.py}.}
 \label{fig:modeA}
 \end{figure}
 
@@ -1469,12 +1718,19 @@ All 80 runs completed (16.5 h wall clock). Table~\ref{tab:dose_outcome} is the w
 
 \textbf{The outcome is $\Delta = +0.098$ at $n{=}5$: the admission \emph{ordering} is refuted.} The arm with the largest admission change rose \emph{less} than an arm with a smaller one, so \textbf{admission magnitude does not order outcomes across arms}. Neither does the decision reading, which predicted the \emph{smallest} rise of the three when $+0.098$ is the middle one, so this arm refutes a rank prediction from \emph{each} candidate channel. The pooled model agrees: re-fit with these cells it is still not confirmed ($R^2{=}0.239$; the admission coefficient's one-sided $p$ moves $0.055 \to 0.041$, but the adversarial-share coefficient is negative, so the pre-specified conjunction fails). \textbf{What does replicate is the negative}: a decision change of $0.482$ costs no suppression by the frozen margin, at mean accuracy $0.698$, so the accuracy gate does not bind and the flagship result now holds on two downstream defenses in \emph{different} invariance classes. Two qualifications, the first pre-specified in the freeze and the second post-hoc: this cell's identity ASR is $0.443$, so equivalence is to the \emph{identity rung} and not to a low absolute ASR (an ``every rung ${<}0.5$'' criterion has no headroom here and was deliberately not used); and the rise is positive in $5/5$ seeds (paired $t{=}3.39$, one-sided $p{=}0.014$, \emph{not} pre-registered), so on this class the cost of disturbing the decision is \textbf{small and consistent rather than zero}. All numbers are recomputed per seed by \texttt{analyze\_dose\_replication.py}, which imports its rung builder and trend test from the frozen suite's scorer.
 
-\paragraph{The design choice, not the defense, sets the inferred direction.} This is the paper's central empirical result. On this identical cell (matched aggregate displacement, decision change and clean accuracy, Table~\ref{tab:comparability}), \textbf{the confounded design does not lose power, it points the other way}: at $n{=}20$ the outcome-gated ladder moves $-0.273$ ($0.478 \to 0.205$) where the instrument moves $+0.125$ ($0.478 \to 0.603$), the two paired $95\%$ intervals $[-0.334,-0.213]$ and $[+0.095,+0.155]$ disjoint and both excluding zero. Closing the attenuation channel does not sharpen a weak positive effect, it \textbf{inverts it}. \textbf{The two designs are not the same intervention}, and Table~\ref{tab:comparability} states the one non-match: $\Lambda_a$ moves in both ($0.081$ against $0.033$, both $n{=}5$), so neither column is a clean statistic-only intervention and no $p$-value attaches to the difference between them. What the contrast establishes is that the design choice sets the inferred direction, so a criterion calibrated against the confounded contrast would have been calibrated against the confound, and a cross-defense contrast would have read the fall as evidence about the statistic. That is why the identification boundary of §\ref{app:boundary} is not a technicality about power.
+\paragraph{Two admissible estimands, opposite conclusions on the same cell.} This is the paper's central empirical result. On this identical cell (matched aggregate displacement, decision change and clean accuracy, Table~\ref{tab:comparability}), \textbf{the confounded design does not lose power, it points the other way}: at $n{=}20$ the outcome-gated ladder moves $-0.273$ ($0.478 \to 0.205$) where the instrument moves $+0.125$ ($0.478 \to 0.603$), the two paired $95\%$ intervals $[-0.334,-0.213]$ and $[+0.095,+0.155]$ disjoint and both excluding zero. Closing the attenuation channel does not sharpen a weak positive effect, it \textbf{inverts it}. \textbf{The two designs are not the same intervention}, and Table~\ref{tab:comparability} states the one non-match: $\Lambda_a$ moves in both ($0.081$ against $0.033$, both $n{=}5$), so neither column is a clean statistic-only intervention and no $p$-value attaches to the difference between them. What the contrast establishes is that the choice between two admissible estimands sets the inferred direction, so a criterion calibrated against the confounded contrast would have been calibrated against the confound, and a cross-defense contrast would have read the fall as evidence about the statistic. That is why the identification boundary of §\ref{app:boundary} is not a technicality about power.
 
 \paragraph{What the two arms jointly establish, stated formally.} The arms above and the class-(a) control (\texttt{cos\_krum}) are between them a \emph{constructive} answer to the question C2 was written to settle. Both halves are witnessed by runs already reported, so the following formalizes measurements rather than adding a claim.
 
-\begin{proposition}[Statistic-level non-identifiability]
-\label{prop:nonidentifiability}
+% Round 71, review P2: this statement is now the body's Prop.~\ref{prop:nonidentifiability} at the head
+% of §\ref{sec:targeted}, and this copy is the restatement carrying the proof -- the same body/appendix
+% pair Prop.~\ref{prop:identification} and Prop.~\ref{prop:identification_full} already form, with the
+% same title convention. The two paragraphs below ("What the proposition does not say" and the corollary)
+% stay HERE with the proof rather than travelling: each is a scope clause on a proved statement, and the
+% body copy carries its own one-sentence scope clause so no disclosure depends on the reader reaching
+% this page.
+\begin{proposition}[Statistic-level non-identifiability; Proposition~\ref{prop:nonidentifiability} of the body, restated with proof]
+\label{prop:nonidentifiability_full}
 Within the positive per-client rescaling class there exist transform families $T_1,T_2$ and downstream defenses $d_2$ such that
 (a) $T_1$ and $T_2$ induce arbitrarily different statistics and \emph{decisions} at $d_2$ while inducing the \emph{same} admitted adversarial mass and the same suppression; and
 (b) $T_1$ and $T_2$ induce the \emph{same} admitted adversarial mass (indeed the same statistic and the same decision) while inducing \emph{different} suppression.
@@ -1502,7 +1758,7 @@ By construction, with the realized values tabulated in the supplement (§\ref{ap
 
 \noindent This is why the two instruments were the right ones, and it makes the supplement's §\ref{sec:rho_vs_deltac} warning precise: \textbf{a transform reported by $\rho$ alone leaves $\Delta_c$ entirely free}, so $\rho$ cannot be a sufficient statistic for what the transform does to a defense. It does \emph{not} follow that $\Delta_c$ is a predictor: §\ref{sec:dose_outcome} reports that its magnitude fails to order suppression either.
 
-\paragraph{The dissociation is not Krum-specific: all four aggregators, all four channels.} Table~\ref{tab:channels_full} collects the endpoint change ($\kappa{=}0$ against $\kappa{=}2$) in each measured channel under Mode~S for every downstream defense in the paper. \textbf{Recomputed, not transcribed}: every cell is emitted by \texttt{build\_channel\_table.py}, which only reads frozen artifacts under \texttt{results/}, \texttt{admission\_\allowbreak measurement.json}, \texttt{femnist\_\allowbreak admission.json} and \texttt{resnet18\_\allowbreak admission.json} for the channel columns, the \texttt{targeted\_dose/}, \texttt{dose\_\allowbreak replication/}, \texttt{dose\_femnist/} and \texttt{dose\_\allowbreak resnet18/} summaries for the ASR column; it also asserts that the identity rung displaces nothing ($0.00\mathrm{e}{+}00$ for all seven rows). The sixth row's aggregate column comes from \texttt{displacement\_\allowbreak decomposition.json} and its ASR from \texttt{score\_only/summary.json}, both read-only; the emitter refuses to merge that arm into the ASR sources it shares cell keys with, so it cannot shadow the first row's published number. The influence column is \textbf{aggregator-specific by necessity} (a selector has no weights) and its instantiation is: adversarial share of the Weiszfeld/reputation weight mass for the averager, adversarial share of selected coordinates for the order statistic, and the indicator that an adversarial update is selected at all for the two selectors. The fifth row replicates the first row's arm on a second dataset and a differently configured CNN (EMNIST-byclass with \texttt{simple\_cnn}) with \textbf{its channels measured prospectively, before its ASR existed}; the result is reported below. \textbf{The seventh row replicates it with architecture varying alone} (CIFAR-10 with \texttt{resnet18}), its channels likewise measured before its ASR existed, and it is the one row that shares \emph{both} the first row's dataset and its cell key: the ASR lookup is keyed on the triple (dataset, model, cell) precisely so that the two cannot shadow each other, and the emitter raises rather than resolving a collision by file order (§\ref{app:resnet18_dose}). \textbf{What the $\Delta$~adm.\ column pools}: the four \texttt{cifar\_cnn} CIFAR-10 rows contribute $60$ measured rounds each, $240$ in total, and adversarial mass is present at baseline in $100$ of those $240$ rounds (including the $48$ per arm where reputation and \texttt{coord\_median} carry it) while its support moves in none of them, which is the count Figure~\ref{fig:modeS}'s annotation reports and why that annotation carries no single arm's name.
+\paragraph{The dissociation is not Krum-specific: all four aggregators, all four channels.} Table~\ref{tab:channels_full} collects the endpoint change ($\kappa{=}0$ against $\kappa{=}2$) in each measured channel under Mode~S for every downstream defense in the paper. \textbf{Recomputed, not transcribed}: every cell is emitted by \texttt{build\_channel\_table.py}, which only reads frozen artifacts under \texttt{results/}, \texttt{admission\_\allowbreak measurement.json}, \texttt{femnist\_\allowbreak admission.json} and \texttt{resnet18\_\allowbreak admission.json} for the channel columns, the \texttt{targeted\_dose/}, \texttt{dose\_\allowbreak replication/}, \texttt{dose\_femnist/} and \texttt{dose\_\allowbreak resnet18/} summaries for the ASR column; it also asserts that the identity rung displaces nothing ($0.00\mathrm{e}{+}00$ for all seven rows). The sixth row's aggregate column comes from \texttt{displacement\_\allowbreak decomposition.json} and its ASR from \texttt{score\_only/summary.json}, both read-only; the emitter refuses to merge that arm into the ASR sources it shares cell keys with, so it cannot shadow the first row's published number. The influence column is \textbf{aggregator-specific by necessity} (a selector has no weights) and its instantiation is: adversarial share of the Weiszfeld/reputation weight mass for the averager, adversarial share of selected coordinates for the order statistic, and the indicator that an adversarial update is selected at all for the two selectors. The fifth row replicates the first row's arm on a second dataset and a differently configured CNN (EMNIST-byclass with \texttt{simple\_cnn}) with \textbf{its channels measured prospectively, before its ASR existed}; the result is reported below. \textbf{The seventh row replicates it with architecture varying alone} (CIFAR-10 with \texttt{resnet18}), its channels likewise measured before its ASR existed, and it is the one row that shares \emph{both} the first row's dataset and its cell key: the ASR lookup is keyed on the triple (dataset, model, cell) precisely so that the two cannot shadow each other, and the emitter raises rather than resolving a collision by file order (§\ref{app:resnet18_dose}). \textbf{What the $\Delta$~adm.\ column pools}: the four \texttt{cifar\_cnn} CIFAR-10 rows contribute $60$ measured rounds each, $240$ in total, and adversarial mass is present at baseline in $100$ of those $240$ rounds while its support moves in none of them, which is the count Figure~\ref{fig:modeS}'s annotation reports and why that annotation carries no single arm's name. \textbf{That $100$ is not spread evenly, and the split is the answer to the floor objection}: it is $0$ rounds for Krum, $4$ for \texttt{cos\_krum}, and $48$ each for reputation and \texttt{coord\_median}, so the admission reading is carried by the two arms that have room and not by the two that are at or near the floor. The emitter prints each arm's pre-transform admitted fraction, averaged over the rounds an adversary actually joins, and asserts that it is identical at the identity rung and at $\kappa{=}2$, since a level that moved with the dose would not be a baseline. \textbf{It also holds the aggregator fixed and varies the attack instead}, which is the only way to tell an aggregator's floor from an attack's, and the four CIFAR-10 aggregators read as follows under \texttt{committed\_\allowbreak scaling} against \texttt{committed\_\allowbreak pixel}, as level (nonzero rounds of $12$): Krum $0.000$ ($0$) against $0.333$ ($4$), \texttt{cos\_krum} $0.083$ ($1$) against $0.083$ ($1$), reputation $0.0014$ ($12$) against $0.251$ ($12$), \texttt{coord\_median} $0.156$ ($12$) against $0.286$ ($12$). So Krum's floor belongs to the attack: a model-scaling adversary is a norm outlier and Krum is built to reject one, while under the pixel backdoor the same Krum admits adversarial mass at baseline. That weakens the reading on which the floor is a property of the aggregator, and it does not remove the limitation, because the adjudicating arm does commit to scaling.
 
 \begin{table}[h]
 \centering
@@ -1511,7 +1767,7 @@ By construction, with the realized values tabulated in the supplement (§\ref{ap
 % the outer pads, which is also what makes the two copies of one table set to the same width.
 % Round 63: tracks tab:channels from 3.5pt to 2.5pt for the same eighth column, and for the same reason.
 \small\setlength{\tabcolsep}{2.5pt}
-\caption{\textbf{The four channels, all four aggregators, under Mode~S.} Endpoint change $\kappa{=}0 \to \kappa{=}2$. \textbf{The first column, $\Delta$~agg., is the relative displacement of the aggregate the defense \emph{emits}}, $\|\mathrm{agg}(T(U)) - \mathrm{agg}(U)\|/\|\mathrm{agg}(U)\|$: what enters training, and \textbf{not} the value of a scoring statistic; the measured channels are aggregate displacement, decision, admission and influence. The dissociation between the \emph{decision} channel and the \emph{admission} channel is not a property of one aggregator: it holds for a selector, a cosine-invariant selector, a coordinate-wise order statistic and a weighted averager. The table does \textbf{not} order the arms ($\Delta\Lambda_a$ and $\Delta$ASR disagree in rank, which is this section's refutation stated in one row-pair) and it is \emph{not} an out-of-sample test: all rows are Mode-S ladders reported elsewhere in this paper. \textbf{The sixth row is the score-only control}: the same arm as the first with the magnitude channel closed, so its $\Delta$~agg.\ is the re-selection component alone and its decision, admission and influence columns are the first row's own numbers, score-only leaving the selection untouched. \textbf{The seventh row varies architecture alone}: the first row's cell on \texttt{resnet18} instead of \texttt{cifar\_cnn}, with dataset, $N$, $K$, $f$, $\alpha$, attack and defense all at their frozen CIFAR-10 values, so it is the only row that differs from the first in a single factor. Its channel columns were measured \emph{prospectively} --- \texttt{results/\allowbreak resnet18\_\allowbreak admission.json} records ``No ASR. Freezes nothing.'' and predates every ResNet18 ASR in this paper --- and its two unrun interior rungs are why §\ref{app:resnet18_dose} reports no trend statistic for it. \textbf{$n$ is the seed count behind the $\Delta$~ASR column and nothing else}: the channel columns are per-round measurements, whose counts are given above. It is emitted per row as \texttt{n\_seeds} $= \min(n_0,n_2)$ over the row's two rungs and it is \textbf{not uniform}, reading $3$ for the second-dataset replication and $8$ for \texttt{cos\_krum}. The emitter also records \texttt{seeds\_match} on the six rows whose two rungs come from one paired suite, and it is true on all six; the score-only row's ASR is read from a separate directory, so it carries no such field.}
+\caption{\textbf{The four channels, all four aggregators, under Mode~S.} Endpoint change $\kappa{=}0 \to \kappa{=}2$. \textbf{The first column, $\Delta$~agg., is the relative displacement of the aggregate the defense \emph{emits}}, $\|\mathrm{agg}(T(U)) - \mathrm{agg}(U)\|/\|\mathrm{agg}(U)\|$: what enters training, and \textbf{not} the value of a scoring statistic; the measured channels are aggregate displacement, decision, admission and influence. The dissociation between the \emph{decision} channel and the \emph{admission} channel is not a property of one aggregator: it holds for a selector, a cosine-invariant selector, a coordinate-wise order statistic and a weighted averager. \textbf{The two channels do not have equal room, and the $\Delta$~adm.\ column is a support flip rather than a magnitude}: averaged over the rounds an adversary joins, the pre-transform admitted fraction is $0.000$ on every Krum row and $0.083$ on Cosine-Krum, which is one round in twelve, against $0.286$ on coord.\ median and $0.0014$ on reputation, each nonzero in all twelve. So the decision reading rests on Krum, whose decision channel is unconstrained and moves on $0.733$ of rounds, and the admission reading rests on coord.\ median and reputation, the two arms with room; a zero on a Krum row is a floor and is not evidence either way. The table does \textbf{not} order the arms ($\Delta\Lambda_a$ and $\Delta$ASR disagree in rank, which is this section's refutation stated in one row-pair) and it is \emph{not} an out-of-sample test: all rows are Mode-S ladders reported elsewhere in this paper. \textbf{The sixth row is the score-only control}: the same arm as the first with the magnitude channel closed, so its $\Delta$~agg.\ is the re-selection component alone and its decision, admission and influence columns are the first row's own numbers, score-only leaving the selection untouched. \textbf{The seventh row varies architecture alone}: the first row's cell on \texttt{resnet18} instead of \texttt{cifar\_cnn}, with dataset, $N$, $K$, $f$, $\alpha$, attack and defense all at their frozen CIFAR-10 values, so it is the only row that differs from the first in a single factor. Its channel columns were measured \emph{prospectively} --- \texttt{results/\allowbreak resnet18\_\allowbreak admission.json} records ``No ASR. Freezes nothing.'' and predates every ResNet18 ASR in this paper --- and its two unrun interior rungs are why §\ref{app:resnet18_dose} reports no trend statistic for it. \textbf{$n$ is the seed count behind the $\Delta$~ASR column and nothing else}: the channel columns are per-round measurements, whose counts are given above. It is emitted per row as \texttt{n\_seeds} $= \min(n_0,n_2)$ over the row's two rungs and it is \textbf{not uniform}, reading $3$ for the second-dataset replication and $8$ for \texttt{cos\_krum}. The emitter also records \texttt{seeds\_match} on the six rows whose two rungs come from one paired suite, and it is true on all six; the score-only row's ASR is read from a separate directory, so it carries no such field.}
 \label{tab:channels_full}
 \begin{tabular}{@{}llrrrrrr@{}}
 \toprule
@@ -1723,6 +1979,37 @@ frozen cell, as published & mean & $-0.273$ & $+0.125$ & $-0.408$ \\
 \textbf{Amendment~1, and why it was needed before any run.} The freeze required the runner to assert that the adversarial tensor \emph{changed} at the first round, as a guard against a hook that is silently never called. That assertion is false by design for the committed pixel backdoor, whose payload lives in the poisoned dataset and whose \texttt{manipulate\_update} is the inherited identity, so the runner would have aborted on round zero of every non-adaptive leg. Amendment~1 replaces it with an \textbf{attack-conditional} assertion: the update must change exactly when the attack overrides \texttt{manipulate\_update} or the criterion-aware layer is active, and must be \emph{unchanged} otherwise. \textbf{This is strictly stronger than what it replaced}, because the defect the original clause existed to catch, a hook that never fires, produces ``nothing changed'', which is also this attack's correct behaviour, and that exact collision once left two composition arms in this repository computing the same thing. All four failure modes were deliberately induced and each was caught. The amendment was committed \textbf{before} \texttt{results/regime\_dissociation/} existed and before any run of this arm, and the pre-amendment text remains at \texttt{b317af0}.
 
 
+% Round 72, the twelfth review's #1 ask ("a true composition-level replication of the causal dissociation
+% on a second dataset/model with nonzero baseline adversarial admission"). This subsection reports a
+% PRE-REGISTERED ARM WHOSE PREMISE FAILED, and it exists because the freeze required exactly that: "if the
+% premise fails ... the paper says the composition-level replication was attempted and did not carry -- in
+% the abstract and §5, not in a footnote." Stage 2 never ran, so there is no ASR here and none may be
+% inferred. Three things in it are load-bearing and must not be softened: (a) the frozen verdict literal's
+% mechanism clause is BACKWARDS in sign (it says the clip attenuates adversaries; the measurement says
+% adversarial c is exactly 1 in every round and the BENIGN clients are the ones clipped), and both the
+% literal and the measured direction are printed, the literal labelled as the pre-committed verdict;
+% (b) the structural argument is the arm's actual contribution and is what §5's body paragraph points at;
+% (c) Amendment 1's epoch change is why the confound is visible at all -- at 1 epoch the same tau* clips
+% 0 of 90 client-rounds and condition (iii) PASSES with spread exactly 0, so an unamended freeze would
+% have licensed a stage 2 whose upstream defense was inert. Artifact md5 0c2df0c7.
+% The title deliberately carries no ordinal. An earlier draft read "A third regime attempted and not
+% available", which collides with the body's self-count at :947 ("Two pre-registered regimes ask whether
+% the disagreement needs a non-adaptive attacker or ten clients"): that sentence counts the regimes of
+% App.~\ref{app:regime}, this arm asks a different question, and an ordinal here reads as a third member
+% of that family. Do not reintroduce one.
+\subsection{An oracle-free upstream defense on CIFAR-100: attempted, and not established}
+\label{app:normclip_cifar100}
+
+\noindent \emph{Can the Mode~S contrast be run with a real deployed defense as the upstream transform, on a second dataset, at nonzero baseline adversarial admission?} That one experiment would answer three separate objections at once: Mode~S's rungs pin the adversary with an \texttt{adv\_mask} that a deployed server does not have, every composed-pair experiment in this paper is on CIFAR-10, and the flagship arm's admission baseline is a floor. \texttt{norm\_clip} is the candidate, and the fit looks exact: its coefficient is $c_i=\min(1,\tau/\lVert u_i\rVert)>0$, so it lies inside Theorem~\ref{thm:bounded_reweight}'s positive per-client rescaling class, it needs no mask, its own $\tau$ is the dose, and $T{=}\mathrm{id}$ is recovered at $\tau$ above every client norm. We pre-registered it in two stages with stage~2 gated on stage~1's verdict (\texttt{experiments/pre\_\allowbreak registration\_\allowbreak normclip\_\allowbreak cifar100.md}, committed before either runner existed, with one append-only amendment), ran stage~1, and \textbf{the premise failed}. Stage~2 never started, so \textbf{no composed-pair ASR result on a second dataset is reported anywhere in this paper}, and none may be inferred from what follows. The CIFAR-100 cell of §\ref{sec:targeted} is a different object and is not withdrawn by this: its upstream transform is the Mode~S instrument rather than a deployed defense, so it replicates the design's sign reversal on a second dataset without composing two defenses.
+
+\textbf{The premise was three conditions frozen before any ASR existed, and two of them passed.} (i)~\emph{\texttt{coord\_median}'s baseline adversarial argmedian fraction on CIFAR-100 must clear a pre-stated floor of $0.05$ in at least half its adversary rounds}: measured $0.2885$, nonzero in $15/15$, against CIFAR-10's $0.2855$. The admission \emph{level} therefore replicates across the change of dataset and label space, which is a real if small positive result and the only one this arm yields. (ii)~\emph{At the identity rung every $c_i$ is exactly $1$ and every channel displacement is exactly $0$}: exact at both epoch counts, tested with \texttt{==} rather than against a tolerance. (iii)~\emph{The adversarial share of coefficient mass must not move beyond the frozen $10^{-6}$}: it moves $0.2533 \to 0.2603$ at $\tau^\ast$, a spread of $6.9{\times}10^{-3}$, with $45$ of $90$ client-rounds clipped and the smallest coefficient $0.838$. So $\Delta_c \ne 0$, the arm measures the attenuation channel rather than the statistic channel, and by the freeze's own demotion clause it is \textbf{not established on CIFAR-100}.
+
+\textbf{The freeze's guess at the mechanism was wrong in sign, and its verdict string still stands as the verdict.} That literal reads \emph{arm confounded on this dataset: the clip attenuates adversaries}. The clip attenuates \emph{benign} clients. Over the $15$ adversary rounds the mean coefficient on adversarial clients is $1.000000$ (not one adversary was clipped in any round) against $0.962780$ on benign clients, so $\Delta_c = {+}0.037$ and the adversarial share rises rather than falls. Under a pixel backdoor adversarial updates are not norm outliers; they sit just below the benign median, so a clip placed \emph{at} that median is a benign-only attenuator. We print the pre-committed literal as the verdict, because that is what the artifact records and what was frozen, and the measured direction beside it, rather than letting the literal's wording stand as a finding.
+
+\textbf{The failure is structural rather than a badly chosen $\tau$, and that is this arm's actual contribution.} A clip's coefficient admits exactly two regimes. If $\tau$ sits above every client norm it does not bind, every $c_i$ is exactly $1$, and $\Delta_c=0$ \emph{by construction}, which is precisely our own $\Delta_c=0.000$ row for this transform under this attack (Table~\ref{tab:delta_c}, at $\rho=1.00$ because no client exceeds $\tau{=}5$), a zero that measures nothing, as that table's discussion already says. If $\tau$ binds, $\Delta_c$ is a difference of two group means of $\min(1,\tau/\lVert u\rVert)$ and is zero only by coincidence, its sign set by which group's norms sit higher: ${-}0.721$ under model scaling, ${+}0.037$ here. \textbf{For this family neutrality and informativeness are mutually exclusive}, at any $\tau$ and on any dataset, because it is a fact about the functional form and not about our configuration. So the mask Mode~S carries is not a convenience, and \textbf{no oracle-free member of Theorem~\ref{thm:bounded_reweight}'s class serves as a clean probe of the statistic channel}. What we had stated about one table row generalizes to an impossibility for the whole family, and we had not drawn that consequence.
+
+\textbf{$\tau$ was fixed by a rule before the number existed, and the amendment is why the confound is visible at all.} The rule is the median client update norm, so roughly half of clients clip; stage~1 measured $\tau^\ast{=}4.0825$. It was not re-chosen after the failure and no second $\tau$ is reported: searching for a $\tau$ that passes condition~(iii) after seeing this one fail is what pre-registering a rule instead of a value was for. The amendment, appended before either runner existed, moved the rule's instantiation from the one-epoch pass that every existing admission measurement in this paper uses to the two-epoch pass the ASR ladders train. \textbf{At one epoch the same $\tau^\ast$ clips $0$ of $90$ client-rounds and condition~(iii) passes with a spread of exactly $0$}: the confound exists only at the epoch count the ladder would have run at, so an unamended freeze would have certified a stage~2 whose upstream defense was inert. Artifact \texttt{results/normclip\_\allowbreak cifar100\_\allowbreak admission.json}, $3$ seeds $\times$ $6$ rounds $\times$ $2$ epoch counts $\times$ $2$ rungs, no ASR anywhere in it.
+
 \section{A subordinate boundary study: what the screen buys, and what it does not}
 \label{sec:composability_validation}
 \label{app:validation_full}
@@ -1899,7 +2186,7 @@ measured setting of §\ref{sec:composability_validation}--§\ref{app:targeted_fu
 \midrule
 Does disturbing $d_2$'s statistic change its \emph{decision}? & measured & \textbf{Yes}: Krum's selection flips in up to $0.80$ of rounds \\
 Does it change the \emph{admitted adversarial mass}? & by construction & \textbf{No}: unchanged in every one of the $60$ measured rounds \\
-Does it change \emph{suppression}? & instrumented & \textbf{No}: $|\Delta|{=}0.026$, inside the frozen margin (Prop.~\ref{prop:nonidentifiability}(a)) \\
+Does it change \emph{suppression}? & instrumented & \textbf{No}: $|\Delta|{=}0.026$, inside the frozen margin (Prop.~\ref{prop:nonidentifiability_full}(a)) \\
 Does \emph{adversary-correlated} reweighting change suppression? & instrumented & \textbf{Yes}, non-monotonically: single-peaked (Mode~A) \\
 % Round 63: the n is printed here because the frozen refutation stays at its own n=5 while the
 % comparability cell's controlled leg moves to n=20 (pre_registration_reversal_seed_topup.md,
@@ -2516,13 +2803,53 @@ Consensus-shift is ineffective against FG$\to$RFA, as measured &
 
 \textbf{(L5) Theorem~\ref{thm:bounded_reweight}'s conditions need a pilot, and (1)'s is not operationally checkable as stated.} Neither $\rho < r^\star$ nor $\Delta'_{\mathrm{sep}} > 2(R'_B + \delta')$ is readable off a $(d_1,d_2)$ definition pair: both need a pilot measurement. \textbf{So two kinds of cheapness have to be kept apart, and the paper has previously run them together.} Prop.~\ref{prop:invariance}'s classes are \emph{algebraically} checkable: (a) and (c) are decided from the definitions of $d_1$ and $d_2$ alone, with no data, no runtime cost and no per-deployment work. Theorem~\ref{thm:bounded_reweight}'s conditions are closed-form inequalities and are \emph{still} none of those things, because their terms have to be instantiated by measurement on the deployment they are being checked for. \textbf{Algebraically checkable does not imply deployment-time cheap}, and only the first of the two is something this paper delivers. Regime~A is worse than that. Its ordering-survival condition is $\rho < r^\star$ with $r^\star$ the attack's coordinate extremeness against the benign scale. Building the dose--response ladder (§\ref{app:ladder}) required us to \emph{measure} $r^\star$ rather than stipulate it, and it is not a stable per-attack constant: on model-scaling it ranges $0.00$--$12.59$ across the 12 measured rounds that sampled an adversary (median $0.57$), on the pixel backdoor $0.61$--$1.63$ (median $0.92$). An illustrative $r^\star{=}10$ is a stipulation, not a measurement, and §\ref{sec:restricted_theorem} stipulates no value for $r^\star$ at all: the theorem states the condition symbolically. Two consequences we state rather than work around. First, a practitioner cannot check $\rho < r^\star$ from a single round: the quantity swings by orders of magnitude round to round, and on both committed attacks its median is below $1$, so Regime~A's condition fails even at the identity rung under this estimator. Second, we therefore built \emph{no} prediction in §\ref{app:ladder} on $r^\star$, resting the ladder on directly measured disturbance of $d_2$'s statistic instead. The margin form of the theorem remains valid as a statement about $\rho$ and $r^\star$; what is not established is that $r^\star$ admits a stable estimator at the round granularity a deployment would have to check it at, and a usable Regime~A needs an $r^\star$ estimator with characterized variance, which we do not provide. \textbf{And where the geometric condition \emph{is} measurable it stops being informative in the regime that matters most}: the margin it rests on is exactly what heterogeneity closes, RFA's all-round mean falling from $3.24$ to $1.01$ at Dirichlet $\alpha{=}0.1$, the limit at which Corollary~\ref{cor:aggregate_mass} degrades to $n_a/(n_b{+}n_a)$ and certifies nothing (§\ref{sec:restricted_theorem}, §\ref{sec:oos_pass}(E)). So under extreme heterogeneity the conditions are not merely awkward to check but empty, which is the sense in which §\ref{sec:framework} calls the bound vacuous there.
 
-\textbf{(L6) Measured disturbance is not a transferable predictor, and our dose instrument varies the wrong quantity for three of its four arms.} The pre-registered ladder (§\ref{sec:dose_outcome}) refutes the pooled claim it was built to test ($\rho_s = +0.351$, $p = 0.091$) and refutes two of four per-arm shapes, with ASR \emph{falling} as the dose rises in three arms. Two distinct faults, both ours. First, the abscissa: at matched measured disturbance the real upstream transforms sit up to $+0.79$ ASR above the synthetic curve, and Krum's within-margin arm does not reproduce the very contrast (§\ref{sec:metric_swap}) we attributed to disturbance of its statistic, so the rate at which a transform flips a defense's decision is not a sufficient statistic for what the transform does: \emph{which} clients are reweighted matters, and $\rho$ does not measure that. We now measure the quantity that does, $\Delta_c$ (the supplement §\ref{app:delta_c}): the transforms carrying the two anchors that miss are targeted far beyond any ladder rung ($-1.21$, $-0.72$ against the ladder's $-0.34$) at $\rho$ that is $3.7$ and $13\times$ smaller. That names the axis of the mismatch without supplying a replacement predictor: $\Delta_c$'s magnitude does not order suppression either. Second, the instrument: mean-1 normalization fixes the aggregate's scale but not any client's relative weight, so with the dose assigned independently of adversary status a large $\rho$ mostly dilutes whichever client carries the poison (measured: the ladder's $\Delta_c$ drifts monotonically negative with the dose, $0.000 \to -0.140 \to -0.240 \to -0.336$), and three arms end up measuring Theorem~\ref{thm:bounded_reweight}'s attenuation regime rather than C2 disturbance. The adversary-targeted dose that separates the two, recorded as not run before the freeze (caveat (iii), the supplement §\ref{app:dose_caveats}), is run in §\ref{app:targeted_full}, and in retrospect Mode~S is the \textbf{$\Delta_c$-pinned} instrument ($\Delta_c$ exactly $0$ at every rung, $\rho$ up to $54.6$) and Mode~A the \textbf{$\Delta_c$-swept} one ($-1.14$ to $+2.47$): with every adversary's weight pinned, Krum's statistic is disturbed in up to $80\%$ of rounds while the admission of adversarial input does not move and ASR stays inside the pre-registered practical-equivalence margin, so \emph{which} clients are reweighted, not how often a decision flips, is indeed the operative variable, and the ladder confound is \emph{explained} (reputation's rise shrinks from $+0.762$ to $+0.178$ once the adversarial share is held fixed). That isolates C2's causal content within a single defense; it does not rescue the pooled positive direction ($R^2 = 0.239$ over $26$ cells, cross-arm ordering refuted by the replication).
+\textbf{(L6) Measured disturbance is not a transferable predictor, and our dose instrument varies the wrong quantity for three of its four arms.} The pre-registered ladder (§\ref{sec:dose_outcome}) refutes the pooled claim it was built to test ($\rho_s = +0.351$, $p = 0.091$) and refutes two of four per-arm shapes, with ASR \emph{falling} as the dose rises in three arms. Two distinct faults, both ours. First, the abscissa: at matched measured disturbance the real upstream transforms sit up to $+0.79$ ASR above the synthetic curve, and Krum's within-margin arm does not reproduce the very contrast (§\ref{sec:metric_swap}) we attributed to disturbance of its statistic, so the rate at which a transform flips a defense's decision is not a sufficient statistic for what the transform does: \emph{which} clients are reweighted matters, and $\rho$ does not measure that. We now measure the quantity that does, $\Delta_c$ (the supplement §\ref{app:delta_c}): the transforms carrying the two anchors that miss are targeted far beyond any ladder rung ($-1.21$, $-0.72$ against the ladder's $-0.34$) at $\rho$ that is $3.7$ and $13\times$ smaller. That names the axis of the mismatch without supplying a replacement predictor: $\Delta_c$'s magnitude does not order suppression either. Second, the instrument: mean-1 normalization fixes the aggregate's scale but not any client's relative weight, so with the dose assigned independently of adversary status a large $\rho$ mostly dilutes whichever client carries the poison (measured: the ladder's $\Delta_c$ drifts monotonically negative with the dose, $0.000 \to -0.140 \to -0.240 \to -0.336$), and three arms end up measuring Theorem~\ref{thm:bounded_reweight}'s attenuation regime rather than C2 disturbance. The adversary-targeted dose that separates the two, recorded as not run before the freeze (caveat (iii), the supplement §\ref{app:dose_caveats}), is run in §\ref{app:targeted_full}, and in retrospect Mode~S is the \textbf{$\Delta_c$-pinned} instrument ($\Delta_c$ exactly $0$ at every rung, $\rho$ up to $54.6$) and Mode~A the \textbf{$\Delta_c$-swept} one ($-1.14$ to $+2.47$): with every adversary's weight pinned, Krum's statistic is disturbed in up to $80\%$ of rounds while the admission of adversarial input does not move and ASR stays inside the pre-registered practical-equivalence margin, so \emph{which} clients are reweighted, not how often a decision flips, is the distinction the two readings turn on in this arm, and the ladder confound is \emph{explained} (reputation's rise shrinks from $+0.762$ to $+0.178$ once the adversarial share is held fixed). That isolates C2's causal content within a single defense; it does not rescue the pooled positive direction ($R^2 = 0.239$ over $26$ cells, cross-arm ordering refuted by the replication).
 
 \section{Evidence status: what is proved, what is supported, what is not}
 \label{sec:conclusion}
 \label{app:conclusion}
 
-\textbf{Proved:} the invariance classes of Proposition~\ref{prop:invariance}; sufficient conditions for mechanism preservation on the weighting$\to$aggregator class (Theorem~\ref{thm:bounded_reweight}, Lemma~\ref{lem:annihilation}, Corollary~\ref{cor:aggregate_mass}); the identification boundary for outcome-gated screening (Proposition~\ref{prop:identification_full}, with Lemma~\ref{lem:testability} its FL instance and Corollary~\ref{cor:within_design} the within-defense design it licenses); the recall bound on inherited-suppression screens (Proposition~\ref{prop:emergent_full}, whose cap reaches $0$ on a menu whose suppression is emergent throughout, Corollary~\ref{cor:zero_recall}); and, formalizing the interventions, statistic-level non-identifiability (Proposition~\ref{prop:nonidentifiability}) and the independent controllability of $\rho$ and $\Delta_c$ (Proposition~\ref{prop:rho_deltac}). \textbf{The two boundary results are general} (they are statements about the shape of a screen, not about FL), so what carries beyond this paper is the design they license, not the screen. \textbf{Empirically supported:} that substantial disturbance of the downstream statistic need not produce a corresponding change in suppression when the adversarial coefficient share is held fixed, with adversarial admission the channel the evidence favours, \emph{on the adjudicating Krum arm under Mode~S} and, by pre-registered replication, on a downstream defense in a \emph{different} invariance class, on a \emph{second dataset and a differently configured CNN}, and on a \emph{second architecture family} with architecture varying alone (§\ref{app:targeted_full}); that the screen behaves as a conservative prioritizer across 42 pairs; and that in the one region where Prop.~\ref{prop:invariance}(a) settles preservation \emph{exactly}, a closed $9$-cell census whose two unspent cells were registered blind contains a single low-ASR composition and it is the one the criterion certifies, at precision $1/1$ and recall $1/1$ for a tenth of the runs against statistic preservation's $11\%$ (§\ref{app:census}, one cell at $n{=}3$, gated reading). Those two $100\%$s are contingent on the frozen seed count twice over, and disclosure \emph{(v)} of §\ref{app:census} states the second contingency: the C1 input that certifies the pair reads $0.300$ over seeds $42$--$44$ and climbs with the seed count, to $0.490$ at $n{=}5$ (still below the threshold, by $0.010$) and to $0.584$ at $n{=}8$, where C1 fails and the criterion certifies nothing in that census. \textbf{Not established:} the positive predictive direction of the criterion, since the pooled two-channel model is unconfirmed over $26$ cells ($R^2{=}0.239$) and the replication refutes its cross-arm admission ordering, so admission is a direction and not a quantitative predictor; any ability to discover emergent synergy; and generalization beyond star-topology FL, or beyond CIFAR-10 for anything but the two replicated arms, EMNIST-byclass and CIFAR-100, neither of which carries a composition suite; on the EMNIST arm no single defense measured suppresses the committed pixel backdoor alone, so C1's per-attack precondition fails over the menu measured there and the strategy comparison is out of scope there rather than merely untested ((L1), which also states what the seven do \emph{not} cover). \textbf{The open problem}, which the sections above refer to by pointing here: every reading of (P4) in this paper comes from an instrument that knows which clients are adversarial, and no deployed defense knows that, so whether the adversarial contribution a downstream mechanism admits can be estimated \emph{without} adversary identity is open. Nothing here bounds it, and the design we license identifies that channel rather than screening on it.
+% Round 72, review item 14 ("compressed into a concise evidence-status table"). Nothing here is new:
+% every row restates a claim whose provenance is in the paragraph that follows, in tab:tiers, or in
+% tab:channels_full, so no disclosure loses its last home to this table. The n column is deliberately
+% non-uniform and the caption says so: merging the rows' seed counts is the error the table exists to
+% prevent. Statuses extend the plan's four with "refuted" and "open" because the prose below carries
+% one of each and collapsing them into "not established" would lose which way the evidence points.
+\begin{table}[h]
+\centering
+\small\setlength{\tabcolsep}{4pt}
+\caption{\textbf{The evidence ledger in one object.} One row per claim class: the tier of evidence behind it, the seed count where a seed count applies, and its status. Nothing in this table is new; every row is stated with its provenance in the paragraph below, in Table~\ref{tab:tiers}, or in Table~\ref{tab:channels_full}. \textbf{The $n$ column is not uniform and its rows are never pooled}: a row is supported at its own $n$ and tier and at no other, which is why the four composition rows are listed separately rather than as one finding at $n{=}16$. A dash means the claim is algebraic, or that no single seed count stands behind it.}
+\label{tab:evidence}
+\begin{tabular}{@{}p{0.375\linewidth}p{0.235\linewidth}cp{0.215\linewidth}@{}}
+\toprule
+Claim & Tier of evidence & $n$ & Status \\
+\midrule
+Invariance classes (Prop.~\ref{prop:invariance}) & algebraic & --- & proved \\
+Mechanism preservation, weighting$\to$aggregator (Thm.~\ref{thm:bounded_reweight}, Lem.~\ref{lem:annihilation}, Cor.~\ref{cor:aggregate_mass}) & algebraic; conditions need a pilot (L5) & --- & proved \\
+Identification boundary for outcome-gated screening (Prop.~\ref{prop:identification_full}, Lem.~\ref{lem:testability}, Cor.~\ref{cor:within_design}) & algebraic, not FL-specific & --- & proved \\
+Recall bound on inherited-suppression screens (Prop.~\ref{prop:emergent_full}, Cor.~\ref{cor:zero_recall}) & algebraic, not FL-specific & --- & proved \\
+Statistic-level non-identifiability, and independent control of $\rho$ and $\Delta_c$ (Prop.~\ref{prop:nonidentifiability_full}, Prop.~\ref{prop:rho_deltac}) & algebraic, on the two instruments as built & --- & proved \\
+\midrule
+Disturbance without a matching change in suppression, adjudicating Krum arm under Mode~S & prospective, one arm, one attack & 5 & supported \\
+The same, in a different invariance class (coord.\ median) & pre-registered replication & 5 & supported \\
+The same, second dataset and a differently configured CNN (EMNIST-byclass) & pre-registered; channels measured before the ASR existed & 3 & supported \\
+The same, architecture varying alone (\texttt{resnet18}) & pre-registered; channels measured before the ASR existed & 3 & supported \\
+Admission is the more causally proximal channel of the four measured & four Mode-S arms, direction only & 5, 5, 3, 3 & supported as a direction \\
+The screen behaves as a conservative prioritizer & retrospective, $42$ pairs & --- & supported \\
+Criterion precision and recall in the region Prop.~\ref{prop:invariance}(a) settles exactly & closed $9$-cell census, two cells registered blind, gated reading & 3 & supported, and contingent on the seed count \\
+\midrule
+The criterion's positive predictive direction; the pooled two-channel model & retrospective, $26$ cells, $R^2{=}0.239$ & --- & not established \\
+Cross-arm ordering by admission & pre-registered replication ($\Delta{=}{+}0.098$) & 5 & refuted, by us \\
+Discovery of emergent synergy & bounded above by Prop.~\ref{prop:emergent_full} & --- & not established \\
+Generalization beyond star-topology FL, or beyond CIFAR-10 at the composition level & no composition suite exists off CIFAR-10; one was attempted and its premise failed (App.~\ref{app:normclip_cifar100}) & --- & not established \\
+Estimating admitted adversarial contribution without adversary identity & every (P4) reading here uses an oracle instrument & --- & open \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent Table~\ref{tab:evidence} is the ledger; the rest of this section is each row's provenance.
+
+\textbf{Proved:} the invariance classes of Proposition~\ref{prop:invariance}; sufficient conditions for mechanism preservation on the weighting$\to$aggregator class (Theorem~\ref{thm:bounded_reweight}, Lemma~\ref{lem:annihilation}, Corollary~\ref{cor:aggregate_mass}); the identification boundary for outcome-gated screening (Proposition~\ref{prop:identification_full}, with Lemma~\ref{lem:testability} its FL instance and Corollary~\ref{cor:within_design} the within-defense design it licenses); the recall bound on inherited-suppression screens (Proposition~\ref{prop:emergent_full}, whose cap reaches $0$ on a menu whose suppression is emergent throughout, Corollary~\ref{cor:zero_recall}); and, formalizing the interventions, statistic-level non-identifiability (Proposition~\ref{prop:nonidentifiability_full}) and the independent controllability of $\rho$ and $\Delta_c$ (Proposition~\ref{prop:rho_deltac}). \textbf{The two boundary results are general} (they are statements about the shape of a screen, not about FL), so what carries beyond this paper is the design they license, not the screen. \textbf{Empirically supported:} that substantial disturbance of the downstream statistic need not produce a corresponding change in suppression when the adversarial coefficient share is held fixed, with adversarial admission the channel the evidence favours, \emph{on the adjudicating Krum arm under Mode~S} and, by pre-registered replication, on a downstream defense in a \emph{different} invariance class, on a \emph{second dataset and a differently configured CNN}, and on a \emph{second architecture family} with architecture varying alone (§\ref{app:targeted_full}); that the screen behaves as a conservative prioritizer across 42 pairs; and that in the one region where Prop.~\ref{prop:invariance}(a) settles preservation \emph{exactly}, a closed $9$-cell census whose two unspent cells were registered blind contains a single low-ASR composition and it is the one the criterion certifies, at precision $1/1$ and recall $1/1$ for a tenth of the runs against statistic preservation's $11\%$ (§\ref{app:census}, one cell at $n{=}3$, gated reading). Those two $100\%$s are contingent on the frozen seed count twice over, and disclosure \emph{(v)} of §\ref{app:census} states the second contingency: the C1 input that certifies the pair reads $0.300$ over seeds $42$--$44$ and climbs with the seed count, to $0.490$ at $n{=}5$ (still below the threshold, by $0.010$) and to $0.584$ at $n{=}8$, where C1 fails and the criterion certifies nothing in that census. \textbf{Not established:} the positive predictive direction of the criterion, since the pooled two-channel model is unconfirmed over $26$ cells ($R^2{=}0.239$) and the replication refutes its cross-arm admission ordering, so admission is a direction and not a quantitative predictor; any ability to discover emergent synergy; and generalization beyond star-topology FL, or beyond CIFAR-10 for anything but the two replicated arms, EMNIST-byclass and CIFAR-100, neither of which carries a composition suite; on the EMNIST arm no single defense measured suppresses the committed pixel backdoor alone, so C1's per-attack precondition fails over the menu measured there and the strategy comparison is out of scope there rather than merely untested ((L1), which also states what the seven do \emph{not} cover). \textbf{The open problem}, which the sections above refer to by pointing here: every reading of (P4) in this paper comes from an instrument that knows which clients are adversarial, and no deployed defense knows that, so whether the adversarial contribution a downstream mechanism admits can be estimated \emph{without} adversary identity is open. Nothing here bounds it, and the design we license identifies that channel rather than screening on it.
 
 \section{The preservation chain in one figure}
 \label{app:story}

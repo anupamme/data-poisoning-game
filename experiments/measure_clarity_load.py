@@ -345,6 +345,14 @@ BODY_HOMES = (
 # a whole-file presence test: the probe deleted the false-negative disclosure from the
 # body and it still read 16/16, held up by three appendix twins. A ceiling on framing is
 # only safe next to a floor measured in the same window the framing was cut from.
+#
+# Round 70 re-baselines fig1_caption DOWNWARD, 1153 -> 979, which is the only direction this
+# dict permits. Two cuts earn it: the composed figure lost its Mode-S panel to a standalone
+# appendix float, so the caption no longer describes three panels, and the bold head became
+# the abstract's own thesis sentence. That second cut was forced rather than chosen -- moving
+# the float inside Section 1 pulled its caption into the causal_sec1 window and the count went
+# 6 -> 7 against a hard ceiling, so the caption is now also load-bearing for that gate. Every
+# scope clause it carried is still in it; nothing here prices a disclosure as slack.
 TARGETS = {"p_tokens": 7, "c_tokens": 8, "abstract": 1600, "prop_page": 3,
            "q5_pages": 3,
            "bold_runs": 39, "emph_runs": 60, "max_xrefs": 5,
@@ -352,7 +360,7 @@ TARGETS = {"p_tokens": 7, "c_tokens": 8, "abstract": 1600, "prop_page": 3,
            "abs_sentence": 200, "causal_sec1": 6, "long_para": 850,
            "jargon_front": 0, "design_vocab": 5,
            "spine_span": 2, "body_questions": 0, "provenance": 0,
-           "fig1_caption": 1153}
+           "fig1_caption": 979}
 
 # The phrase the twenty-second review quoted as the paper's least readable, matched on
 # the two words that carry it so a rewording that keeps the jargon still trips.
