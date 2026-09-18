@@ -117,8 +117,13 @@ CELLS = [
     # computed, because computing one now and reading a threshold off it is exactly how a withdrawn
     # mechanism gets rescued. dLam_a and `predicted` therefore print as absent-value cells, which is
     # what Amendment 4 pre-registered. This cell tests ONE thing: whether the sign reversal replicates.
+    # Round 71's top-up appends seeds 47--61 to BOTH legs at the endpoint rungs only. The published
+    # directory is listed FIRST on each leg and `series` is first-writer-wins, so seeds 42--46 keep their
+    # published values byte-for-byte and the n=5 subset stays recoverable for the guard below. Frozen in
+    # experiments/pre_registration_cell7_seed_topup.md before the first new run.
     ("coord_median / pixel, CIFAR-100", "coord_median", "committed_pixel",
-     [("comparability_cells", CONF, "|cifar100")], [("comparability_cells", CTRL, "|cifar100")],
+     [("comparability_cells", CONF, "|cifar100"), ("cell7_seed_topup", CONF, "|cifar100")],
+     [("comparability_cells", CTRL, "|cifar100"), ("cell7_seed_topup", CTRL, "|cifar100")],
      False, None),
 ]
 
@@ -130,8 +135,26 @@ CELLS = [
 # reappearing through a completeness test rather than through a top-up.
 # The six earlier cells are deliberately absent: their seed sets are heterogeneous by publication
 # history (n=20, 8, 5, 3) and asserting one here would break the reproduction gate below.
+# Round 71 EXTENDS this cell's set to 42--61, but ONLY once its top-up directory exists. Both halves of
+# that sentence are load-bearing and each prevents a different failure:
+#
+#   * Extending it is what suppresses a mid-run verdict. With the top-up merged in, a set left at 42--46
+#     would be satisfied on the first day and the cell would score at whatever mixed n the two legs
+#     happened to hold -- the exact defect the paragraph above was written about, arriving through the
+#     merge instead of through a partial rung.
+#   * Making it CONDITIONAL is what stops the extension from blanking a published result before the run
+#     exists. Demanding twenty seeds while only five are on disk withholds cell 7's row, drops it out of
+#     `complete` (so n_cells falls 7 -> 6 and Fig. 1(c) draws six dumbbells) and empties its entry from
+#     `sign_reversal_cells`. That is the truthful state once extra seeds are present and incomplete, and
+#     a false one before any were requested.
+#
+# The test is on a DIRECTORY, never on a value, so it cannot select an n by outcome. And even mid-run the
+# n=5 claim keeps an emitter: PUB_SEEDS below recomputes the published subset into `published_subset`
+# whatever the full n has reached.
+_CELL7_TOPUP = os.path.isdir(os.path.join(BASE, "results", "cell7_seed_topup"))
 REQUIRED_SEEDS = {
-    "coord_median / pixel, CIFAR-100": (42, 43, 44, 45, 46),      # Amendment 4, "seeds 42--46, frozen"
+    # Amendment 4 froze 42--46; experiments/pre_registration_cell7_seed_topup.md adds 47--61.
+    "coord_median / pixel, CIFAR-100": tuple(range(42, 62 if _CELL7_TOPUP else 47)),
 }
 
 # The four published contrasts, transcribed from the pre-registration's own table so the re-score can
@@ -139,7 +162,12 @@ REQUIRED_SEEDS = {
 PUB = {"krum / scaling":       (-0.008, -0.010),
        "cos_krum / pixel":     (-0.405, -0.425),
        "reputation / scaling": (+0.762, +0.178),
-       "coord_median / pixel": (-0.272, +0.098)}
+       "coord_median / pixel": (-0.272, +0.098),
+       # Cell 7's published pair is transcribed from paper/main.tex, not from a pre-registration table:
+       # Amendment 4 was written before this cell ran, so it prints no result to transcribe. Same
+       # discipline either way -- the tuple is asserted against the n=5 subset and never retyped to
+       # match a re-score.
+       "coord_median / pixel, CIFAR-100": (-0.213, +0.071)}
 PUB_TOL = 5e-3                      # the prereg prints 3 decimals
 
 # The seed set each published contrast in PUB was computed on, declared ONLY for cells a later top-up
@@ -156,13 +184,16 @@ PUB_TOL = 5e-3                      # the prereg prints 3 decimals
 PUB_SEEDS = {
     "coord_median / pixel": {"confounded": (42, 43, 44, 45, 46),
                              "controlled": (42, 43, 44, 45, 46)},
+    "coord_median / pixel, CIFAR-100": {"confounded": (42, 43, 44, 45, 46),
+                                        "controlled": (42, 43, 44, 45, 46)},
 }
 
 # What `paper/main.tex` prints for the topped-up cell, so a later re-score cannot drift from the
 # document. Left None until the run finishes and the paper quotes it: a value written here before the
 # run would be a prediction, and a value copied from the artifact and asserted against that same
 # artifact would check nothing. Fill it from the paper, not from this script's output.
-PAPER_N20 = {"coord_median / pixel": None}
+PAPER_N20 = {"coord_median / pixel": None,
+             "coord_median / pixel, CIFAR-100": None}
 
 
 def cells_of(dirname):
@@ -359,7 +390,13 @@ def main():
         rows.append({"label": label, "conf": a, "ctrl": b, "lam": lam, "sup": sup, "pred": pred,
                      "got": got, "training": training, "con": con, "missing_seeds": missing,
                      "rungs": rg, "trend": trend(csrc, tsrc, d2, atk, rg)})
-        if training and label in PUB:
+        # `training` is deliberately NOT a conjunct here. It was, and that made cell 7's entries in
+        # PUB, PUB_SEEDS and PAPER_N20 silent no-ops that read as guards: the cell is out of sample
+        # (`training=False`), so the block never ran for it and a perturbed tuple passed. The conjunct
+        # was also redundant -- measured on this file, the four PUB keys are exactly the four training
+        # cells, so removing it changes no other cell's behaviour and only ever ADDS assertions. What
+        # licenses a guard here is that the pair is published, which is what `label in PUB` says.
+        if label in PUB:
             pc, pt = PUB[label]
             # The guard reads the seed set the published number was computed on. For a cell no top-up
             # has touched that is the full n and nothing changes; for a topped-up cell it is the n=5

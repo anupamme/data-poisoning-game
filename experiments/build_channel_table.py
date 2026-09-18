@@ -101,6 +101,9 @@ MASK = os.path.join(R, "mask_admission.json")
 OUT = os.path.join(R, "channel_table.json")
 TOP = 2.0          # the top Mode-S rung, rho = exp(4) = 54.6
 IDENTITY = 0.0
+# The two committed attacks, for the floor cross-check below. Order is fixed so the printed columns
+# cannot silently swap; both are present in results/admission_measurement.json.
+ATTACKS_XCHECK = ("committed_scaling", "committed_pixel")
 MASK_TOP = 0.8     # the top Mode-M rung, a drop rate -- NOT a weight ratio, and never pooled with TOP
 
 # The adversarial-mass field each arm's channel measurement records, and whether that mass is binary.
@@ -193,11 +196,26 @@ def channels(path, arm, attack, rung, family="doseS"):
         b, p = float(r[f"base_{field}"]), float(r[f"post_{field}"])
         adm.append(float((b > 0.0) != (p > 0.0)))  # did the SUPPORT of the adversarial mass change
         infl.append(abs(p - b))                    # how much the mass itself moved
+    # BASELINE LEVEL, conditional on an adversary actually participating in the round. The Delta adm.
+    # column above is a CHANGE and is 0.000 on every row, which is the dissociation; a reader cannot
+    # tell from it whether an arm had any room to change. That is the twelfth review's floor objection
+    # and it is right about Krum. The conditioning is not cosmetic: in a round where no adversary was
+    # sampled the defense has no adversarial mass to admit, so those rounds are structural zeros and
+    # pooling them understates every arm's room (coord_median reads 0.2284 unconditionally against
+    # 0.2855 here). `mean_mass_base` is left exactly as it was so no emitted number moves.
+    adv = [r for r in rows if int(r["n_adv_in_round"]) > 0]
     return {"n_rounds": len(rows), "d_agg_disp": float(np.mean(disp)),
             "d_decision": float(np.mean(dec)), "d_admission": float(np.mean(adm)),
             "d_influence": float(np.mean(infl)), "mass_is_binary": binary,
             "mean_mass_base": float(np.mean([float(r[f"base_{field}"]) for r in rows])),
-            "mean_mass_post": float(np.mean([float(r[f"post_{field}"]) for r in rows]))}
+            "mean_mass_post": float(np.mean([float(r[f"post_{field}"]) for r in rows])),
+            "n_rounds_adv_present": len(adv),
+            "base_adm_adv": (float(np.mean([float(r[f"base_{field}"]) for r in adv]))
+                             if adv else float("nan")),
+            # Rounds whose baseline admission is nonzero, i.e. the arm admitted SOME adversarial mass
+            # before any transform. This is the per-arm decomposition of the 100-of-240 count the
+            # provenance paragraph already reports pooled across the four CIFAR-10 rows.
+            "n_rounds_base_nonzero": sum(1 for r in rows if float(r[f"base_{field}"]) > 0.0)}
 
 
 def _asr_cells():
@@ -367,6 +385,15 @@ def main():
         # The identity rung's own displacement must be exactly zero: T is the identity there, so a
         # nonzero value would mean the measurement is not comparing what it claims to compare.
         base_ch = channels(src, arm, attack, IDENTITY)
+        # The baseline admission level is a PRE-transform quantity measured on the same raw updates at
+        # every rung, so it must not depend on which rung reports it. If it did, the "baseline" the
+        # paper prints would silently be a property of the top rung. Checked, not assumed.
+        if base_ch is not None and not (np.isnan(ch["base_adm_adv"])
+                                        or np.isnan(base_ch["base_adm_adv"])):
+            assert abs(ch["base_adm_adv"] - base_ch["base_adm_adv"]) < 1e-12, (
+                f"{label}: baseline admission differs between the identity rung "
+                f"({base_ch['base_adm_adv']}) and rung {TOP} ({ch['base_adm_adv']}), so it is not a "
+                "baseline")
         dataset, model = SRC_REGIME[src]
         asr = asr_delta(arm, attack, dataset, model=model)
         table.append({"label": label, "arm": arm, "attack": attack, "kind": KIND[arm],
@@ -549,6 +576,60 @@ def main():
     # rows carry 3, 5 and 8 seeds. Only the ROWS are copy-verbatim: the two paper tables use different
     # tabular preambles on purpose (tab:channels is tight-set with @{}, tab:channels_full is centred),
     # so the preamble below matches neither and is not meant to be.
+    # === BASELINE ADMISSION, the floor question ===
+    # Every number the paper quotes about "room to change" is printed here with its referent, because
+    # the three quantities in play are easy to swap: the LEVEL (conditional on an adversary being
+    # sampled), the count of rounds with NONZERO baseline, and the count of rounds where an adversary
+    # was sampled at all. They read 0.2855 / 48 / 48 for coord_median and 0.0833 / 4 / 48 for
+    # cos_krum, so quoting the wrong one would turn a near-floor arm into a roomy one.
+    print("\n=== BASELINE ADVERSARIAL ADMISSION (pre-transform level, the floor question) ===")
+    print("    The Delta adm. column is a CHANGE and is 0.000 on every row. These are LEVELS: how")
+    print("    much adversarial mass each arm admitted before any transform, so how much room its")
+    print("    admission had to move at all.\n")
+    print(f"  {'aggregator':22s} {'baseline':>9s} {'nonzero':>9s} {'adv seen':>9s} {'rounds':>7s}"
+          f"  {'floor?':>7s}")
+    print("  " + "-" * 68)
+    for t in table:
+        if np.isnan(t.get("base_adm_adv", float("nan"))):
+            continue
+        b = t["base_adm_adv"]
+        nz, na, nr = t["n_rounds_base_nonzero"], t["n_rounds_adv_present"], t["n_rounds"]
+        # "at the floor" is exactly b == 0: the arm admitted no adversarial mass in any round, so
+        # unchanged admission is arithmetically forced and carries no information.
+        flag = "AT FLOOR" if b == 0.0 else ("near" if nz <= na // 4 else "no")
+        print(f"  {t['label'].replace(chr(92), ''):22s} {b:9.4f} {nz:9d} {na:9d} {nr:7d}  {flag:>7s}")
+    print("\n  baseline  mean pre-transform adversarial mass, over rounds where an adversary was")
+    print("            sampled; rounds with no adversary are structural zeros and are excluded")
+    print("  nonzero   rounds whose baseline admission is > 0 (this arm's share of the 100/240)")
+    print("  AT FLOOR  baseline is exactly 0: unchanged admission is forced, not evidence")
+
+    # === IS THE FLOOR A PROPERTY OF THE AGGREGATOR OR OF THE ATTACK? ===
+    # The block above reports each row at ITS OWN committed attack, which is what the paper's tables
+    # do, and on that reading every Krum row reads 0.0000. That invites the inference that Krum never
+    # admits an adversary. This block holds the aggregator fixed and varies the attack instead, which
+    # is the only way to tell the two explanations apart. It reads only the frozen CIFAR-10 artifact
+    # and adds no row to either paper table.
+    print("\n=== THE SAME AGGREGATORS, BOTH ATTACKS (is the floor the aggregator or the attack?) ===")
+    print(f"  {'aggregator':16s}", end="")
+    for a in ATTACKS_XCHECK:
+        print(f" {a.replace('committed_', ''):>22s}", end="")
+    print()
+    print("  " + "-" * 62)
+    for arm in ("krum", "cos_krum", "reputation", "coord_median"):
+        print(f"  {arm:16s}", end="")
+        for atk in ATTACKS_XCHECK:
+            ch = channels(ADM, arm, atk, TOP)
+            if ch is None or np.isnan(ch["base_adm_adv"]):
+                print(f" {'--':>22s}", end="")
+                continue
+            print(f" {ch['base_adm_adv']:11.4f} ({ch['n_rounds_base_nonzero']:2d}/"
+                  f"{ch['n_rounds_adv_present']:2d})", end="")
+        print()
+    print("\n  Read as: level (rounds with nonzero baseline / rounds an adversary was sampled).")
+    print("  A row that is 0.0000 under one attack and nonzero under the other has no aggregator-level")
+    print("  floor: the zero belongs to the attack. Krum is the case that matters, since the paper's")
+    print("  adjudicating arm commits to scaling, and a scaling attack IS a norm outlier.")
+
     print("\n=== LATEX (copy the ROWS verbatim; regenerate rather than edit) ===\n")
     lines = [r"\begin{tabular}{llrrrrrr}", r"\toprule",
              r"Aggregator & Kind & $\Delta$ agg. & $\Delta$ dec. & $\Delta$ adm. "

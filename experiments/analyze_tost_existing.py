@@ -93,8 +93,16 @@ ARMS = [
     # failure, not as support. The paper makes no equivalence claim about it, which is why
     # analyze_margin_sensitivity.py excludes it from the binding-arm search on the separate ground
     # that its interval does not contain zero.
+    # Round 71's top-up (pre_registration_cell7_seed_topup.md) adds seeds 47--61 to this arm's two
+    # endpoint rungs. The 4th element is the same pooled-source mechanism the EMNIST row above uses,
+    # and it is required rather than automatic: `load` reads ONE directory, so without it this row
+    # would keep scoring at n=5 while the comparability table beside it printed n=20 -- one arm
+    # reported at two n by two scripts, with nothing on the page saying why. Frozen rows still win
+    # (dedup is first-source, and results/comparability_cells/ is listed first), so the published five
+    # seeds keep their published values.
     ("coord_median / pixel (CIFAR-100)", "comparability_cells",
-     "doseS_kappa{r}_then_coord_median|committed_pixel|cifar100"),
+     "doseS_kappa{r}_then_coord_median|committed_pixel|cifar100",
+     [("cell7_seed_topup", "doseS_kappa{r}_then_coord_median|committed_pixel|cifar100")]),
 ]
 IDENTITY_RUNG, TOP_RUNG = "0.0", "2.0"
 
