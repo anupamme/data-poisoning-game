@@ -1,0 +1,554 @@
+{
+  "description": "Does the Mode-S within-defense rise on coord_median x committed pixel survive non-IID heterogeneity? Estimand Delta_S(alpha) = ASR(kappa=2) - ASR(kappa=0), paired by seed, per alpha. Two verdicts frozen separately: sign and magnitude.",
+  "prereg": "experiments/pre_registration_heterogeneity_modeS.md",
+  "prereg_commit": "e7b7c83",
+  "cell": {
+    "d2": "coord_median",
+    "attack": "committed_pixel",
+    "kappas": [
+      0.0,
+      2.0
+    ],
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "alphas": [
+      0.1,
+      1.0,
+      10.0
+    ],
+    "anchor_alpha": 0.5,
+    "dials_instrument": {
+      "0.0": 1.0,
+      "2.0": 54.598150033144236
+    },
+    "acc_floor": 0.35,
+    "config": "N=10, K=5, f=0.2, 50 rounds, cifar_cnn -- frozen; only alpha moves"
+  },
+  "endpoint_only": "kappa in {0, 2} only. These two rungs must never be displayed or described as a four-rung ladder and no trend statistic is computed here.",
+  "identity_rung_provenance": "kappa=0 is COMPUTED FRESH AT EVERY ALPHA and is never imported. run_targeted_dose.py imports it from results/dose_response/ on the ground that run_one's participant RNG stream does not depend on d1's name; that argument holds across d1 and NOT across alpha, which sets the Dirichlet partition. results/dose_response/ is not read here.",
+  "equivalence_claim": "NONE. EQUIV_MARGIN is deliberately not imported. The magnitude verdict is an interval-overlap statement against the frozen anchor, not the phrase defined at supplementary.tex:441.",
+  "harness_check": {
+    "verdict": "PASS",
+    "what": "doseS_kappa0.0 @ seed 42, alpha=0.5 (the frozen default), run through this script's run_leg and compared BY VALUE to the frozen artifact",
+    "reference": "results/dose_replication/summary.json",
+    "recomputed": {
+      "accuracy": 0.7691,
+      "asr": 0.39455555555555555
+    },
+    "frozen": {
+      "accuracy": 0.7691,
+      "asr": 0.39455555555555555
+    },
+    "abs_diff": {
+      "accuracy": 0.0,
+      "asr": 0.0
+    },
+    "tol": 1e-06,
+    "seconds": 977.1,
+    "identity_dial": {
+      "dial_S_kappa0": 1.0,
+      "exactly_one": true,
+      "note": "tested with ==, not a tolerance. Per-client coefficient and channel displacement identity at every alpha is asserted by experiments/measure_admission_heterogeneity.py."
+    }
+  },
+  "frozen_anchor": {
+    "alpha": 0.5,
+    "source": "results/dose_replication/summary.json, recomputed from per_seed rows",
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "n": 5,
+    "per_seed_delta": {
+      "42": 0.20277777777777783,
+      "43": 0.03244444444444444,
+      "44": 0.06766666666666671,
+      "45": 0.0782222222222223,
+      "46": 0.10922222222222222
+    },
+    "mean": 0.0980666666666667,
+    "sd": 0.06463958004691844,
+    "ci95": [
+      0.01780602726339771,
+      0.1783273060699357
+    ],
+    "published_summary_key": {
+      "mean": 0.098067,
+      "sd": 0.06464,
+      "ci95": [
+        0.017819,
+        0.178314
+      ],
+      "n": 5,
+      "source": "results/reversal_seed_topup/summary.json:published_n5_verdict.controlled"
+    },
+    "sources_agree": true,
+    "ci95_note": "Recomputed with scipy's t (2.7764451); the published key used the rounded 2.776, so the two CIs differ in the 5th decimal. Agreement is judged on mean and sd."
+  },
+  "cells": {
+    "alpha0.1|doseS_kappa0.0_then_coord_median|committed_pixel": {
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "alpha": 0.1,
+      "kappa": 0.0,
+      "rho": 1.0,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4698,
+          "asr": 0.5848888888888889,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.4567,
+          "asr": 0.3448888888888889,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.4989,
+          "asr": 0.5036666666666667,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.4697,
+          "asr": 0.7642222222222222,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.5624,
+          "asr": 0.39244444444444443,
+          "below_acc_floor": false
+        }
+      ]
+    },
+    "alpha0.1|doseS_kappa2.0_then_coord_median|committed_pixel": {
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "alpha": 0.1,
+      "kappa": 2.0,
+      "rho": 54.598150033144236,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.4503,
+          "asr": 0.7033333333333334,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.4819,
+          "asr": 0.7541111111111111,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.4308,
+          "asr": 0.6453333333333333,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.4532,
+          "asr": 0.9073333333333333,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.5531,
+          "asr": 0.6701111111111111,
+          "below_acc_floor": false
+        }
+      ]
+    },
+    "alpha1|doseS_kappa0.0_then_coord_median|committed_pixel": {
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "alpha": 1.0,
+      "kappa": 0.0,
+      "rho": 1.0,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7866,
+          "asr": 0.36544444444444446,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.8035,
+          "asr": 0.25455555555555553,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7845,
+          "asr": 0.5682222222222222,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7902,
+          "asr": 0.6178888888888889,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7951,
+          "asr": 0.3188888888888889,
+          "below_acc_floor": false
+        }
+      ]
+    },
+    "alpha1|doseS_kappa2.0_then_coord_median|committed_pixel": {
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "alpha": 1.0,
+      "kappa": 2.0,
+      "rho": 54.598150033144236,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7408,
+          "asr": 0.589,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.753,
+          "asr": 0.30366666666666664,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7408,
+          "asr": 0.6614444444444444,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7479,
+          "asr": 0.7384444444444445,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7462,
+          "asr": 0.5197777777777778,
+          "below_acc_floor": false
+        }
+      ]
+    },
+    "alpha10|doseS_kappa0.0_then_coord_median|committed_pixel": {
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "alpha": 10.0,
+      "kappa": 0.0,
+      "rho": 1.0,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.8113,
+          "asr": 0.31122222222222223,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.8137,
+          "asr": 0.19266666666666668,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.8155,
+          "asr": 0.5081111111111111,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7981,
+          "asr": 0.5114444444444445,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.8138,
+          "asr": 0.3582222222222222,
+          "below_acc_floor": false
+        }
+      ]
+    },
+    "alpha10|doseS_kappa2.0_then_coord_median|committed_pixel": {
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "alpha": 10.0,
+      "kappa": 2.0,
+      "rho": 54.598150033144236,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7671,
+          "asr": 0.463,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7792,
+          "asr": 0.3632222222222222,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7674,
+          "asr": 0.6266666666666667,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7498,
+          "asr": 0.7035555555555556,
+          "below_acc_floor": false
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7675,
+          "asr": 0.5505555555555556,
+          "below_acc_floor": false
+        }
+      ]
+    }
+  },
+  "analysis": {
+    "anchor": {
+      "alpha": 0.5,
+      "source": "results/dose_replication/summary.json, recomputed from per_seed rows",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "n": 5,
+      "per_seed_delta": {
+        "42": 0.20277777777777783,
+        "43": 0.03244444444444444,
+        "44": 0.06766666666666671,
+        "45": 0.0782222222222223,
+        "46": 0.10922222222222222
+      },
+      "mean": 0.0980666666666667,
+      "sd": 0.06463958004691844,
+      "ci95": [
+        0.01780602726339771,
+        0.1783273060699357
+      ],
+      "published_summary_key": {
+        "mean": 0.098067,
+        "sd": 0.06464,
+        "ci95": [
+          0.017819,
+          0.178314
+        ],
+        "n": 5,
+        "source": "results/reversal_seed_topup/summary.json:published_n5_verdict.controlled"
+      },
+      "sources_agree": true,
+      "ci95_note": "Recomputed with scipy's t (2.7764451); the published key used the rounded 2.776, so the two CIs differ in the 5th decimal. Agreement is judged on mean and sd."
+    },
+    "anchor_ci95_used": [
+      0.01780602726339771,
+      0.1783273060699357
+    ],
+    "per_alpha": {
+      "alpha0.1": {
+        "n": 5,
+        "seeds": [
+          42,
+          43,
+          44,
+          45,
+          46
+        ],
+        "acc_gate": {
+          "verdict": "PASS",
+          "acc_floor": 0.35,
+          "per_rung": {
+            "0.0": {
+              "mean_accuracy": 0.4915,
+              "n": 5,
+              "min_accuracy": 0.4567,
+              "passes": true
+            },
+            "2.0": {
+              "mean_accuracy": 0.47386,
+              "n": 5,
+              "min_accuracy": 0.4308,
+              "passes": true
+            }
+          },
+          "note": ""
+        },
+        "per_seed_delta": {
+          "42": 0.11844444444444446,
+          "43": 0.40922222222222215,
+          "44": 0.1416666666666666,
+          "45": 0.14311111111111108,
+          "46": 0.2776666666666667
+        },
+        "mean": 0.2180222222222222,
+        "sd": 0.12396822073856839,
+        "ci95": [
+          0.0640953456097646,
+          0.3719490988346798
+        ],
+        "half_width": 0.1539268766124576,
+        "t_crit": 2.7764451051977934,
+        "verdict_sign": "THE WITHIN-DEFENSE RISE REPRODUCES AT THIS ALPHA",
+        "verdict_magnitude": "CONSISTENT IN MAGNITUDE WITH alpha=0.5",
+        "anchor_ci95": [
+          0.01780602726339771,
+          0.1783273060699357
+        ],
+        "magnitude_is_not_equivalence": "An interval-overlap statement. NOT the phrase defined at supplementary.tex:441, and EQUIV_MARGIN is not imported by this arm.",
+        "premise": {
+          "source": "results/heterogeneity_modeS_admission.json",
+          "scope": "A premise, not a result. It says the adversary is pinned and the identity rung displaces nothing at this alpha; it is not evidence for or against Delta_S(alpha), and it asserts no mechanism for the rise.",
+          "verdict": "MODE-S PREMISE HOLDS AT THIS ALPHA: the identity rung displaces nothing exactly and the adversarial coefficient share is constant across rungs to SHARE_TOL.",
+          "identity_gate": "PASS",
+          "share_gate": "PASS",
+          "holds": true
+        }
+      },
+      "alpha1": {
+        "n": 5,
+        "seeds": [
+          42,
+          43,
+          44,
+          45,
+          46
+        ],
+        "acc_gate": {
+          "verdict": "PASS",
+          "acc_floor": 0.35,
+          "per_rung": {
+            "0.0": {
+              "mean_accuracy": 0.79198,
+              "n": 5,
+              "min_accuracy": 0.7845,
+              "passes": true
+            },
+            "2.0": {
+              "mean_accuracy": 0.74574,
+              "n": 5,
+              "min_accuracy": 0.7408,
+              "passes": true
+            }
+          },
+          "note": ""
+        },
+        "per_seed_delta": {
+          "42": 0.2235555555555555,
+          "43": 0.049111111111111105,
+          "44": 0.0932222222222222,
+          "45": 0.12055555555555553,
+          "46": 0.2008888888888889
+        },
+        "mean": 0.13746666666666665,
+        "sd": 0.07328699714558704,
+        "ci95": [
+          0.046468840774529216,
+          0.22846449255880408
+        ],
+        "half_width": 0.09099782589213744,
+        "t_crit": 2.7764451051977934,
+        "verdict_sign": "THE WITHIN-DEFENSE RISE REPRODUCES AT THIS ALPHA",
+        "verdict_magnitude": "CONSISTENT IN MAGNITUDE WITH alpha=0.5",
+        "anchor_ci95": [
+          0.01780602726339771,
+          0.1783273060699357
+        ],
+        "magnitude_is_not_equivalence": "An interval-overlap statement. NOT the phrase defined at supplementary.tex:441, and EQUIV_MARGIN is not imported by this arm.",
+        "premise": {
+          "source": "results/heterogeneity_modeS_admission.json",
+          "scope": "A premise, not a result. It says the adversary is pinned and the identity rung displaces nothing at this alpha; it is not evidence for or against Delta_S(alpha), and it asserts no mechanism for the rise.",
+          "verdict": "MODE-S PREMISE HOLDS AT THIS ALPHA: the identity rung displaces nothing exactly and the adversarial coefficient share is constant across rungs to SHARE_TOL.",
+          "identity_gate": "PASS",
+          "share_gate": "PASS",
+          "holds": true
+        }
+      },
+      "alpha10": {
+        "n": 5,
+        "seeds": [
+          42,
+          43,
+          44,
+          45,
+          46
+        ],
+        "acc_gate": {
+          "verdict": "PASS",
+          "acc_floor": 0.35,
+          "per_rung": {
+            "0.0": {
+              "mean_accuracy": 0.8104799999999999,
+              "n": 5,
+              "min_accuracy": 0.7981,
+              "passes": true
+            },
+            "2.0": {
+              "mean_accuracy": 0.7662,
+              "n": 5,
+              "min_accuracy": 0.7498,
+              "passes": true
+            }
+          },
+          "note": ""
+        },
+        "per_seed_delta": {
+          "42": 0.1517777777777778,
+          "43": 0.17055555555555554,
+          "44": 0.11855555555555564,
+          "45": 0.19211111111111112,
+          "46": 0.19233333333333336
+        },
+        "mean": 0.1650666666666667,
+        "sd": 0.03100354420201694,
+        "ci95": [
+          0.12657068201430322,
+          0.20356265131903017
+        ],
+        "half_width": 0.03849598465236349,
+        "t_crit": 2.7764451051977934,
+        "verdict_sign": "THE WITHIN-DEFENSE RISE REPRODUCES AT THIS ALPHA",
+        "verdict_magnitude": "CONSISTENT IN MAGNITUDE WITH alpha=0.5",
+        "anchor_ci95": [
+          0.01780602726339771,
+          0.1783273060699357
+        ],
+        "magnitude_is_not_equivalence": "An interval-overlap statement. NOT the phrase defined at supplementary.tex:441, and EQUIV_MARGIN is not imported by this arm.",
+        "premise": {
+          "source": "results/heterogeneity_modeS_admission.json",
+          "scope": "A premise, not a result. It says the adversary is pinned and the identity rung displaces nothing at this alpha; it is not evidence for or against Delta_S(alpha), and it asserts no mechanism for the rise.",
+          "verdict": "MODE-S PREMISE HOLDS AT THIS ALPHA: the identity rung displaces nothing exactly and the adversarial coefficient share is constant across rungs to SHARE_TOL.",
+          "identity_gate": "PASS",
+          "share_gate": "PASS",
+          "holds": true
+        }
+      }
+    }
+  }
+}

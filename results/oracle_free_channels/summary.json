@@ -1,0 +1,724 @@
+{
+  "description": "The statistic and magnitude channels separated WITHOUT adversary identity, at n=20 on a non-floor cell. Upstream stage is rfa, whose Weiszfeld weights are computed from the update stack alone; adv_mask is passed as None, so any oracle rung would RAISE rather than run. Channel separation is the paper's own pre-registered score_only/emit_only factorial. Host cell krum under committed_pixel, whose baseline admitted adversarial mass is 0.3333 in 4 of 12 adversary rounds rather than a floor. Predictions frozen at 4e7090b (experiments/pre_registration_oracle_free_channels.md).",
+  "prereg_commit": "4e7090b",
+  "prereg": "experiments/pre_registration_oracle_free_channels.md",
+  "dataset": "cifar10",
+  "model": "cifar_cnn",
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 50,
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61
+    ],
+    "acc_floor": 0.35,
+    "equiv_margin": 0.15,
+    "t_crit_n20": 2.0930240544083087
+  },
+  "arm": {
+    "d2": "krum",
+    "attack": "committed_pixel",
+    "attack_impl": "backdoor_pixel",
+    "d1": "rfa",
+    "arms": [
+      {
+        "label": "identity",
+        "d1_override": "fedavg",
+        "score_only": false,
+        "emit_only": false,
+        "holds": "nothing transformed; Krum standalone by construction",
+        "key": "fedavg_then_krum|committed_pixel"
+      },
+      {
+        "label": "statistic",
+        "d1_override": "rfa",
+        "score_only": true,
+        "emit_only": false,
+        "holds": "emits the selected client's ORIGINAL update (leg 1)",
+        "key": "rfa_then_krum|committed_pixel|score_only"
+      },
+      {
+        "label": "magnitude",
+        "d1_override": "rfa",
+        "score_only": false,
+        "emit_only": true,
+        "holds": "scores the RAW stack, decision pinned (leg 2)",
+        "key": "rfa_then_krum|committed_pixel|emit_only"
+      }
+    ],
+    "frozen_prediction": {
+      "Delta_stat": "|mean| INSIDE the frozen EQUIV_MARGIN = 0.15",
+      "Delta_mag": "nonzero, paired 95% interval EXCLUDING zero"
+    }
+  },
+  "oracle_free": "No arm reads adversary identity. run_targeted_dose.run_one passes adv_mask=None whenever d1_override is set, and apply_d1_transform's dose families RAISE without it, so oracle-freeness is enforced by the callee rather than intended by the caller. rfa's coefficients are the final Weiszfeld weights of the geometric-median iteration over the update stack.",
+  "not_a_defense": "score_only and emit_only modify the aggregator's internals, so this arm is an instrument for causal identification and not a deployable defense. It answers the adversary-identity objection and not the deployability one.",
+  "scope": "One aggregator, one attack, one dataset, one upstream defense. This supports no statement of the form 'the negative holds without an oracle'; what it licenses is 'in this cell, without adversary identity'.",
+  "theory_scope": "main.tex:2051's impossibility -- no positive rescaling is both Delta_c-neutral and informative -- is not contradicted here: nothing in this arm is claimed to be Delta_c-neutral. score_only closes the magnitude channel downstream of the coefficient, for every client at once.",
+  "frozen_premise_channels": {
+    "source": "results/oracle_free_admission.json",
+    "arm_type": "GENERALIZATION",
+    "eligibility_verdict_verbatim": "ELIGIBLE AS AN ORACLE-FREE GENERALIZATION TEST: the decision is disturbed and the admitted adversarial mass is not, which is the premise the flagship arm rests on -- now with a transform that reads no adversary identity, on a cell whose baseline admission is not a floor. The pre-registered predictions are in force: leg 1 flat inside the margin, leg 2 nonzero.",
+    "decision_change": {
+      "identity": 0.0,
+      "rfa": 0.5333333333333333
+    },
+    "admission_change": {
+      "identity": 0.0,
+      "rfa": 0.0
+    },
+    "agg_displacement": {
+      "identity": 0.0,
+      "rfa": 0.8678083144505084
+    },
+    "baseline_admission_not_a_floor": {
+      "attack": "committed_pixel",
+      "n_adversary_rounds": 12,
+      "n_nonzero": 4,
+      "mean_base_krum_admits_adv": 0.3333333333333333,
+      "per_round": [
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    "identity_rung_exactness": {
+      "n_rows": 15,
+      "n_decision_nonzero": 0,
+      "n_admission_nonzero": 0,
+      "exact": true
+    },
+    "oracle_free_check": true,
+    "published_dose_raises_without_adv_mask": true,
+    "controls_bit_exact": {
+      "emit_only_decision_pinned": true,
+      "score_only_emits_raw": true
+    },
+    "published_arm_cross_check": {
+      "available": true,
+      "source": "results/admission_measurement.json",
+      "published_arm": "doseS kappa=2.0 -> krum under committed_scaling",
+      "decision_change": 0.7333333333333333,
+      "admission_change": 0.0,
+      "would_be_typed": "GENERALIZATION",
+      "rule_condemns_the_published_arm": false
+    },
+    "structural_blockers": []
+  },
+  "harness_check": {
+    "tol": 1e-09,
+    "checks": [
+      {
+        "check": "d1_override_default_is_bit_neutral",
+        "passed": true,
+        "cell": "doseS_kappa2.0_then_krum|committed_scaling",
+        "seed": 42,
+        "published": [
+          0.6462,
+          0.018333333333333333
+        ],
+        "recomputed": [
+          0.6462,
+          0.018333333333333333
+        ],
+        "delta": [
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "check": "identity_arm_is_krum_standalone_across_suites",
+        "passed": true,
+        "source": "results/prospective_pilot/summary.json",
+        "seed": 42,
+        "published": [
+          0.3962,
+          0.7787777777777778
+        ],
+        "recomputed": [
+          0.3962,
+          0.7787777777777778
+        ],
+        "delta": [
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "check": "rfa_branch_entered_and_not_inert",
+        "passed": true,
+        "objects_distinct": true,
+        "per_client_norm_ratio_float64": [
+          1.01381492568813,
+          0.9893262378824278,
+          0.9865221379097286,
+          1.0183068528858314,
+          0.9920298437721277
+        ],
+        "at_least_one_ratio_differs_from_one": true
+      }
+    ],
+    "all_passed": true
+  },
+  "verdicts": {
+    "Delta_stat": {
+      "arm": "statistic",
+      "n": 20,
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61
+      ],
+      "arm_mean_asr": 0.6201,
+      "identity_mean_asr": 0.32320555555555563,
+      "arm_mean_acc": 0.5670550000000001,
+      "arm_min_acc": 0.4571,
+      "identity_mean_acc": 0.515795,
+      "identity_min_acc": 0.3962,
+      "per_seed_delta": {
+        "42": 0.07211111111111113,
+        "43": 0.48900000000000005,
+        "44": 0.005444444444444474,
+        "45": 0.4756666666666666,
+        "46": 0.736,
+        "47": 0.6027777777777777,
+        "48": 0.7431111111111112,
+        "49": 0.06255555555555559,
+        "50": 0.9864444444444445,
+        "51": -0.5748888888888889,
+        "52": 0.15855555555555556,
+        "53": 0.3987777777777778,
+        "54": -0.5048888888888888,
+        "55": -0.00044444444444445563,
+        "56": 0.6808888888888889,
+        "57": 0.25522222222222224,
+        "58": 0.0013333333333334085,
+        "59": -0.0022222222222222365,
+        "60": 0.8586666666666667,
+        "61": 0.49377777777777776
+      },
+      "mean": 0.29689444444444446,
+      "sd": 0.42434926901287445,
+      "se": 0.09488738117151323,
+      "t_crit": 2.0930240544083087,
+      "ci95": [
+        0.09829287319265723,
+        0.4954960156962317
+      ],
+      "half_width": 0.19860157125178723,
+      "verdict_sign": "ASR MOVES on this leg (interval excludes zero), sign positive",
+      "verdict_margin": "outside the frozen margin (|mean| >= 0.15)",
+      "margin": 0.15,
+      "acc_gate": "PASS",
+      "acc_floor": 0.35
+    },
+    "Delta_mag": {
+      "arm": "magnitude",
+      "n": 20,
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61
+      ],
+      "arm_mean_asr": 0.30734999999999996,
+      "identity_mean_asr": 0.32320555555555563,
+      "arm_mean_acc": 0.47219,
+      "arm_min_acc": 0.3334,
+      "identity_mean_acc": 0.515795,
+      "identity_min_acc": 0.3962,
+      "per_seed_delta": {
+        "42": -0.030333333333333323,
+        "43": -0.019555555555555555,
+        "44": 0.012222222222222245,
+        "45": 0.030777777777777765,
+        "46": 0.02222222222222222,
+        "47": -0.025555555555555554,
+        "48": 0.010444444444444444,
+        "49": -0.3631111111111111,
+        "50": 0.06022222222222222,
+        "51": -0.05022222222222217,
+        "52": 0.018111111111111113,
+        "53": -0.016666666666666666,
+        "54": 0.014666666666666717,
+        "55": 0.014777777777777779,
+        "56": 0.0008888888888888889,
+        "57": 0.007777777777777778,
+        "58": 0.006000000000000005,
+        "59": -0.006555555555555537,
+        "60": -0.0031111111111111114,
+        "61": -0.00011111111111111112
+      },
+      "mean": -0.01585555555555555,
+      "sd": 0.08516705366830128,
+      "se": 0.01904393214456945,
+      "t_crit": 2.0930240544083087,
+      "ci95": [
+        -0.05571496362465901,
+        0.024003852513547915
+      ],
+      "half_width": 0.039859408069103465,
+      "verdict_sign": "NOT RESOLVED at this n (interval contains zero); not evidence of absence",
+      "verdict_margin": "within the frozen equivalence margin (|mean| < 0.15)",
+      "margin": 0.15,
+      "acc_gate": "PASS",
+      "acc_floor": 0.35
+    }
+  },
+  "verdict_reading_rule": "verdict_sign and verdict_margin are independent labels and neither may be reported as the other: an interval can sit inside the margin and still exclude zero. Neither literal names a mechanism. The phrase 'no evidence of a practically meaningful change' is defined at supplementary.tex:441 against the stricter of the paper's two interval conventions and may not be applied to any leg here.",
+  "cells": {
+    "fedavg_then_krum|committed_pixel": {
+      "d1": "fedavg",
+      "d2": "krum",
+      "attack": "committed_pixel",
+      "arm": "identity",
+      "score_only": false,
+      "emit_only": false,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.3962,
+          "asr": 0.7787777777777778,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5922,
+          "asr": 0.039,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.467,
+          "asr": 0.9315555555555556,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.5335,
+          "asr": 0.06777777777777778,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.6051,
+          "asr": 0.056666666666666664,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 47,
+          "accuracy": 0.5714,
+          "asr": 0.0661111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.6141,
+          "asr": 0.042444444444444444,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.4474,
+          "asr": 0.419,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.4518,
+          "asr": 0.009333333333333334,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.4723,
+          "asr": 0.9251111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.5966,
+          "asr": 0.03222222222222222,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.6078,
+          "asr": 0.025222222222222222,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.4734,
+          "asr": 0.9793333333333333,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.5156,
+          "asr": 0.11033333333333334,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.4659,
+          "asr": 0.0016666666666666668,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.5589,
+          "asr": 0.0038888888888888888,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.4905,
+          "asr": 0.9825555555555555,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.4993,
+          "asr": 0.988,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.5308,
+          "asr": 0.005,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.4261,
+          "asr": 0.00011111111111111112,
+          "source": "<computed here>"
+        }
+      ]
+    },
+    "rfa_then_krum|committed_pixel|score_only": {
+      "d1": "rfa",
+      "d2": "krum",
+      "attack": "committed_pixel",
+      "arm": "statistic",
+      "score_only": true,
+      "emit_only": false,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5989,
+          "asr": 0.8508888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6703,
+          "asr": 0.528,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.4814,
+          "asr": 0.937,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.5191,
+          "asr": 0.5434444444444444,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.6097,
+          "asr": 0.7926666666666666,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 47,
+          "accuracy": 0.5458,
+          "asr": 0.6688888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.6239,
+          "asr": 0.7855555555555556,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.5485,
+          "asr": 0.48155555555555557,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.5622,
+          "asr": 0.9957777777777778,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.4837,
+          "asr": 0.3502222222222222,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.5336,
+          "asr": 0.19077777777777777,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.6579,
+          "asr": 0.424,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.6209,
+          "asr": 0.47444444444444445,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.6189,
+          "asr": 0.10988888888888888,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.553,
+          "asr": 0.6825555555555556,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.6194,
+          "asr": 0.2591111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.6048,
+          "asr": 0.9838888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.5321,
+          "asr": 0.9857777777777778,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.4999,
+          "asr": 0.8636666666666667,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.4571,
+          "asr": 0.4938888888888889,
+          "source": "<computed here>"
+        }
+      ]
+    },
+    "rfa_then_krum|committed_pixel|emit_only": {
+      "d1": "rfa",
+      "d2": "krum",
+      "attack": "committed_pixel",
+      "arm": "magnitude",
+      "score_only": false,
+      "emit_only": true,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.3929,
+          "asr": 0.7484444444444445,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5324,
+          "asr": 0.019444444444444445,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.3507,
+          "asr": 0.9437777777777778,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.5434,
+          "asr": 0.09855555555555555,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.5698,
+          "asr": 0.07888888888888888,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 47,
+          "accuracy": 0.5322,
+          "asr": 0.04055555555555555,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.5293,
+          "asr": 0.05288888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.4734,
+          "asr": 0.05588888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.5931,
+          "asr": 0.06955555555555555,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.4527,
+          "asr": 0.8748888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.5479,
+          "asr": 0.050333333333333334,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.4572,
+          "asr": 0.008555555555555556,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.3652,
+          "asr": 0.994,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.3665,
+          "asr": 0.12511111111111112,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.458,
+          "asr": 0.0025555555555555557,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.5586,
+          "asr": 0.011666666666666667,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.4557,
+          "asr": 0.9885555555555555,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.4921,
+          "asr": 0.9814444444444445,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.4393,
+          "asr": 0.001888888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.3334,
+          "asr": 0.0,
+          "source": "<computed here>"
+        }
+      ]
+    }
+  }
+}

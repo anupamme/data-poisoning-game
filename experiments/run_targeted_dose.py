@@ -139,7 +139,8 @@ def dial(mode, val):
 
 
 def run_one(seed, mode, d2, attack_name, val, dataset="cifar10", model="cifar_cnn",
-            score_only=False, emit_only=False, fl_config=None, alpha=0.5, ca=None):
+            score_only=False, emit_only=False, fl_config=None, alpha=0.5, ca=None,
+            d1_override=None, stack_hook=None):
     """One 50-round FL run of the targeted dose into d2 under attack_name.
 
     dataset/model default to the CIFAR-10 configuration this suite was frozen on, so every existing
@@ -159,6 +160,25 @@ def run_one(seed, mode, d2, attack_name, val, dataset="cifar10", model="cifar_cn
     and ca=None means the frozen adversary. So every existing call site is bit-identical, which
     --harness-check proves rather than assumes. ca=(eps, decorrelate) SUBSTITUTES the
     criterion-aware construction for manipulate_update; see experiments/adversary_hook.py.
+
+    d1_override names the upstream stage directly instead of composing it from (mode, val), and it
+    is the oracle-free arm of pre_registration_oracle_free_channels.md. d1_name can only produce the
+    three dose families, and apply_d1_transform RAISES for all three without adv_mask -- "refusing
+    to run a targeted dose without knowing which participants are adversarial" -- so every rung this
+    runner could previously reach reads adversary identity. A review named that as the paper's
+    bottleneck. With d1_override set, d1 is a real upstream defense (rfa, whose Weiszfeld weights are
+    computed from the update stack alone) and adv_mask is passed as None, so oracle-freeness is
+    ENFORCED by the callee rather than merely intended: any dose family reached this way raises
+    instead of running. mode and val become labels only. d1_override=None is the default, so every
+    existing call site is bit-identical, which --harness-check proves rather than assumes.
+
+    stack_hook is the decomposition arm of pre_registration_oracle_free_decomposition.md, and it
+    exists because d1_override cannot carry it: d1_override is a STRING, matched against literals and
+    regexes inside apply_d1_transform, so a per-round computed coefficient vector cannot flow through
+    it without editing that function. The hook is called with (ups, seed, rnd) and NEVER with the
+    adversary set, so a hook cannot become an oracle by accident rather than by intent. It returns the
+    stack to aggregate. stack_hook=None is the default and leaves every existing call site
+    bit-identical, which --harness-check proves rather than assumes.
     """
     cfg = fl_config or FL_CONFIG
     torch.manual_seed(seed); np.random.seed(seed)
@@ -170,7 +190,7 @@ def run_one(seed, mode, d2, attack_name, val, dataset="cifar10", model="cifar_cn
     atk = get_attack(ATTACK_MAP[attack_name])
     cl = [FederatedClient(i, atk.poison_dataset(cd[i]) if i in adv else cd[i], dev)
           for i in range(cfg.num_clients)]
-    d1 = d1_name(mode, val)
+    d1 = d1_override or d1_name(mode, val)
     lr = cfg.learning_rate
     for rnd in range(cfg.num_rounds):
         pids = np.random.choice(cfg.num_clients,
@@ -187,12 +207,19 @@ def run_one(seed, mode, d2, attack_name, val, dataset="cifar10", model="cifar_cn
         # client's update, and srv.global_model is not mutated mid-round. --harness-check is the
         # proof, not this comment.
         ups = apply_adversary(ups, pids, adv, atk, srv.global_model, ca=ca, verify=(rnd == 0))
+        # The decomposition arm's transform, applied to the post-adversary stack and upstream of the
+        # composition, which is where a d1 stage would sit. It is given (ups, seed, rnd) and nothing
+        # else: the adversary set is in scope here and is deliberately not passed, because the arm's
+        # whole claim is that the intervention reads no adversary identity.
+        if stack_hook is not None:
+            ups = stack_hook(ups, seed, rnd)
         # adv_mask is the whole point of this suite: the coefficient a client receives depends on
         # whether it is adversarial. dose_key still seeds the permutation of the BENIGN clients in
         # mode S; mode A needs no permutation, since the assignment is determined by adversary
         # status alone.
         srv.apply_update(generic_compose(srv, ups, d1, d2, tau=5.0, dose_key=(seed, rnd),
-                                         adv_mask=[bool(cid in adv) for cid in pids],
+                                         adv_mask=(None if d1_override is not None else
+                                                   [bool(cid in adv) for cid in pids]),
                                          score_only=score_only, emit_only=emit_only))
         lr *= getattr(cfg, "lr_decay", 1.0)
     return (float(srv.evaluate(td)["accuracy"]),
