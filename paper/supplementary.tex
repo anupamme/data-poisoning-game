@@ -380,7 +380,11 @@ update) does not change the verdict (§\ref{app:targeted_full}, Appendix~\ref{ap
 Student-$t$ $95\%$ intervals throughout and no claim that a small effect is zero. Where suppression does
 not move we report \textbf{no evidence of a practically meaningful change under the pre-specified
 $\pm0.15$ equivalence margin}, a margin frozen before the runs (Table~\ref{tab:scope_levels}), never a
-claim that suppression is unchanged. Two design choices do more for precision than seeds would: the
+claim that suppression is unchanged. On the arms where we report it, that margin is one-sided in a way the
+phrase does not say on its own: identity-rung mean ASR is below $0.15$ there, so $\Delta > -0.15$ holds by
+arithmetic before any seed runs and the only leg that tests anything is the upper one, which bounds a
+\emph{rise}. Main~§\ref{par:reach} scores every arm on both legs and prints the one-sided bound
+beside each two-sided interval. Two design choices do more for precision than seeds would: the
 identity rungs are imported \textbf{bit-identical per seed} (largest deviation $0.00\mathrm{e}{+}00$),
 so the contrast is within-seed rather than across noise, and the central claim is a \textbf{sign
 reversal} ($-0.273$ against $+0.125$ at $n{=}20$ on the identical cell, Table~\ref{tab:comparability}), which is not
@@ -437,6 +441,12 @@ $n{=}20$ on both legs, so its two means and both intervals move by design, and w
 $m^{\ast}$ this section derives from that row ($0.178 \to 0.155$, an arm that carries no equivalence
 reading either before or after). The md5 is \texttt{6e25ef3a}, from \texttt{2e8cced3}. No other cell
 moved, and the binding equivalence arm named below is unchanged.
+\textbf{One thing this sweep does not vary, and it should be said here rather than inferred}: the two
+\texttt{krum} / scaling rows below are the ones that carry an equivalence reading, CIFAR-10's and
+EMNIST-byclass's, and their identity-rung mean ASR is $0.044$ and $0.024$, so on both of them $\Delta > -m$
+is satisfied by arithmetic at every rung of the ladder and what the sweep varies is the upper leg alone.
+Main~§\ref{par:reach} gives the one-sided bound for each, $+0.012$ and $+0.009$. No $m^{\ast}$ printed here changes and no
+verdict below is revised; what changes is only which of the two legs a reader should credit the pass to.
 
 \textbf{The $\pm0.15$ practical-equivalence margin is not load-bearing.} A reading of no evidence of a practically meaningful change requires the paired $95\%$ interval to lie inside
 $[-m,+m]$, so the smallest margin under which each frozen reading survives is

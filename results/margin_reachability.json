@@ -1,0 +1,1399 @@
+{
+  "description": "Is the lower leg of each two-sided equivalence claim a test, or is it satisfied by the arithmetic of a bounded outcome? Read-only over frozen artifacts; no ASR computed, no model trained, no existing artifact written.",
+  "sources": [
+    "results/comparability_six_cells.json",
+    "results/dose_resnet18/summary.json",
+    "every results/<dir>/summary.json named in analyze_tost_existing.ARMS"
+  ],
+  "frozen_equivalence_margin": 0.15,
+  "frozen_acc_floor": 0.35,
+  "bound": "mean_i(asr_dosed_i - asr_identity_i) >= -mean_i(asr_identity_i), because ASR >= 0",
+  "populations": {
+    "A": "the comparability ladder's cells at 95%, both designs each, at the seed block that ladder scores, plus the ResNet18 architecture arm, which has no outcome-gated twin and so no comparability cell",
+    "B": "App. F's Table 4: every Mode S arm in the paper at the seed counts already on disk, with the arm list, rungs and pairing imported from analyze_tost_existing.py",
+    "C": "the two equivalence claims whose arm neither list scores: Mode M, a second transformation class at n=10, and the 200-round ResNet18 replication at n=3. Found by auditing the prose, not the artifacts",
+    "never_pooled": "one arm can appear in both groups at different seed blocks, so a pooled count would double-count it"
+  },
+  "seed_block_convention": "within each group, the seed block that group's own scored contrast uses: unpaired_* in analyze_comparability.contrast for A, and analyze_tost_existing.paired for B",
+  "two_referents_warning": "the flagship cell appears twice, as group B's n=5 ladder arm (identity 0.0618, 95% upper bound +0.026) and as group A's n=20 top-up (identity 0.0439, upper bound +0.012). They are different seed blocks of the same cell and their numbers are not interchangeable between sentences.",
+  "all_recomputed_values_match_published": true,
+  "rule": "On any arm whose identity-rung mean ASR is below the margin, the lower TOST leg is satisfied by arithmetic for every possible outcome and is not a test; the claim is reported as a pre-registered non-increase with its 95% upper bound. Arms whose identity mean exceeds the margin keep the two-sided reading and say so.",
+  "may_not_be_written": "'every equivalence claim' -- coord_median / scaling, outcome-gated, keeps a genuinely two-sided reading, so the universal is false of the paper; and no group's count may be added to another's",
+  "paper_wide": {
+    "n_arm_rows": 26,
+    "n_claim_rows": 8,
+    "distinct_arms_with_an_equivalence_claim": [
+      "Mode M, coordinate masking",
+      "coord_median / scaling",
+      "krum / scaling (the flagship cell)",
+      "krum / scaling, EMNIST-byclass",
+      "krum / scaling, score-only control"
+    ],
+    "where_each_is_scored": {
+      "krum / scaling (the flagship cell)": [
+        "A/confounded n=5",
+        "A/controlled n=20",
+        "B/tab:tost n=5"
+      ],
+      "coord_median / scaling": [
+        "A/confounded n=5"
+      ],
+      "krum / scaling, EMNIST-byclass": [
+        "A/controlled n=5",
+        "B/tab:tost n=5"
+      ],
+      "krum / scaling, score-only control": [
+        "B/tab:tost n=5"
+      ],
+      "Mode M, coordinate masking": [
+        "C/n=10 n=10"
+      ]
+    },
+    "n_distinct_arms": 5,
+    "n_distinct_arms_with_arithmetic_lower_leg": 4,
+    "distinct_arms_with_arithmetic_lower_leg": [
+      "Mode M, coordinate masking",
+      "krum / scaling (the flagship cell)",
+      "krum / scaling, EMNIST-byclass",
+      "krum / scaling, score-only control"
+    ],
+    "distinct_arms_keeping_the_two_sided_reading": [
+      "coord_median / scaling"
+    ],
+    "the_number_to_quote": "4 of 5",
+    "why_not_the_row_count": "the flagship and its EMNIST replication are each scored in more than one group at more than one seed block, so the row count overstates the number of arms"
+  },
+  "which_leg_sets_the_published_p": {
+    "what": "p_tost = max(p_lower, p_upper); which leg attains the max, on the arms tab:tost marks equivalent at the frozen margin",
+    "n_equivalent_arms": 6,
+    "n_whose_p_is_set_by_the_arithmetic_leg": 5,
+    "per_arm": [
+      {
+        "arm": "Krum / scaling (flagship)",
+        "n": 5,
+        "p_lower_leg": 0.001357836168033756,
+        "p_upper_leg": 0.0003579017517798203,
+        "p_tost_printed": 0.001357836168033756,
+        "attained_by": "lower",
+        "lower_leg_is_a_test": false,
+        "quoted_at": "main.tex:698, :720, :940, tab:tost"
+      },
+      {
+        "arm": "Krum / scaling (score-only)",
+        "n": 5,
+        "p_lower_leg": 0.0070794171237631605,
+        "p_upper_leg": 0.002367357019282482,
+        "p_tost_printed": 0.0070794171237631605,
+        "attained_by": "lower",
+        "lower_leg_is_a_test": false,
+        "quoted_at": "main.tex:1847, tab:tost"
+      },
+      {
+        "arm": "Krum / scaling (EMNIST-byclass)",
+        "n": 3,
+        "p_lower_leg": 0.0003951886231955224,
+        "p_upper_leg": 0.00025313678027430876,
+        "p_tost_printed": 0.0003951886231955224,
+        "attained_by": "lower",
+        "lower_leg_is_a_test": false,
+        "quoted_at": "main.tex:940, :1820, tab:tost"
+      },
+      {
+        "arm": "Krum / scaling (ResNet18)",
+        "n": 3,
+        "p_lower_leg": 0.04035428815490489,
+        "p_upper_leg": 0.014272667212514065,
+        "p_tost_printed": 0.04035428815490489,
+        "attained_by": "lower",
+        "lower_leg_is_a_test": false,
+        "quoted_at": "main.tex:940, :1830, tab:tost"
+      },
+      {
+        "arm": "Krum / scaling (EMNIST-byclass, $n{=}5$)",
+        "n": 5,
+        "p_lower_leg": 2.9830969660780134e-05,
+        "p_upper_leg": 1.513058831448935e-05,
+        "p_tost_printed": 2.9830969660780134e-05,
+        "attained_by": "lower",
+        "lower_leg_is_a_test": false,
+        "quoted_at": "tab:tost, the pooled row"
+      },
+      {
+        "arm": "coord_median / pixel (CIFAR-100)",
+        "n": 5,
+        "p_lower_leg": 5.005514713057304e-05,
+        "p_upper_leg": 0.0025049018079887683,
+        "p_tost_printed": 0.0025049018079887683,
+        "attained_by": "upper",
+        "lower_leg_is_a_test": true,
+        "quoted_at": "main.tex:853, :3141, tab:tost"
+      }
+    ],
+    "consequence": "on every arm where the max is attained by an arithmetic lower leg, the one-sided p for no meaningful RISE is strictly smaller than the published p_tost, so the relabelling strengthens the reported evidence",
+    "not_a_revision": "no published p is changed anywhere; p_tost stays as printed, and the upper-leg p is reported beside it as the separate quantity it is"
+  },
+  "group_A": {
+    "n_scored": 15,
+    "equivalence_claims": [
+      "krum / scaling / confounded",
+      "krum / scaling / controlled",
+      "coord_median / scaling / confounded",
+      "krum / scaling, EMNIST / controlled"
+    ],
+    "equivalence_claims_with_untestable_lower_leg": [
+      "krum / scaling / confounded",
+      "krum / scaling / controlled",
+      "krum / scaling, EMNIST / controlled"
+    ],
+    "equivalence_claims_keeping_the_two_sided_reading": [
+      "coord_median / scaling / confounded"
+    ],
+    "every_equivalence_claim_has_an_untestable_lower_leg": false,
+    "lower_leg_is_a_test": [
+      "cos_krum / pixel / confounded",
+      "cos_krum / pixel / controlled",
+      "coord_median / pixel / confounded",
+      "coord_median / pixel / controlled",
+      "coord_median / scaling / confounded",
+      "coord_median / scaling / controlled",
+      "coord_median / pixel, CIFAR-100 / confounded",
+      "coord_median / pixel, CIFAR-100 / controlled"
+    ],
+    "one_sided_reading_per_equivalence_claim": {
+      "krum / scaling / confounded": {
+        "upper_bound": 0.0738751515009962,
+        "below_margin": true
+      },
+      "krum / scaling / controlled": {
+        "upper_bound": 0.012378680540304119,
+        "below_margin": true
+      },
+      "coord_median / scaling / confounded": {
+        "upper_bound": 0.08126477453962723,
+        "below_margin": true
+      },
+      "krum / scaling, EMNIST / controlled": {
+        "upper_bound": 0.008691351055465415,
+        "below_margin": true
+      }
+    },
+    "arithmetic_lower_leg_any_wording": [
+      {
+        "arm": "krum / scaling / confounded",
+        "n": 5,
+        "identity_mean_asr": 0.061755555555555564,
+        "upper_bound": 0.0738751515009962,
+        "ci_contains_zero": true,
+        "two_sided_inside_margin": true,
+        "quoted_at": null
+      },
+      {
+        "arm": "krum / scaling / controlled",
+        "n": 20,
+        "identity_mean_asr": 0.04394444444444444,
+        "upper_bound": 0.012378680540304119,
+        "ci_contains_zero": true,
+        "two_sided_inside_margin": true,
+        "quoted_at": null
+      },
+      {
+        "arm": "reputation / scaling / confounded",
+        "n": 5,
+        "identity_mean_asr": 0.017044444444444445,
+        "upper_bound": 0.8658349128293013,
+        "ci_contains_zero": false,
+        "two_sided_inside_margin": false,
+        "quoted_at": null
+      },
+      {
+        "arm": "reputation / scaling / controlled",
+        "n": 5,
+        "identity_mean_asr": 0.017044444444444445,
+        "upper_bound": 0.4691742850575674,
+        "ci_contains_zero": true,
+        "two_sided_inside_margin": false,
+        "quoted_at": null
+      },
+      {
+        "arm": "krum / scaling, EMNIST / confounded",
+        "n": 5,
+        "identity_mean_asr": 0.024180198109367227,
+        "upper_bound": 0.4885231973683571,
+        "ci_contains_zero": true,
+        "two_sided_inside_margin": false,
+        "quoted_at": null
+      },
+      {
+        "arm": "krum / scaling, EMNIST / controlled",
+        "n": 5,
+        "identity_mean_asr": 0.024180198109367227,
+        "upper_bound": 0.008691351055465415,
+        "ci_contains_zero": true,
+        "two_sided_inside_margin": true,
+        "quoted_at": null
+      },
+      {
+        "arm": "krum / scaling, resnet18 / controlled",
+        "n": 3,
+        "identity_mean_asr": 0.07066666666666667,
+        "upper_bound": 0.10089397442646933,
+        "ci_contains_zero": true,
+        "two_sided_inside_margin": false,
+        "quoted_at": null
+      }
+    ],
+    "n_arithmetic_lower_leg_any_wording": 7
+  },
+  "group_B": {
+    "n_scored": 9,
+    "equivalence_claims": [
+      "Krum / scaling (flagship) / tab:tost",
+      "Krum / scaling (score-only) / tab:tost",
+      "Krum / scaling (EMNIST-byclass, $n{=}5$) / tab:tost"
+    ],
+    "equivalence_claims_with_untestable_lower_leg": [
+      "Krum / scaling (flagship) / tab:tost",
+      "Krum / scaling (score-only) / tab:tost",
+      "Krum / scaling (EMNIST-byclass, $n{=}5$) / tab:tost"
+    ],
+    "equivalence_claims_keeping_the_two_sided_reading": [],
+    "every_equivalence_claim_has_an_untestable_lower_leg": true,
+    "lower_leg_is_a_test": [
+      "cos_krum / pixel / tab:tost",
+      "coord_median / pixel / tab:tost",
+      "coord_median / pixel (CIFAR-100) / tab:tost"
+    ],
+    "one_sided_reading_per_equivalence_claim": {
+      "Krum / scaling (flagship) / tab:tost": {
+        "upper_bound": 0.02596011205737136,
+        "below_margin": true
+      },
+      "Krum / scaling (score-only) / tab:tost": {
+        "upper_bound": 0.061415371850365795,
+        "below_margin": true
+      },
+      "Krum / scaling (EMNIST-byclass, $n{=}5$) / tab:tost": {
+        "upper_bound": 0.008691351055465415,
+        "below_margin": true
+      }
+    },
+    "arithmetic_lower_leg_any_wording": [
+      {
+        "arm": "Krum / scaling (flagship) / tab:tost",
+        "n": 5,
+        "identity_mean_asr": 0.061755555555555564,
+        "upper_bound": 0.02596011205737136,
+        "ci_contains_zero": true,
+        "two_sided_inside_margin": true,
+        "quoted_at": "main.tex:698, :720, :940, tab:tost"
+      },
+      {
+        "arm": "Krum / scaling (score-only) / tab:tost",
+        "n": 5,
+        "identity_mean_asr": 0.061755555555555564,
+        "upper_bound": 0.061415371850365795,
+        "ci_contains_zero": true,
+        "two_sided_inside_margin": true,
+        "quoted_at": "main.tex:1847, tab:tost"
+      },
+      {
+        "arm": "Krum / scaling (EMNIST-byclass) / tab:tost",
+        "n": 3,
+        "identity_mean_asr": 0.026978455229393763,
+        "upper_bound": -0.0005109163614234399,
+        "ci_contains_zero": false,
+        "two_sided_inside_margin": true,
+        "quoted_at": "main.tex:940, :1820, tab:tost"
+      },
+      {
+        "arm": "Krum / scaling (ResNet18) / tab:tost",
+        "n": 3,
+        "identity_mean_asr": 0.07066666666666667,
+        "upper_bound": 0.10089397442646933,
+        "ci_contains_zero": true,
+        "two_sided_inside_margin": false,
+        "quoted_at": "main.tex:940, :1830, tab:tost"
+      },
+      {
+        "arm": "Reputation / scaling / tab:tost",
+        "n": 5,
+        "identity_mean_asr": 0.017044444444444445,
+        "upper_bound": 0.4691742850575674,
+        "ci_contains_zero": true,
+        "two_sided_inside_margin": false,
+        "quoted_at": "tab:tost, a positive control"
+      },
+      {
+        "arm": "Krum / scaling (EMNIST-byclass, $n{=}5$) / tab:tost",
+        "n": 5,
+        "identity_mean_asr": 0.024180198109367227,
+        "upper_bound": 0.008691351055465415,
+        "ci_contains_zero": true,
+        "two_sided_inside_margin": true,
+        "quoted_at": "tab:tost, the pooled row"
+      }
+    ],
+    "n_arithmetic_lower_leg_any_wording": 6
+  },
+  "group_C": {
+    "n_scored": 2,
+    "equivalence_claims": [
+      "Mode M / coordinate masking / n=10"
+    ],
+    "equivalence_claims_with_untestable_lower_leg": [
+      "Mode M / coordinate masking / n=10"
+    ],
+    "equivalence_claims_keeping_the_two_sided_reading": [],
+    "every_equivalence_claim_has_an_untestable_lower_leg": true,
+    "lower_leg_is_a_test": [],
+    "one_sided_reading_per_equivalence_claim": {
+      "Mode M / coordinate masking / n=10": {
+        "upper_bound": 0.018504866909853212,
+        "below_margin": true
+      }
+    },
+    "arithmetic_lower_leg_any_wording": [
+      {
+        "arm": "Mode M / coordinate masking / n=10",
+        "n": 10,
+        "identity_mean_asr": 0.05319999999999999,
+        "upper_bound": 0.018504866909853212,
+        "ci_contains_zero": true,
+        "two_sided_inside_margin": true,
+        "quoted_at": "main.tex:1882, the second transformation class at n=10"
+      },
+      {
+        "arm": "krum / scaling, resnet18, 200 rounds / n=3",
+        "n": 3,
+        "identity_mean_asr": 0.04466666666666667,
+        "upper_bound": 0.1384992834654515,
+        "ci_contains_zero": true,
+        "two_sided_inside_margin": false,
+        "quoted_at": "main.tex:1839, the longer-horizon replication at n=3"
+      }
+    ],
+    "n_arithmetic_lower_leg_any_wording": 2
+  },
+  "rows": [
+    {
+      "identity_mean_asr": 0.061755555555555564,
+      "fall_available": 0.061755555555555564,
+      "margin": 0.15,
+      "lower_leg_is_a_test": false,
+      "lower_leg_slack": -0.08824444444444443,
+      "upper_bound": 0.0738751515009962,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": true,
+      "two_sided_inside_margin": true,
+      "arm": "krum / scaling",
+      "design": "confounded",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "n": 5,
+      "mean": -0.007577777777777776,
+      "ci": [
+        -0.08903070705655176,
+        0.0738751515009962
+      ],
+      "group": "A",
+      "training": true,
+      "in_comparability_artifact": true,
+      "reproduces_published": true
+    },
+    {
+      "identity_mean_asr": 0.04394444444444444,
+      "fall_available": 0.04394444444444444,
+      "margin": 0.15,
+      "lower_leg_is_a_test": false,
+      "lower_leg_slack": -0.10605555555555556,
+      "upper_bound": 0.012378680540304119,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": true,
+      "two_sided_inside_margin": true,
+      "arm": "krum / scaling",
+      "design": "controlled",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61
+      ],
+      "n": 20,
+      "mean": -0.00961111111111111,
+      "ci": [
+        -0.03160090276252634,
+        0.012378680540304119
+      ],
+      "group": "A",
+      "training": true,
+      "in_comparability_artifact": true,
+      "reproduces_published": true
+    },
+    {
+      "identity_mean_asr": 0.4904222222222222,
+      "fall_available": 0.4904222222222222,
+      "margin": 0.15,
+      "lower_leg_is_a_test": true,
+      "lower_leg_slack": 0.3404222222222222,
+      "upper_bound": -0.013635527516571488,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": false,
+      "two_sided_inside_margin": false,
+      "arm": "cos_krum / pixel",
+      "design": "confounded",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "n": 5,
+      "mean": -0.4046666666666667,
+      "ci": [
+        -0.7956978058167619,
+        -0.013635527516571488
+      ],
+      "group": "A",
+      "training": true,
+      "in_comparability_artifact": true,
+      "reproduces_published": true
+    },
+    {
+      "identity_mean_asr": 0.5837361111111111,
+      "fall_available": 0.5837361111111111,
+      "margin": 0.15,
+      "lower_leg_is_a_test": true,
+      "lower_leg_slack": 0.4337361111111111,
+      "upper_bound": -0.11763136144873765,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": false,
+      "two_sided_inside_margin": false,
+      "arm": "cos_krum / pixel",
+      "design": "controlled",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49
+      ],
+      "n": 8,
+      "mean": -0.42465277777777777,
+      "ci": [
+        -0.7316741941068179,
+        -0.11763136144873765
+      ],
+      "group": "A",
+      "training": true,
+      "in_comparability_artifact": true,
+      "reproduces_published": true
+    },
+    {
+      "identity_mean_asr": 0.017044444444444445,
+      "fall_available": 0.017044444444444445,
+      "margin": 0.15,
+      "lower_leg_is_a_test": false,
+      "lower_leg_slack": -0.13295555555555555,
+      "upper_bound": 0.8658349128293013,
+      "upper_bound_below_margin": false,
+      "ci_contains_zero": false,
+      "two_sided_inside_margin": false,
+      "arm": "reputation / scaling",
+      "design": "confounded",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "n": 5,
+      "mean": 0.7616888888888889,
+      "ci": [
+        0.6575428649484765,
+        0.8658349128293013
+      ],
+      "group": "A",
+      "training": true,
+      "in_comparability_artifact": true,
+      "reproduces_published": true
+    },
+    {
+      "identity_mean_asr": 0.017044444444444445,
+      "fall_available": 0.017044444444444445,
+      "margin": 0.15,
+      "lower_leg_is_a_test": false,
+      "lower_leg_slack": -0.13295555555555555,
+      "upper_bound": 0.4691742850575674,
+      "upper_bound_below_margin": false,
+      "ci_contains_zero": true,
+      "two_sided_inside_margin": false,
+      "arm": "reputation / scaling",
+      "design": "controlled",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "n": 5,
+      "mean": 0.17842222222222223,
+      "ci": [
+        -0.11232984061312293,
+        0.4691742850575674
+      ],
+      "group": "A",
+      "training": true,
+      "in_comparability_artifact": true,
+      "reproduces_published": true
+    },
+    {
+      "identity_mean_asr": 0.4783277777777778,
+      "fall_available": 0.4783277777777778,
+      "margin": 0.15,
+      "lower_leg_is_a_test": true,
+      "lower_leg_slack": 0.3283277777777778,
+      "upper_bound": -0.21281709556621867,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": false,
+      "two_sided_inside_margin": false,
+      "arm": "coord_median / pixel",
+      "design": "confounded",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61
+      ],
+      "n": 20,
+      "mean": -0.2732777777777778,
+      "ci": [
+        -0.33373845998933693,
+        -0.21281709556621867
+      ],
+      "group": "A",
+      "training": true,
+      "in_comparability_artifact": true,
+      "reproduces_published": true
+    },
+    {
+      "identity_mean_asr": 0.4783277777777778,
+      "fall_available": 0.4783277777777778,
+      "margin": 0.15,
+      "lower_leg_is_a_test": true,
+      "lower_leg_slack": 0.3283277777777778,
+      "upper_bound": 0.15470574202312173,
+      "upper_bound_below_margin": false,
+      "ci_contains_zero": false,
+      "two_sided_inside_margin": false,
+      "arm": "coord_median / pixel",
+      "design": "controlled",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61
+      ],
+      "n": 20,
+      "mean": 0.12506111111111112,
+      "ci": [
+        0.09541648019910051,
+        0.15470574202312173
+      ],
+      "group": "A",
+      "training": true,
+      "in_comparability_artifact": true,
+      "reproduces_published": true
+    },
+    {
+      "identity_mean_asr": 0.5185777777777778,
+      "fall_available": 0.5185777777777778,
+      "margin": 0.15,
+      "lower_leg_is_a_test": true,
+      "lower_leg_slack": 0.3685777777777778,
+      "upper_bound": 0.08126477453962723,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": true,
+      "two_sided_inside_margin": true,
+      "arm": "coord_median / scaling",
+      "design": "confounded",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "n": 5,
+      "mean": 0.001866666666666661,
+      "ci": [
+        -0.07753144120629392,
+        0.08126477453962723
+      ],
+      "group": "A",
+      "training": false,
+      "in_comparability_artifact": true,
+      "reproduces_published": true
+    },
+    {
+      "identity_mean_asr": 0.5185777777777778,
+      "fall_available": 0.5185777777777778,
+      "margin": 0.15,
+      "lower_leg_is_a_test": true,
+      "lower_leg_slack": 0.3685777777777778,
+      "upper_bound": 0.2802481497133719,
+      "upper_bound_below_margin": false,
+      "ci_contains_zero": false,
+      "two_sided_inside_margin": false,
+      "arm": "coord_median / scaling",
+      "design": "controlled",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "n": 5,
+      "mean": 0.19611111111111112,
+      "ci": [
+        0.11197407250885032,
+        0.2802481497133719
+      ],
+      "group": "A",
+      "training": false,
+      "in_comparability_artifact": true,
+      "reproduces_published": true
+    },
+    {
+      "identity_mean_asr": 0.024180198109367227,
+      "fall_available": 0.024180198109367227,
+      "margin": 0.15,
+      "lower_leg_is_a_test": false,
+      "lower_leg_slack": -0.12581980189063277,
+      "upper_bound": 0.4885231973683571,
+      "upper_bound_below_margin": false,
+      "ci_contains_zero": true,
+      "two_sided_inside_margin": false,
+      "arm": "krum / scaling, EMNIST",
+      "design": "confounded",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "n": 5,
+      "mean": 0.15697317834366092,
+      "ci": [
+        -0.17457684068103524,
+        0.4885231973683571
+      ],
+      "group": "A",
+      "training": false,
+      "in_comparability_artifact": true,
+      "reproduces_published": true
+    },
+    {
+      "identity_mean_asr": 0.024180198109367227,
+      "fall_available": 0.024180198109367227,
+      "margin": 0.15,
+      "lower_leg_is_a_test": false,
+      "lower_leg_slack": -0.12581980189063277,
+      "upper_bound": 0.008691351055465415,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": true,
+      "two_sided_inside_margin": true,
+      "arm": "krum / scaling, EMNIST",
+      "design": "controlled",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "n": 5,
+      "mean": -0.012811072413949071,
+      "ci": [
+        -0.034313495883363555,
+        0.008691351055465415
+      ],
+      "group": "A",
+      "training": false,
+      "in_comparability_artifact": true,
+      "reproduces_published": true
+    },
+    {
+      "identity_mean_asr": 0.7033939393939395,
+      "fall_available": 0.7033939393939395,
+      "margin": 0.15,
+      "lower_leg_is_a_test": true,
+      "lower_leg_slack": 0.5533939393939394,
+      "upper_bound": -0.14139000160415058,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": false,
+      "two_sided_inside_margin": false,
+      "arm": "coord_median / pixel, CIFAR-100",
+      "design": "confounded",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "n": 5,
+      "mean": -0.21292929292929297,
+      "ci": [
+        -0.28446858425443533,
+        -0.14139000160415058
+      ],
+      "group": "A",
+      "training": false,
+      "in_comparability_artifact": true,
+      "reproduces_published": true
+    },
+    {
+      "identity_mean_asr": 0.7033939393939395,
+      "fall_available": 0.7033939393939395,
+      "margin": 0.15,
+      "lower_leg_is_a_test": true,
+      "lower_leg_slack": 0.5533939393939394,
+      "upper_bound": 0.10999731581853278,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": false,
+      "two_sided_inside_margin": true,
+      "arm": "coord_median / pixel, CIFAR-100",
+      "design": "controlled",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "n": 5,
+      "mean": 0.07058585858585857,
+      "ci": [
+        0.03117440135318436,
+        0.10999731581853278
+      ],
+      "group": "A",
+      "training": false,
+      "in_comparability_artifact": true,
+      "reproduces_published": true
+    },
+    {
+      "identity_mean_asr": 0.07066666666666667,
+      "fall_available": 0.07066666666666667,
+      "margin": 0.15,
+      "lower_leg_is_a_test": false,
+      "lower_leg_slack": -0.07933333333333333,
+      "upper_bound": 0.10089397442646933,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": true,
+      "two_sided_inside_margin": false,
+      "arm": "krum / scaling, resnet18",
+      "design": "controlled",
+      "seeds": [
+        42,
+        43,
+        44
+      ],
+      "n": 3,
+      "mean": -0.04103703703703704,
+      "ci": [
+        -0.1829680485005434,
+        0.10089397442646933
+      ],
+      "group": "A",
+      "in_comparability_artifact": false,
+      "reason_absent": "controlled leg only; no outcome-gated twin, so no comparability cell"
+    },
+    {
+      "identity_mean_asr": 0.061755555555555564,
+      "fall_available": 0.061755555555555564,
+      "margin": 0.15,
+      "lower_leg_is_a_test": false,
+      "lower_leg_slack": -0.08824444444444443,
+      "upper_bound": 0.02596011205737136,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": true,
+      "two_sided_inside_margin": true,
+      "arm": "Krum / scaling (flagship)",
+      "design": "tab:tost",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "n": 5,
+      "mean": -0.026088888888888894,
+      "ci": [
+        -0.07813788983514915,
+        0.02596011205737136
+      ],
+      "ci90_tost": [
+        -0.06605384090291147,
+        0.013876063125133679
+      ],
+      "p_tost": 0.001357836168033756,
+      "p_lower_leg": 0.001357836168033756,
+      "p_upper_leg": 0.0003579017517798203,
+      "p_tost_attained_by": "lower",
+      "p_tost_set_by_the_arithmetic_leg": true,
+      "tost_equivalent": true,
+      "detected": false,
+      "group": "B",
+      "source": "results/targeted_dose/summary.json",
+      "quoted_at": "main.tex:698, :720, :940, tab:tost",
+      "published_rounded": {
+        "mean": -0.026,
+        "ci": [
+          -0.078,
+          0.026
+        ]
+      },
+      "reproduces_published": true,
+      "lower_leg_is_a_test_under_either_convention": false
+    },
+    {
+      "identity_mean_asr": 0.061755555555555564,
+      "fall_available": 0.061755555555555564,
+      "margin": 0.15,
+      "lower_leg_is_a_test": false,
+      "lower_leg_slack": -0.08824444444444443,
+      "upper_bound": 0.061415371850365795,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": true,
+      "two_sided_inside_margin": true,
+      "arm": "Krum / scaling (score-only)",
+      "design": "tab:tost",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "n": 5,
+      "mean": -0.02322222222222222,
+      "ci": [
+        -0.10785981629481023,
+        0.061415371850365795
+      ],
+      "ci90_tost": [
+        -0.08820977864402013,
+        0.0417653341995757
+      ],
+      "p_tost": 0.0070794171237631605,
+      "p_lower_leg": 0.0070794171237631605,
+      "p_upper_leg": 0.002367357019282482,
+      "p_tost_attained_by": "lower",
+      "p_tost_set_by_the_arithmetic_leg": true,
+      "tost_equivalent": true,
+      "detected": false,
+      "group": "B",
+      "source": "results/score_only/summary.json",
+      "quoted_at": "main.tex:1847, tab:tost",
+      "published_rounded": {
+        "mean": -0.023,
+        "ci": [
+          -0.108,
+          0.061
+        ]
+      },
+      "reproduces_published": true,
+      "lower_leg_is_a_test_under_either_convention": false
+    },
+    {
+      "identity_mean_asr": 0.026978455229393763,
+      "fall_available": 0.026978455229393763,
+      "margin": 0.15,
+      "lower_leg_is_a_test": false,
+      "lower_leg_slack": -0.12302154477060623,
+      "upper_bound": -0.0005109163614234399,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": false,
+      "two_sided_inside_margin": true,
+      "arm": "Krum / scaling (EMNIST-byclass)",
+      "design": "tab:tost",
+      "seeds": [
+        42,
+        43,
+        44
+      ],
+      "n": 3,
+      "mean": -0.016650836009468237,
+      "ci": [
+        -0.032790755657513035,
+        -0.0005109163614234399
+      ],
+      "ci90_tost": [
+        -0.027604156112320876,
+        -0.005697515906615599
+      ],
+      "p_tost": 0.0003951886231955224,
+      "p_lower_leg": 0.0003951886231955224,
+      "p_upper_leg": 0.00025313678027430876,
+      "p_tost_attained_by": "lower",
+      "p_tost_set_by_the_arithmetic_leg": true,
+      "tost_equivalent": true,
+      "detected": true,
+      "group": "B",
+      "source": "results/dose_femnist/summary.json",
+      "quoted_at": "main.tex:940, :1820, tab:tost",
+      "published_rounded": {
+        "mean": -0.017,
+        "ci": [
+          -0.033,
+          -0.001
+        ]
+      },
+      "reproduces_published": true,
+      "lower_leg_is_a_test_under_either_convention": false
+    },
+    {
+      "identity_mean_asr": 0.07066666666666667,
+      "fall_available": 0.07066666666666667,
+      "margin": 0.15,
+      "lower_leg_is_a_test": false,
+      "lower_leg_slack": -0.07933333333333333,
+      "upper_bound": 0.10089397442646933,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": true,
+      "two_sided_inside_margin": false,
+      "arm": "Krum / scaling (ResNet18)",
+      "design": "tab:tost",
+      "seeds": [
+        42,
+        43,
+        44
+      ],
+      "n": 3,
+      "mean": -0.04103703703703704,
+      "ci": [
+        -0.1829680485005434,
+        0.10089397442646933
+      ],
+      "ci90_tost": [
+        -0.13735819816932063,
+        0.05528412409524655
+      ],
+      "p_tost": 0.04035428815490489,
+      "p_lower_leg": 0.04035428815490489,
+      "p_upper_leg": 0.014272667212514065,
+      "p_tost_attained_by": "lower",
+      "p_tost_set_by_the_arithmetic_leg": true,
+      "tost_equivalent": true,
+      "detected": false,
+      "group": "B",
+      "source": "results/dose_resnet18/summary.json",
+      "quoted_at": "main.tex:940, :1830, tab:tost",
+      "published_rounded": {
+        "mean": -0.041,
+        "ci": [
+          -0.183,
+          0.101
+        ]
+      },
+      "reproduces_published": true,
+      "lower_leg_is_a_test_under_either_convention": false
+    },
+    {
+      "identity_mean_asr": 0.017044444444444445,
+      "fall_available": 0.017044444444444445,
+      "margin": 0.15,
+      "lower_leg_is_a_test": false,
+      "lower_leg_slack": -0.13295555555555555,
+      "upper_bound": 0.4691742850575674,
+      "upper_bound_below_margin": false,
+      "ci_contains_zero": true,
+      "two_sided_inside_margin": false,
+      "arm": "Reputation / scaling",
+      "design": "tab:tost",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "n": 5,
+      "mean": 0.17842222222222223,
+      "ci": [
+        -0.11232984061312293,
+        0.4691742850575674
+      ],
+      "ci90_tost": [
+        -0.044826870516176204,
+        0.4016713149606207
+      ],
+      "p_tost": 0.6002460748110945,
+      "p_lower_leg": 0.017488371748656525,
+      "p_upper_leg": 0.6002460748110945,
+      "p_tost_attained_by": "upper",
+      "p_tost_set_by_the_arithmetic_leg": false,
+      "tost_equivalent": false,
+      "detected": false,
+      "group": "B",
+      "source": "results/targeted_dose/summary.json",
+      "quoted_at": "tab:tost, a positive control",
+      "published_rounded": {
+        "mean": 0.178,
+        "ci": [
+          -0.112,
+          0.469
+        ]
+      },
+      "reproduces_published": true,
+      "lower_leg_is_a_test_under_either_convention": false
+    },
+    {
+      "identity_mean_asr": 0.5837361111111111,
+      "fall_available": 0.5837361111111111,
+      "margin": 0.15,
+      "lower_leg_is_a_test": true,
+      "lower_leg_slack": 0.4337361111111111,
+      "upper_bound": -0.11763136144873765,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": false,
+      "two_sided_inside_margin": false,
+      "arm": "cos_krum / pixel",
+      "design": "tab:tost",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49
+      ],
+      "n": 8,
+      "mean": -0.42465277777777777,
+      "ci": [
+        -0.7316741941068179,
+        -0.11763136144873765
+      ],
+      "ci90_tost": [
+        -0.6706437449640528,
+        -0.1786618105915027
+      ],
+      "p_tost": 0.9638909294239231,
+      "p_lower_leg": 0.9638909294239231,
+      "p_upper_leg": 0.001529736549028275,
+      "p_tost_attained_by": "lower",
+      "p_tost_set_by_the_arithmetic_leg": false,
+      "tost_equivalent": false,
+      "detected": true,
+      "group": "B",
+      "source": "results/targeted_dose/summary.json",
+      "quoted_at": "tab:tost, a positive control",
+      "published_rounded": {
+        "mean": -0.425,
+        "ci": [
+          -0.732,
+          -0.118
+        ]
+      },
+      "reproduces_published": true,
+      "lower_leg_is_a_test_under_either_convention": true
+    },
+    {
+      "identity_mean_asr": 0.4425111111111111,
+      "fall_available": 0.4425111111111111,
+      "margin": 0.15,
+      "lower_leg_is_a_test": true,
+      "lower_leg_slack": 0.29251111111111106,
+      "upper_bound": 0.17832730606993571,
+      "upper_bound_below_margin": false,
+      "ci_contains_zero": false,
+      "two_sided_inside_margin": false,
+      "arm": "coord_median / pixel",
+      "design": "tab:tost",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "n": 5,
+      "mean": 0.0980666666666667,
+      "ci": [
+        0.017806027263397695,
+        0.17832730606993571
+      ],
+      "ci90_tost": [
+        0.03643988144406036,
+        0.15969345188927306
+      ],
+      "p_tost": 0.0734156968103741,
+      "p_lower_leg": 0.0005064922795170573,
+      "p_upper_leg": 0.0734156968103741,
+      "p_tost_attained_by": "upper",
+      "p_tost_set_by_the_arithmetic_leg": false,
+      "tost_equivalent": false,
+      "detected": true,
+      "group": "B",
+      "source": "results/dose_replication/summary.json",
+      "quoted_at": "main.tex:1746, tab:tost",
+      "published_rounded": {
+        "mean": 0.098,
+        "ci": [
+          0.018,
+          0.178
+        ]
+      },
+      "reproduces_published": true,
+      "lower_leg_is_a_test_under_either_convention": true
+    },
+    {
+      "identity_mean_asr": 0.024180198109367227,
+      "fall_available": 0.024180198109367227,
+      "margin": 0.15,
+      "lower_leg_is_a_test": false,
+      "lower_leg_slack": -0.12581980189063277,
+      "upper_bound": 0.008691351055465415,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": true,
+      "two_sided_inside_margin": true,
+      "arm": "Krum / scaling (EMNIST-byclass, $n{=}5$)",
+      "design": "tab:tost",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "n": 5,
+      "mean": -0.012811072413949071,
+      "ci": [
+        -0.034313495883363555,
+        0.008691351055465415
+      ],
+      "ci90_tost": [
+        -0.029321347472400255,
+        0.003699202644502112
+      ],
+      "p_tost": 2.9830969660780134e-05,
+      "p_lower_leg": 2.9830969660780134e-05,
+      "p_upper_leg": 1.513058831448935e-05,
+      "p_tost_attained_by": "lower",
+      "p_tost_set_by_the_arithmetic_leg": true,
+      "tost_equivalent": true,
+      "detected": false,
+      "group": "B",
+      "source": "results/dose_femnist/summary.json",
+      "quoted_at": "tab:tost, the pooled row",
+      "published_rounded": {
+        "mean": -0.013,
+        "ci": [
+          -0.034,
+          0.009
+        ]
+      },
+      "reproduces_published": true,
+      "lower_leg_is_a_test_under_either_convention": false
+    },
+    {
+      "identity_mean_asr": 0.7033939393939395,
+      "fall_available": 0.7033939393939395,
+      "margin": 0.15,
+      "lower_leg_is_a_test": true,
+      "lower_leg_slack": 0.5533939393939394,
+      "upper_bound": 0.10999731581853278,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": false,
+      "two_sided_inside_margin": true,
+      "arm": "coord_median / pixel (CIFAR-100)",
+      "design": "tab:tost",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46
+      ],
+      "n": 5,
+      "mean": 0.07058585858585857,
+      "ci": [
+        0.03117440135318436,
+        0.10999731581853278
+      ],
+      "ci90_tost": [
+        0.04032443245910603,
+        0.10084728471261112
+      ],
+      "p_tost": 0.0025049018079887683,
+      "p_lower_leg": 5.005514713057304e-05,
+      "p_upper_leg": 0.0025049018079887683,
+      "p_tost_attained_by": "upper",
+      "p_tost_set_by_the_arithmetic_leg": false,
+      "tost_equivalent": true,
+      "detected": true,
+      "group": "B",
+      "source": "results/comparability_cells/summary.json",
+      "quoted_at": "main.tex:853, :3141, tab:tost",
+      "published_rounded": {
+        "mean": 0.071,
+        "ci": [
+          0.031,
+          0.11
+        ]
+      },
+      "reproduces_published": true,
+      "lower_leg_is_a_test_under_either_convention": true
+    },
+    {
+      "identity_mean_asr": 0.05319999999999999,
+      "fall_available": 0.05319999999999999,
+      "margin": 0.15,
+      "lower_leg_is_a_test": false,
+      "lower_leg_slack": -0.0968,
+      "upper_bound": 0.018504866909853212,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": true,
+      "two_sided_inside_margin": true,
+      "arm": "Mode M / coordinate masking",
+      "design": "n=10",
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51
+      ],
+      "n": 10,
+      "mean": -0.016088888888888892,
+      "ci": [
+        -0.05068264468763099,
+        0.018504866909853212
+      ],
+      "group": "C",
+      "source": "results/dose_mask/summary.json",
+      "quoted_at": "main.tex:1882, the second transformation class at n=10",
+      "rungs": [
+        "0.0",
+        "0.8"
+      ],
+      "published_rounded": {
+        "mean": -0.016,
+        "ci": [
+          -0.051,
+          0.019
+        ]
+      },
+      "reproduces_published": true
+    },
+    {
+      "identity_mean_asr": 0.04466666666666667,
+      "fall_available": 0.04466666666666667,
+      "margin": 0.15,
+      "lower_leg_is_a_test": false,
+      "lower_leg_slack": -0.10533333333333333,
+      "upper_bound": 0.1384992834654515,
+      "upper_bound_below_margin": true,
+      "ci_contains_zero": true,
+      "two_sided_inside_margin": false,
+      "arm": "krum / scaling, resnet18, 200 rounds",
+      "design": "n=3",
+      "seeds": [
+        42,
+        43,
+        44
+      ],
+      "n": 3,
+      "mean": -0.021666666666666667,
+      "ci": [
+        -0.18183261679878485,
+        0.1384992834654515
+      ],
+      "group": "C",
+      "source": "results/dose_resnet18_converged/summary.json",
+      "quoted_at": "main.tex:1839, the longer-horizon replication at n=3",
+      "rungs": [
+        "0.0",
+        "2.0"
+      ],
+      "published_rounded": {
+        "mean": null,
+        "ci": [
+          -0.182,
+          0.138
+        ]
+      },
+      "reproduces_published": true
+    }
+  ]
+}

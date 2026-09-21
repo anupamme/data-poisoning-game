@@ -1,0 +1,1024 @@
+{
+  "description": "Mode S on krum / committed_pixel at n=20: the paper's first dissociation cell where BOTH readings of preservation have somewhere to fall. The flagship cell (krum / committed_scaling) admits 0.000 adversarial mass at every rung AND has an identity mean ASR of 0.0439, so with ASR bounded below by zero the lower TOST leg is satisfied by arithmetic for any possible outcome and is not a test. Here baseline admission is 0.3333 (nonzero in 4 of 12 adversary rounds) and the identity mean is 0.3232 > 0.15, so the lower leg is a genuine test. Branches frozen at c89e963 (experiments/pre_registration_modeS_pixel_headroom.md), which registers NO prediction for Delta_full's sign.",
+  "prereg_commit": "c89e963",
+  "prereg": "experiments/pre_registration_modeS_pixel_headroom.md",
+  "prereg_md5": "0b3986d90b3f879a3991e59c52ba496f",
+  "dataset": "cifar10",
+  "model": "cifar_cnn",
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 50,
+    "tau": 5.0,
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61
+    ],
+    "kappa_lo": 0.0,
+    "kappa_hi": 2.0,
+    "rho_lo": 1.0,
+    "rho_hi": 54.598150033144236,
+    "acc_floor": 0.35,
+    "equiv_margin": 0.15,
+    "t_crit_n20": 2.0930240544083087,
+    "bit_equality_tol": 1e-09
+  },
+  "arm": {
+    "d2": "krum",
+    "attack": "committed_pixel",
+    "attack_impl": "backdoor_pixel",
+    "arms": [
+      {
+        "label": "A",
+        "kappa": 0.0,
+        "score_only": false,
+        "imported": true,
+        "is": "identity rung: mode S at kappa=0 returns the stack unwrapped",
+        "key": "doseS_kappa0.0_then_krum|committed_pixel"
+      },
+      {
+        "label": "B",
+        "kappa": 2.0,
+        "score_only": false,
+        "imported": false,
+        "is": "full dose: mode S at kappa=2, rho=54.598150033144236",
+        "key": "doseS_kappa2.0_then_krum|committed_pixel"
+      },
+      {
+        "label": "C",
+        "kappa": 0.0,
+        "score_only": true,
+        "imported": true,
+        "is": "identity rung, score-only: no coefficient to split at the identity",
+        "key": "doseS_kappa0.0_then_krum|committed_pixel|score_only"
+      },
+      {
+        "label": "D",
+        "kappa": 2.0,
+        "score_only": true,
+        "imported": false,
+        "is": "score-only dose: the statistic sees the transform, the payload does not",
+        "key": "doseS_kappa2.0_then_krum|committed_pixel|score_only"
+      }
+    ],
+    "endpoints_only": "kappa = 0 and kappa = 2. The interior rungs (0.5, 1.0) are NOT run and no Jonckheere-Terpstra trend statistic is computed or reported for this arm: a two-rung cell is not a four-rung ladder and will not be described as one.",
+    "no_registered_sign": "The freeze registers no prediction for Delta_full's sign. Two of our own measurements on this cell point opposite ways -- the flagship's -0.010 under a masked dose on the scaling attack, and App. D.8's +0.3218 [+0.1680, +0.4757] under an oracle-free construction on this very cell -- and registering a direction would be choosing which of our own results to believe. What is registered is the branch structure.",
+    "refuting_branch": "Delta_full's interval excluding zero with |Delta| > 0.15 toward INCREASED ASR. Reported as a contradiction in the body and not converted into a scope condition afterwards."
+  },
+  "why_this_cell": {
+    "baseline_admission": {
+      "mean_base_krum_admits_adv": 0.3333333333333333,
+      "n_nonzero": 4,
+      "n_adversary_rounds": 12,
+      "source": "results/oracle_free_admission.json -> baseline_admission_not_a_floor",
+      "imported_not_remeasured": true
+    },
+    "flagship_admission": "0.000, nonzero in 0 of 12 adversary rounds: the zero is a floor there and the paper already declines to lean on it",
+    "reachability": "results/margin_reachability.json: of the 4 equivalence readings the comparability ladder's own conjunct admits, 3 have an arithmetically satisfied lower leg -- the flagship, its EMNIST replication, and the flagship's outcome-gated twin. One (coord_median / scaling, outcome-gated) is genuinely two-sided and keeps its reading.",
+    "also_app_D8_host_cell": "The oracle-free boundary arm returned +0.3218 (95% CI [+0.1680, +0.4757], n=20) against this paper's headline reading on this cell, so a masked arm here discriminates between the CELL and the BOUNDARY CONSTRUCTION as explanations of that contradiction."
+  },
+  "imported_legs": {
+    "source": "results/oracle_free_channels/summary.json",
+    "cell": "fedavg_then_krum|committed_pixel",
+    "why_the_same_computation": "mode S at kappa=0 returns the update list unwrapped before the permutation is drawn, and the permutation when drawn uses a local np.random.default_rng([seed, round]) rather than the global stream",
+    "asymmetry": "the published rows ran with adv_mask=None via d1_override='fedavg' and this arm passes the real mask, which is why harness checks 1 and 2 are blocking rather than decorative",
+    "legs": [
+      "A",
+      "C"
+    ],
+    "A_and_C_are_the_same_rows": true
+  },
+  "staging": {
+    "rule": "Leg B runs first. Leg D runs only if Delta_full does not fire the refuting branch, because the decomposition of a refutation is a separate question that this pre-registration does not cover.",
+    "cannot_suppress_an_unfavourable_result": "The refuting branch is the branch that STOPS further work, so the staging can only ever withhold a control that would have followed a favourable result.",
+    "leg_D_run": true,
+    "leg_D_reason": "RUN. Delta_full fired branch FALL_OUTSIDE_MARGIN, not the refuting branch, so the decomposition question stands.",
+    "if_not_run": "no sentence anywhere may describe the score-only control on this cell as having been run"
+  },
+  "no_shared_code_change": "run_one already reaches this cell through (mode='S', d2='krum', attack_name='committed_pixel', val, score_only). ARMS_S drives only run_targeted_dose.py's own loop and is not consulted. Neither previously-granted keyword exception (d1_override, stack_hook) is used, and no existing runner, pre-registration or artifact is touched.",
+  "no_admission_quantity": "run_one returns (accuracy, asr) and nothing else. Admission is measured by the measure_admission* family, which this arm does not run, so the 0.3333 / 4-of-12 premise above is IMPORTED and is not an admission result of this arm. summary[...|admission] is 0.0 at every identity rung BY CONSTRUCTION and is never read as a level.",
+  "masked": "This arm reads adversary identity by construction, like every Mode S rung in the paper. It answers nothing about the oracle-free objection and does not weaken App. D.8's contradiction, which stands as measured.",
+  "may_not_be_written": "The sentence that the negative reproduces oracle-free may not be written anywhere, under any outcome.",
+  "scope": "One aggregator, one attack, one dataset, one architecture, two rungs. No claim of the form 'the dissociation holds generally' is licensed; what is licensed is 'in this cell, at n=20, with both margin legs binding and admission off the floor'. No composed-pair ASR result on a second dataset exists anywhere in this paper and this arm does not change that. The attack is non-adaptive by construction, so nothing here concerns adaptive robustness.",
+  "changes_no_published_row": "The flagship's -0.010 [-0.032, +0.012] stands exactly as published, with its lower leg relabelled as arithmetic rather than retracted. No frozen threshold, seed list, interval convention or published verdict is revised.",
+  "verdict_reading_rule": "verdict_sign, verdict_margin and verdict_upper are independent labels and none may be reported as another: an interval can sit inside the margin and still exclude zero, and a one-sided bound can hold while a two-sided reading fails. No literal names a mechanism; the measured direction is printed beside it, never inside it.",
+  "harness_check": {
+    "tol": 1e-09,
+    "checks": [
+      {
+        "check": "imported_leg_A_is_bit_identical_to_published_identity",
+        "passed": true,
+        "score_only": false,
+        "source": "results/oracle_free_channels/summary.json",
+        "cell": "fedavg_then_krum|committed_pixel",
+        "seed": 42,
+        "published": [
+          0.3962,
+          0.7787777777777778
+        ],
+        "recomputed": [
+          0.3962,
+          0.7787777777777778
+        ],
+        "delta": [
+          0.0,
+          0.0
+        ],
+        "asymmetry_this_check_exists_for": "the published row ran with adv_mask=None via d1_override='fedavg'; this call passes the real mask",
+        "on_failure": "the import is void: legs A and C are re-run as 40 further runs and no reconciliation is attempted"
+      },
+      {
+        "check": "imported_leg_C_is_bit_identical_to_published_identity",
+        "passed": true,
+        "score_only": true,
+        "source": "results/oracle_free_channels/summary.json",
+        "cell": "fedavg_then_krum|committed_pixel",
+        "seed": 42,
+        "published": [
+          0.3962,
+          0.7787777777777778
+        ],
+        "recomputed": [
+          0.3962,
+          0.7787777777777778
+        ],
+        "delta": [
+          0.0,
+          0.0
+        ],
+        "asymmetry_this_check_exists_for": "the published row ran with adv_mask=None via d1_override='fedavg'; this call passes the real mask",
+        "on_failure": "the import is void: legs A and C are re-run as 40 further runs and no reconciliation is attempted"
+      },
+      {
+        "check": "mode_S_pins_the_adversary_every_round",
+        "passed": true,
+        "kappa": 2.0,
+        "rho": 54.598150033144236,
+        "K": 5,
+        "rounds": 50,
+        "seeds": [
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61
+        ],
+        "n_coefficient_vectors_checked": 32000,
+        "max_abs_adversarial_coefficient_minus_one": 0.0,
+        "max_abs_share_minus_n_adv_over_K": 5.551115123125783e-17,
+        "share_tolerance": 1e-12,
+        "realizable_masks_with_fewer_than_two_benign": 0,
+        "worst_case_at": {
+          "seed": 42,
+          "round": 1,
+          "mask": [
+            false,
+            false,
+            true,
+            true,
+            false
+          ]
+        },
+        "masks": "exhaustive over all 32 subsets of K=5 participants, of which 16 are realizable at f=0.2",
+        "why_exhaustive_rather_than_realized": "the realized per-round mask is not observable without a stack_hook, and \u00a78 of the freeze uses none. The coefficient constructor is a pure function of (adv_mask, kappa, dose_key), so checking every mask at every round establishes the property for whatever mask each round realizes. This is a STRENGTHENING of the frozen check, not a substitute for it.",
+        "trains_nothing": true
+      }
+    ],
+    "all_passed": true
+  },
+  "verdicts": {
+    "Delta_full": {
+      "estimand": "Delta_full",
+      "minuend": "B",
+      "subtrahend": "A",
+      "what": "mode S endpoint contrast, full dose, paired at 20 seeds",
+      "n_paired_seeds": 20,
+      "paired_seeds": [
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61
+      ],
+      "minuend_mean_asr": 0.037533333333333335,
+      "subtrahend_mean_asr": 0.32320555555555563,
+      "minuend_mean_acc": 0.5549299999999999,
+      "minuend_min_acc": 0.4983,
+      "subtrahend_mean_acc": 0.515795,
+      "subtrahend_min_acc": 0.3962,
+      "per_seed_delta": {
+        "42": -0.7653333333333333,
+        "43": -0.0012222222222222218,
+        "44": -0.8784444444444445,
+        "45": -0.030555555555555565,
+        "46": -0.017777777777777774,
+        "47": -0.024222222222222214,
+        "48": -0.026111111111111113,
+        "49": -0.3307777777777778,
+        "50": -0.0028888888888888896,
+        "51": -0.8726666666666667,
+        "52": -0.016777777777777777,
+        "53": 0.007666666666666669,
+        "54": -0.9596666666666667,
+        "55": -0.04444444444444445,
+        "56": 0.035222222222222224,
+        "57": 0.003666666666666667,
+        "58": -0.9595555555555555,
+        "59": -0.9812222222222222,
+        "60": 0.044333333333333336,
+        "61": 0.10733333333333332
+      },
+      "reachability": {
+        "identity_mean_asr": 0.32320555555555563,
+        "fall_available": 0.32320555555555563,
+        "margin": 0.15,
+        "lower_leg_is_a_test": true,
+        "lower_leg_slack": 0.17320555555555564,
+        "bound": "mean_i(asr_dosed_i - asr_identity_i) >= -mean_i(asr_identity_i), because ASR >= 0",
+        "why_this_cell_was_chosen": "on the flagship cell the identity mean is 0.0439 < 0.15 and the lower leg is satisfied by arithmetic for any possible outcome"
+      },
+      "rung_means_below_half": {
+        "lo": 0.32320555555555563,
+        "hi": 0.037533333333333335,
+        "all_below_0.5": true,
+        "note": "the identity rung is 0.3232, so a rise past +0.1768 breaks the conjunction independently of the margin"
+      },
+      "void_seeds": [],
+      "acc_floor": 0.35,
+      "acc_gate": "PASS: no rung of any retained seed falls below the accuracy floor",
+      "all_seeds": {
+        "n": 20,
+        "mean": -0.28567222222222227,
+        "sd": 0.42428118852133123,
+        "se": 0.09487215791081001,
+        "t_crit": 2.0930240544083087,
+        "half_width": 0.19856970860094886,
+        "ci95": [
+          -0.48424193082317113,
+          -0.08710251362127341
+        ]
+      },
+      "floor_filtered": {
+        "n": 20,
+        "mean": -0.28567222222222227,
+        "sd": 0.42428118852133123,
+        "se": 0.09487215791081001,
+        "t_crit": 2.0930240544083087,
+        "half_width": 0.19856970860094886,
+        "ci95": [
+          -0.48424193082317113,
+          -0.08710251362127341
+        ]
+      },
+      "primary": "all_seeds",
+      "identical_blocks": true,
+      "verdicts": {
+        "verdict_sign": "excludes_zero",
+        "verdict_sign_reading": "the interval EXCLUDES zero",
+        "measured_direction": "negative",
+        "verdict_margin": "outside_margin",
+        "verdict_margin_reading": "|mean| >= the frozen equivalence margin 0.15",
+        "verdict_upper": "non_increase_bounded",
+        "verdict_upper_reading": "the 95% upper bound -0.0871 is below the margin 0.15",
+        "margin": 0.15,
+        "computed_on": "all_seeds"
+      },
+      "branch": "FALL_OUTSIDE_MARGIN",
+      "branch_reading": "The interval excludes zero toward DECREASED ASR with |Delta| outside the margin. Not a branch the freeze names as confirming: it is a large suppression by the dose, reported as measured."
+    },
+    "Delta_score": {
+      "estimand": "Delta_score",
+      "minuend": "D",
+      "subtrahend": "C",
+      "what": "the magnitude-closed control: the same contrast with the emitted update left at its original scale",
+      "n_paired_seeds": 20,
+      "paired_seeds": [
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61
+      ],
+      "minuend_mean_asr": 0.025772222222222224,
+      "subtrahend_mean_asr": 0.32320555555555563,
+      "minuend_mean_acc": 0.614885,
+      "minuend_min_acc": 0.5149,
+      "subtrahend_mean_acc": 0.515795,
+      "subtrahend_min_acc": 0.3962,
+      "per_seed_delta": {
+        "42": -0.7778888888888889,
+        "43": 0.019333333333333334,
+        "44": -0.9206666666666667,
+        "45": 0.004111111111111107,
+        "46": -0.03855555555555555,
+        "47": 0.012333333333333335,
+        "48": -0.025,
+        "49": -0.39555555555555555,
+        "50": 0.014777777777777777,
+        "51": -0.9143333333333333,
+        "52": -0.03177777777777778,
+        "53": -0.002111111111111112,
+        "54": -0.979,
+        "55": -0.10411111111111111,
+        "56": 0.05055555555555556,
+        "57": 0.05522222222222223,
+        "58": -0.9804444444444445,
+        "59": -0.9366666666666666,
+        "60": -0.0011111111111111113,
+        "61": 0.0022222222222222222
+      },
+      "reachability": {
+        "identity_mean_asr": 0.32320555555555563,
+        "fall_available": 0.32320555555555563,
+        "margin": 0.15,
+        "lower_leg_is_a_test": true,
+        "lower_leg_slack": 0.17320555555555564,
+        "bound": "mean_i(asr_dosed_i - asr_identity_i) >= -mean_i(asr_identity_i), because ASR >= 0",
+        "why_this_cell_was_chosen": "on the flagship cell the identity mean is 0.0439 < 0.15 and the lower leg is satisfied by arithmetic for any possible outcome"
+      },
+      "rung_means_below_half": {
+        "lo": 0.32320555555555563,
+        "hi": 0.025772222222222224,
+        "all_below_0.5": true,
+        "note": "the identity rung is 0.3232, so a rise past +0.1768 breaks the conjunction independently of the margin"
+      },
+      "void_seeds": [],
+      "acc_floor": 0.35,
+      "acc_gate": "PASS: no rung of any retained seed falls below the accuracy floor",
+      "all_seeds": {
+        "n": 20,
+        "mean": -0.2974333333333333,
+        "sd": 0.4287847279812651,
+        "se": 0.09587917994798649,
+        "t_crit": 2.0930240544083087,
+        "half_width": 0.2006774299480785,
+        "ci95": [
+          -0.4981107632814118,
+          -0.09675590338525483
+        ]
+      },
+      "floor_filtered": {
+        "n": 20,
+        "mean": -0.2974333333333333,
+        "sd": 0.4287847279812651,
+        "se": 0.09587917994798649,
+        "t_crit": 2.0930240544083087,
+        "half_width": 0.2006774299480785,
+        "ci95": [
+          -0.4981107632814118,
+          -0.09675590338525483
+        ]
+      },
+      "primary": "all_seeds",
+      "identical_blocks": true,
+      "verdicts": {
+        "verdict_sign": "excludes_zero",
+        "verdict_sign_reading": "the interval EXCLUDES zero",
+        "measured_direction": "negative",
+        "verdict_margin": "outside_margin",
+        "verdict_margin_reading": "|mean| >= the frozen equivalence margin 0.15",
+        "verdict_upper": "non_increase_bounded",
+        "verdict_upper_reading": "the 95% upper bound -0.0968 is below the margin 0.15",
+        "margin": 0.15,
+        "computed_on": "all_seeds"
+      },
+      "branch": "FALL_OUTSIDE_MARGIN",
+      "branch_reading": "The interval excludes zero toward DECREASED ASR with |Delta| outside the margin. Not a branch the freeze names as confirming: it is a large suppression by the dose, reported as measured."
+    }
+  },
+  "cells": {
+    "doseS_kappa0.0_then_krum|committed_pixel": {
+      "leg": "A",
+      "kappa": 0.0,
+      "rho": 1.0,
+      "score_only": false,
+      "d2": "krum",
+      "attack": "committed_pixel",
+      "is": "identity rung: mode S at kappa=0 returns the stack unwrapped",
+      "imported_from": "results/oracle_free_channels/summary.json",
+      "imported_cell": "fedavg_then_krum|committed_pixel",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.3962,
+          "asr": 0.7787777777777778,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5922,
+          "asr": 0.039,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.467,
+          "asr": 0.9315555555555556,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.5335,
+          "asr": 0.06777777777777778,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.6051,
+          "asr": 0.056666666666666664,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 47,
+          "accuracy": 0.5714,
+          "asr": 0.0661111111111111,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.6141,
+          "asr": 0.042444444444444444,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.4474,
+          "asr": 0.419,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.4518,
+          "asr": 0.009333333333333334,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.4723,
+          "asr": 0.9251111111111111,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.5966,
+          "asr": 0.03222222222222222,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.6078,
+          "asr": 0.025222222222222222,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.4734,
+          "asr": 0.9793333333333333,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.5156,
+          "asr": 0.11033333333333334,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.4659,
+          "asr": 0.0016666666666666668,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.5589,
+          "asr": 0.0038888888888888888,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.4905,
+          "asr": 0.9825555555555555,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.4993,
+          "asr": 0.988,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.5308,
+          "asr": 0.005,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.4261,
+          "asr": 0.00011111111111111112,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        }
+      ]
+    },
+    "doseS_kappa0.0_then_krum|committed_pixel|score_only": {
+      "leg": "C",
+      "kappa": 0.0,
+      "rho": 1.0,
+      "score_only": true,
+      "d2": "krum",
+      "attack": "committed_pixel",
+      "is": "identity rung, score-only: no coefficient to split at the identity",
+      "imported_from": "results/oracle_free_channels/summary.json",
+      "imported_cell": "fedavg_then_krum|committed_pixel",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.3962,
+          "asr": 0.7787777777777778,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.5922,
+          "asr": 0.039,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.467,
+          "asr": 0.9315555555555556,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.5335,
+          "asr": 0.06777777777777778,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.6051,
+          "asr": 0.056666666666666664,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 47,
+          "accuracy": 0.5714,
+          "asr": 0.0661111111111111,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.6141,
+          "asr": 0.042444444444444444,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.4474,
+          "asr": 0.419,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.4518,
+          "asr": 0.009333333333333334,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.4723,
+          "asr": 0.9251111111111111,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.5966,
+          "asr": 0.03222222222222222,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.6078,
+          "asr": 0.025222222222222222,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.4734,
+          "asr": 0.9793333333333333,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.5156,
+          "asr": 0.11033333333333334,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.4659,
+          "asr": 0.0016666666666666668,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.5589,
+          "asr": 0.0038888888888888888,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.4905,
+          "asr": 0.9825555555555555,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.4993,
+          "asr": 0.988,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.5308,
+          "asr": 0.005,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.4261,
+          "asr": 0.00011111111111111112,
+          "source": "imported from results/oracle_free_channels/summary.json cells[fedavg_then_krum|committed_pixel]",
+          "licensed_by": "harness check 1 (full) / 2 (score-only): bit-for-bit at seed 42, tolerance 1e-09 on accuracy and ASR"
+        }
+      ]
+    },
+    "doseS_kappa2.0_then_krum|committed_pixel": {
+      "leg": "B",
+      "kappa": 2.0,
+      "rho": 54.598150033144236,
+      "score_only": false,
+      "d2": "krum",
+      "attack": "committed_pixel",
+      "is": "full dose: mode S at kappa=2, rho=54.598150033144236",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.5783,
+          "asr": 0.013444444444444445,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6262,
+          "asr": 0.03777777777777778,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.567,
+          "asr": 0.05311111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.5563,
+          "asr": 0.03722222222222222,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.5654,
+          "asr": 0.03888888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 47,
+          "accuracy": 0.549,
+          "asr": 0.04188888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.5613,
+          "asr": 0.01633333333333333,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.5161,
+          "asr": 0.08822222222222222,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.5491,
+          "asr": 0.0064444444444444445,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.5445,
+          "asr": 0.052444444444444446,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.5505,
+          "asr": 0.015444444444444445,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.5789,
+          "asr": 0.03288888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.5722,
+          "asr": 0.019666666666666666,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.5626,
+          "asr": 0.06588888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.5509,
+          "asr": 0.03688888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.5015,
+          "asr": 0.007555555555555556,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.6029,
+          "asr": 0.023,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.52,
+          "asr": 0.0067777777777777775,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.5476,
+          "asr": 0.04933333333333333,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.4983,
+          "asr": 0.10744444444444444,
+          "source": "<computed here>"
+        }
+      ]
+    },
+    "doseS_kappa2.0_then_krum|committed_pixel|score_only": {
+      "leg": "D",
+      "kappa": 2.0,
+      "rho": 54.598150033144236,
+      "score_only": true,
+      "d2": "krum",
+      "attack": "committed_pixel",
+      "is": "score-only dose: the statistic sees the transform, the payload does not",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.6348,
+          "asr": 0.0008888888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.6379,
+          "asr": 0.058333333333333334,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.6232,
+          "asr": 0.010888888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.5474,
+          "asr": 0.07188888888888889,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.6429,
+          "asr": 0.018111111111111113,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 47,
+          "accuracy": 0.6496,
+          "asr": 0.07844444444444444,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.5872,
+          "asr": 0.017444444444444443,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.5492,
+          "asr": 0.023444444444444445,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.6666,
+          "asr": 0.02411111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.5938,
+          "asr": 0.010777777777777778,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.6383,
+          "asr": 0.00044444444444444447,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.6945,
+          "asr": 0.02311111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.612,
+          "asr": 0.0003333333333333333,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.6091,
+          "asr": 0.006222222222222222,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.5507,
+          "asr": 0.052222222222222225,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.6867,
+          "asr": 0.059111111111111114,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.675,
+          "asr": 0.002111111111111111,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.6249,
+          "asr": 0.051333333333333335,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.559,
+          "asr": 0.0038888888888888888,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.5149,
+          "asr": 0.0023333333333333335,
+          "source": "<computed here>"
+        }
+      ]
+    }
+  }
+}

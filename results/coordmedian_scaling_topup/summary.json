@@ -1,0 +1,947 @@
+{
+  "description": "Seed top-up of the coord_median / committed_scaling cell on CIFAR-10/cifar_cnn, seeds 47-61, bringing BOTH designs from n=5 to n=20 at the endpoint rungs kappa in {0, 2}. Purpose is INTERVAL WIDTH on the separation between the two designs on a HELD-OUT cell where both margin legs are genuine tests, not a second test of either leg's direction. Rules, estimands, verdict labels and both refuting branches frozen at 74044f1 (experiments/pre_registration_coordmedian_scaling_n20.md). results/comparability_cells/ is never written here; the merge happens at analysis time.",
+  "prereg": "experiments/pre_registration_coordmedian_scaling_n20.md",
+  "prereg_commit": "74044f1",
+  "dataset": "cifar10",
+  "model": "cifar_cnn",
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 50,
+    "kappas_run": [
+      0.0,
+      2.0
+    ],
+    "kappas_frozen_grid": [
+      0.0,
+      0.5,
+      1.0,
+      2.0
+    ],
+    "new_seeds": [
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61
+    ],
+    "published_seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "acc_floor": 0.35,
+    "margin": 0.15
+  },
+  "arm": {
+    "d2": "coord_median",
+    "attack": "committed_scaling",
+    "families": [
+      "confounded",
+      "controlled"
+    ],
+    "training_cell": false,
+    "held_out": "training: false in results/comparability_six_cells.json -- not one of the four cells that trained the since-withdrawn DeltaLambda_a rule",
+    "label_is_not_a_reversal": "This cell is a DISAGREEMENT, never a sign reversal, at any n and under any outcome (main.tex:1970).",
+    "d_admission_imported": 0.0,
+    "d_influence_imported": 0.008619231983179303,
+    "imported_not_remeasured": true
+  },
+  "reachability": {
+    "identity_mean_asr_n5": 0.5185777777777778,
+    "margin": 0.15,
+    "lower_leg_is_a_test": true,
+    "fall_available": 0.5185777777777778,
+    "why_this_cell_was_chosen": "identity mean ASR 0.5186 > 0.15, so the largest available fall exceeds the margin and BOTH legs are genuine tests. On the flagship cell the identity mean is 0.0439 and the lower leg is satisfied by arithmetic for any possible outcome.",
+    "source": "results/margin_reachability.json -> distinct_arms_keeping_the_two_sided_reading (this cell is its only member)",
+    "recheck_at_n20": "0.5186 is an n=5 mean, and the reachability premise is a statement about the identity rung's LEVEL, not about a paired difference. At n=20 the level moves, so analyze() recomputes it and re-reads the premise. If the 20-seed identity mean fell below 0.15 the lower leg would become arithmetic and this cell would lose the exact property it was chosen for; that is branch REACHABILITY_LOST. The premise is not assumed to survive its own top-up."
+  },
+  "identity_mean_is_a_collision": {
+    "value_at_n5": 0.5185777777777778,
+    "printed_as": "0.519 / 0.5186",
+    "warning": "The identity rung's mean ASR at n=20 is a DIFFERENT quantity from the 0.519 the paper prints, and the two round to the same three digits. Every published site is an n=5 reading of coord_median's standalone committed-scaling ASR on seeds 42-46; none is superseded by this top-up and none may be overwritten with the 20-seed value.",
+    "published_n5_sites": [
+      "main.tex:1297 ('the strongest single defense reaches only $0.519$', C0 vacuity on the 7-defense menu)",
+      "main.tex:2225 (tab row 'fedavg -> coord_median & DEGEN & LOW & 0.519')",
+      "main.tex:2241 ('whose standalone model-scaling ASR is $0.519$'; that paragraph states 'every C1 input here is the n=5 single-defense baseline on seeds 42--46')",
+      "main.tex:2248 (TWICE: 'the minimum single-defense max-committed ASR is CoordMedian's $0.519$' and 'whose own baseline is $0.519$')",
+      "main.tex:3105 ('identity mean $0.519$', with $n{=}5$ disclosed on :3106)",
+      "main.tex:3449 (tab row 'pure\\_coord\\_median ... $0.5186 \\pm 0.1413$')",
+      "main.tex:3473 ('pure\\_coord\\_median returns $0.5186$')"
+    ],
+    "hard_constraint": "main.tex:2248 is a SUPERLATIVE across the 7-defense menu -- 'the MINIMUM single-defense max-committed ASR is CoordMedian's 0.519' -- where every other defense is at n=5. Substituting the 20-seed value there would mix n inside a comparison, which is the same defect as mixing n between a minuend and a subtrahend. The 20-seed identity mean does not enter that sentence, or any cross-defense comparison, under any branch."
+  },
+  "interval_convention": "95% two-sided paired Student-t, t_crit(n) * sd/sqrt(n), exactly analyze_comparability.py:293. t_crit TAKES n and computes df = n-1 internally; calling t_crit(n-1) would give df = n-2 and a wider interval. This is NOT the 90% TOST convention of supplementary.tex:441 and is never compared against a number that is.",
+  "endpoint_only": "kappa=0.5 and kappa=1.0 are NOT run for the new seeds. This cell's four-rung trend statistics stay at n=5, stay pre_registered: false and stay post hoc; no Jonckheere-Terpstra statistic is computed for the new seeds; and no four-rung display may print this ladder without a per-rung n.",
+  "no_admission_quantity": "run_one returns (accuracy, asr) and nothing else. This arm measures ASR ONLY. d_admission and d_influence are imported from the frozen six-cell measurement, summary[...|admission] is 0.0 at every identity rung BY CONSTRUCTION and is never read as a level, and no statement that a statistic disturbance costs or buys suppression on this cell is licensed in either direction.",
+  "oracle_scope": "The controlled leg is MASKED (adv_mask reads adversary identity), so this arm bears nothing on the oracle objection. The sentence 'the negative reproduces oracle-free' may not be written, here or anywhere.",
+  "identity_rung_provenance": "kappa=0 is COMPUTED ONCE per new seed and shared by both legs. dose_kappa0.0 and doseS_kappa0.0 are the same computation -- bit-identical in ASR and accuracy at all five published seeds in results/comparability_cells/summary.json -- and --harness-check re-establishes that ON THIS ATTACK at seed 42 against both published family keys before any new run. The controlled copy of each shared row is labelled in `source`.",
+  "published_n5": {
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "Delta_conf": {
+      "n": 5,
+      "mean": 0.001866666666666661,
+      "sd": 0.06394492228801088,
+      "se": 0.028597038610386743,
+      "t_crit": 2.7764451051977934,
+      "half_width": 0.07939810787296057,
+      "ci95": [
+        -0.07753144120629392,
+        0.08126477453962723
+      ]
+    },
+    "Delta_ctrl": {
+      "n": 5,
+      "mean": 0.19611111111111112,
+      "sd": 0.06776151899706884,
+      "se": 0.030303872547217857,
+      "t_crit": 2.7764451051977934,
+      "half_width": 0.08413703860226081,
+      "ci95": [
+        0.11197407250885032,
+        0.2802481497133719
+      ]
+    },
+    "D": {
+      "n": 5,
+      "mean": 0.19424444444444444,
+      "sd": 0.06978500493358332,
+      "se": 0.031208802968330097,
+      "t_crit": 2.7764451051977934,
+      "half_width": 0.08664952824050247,
+      "ci95": [
+        0.10759491620394197,
+        0.2808939726849469
+      ]
+    },
+    "identity_shared_bit_identical": true,
+    "verdict": "DISAGREE: the outcome-gated interval CONTAINS zero (+0.0019 [-0.0775, +0.0813]) while the Mode-S interval EXCLUDES it (+0.1961 [+0.1120, +0.2802]). Both means are positive. This is a disagreement, NOT a sign reversal, and it is not called one at any n (main.tex:1970)."
+  },
+  "harness_check": {
+    "prereg": "experiments/pre_registration_coordmedian_scaling_n20.md",
+    "prereg_commit": "74044f1",
+    "seed": 42,
+    "tolerance": 1e-09,
+    "source": "results/comparability_cells/summary.json",
+    "checks": [
+      {
+        "check": "outcome-gated kappa=0.0 vs published dose_kappa0.0",
+        "family": "confounded",
+        "kappa": 0.0,
+        "seed": 42,
+        "status": "pass",
+        "published": {
+          "accuracy": 0.7717,
+          "asr": 0.5485555555555556
+        },
+        "recomputed": {
+          "accuracy": 0.7717,
+          "asr": 0.5485555555555556
+        },
+        "abs_delta": {
+          "accuracy": 0.0,
+          "asr": 0.0
+        },
+        "tolerance": 1e-09,
+        "seconds": 1035.5
+      },
+      {
+        "check": "Mode-S kappa=0.0 vs the SAME published pair",
+        "family": "controlled",
+        "kappa": 0.0,
+        "seed": 42,
+        "status": "pass",
+        "published": {
+          "accuracy": 0.7717,
+          "asr": 0.5485555555555556
+        },
+        "recomputed": {
+          "accuracy": 0.7717,
+          "asr": 0.5485555555555556
+        },
+        "abs_delta": {
+          "accuracy": 0.0,
+          "asr": 0.0
+        },
+        "tolerance": 1e-09,
+        "seconds": 1016.2
+      },
+      {
+        "check": "outcome-gated kappa=2.0 vs published dose_kappa2.0",
+        "family": "confounded",
+        "kappa": 2.0,
+        "seed": 42,
+        "status": "pass",
+        "published": {
+          "accuracy": 0.718,
+          "asr": 0.48577777777777775
+        },
+        "recomputed": {
+          "accuracy": 0.718,
+          "asr": 0.48577777777777775
+        },
+        "abs_delta": {
+          "accuracy": 0.0,
+          "asr": 0.0
+        },
+        "tolerance": 1e-09,
+        "seconds": 1011.2
+      },
+      {
+        "check": "Mode-S kappa=2.0 vs published doseS_kappa2.0",
+        "family": "controlled",
+        "kappa": 2.0,
+        "seed": 42,
+        "status": "pass",
+        "published": {
+          "accuracy": 0.7126,
+          "asr": 0.7223333333333334
+        },
+        "recomputed": {
+          "accuracy": 0.7126,
+          "asr": 0.7223333333333334
+        },
+        "abs_delta": {
+          "accuracy": 0.0,
+          "asr": 0.0
+        },
+        "tolerance": 1e-09,
+        "seconds": 1010.3
+      }
+    ],
+    "n_run": 4,
+    "n_failed": 0,
+    "shared_identity_established": true,
+    "runs_licensed": 45,
+    "status": "pass",
+    "reading": "All 4 published rows reproduce to 1e-9 on both designs, and the kappa=0 rung is bit-identical across them on THIS attack, so it may be computed once per seed and shared: 15 x 3 = 45 runs, not 60."
+  },
+  "cells": {
+    "dose_kappa0.0_then_coord_median|committed_scaling": {
+      "d2": "coord_median",
+      "attack": "committed_scaling",
+      "kappa": 0.0,
+      "family": "confounded",
+      "dataset": "cifar10",
+      "model": "cifar_cnn",
+      "per_seed": [
+        {
+          "seed": 47,
+          "accuracy": 0.7314,
+          "asr": 0.44533333333333336,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.7589,
+          "asr": 0.7731111111111111,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.7523,
+          "asr": 0.5405555555555556,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.746,
+          "asr": 0.53,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.7627,
+          "asr": 0.6344444444444445,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.7635,
+          "asr": 0.3537777777777778,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.7714,
+          "asr": 0.7851111111111111,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.748,
+          "asr": 0.615,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.7283,
+          "asr": 0.39655555555555555,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.7679,
+          "asr": 0.5217777777777778,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.7652,
+          "asr": 0.4925555555555556,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.7112,
+          "asr": 0.7998888888888889,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.7743,
+          "asr": 0.483,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.7591,
+          "asr": 0.4736666666666667,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.6924,
+          "asr": 0.7094444444444444,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        }
+      ],
+      "mean_asr": 0.5702814814814815,
+      "mean_accuracy": 0.74884,
+      "n_below_acc_floor": 0
+    },
+    "doseS_kappa0.0_then_coord_median|committed_scaling": {
+      "d2": "coord_median",
+      "attack": "committed_scaling",
+      "kappa": 0.0,
+      "family": "controlled",
+      "dataset": "cifar10",
+      "model": "cifar_cnn",
+      "per_seed": [
+        {
+          "seed": 47,
+          "accuracy": 0.7314,
+          "asr": 0.44533333333333336,
+          "source": "<shared identity rung: computed once as confounded kappa=0; dose_kappa0.0 == doseS_kappa0.0, verified by --harness-check on this attack>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.7589,
+          "asr": 0.7731111111111111,
+          "source": "<shared identity rung: computed once as confounded kappa=0; dose_kappa0.0 == doseS_kappa0.0, verified by --harness-check on this attack>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.7523,
+          "asr": 0.5405555555555556,
+          "source": "<shared identity rung: computed once as confounded kappa=0; dose_kappa0.0 == doseS_kappa0.0, verified by --harness-check on this attack>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.746,
+          "asr": 0.53,
+          "source": "<shared identity rung: computed once as confounded kappa=0; dose_kappa0.0 == doseS_kappa0.0, verified by --harness-check on this attack>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.7627,
+          "asr": 0.6344444444444445,
+          "source": "<shared identity rung: computed once as confounded kappa=0; dose_kappa0.0 == doseS_kappa0.0, verified by --harness-check on this attack>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.7635,
+          "asr": 0.3537777777777778,
+          "source": "<shared identity rung: computed once as confounded kappa=0; dose_kappa0.0 == doseS_kappa0.0, verified by --harness-check on this attack>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.7714,
+          "asr": 0.7851111111111111,
+          "source": "<shared identity rung: computed once as confounded kappa=0; dose_kappa0.0 == doseS_kappa0.0, verified by --harness-check on this attack>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.748,
+          "asr": 0.615,
+          "source": "<shared identity rung: computed once as confounded kappa=0; dose_kappa0.0 == doseS_kappa0.0, verified by --harness-check on this attack>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.7283,
+          "asr": 0.39655555555555555,
+          "source": "<shared identity rung: computed once as confounded kappa=0; dose_kappa0.0 == doseS_kappa0.0, verified by --harness-check on this attack>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.7679,
+          "asr": 0.5217777777777778,
+          "source": "<shared identity rung: computed once as confounded kappa=0; dose_kappa0.0 == doseS_kappa0.0, verified by --harness-check on this attack>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.7652,
+          "asr": 0.4925555555555556,
+          "source": "<shared identity rung: computed once as confounded kappa=0; dose_kappa0.0 == doseS_kappa0.0, verified by --harness-check on this attack>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.7112,
+          "asr": 0.7998888888888889,
+          "source": "<shared identity rung: computed once as confounded kappa=0; dose_kappa0.0 == doseS_kappa0.0, verified by --harness-check on this attack>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.7743,
+          "asr": 0.483,
+          "source": "<shared identity rung: computed once as confounded kappa=0; dose_kappa0.0 == doseS_kappa0.0, verified by --harness-check on this attack>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.7591,
+          "asr": 0.4736666666666667,
+          "source": "<shared identity rung: computed once as confounded kappa=0; dose_kappa0.0 == doseS_kappa0.0, verified by --harness-check on this attack>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.6924,
+          "asr": 0.7094444444444444,
+          "source": "<shared identity rung: computed once as confounded kappa=0; dose_kappa0.0 == doseS_kappa0.0, verified by --harness-check on this attack>",
+          "below_acc_floor": false
+        }
+      ],
+      "mean_asr": 0.5702814814814815,
+      "mean_accuracy": 0.74884,
+      "n_below_acc_floor": 0
+    },
+    "dose_kappa2.0_then_coord_median|committed_scaling": {
+      "d2": "coord_median",
+      "attack": "committed_scaling",
+      "kappa": 2.0,
+      "family": "confounded",
+      "dataset": "cifar10",
+      "model": "cifar_cnn",
+      "per_seed": [
+        {
+          "seed": 47,
+          "accuracy": 0.6332,
+          "asr": 0.6662222222222223,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.7373,
+          "asr": 0.8456666666666667,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.7149,
+          "asr": 0.6934444444444444,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.7291,
+          "asr": 0.6878888888888889,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.6945,
+          "asr": 0.7104444444444444,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.7107,
+          "asr": 0.5153333333333333,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.7227,
+          "asr": 0.7503333333333333,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.7332,
+          "asr": 0.5998888888888889,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.7007,
+          "asr": 0.5498888888888889,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.696,
+          "asr": 0.6425555555555555,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.722,
+          "asr": 0.6198888888888889,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.736,
+          "asr": 0.7524444444444445,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.7107,
+          "asr": 0.5392222222222223,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.7375,
+          "asr": 0.47833333333333333,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.6764,
+          "asr": 0.7426666666666667,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        }
+      ],
+      "mean_asr": 0.6529481481481482,
+      "mean_accuracy": 0.7103266666666667,
+      "n_below_acc_floor": 0
+    },
+    "doseS_kappa2.0_then_coord_median|committed_scaling": {
+      "d2": "coord_median",
+      "attack": "committed_scaling",
+      "kappa": 2.0,
+      "family": "controlled",
+      "dataset": "cifar10",
+      "model": "cifar_cnn",
+      "per_seed": [
+        {
+          "seed": 47,
+          "accuracy": 0.6902,
+          "asr": 0.6173333333333333,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.749,
+          "asr": 0.8664444444444445,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.7221,
+          "asr": 0.8188888888888889,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.7356,
+          "asr": 0.788,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.6958,
+          "asr": 0.8354444444444444,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.7158,
+          "asr": 0.7327777777777778,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.7304,
+          "asr": 0.8254444444444444,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.6326,
+          "asr": 0.9048888888888889,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.6816,
+          "asr": 0.6195555555555555,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.6909,
+          "asr": 0.7095555555555556,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.7376,
+          "asr": 0.6778888888888889,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.6531,
+          "asr": 0.9384444444444444,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.7277,
+          "asr": 0.7448888888888889,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.7203,
+          "asr": 0.7592222222222222,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.7238,
+          "asr": 0.9304444444444444,
+          "source": "<computed here>",
+          "below_acc_floor": false
+        }
+      ],
+      "mean_asr": 0.7846148148148148,
+      "mean_accuracy": 0.7071000000000001,
+      "n_below_acc_floor": 0
+    }
+  },
+  "analysis": {
+    "n_paired_seeds": 20,
+    "paired_seeds": [
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61
+    ],
+    "acc_floor": 0.35,
+    "rungs": {
+      "dose_kappa0.0_then_coord_median|committed_scaling": {
+        "n": 20,
+        "mean_asr": 0.5573555555555556,
+        "mean_accuracy": 0.7527,
+        "seeds_below_floor": [],
+        "rung_void": false,
+        "acc_gate": "PASS: the rung mean is above the floor; any individual seed below it is flagged, never excluded"
+      },
+      "dose_kappa2.0_then_coord_median|committed_scaling": {
+        "n": 20,
+        "mean_asr": 0.6198222222222223,
+        "mean_accuracy": 0.7114550000000001,
+        "seeds_below_floor": [],
+        "rung_void": false,
+        "acc_gate": "PASS: the rung mean is above the floor; any individual seed below it is flagged, never excluded"
+      },
+      "doseS_kappa0.0_then_coord_median|committed_scaling": {
+        "n": 20,
+        "mean_asr": 0.5573555555555556,
+        "mean_accuracy": 0.7527,
+        "seeds_below_floor": [],
+        "rung_void": false,
+        "acc_gate": "PASS: the rung mean is above the floor; any individual seed below it is flagged, never excluded"
+      },
+      "doseS_kappa2.0_then_coord_median|committed_scaling": {
+        "n": 20,
+        "mean_asr": 0.7671333333333333,
+        "mean_accuracy": 0.7064900000000001,
+        "seeds_below_floor": [],
+        "rung_void": false,
+        "acc_gate": "PASS: the rung mean is above the floor; any individual seed below it is flagged, never excluded"
+      }
+    },
+    "identity_shared_across_designs": true,
+    "D_reduction_holds": true,
+    "D_reduction_note": "Because the identity rung is shared, D per seed reduces exactly to ASR(controlled, k=2) - ASR(confounded, k=2). Asserted here so no later analysis re-derives D from two separately computed identity legs, which would mix n between a minuend and a subtrahend.",
+    "any_rung_void": false,
+    "estimands": {
+      "Delta_conf": {
+        "n": 20,
+        "mean": 0.06246666666666667,
+        "sd": 0.08424752817678768,
+        "se": 0.018838319993962616,
+        "t_crit": 2.0930240544083087,
+        "half_width": 0.03942905689200474,
+        "ci95": [
+          0.023037609774661932,
+          0.10189572355867141
+        ],
+        "estimand": "Delta_conf",
+        "what": "outcome-gated endpoint contrast, kappa=2 minus identity, paired",
+        "per_seed": {
+          "42": -0.06277777777777782,
+          "43": 0.09099999999999997,
+          "44": 0.030777777777777737,
+          "45": -0.056222222222222173,
+          "46": 0.006555555555555592,
+          "47": 0.2208888888888889,
+          "48": 0.0725555555555556,
+          "49": 0.15288888888888885,
+          "50": 0.15788888888888886,
+          "51": 0.07599999999999996,
+          "52": 0.1615555555555555,
+          "53": -0.034777777777777796,
+          "54": -0.015111111111111075,
+          "55": 0.15333333333333332,
+          "56": 0.12077777777777776,
+          "57": 0.12733333333333335,
+          "58": -0.0474444444444444,
+          "59": 0.056222222222222284,
+          "60": 0.004666666666666652,
+          "61": 0.033222222222222264
+        },
+        "verdicts": {
+          "verdict_sign": "excludes_zero",
+          "verdict_sign_reading": "the interval EXCLUDES zero",
+          "measured_direction": "positive",
+          "verdict_margin": "inside_margin",
+          "verdict_margin_reading": "|mean| < the frozen equivalence margin 0.15",
+          "verdict_upper": "upper_bounded",
+          "verdict_upper_reading": "the 95% upper bound +0.1019 is below the margin 0.15",
+          "margin": 0.15,
+          "reading_rule": "verdict_sign, verdict_margin and verdict_upper are INDEPENDENT labels and none may be reported as another: an interval can sit inside the margin and still exclude zero, and a one-sided bound can hold while a two-sided reading fails."
+        }
+      },
+      "Delta_ctrl": {
+        "n": 20,
+        "mean": 0.20977777777777779,
+        "sd": 0.07949421007028029,
+        "se": 0.017775445753479505,
+        "t_crit": 2.0930240544083087,
+        "half_width": 0.03720443553986263,
+        "ci95": [
+          0.17257334223791515,
+          0.24698221331764042
+        ],
+        "estimand": "Delta_ctrl",
+        "what": "Mode-S endpoint contrast, kappa=2 minus identity, paired",
+        "per_seed": {
+          "42": 0.1737777777777778,
+          "43": 0.19322222222222218,
+          "44": 0.3123333333333333,
+          "45": 0.1403333333333333,
+          "46": 0.16088888888888891,
+          "47": 0.17199999999999993,
+          "48": 0.09333333333333338,
+          "49": 0.2783333333333333,
+          "50": 0.258,
+          "51": 0.20099999999999996,
+          "52": 0.37899999999999995,
+          "53": 0.04033333333333333,
+          "54": 0.28988888888888886,
+          "55": 0.22299999999999998,
+          "56": 0.18777777777777782,
+          "57": 0.1853333333333333,
+          "58": 0.13855555555555554,
+          "59": 0.26188888888888895,
+          "60": 0.28555555555555556,
+          "61": 0.22099999999999997
+        },
+        "verdicts": {
+          "verdict_sign": "excludes_zero",
+          "verdict_sign_reading": "the interval EXCLUDES zero",
+          "measured_direction": "positive",
+          "verdict_margin": "outside_margin",
+          "verdict_margin_reading": "|mean| >= the frozen equivalence margin 0.15",
+          "verdict_upper": "upper_not_bounded",
+          "verdict_upper_reading": "the 95% upper bound +0.2470 is NOT below the margin 0.15",
+          "margin": 0.15,
+          "reading_rule": "verdict_sign, verdict_margin and verdict_upper are INDEPENDENT labels and none may be reported as another: an interval can sit inside the margin and still exclude zero, and a one-sided bound can hold while a two-sided reading fails."
+        }
+      },
+      "D": {
+        "n": 20,
+        "mean": 0.14731111111111111,
+        "sd": 0.09404295536025806,
+        "se": 0.021028644099051523,
+        "t_crit": 2.0930240544083087,
+        "half_width": 0.04401345793090618,
+        "ci95": [
+          0.10329765318020494,
+          0.19132456904201728
+        ],
+        "estimand": "D",
+        "what": "Delta_ctrl minus Delta_conf, formed PER SEED then averaged",
+        "per_seed": {
+          "42": 0.23655555555555563,
+          "43": 0.10222222222222221,
+          "44": 0.28155555555555556,
+          "45": 0.19655555555555548,
+          "46": 0.15433333333333332,
+          "47": -0.04888888888888898,
+          "48": 0.020777777777777784,
+          "49": 0.12544444444444447,
+          "50": 0.10011111111111115,
+          "51": 0.125,
+          "52": 0.21744444444444444,
+          "53": 0.07511111111111113,
+          "54": 0.30499999999999994,
+          "55": 0.06966666666666665,
+          "56": 0.06700000000000006,
+          "57": 0.05799999999999994,
+          "58": 0.18599999999999994,
+          "59": 0.20566666666666666,
+          "60": 0.2808888888888889,
+          "61": 0.1877777777777777
+        },
+        "verdicts": {
+          "verdict_sign": "excludes_zero",
+          "verdict_sign_reading": "the interval EXCLUDES zero",
+          "measured_direction": "positive",
+          "verdict_margin": "inside_margin",
+          "verdict_margin_reading": "|mean| < the frozen equivalence margin 0.15",
+          "verdict_upper": "upper_not_bounded",
+          "verdict_upper_reading": "the 95% upper bound +0.1913 is NOT below the margin 0.15",
+          "margin": 0.15,
+          "reading_rule": "verdict_sign, verdict_margin and verdict_upper are INDEPENDENT labels and none may be reported as another: an interval can sit inside the margin and still exclude zero, and a one-sided bound can hold while a two-sided reading fails."
+        }
+      }
+    },
+    "reachability_at_this_n": {
+      "identity_mean_asr": 0.5573555555555556,
+      "identity_mean_asr_n5": 0.5185777777777778,
+      "margin": 0.15,
+      "fall_available": 0.5573555555555556,
+      "lower_leg_is_a_test": true,
+      "reading": "identity mean ASR 0.5574 > 0.15, so the largest available fall still exceeds the margin and BOTH legs remain genuine tests on this cell",
+      "collision_warning": "This value is NOT the 0.519 the paper prints at main.tex:1297, :2225, :2241, :2248 (twice), :3105, :3449 and :3473. Those are n=5 readings of the same estimand and they round to the same three digits. Nothing here supersedes them, and main.tex:2248's cross-defense minimum stays at n=5."
+    },
+    "branches": [
+      {
+        "branch": "CONFIRMING_DISAGREEMENT_NARROWED",
+        "reading": "D's interval EXCLUDES zero: the two designs remain separated on this cell at n=20. Reported as the published result, narrowed, with the label DISAGREE unchanged. Still a disagreement, still not a sign reversal."
+      },
+      {
+        "branch": "REFUTING_2_CONFOUNDED_LEG_RELABELLED",
+        "reading": "Delta_conf, which CONTAINS zero at n=5, EXCLUDES it at n=20: the outcome-gated design does detect an effect on this cell and the cell's description changes. Reported as measured.",
+        "sites": [
+          "main.tex:1962 (tab:sixcell, this cell's row: both means and both intervals)",
+          "main.tex:3105-3106 (one wrapped sentence: ':3105 names the arm and its identity mean, :3106 carries the interval [-0.078,+0.081] and the n=5 disclosure, so an edit landing on :3105 alone leaves the stale interval in place)"
+        ]
+      }
+    ],
+    "branch_labels": [
+      "CONFIRMING_DISAGREEMENT_NARROWED",
+      "REFUTING_2_CONFOUNDED_LEG_RELABELLED"
+    ]
+  }
+}
