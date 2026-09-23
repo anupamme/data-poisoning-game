@@ -644,6 +644,20 @@ def main():
     lines += [r"\bottomrule", r"\end{tabular}"]
     print("\n".join(lines))
 
+    # ONE CELL PAIR IN THE PAPER DELIBERATELY DIFFERS FROM THIS OUTPUT, and "regenerate rather than
+    # edit" above would silently revert it. pre_registration_score_only_kappa2_n20.md (15d02e4) requires
+    # the score-only row to report n=20, and the n=20 contrast cannot be assembled from
+    # results/score_only/ alone: it needs the 15 new kappa=2 runs in results/score_only_kappa2_topup/
+    # plus the imported kappa=0 leg, which analyze_score_only_kappa2_topup.py merges with both legs'
+    # seed sets asserted. Rather than reimplement that three-source merge here, where a divergence from
+    # the analyzer would be a silently wrong published number, this script keeps printing the published
+    # n=5 contrast and NAMES the difference. Both values stand at their own seed counts.
+    print("\n  NOTE on the score-only row, so a regeneration cannot silently revert the paper:")
+    print("  the row above prints this script's results/score_only/ contrast at its own seed count,")
+    print("  and main.tex's tab:channels / tab:channels_full print the n=20 top-up instead, as")
+    print("  pre_registration_score_only_kappa2_n20.md requires. Take that cell from")
+    print("  `PYTHONPATH=. python3 -m experiments.analyze_score_only_kappa2_topup`, not from here.")
+
     # A SECOND tabular, not extra rows in the first. The Mode-S LaTeX above is therefore unchanged
     # byte for byte by this round's addition, which is what lets the paper's existing tab:channels stay
     # as it is while the new class gets a table whose header states its own rung.

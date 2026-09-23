@@ -1,0 +1,196 @@
+{
+  "description": "Seed top-up of the score-only magnitude control at its OWN frozen primary contrast kappa=0 -> kappa=2.0, seeds 47-61, bringing the magnitude-closed negative from n=5 to n=20. A DISCLOSED POST-HOC EXTENSION of 35788d9, not a prospective test. Limits frozen at 15d02e4 (experiments/pre_registration_score_only_kappa2_n20.md).",
+  "prereg": "experiments/pre_registration_score_only_kappa2_n20.md",
+  "prereg_commit": "15d02e4",
+  "parent_prereg_commit": "35788d9",
+  "departure_from_parent_non_negotiable": "pre_registration_score_only.md at 35788d9: 'On Delta = mean ASR(kappa=2) - mean ASR(kappa=0), n = 5 seeds {42, 43, 44, 45, 46}', and 'One cell. One dataset, one architecture, one attack, one defense, n = 5.' This suite departs from the n=5 in both. That n was a COMPARABILITY commitment -- the control had to share seeds with the uncontrolled arm -- and the uncontrolled arm is already at n=20 on these seeds, so extending the control RESTORES the seed match rather than breaking it. The literal text is still departed from. The n=20 result is a DISCLOSED POST-HOC EXTENSION, never prospective, and the published n=5 verdict is reported unchanged beside it.",
+  "dataset": "cifar10",
+  "model": "cifar_cnn",
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 50,
+    "contrast_rung": 2.0,
+    "baseline_rung": 0.0,
+    "new_seeds": [
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61
+    ],
+    "published_seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "rho_at_contrast": 54.598150033144236,
+    "acc_floor": 0.35,
+    "margin": 0.15,
+    "harness_seed": 47
+  },
+  "arm": {
+    "mode": "S",
+    "d2": "krum",
+    "attack": "committed_scaling",
+    "attack_impl": "model_scaling",
+    "ladder_run_here": "score_only",
+    "channels": "statistic channel OPEN, magnitude channel CLOSED",
+    "baseline_source": "results/score_only/ (42-46) + results/dose_seed_topup/ (47-61); imported, not recomputed"
+  },
+  "can_certify": "UNLIKE results/emit_only_topup/, this contrast is powered for its margin: projected 95% half-width at n=20 is 0.0319 against a margin of 0.15. A pass is a real certification against the frozen margin, reported with its interval at every site.",
+  "falsifiable": "The refuting branch needs mean ASR(kappa=2.0) > 0.2118 against an identity rung of 0.0618, i.e. 3.4x the baseline against a ceiling of 1.0. Reachable.",
+  "ladder_remains_at_n5": "The score-only ladder across kappa and the Jonckheere-Terpstra trend test are NOT restated at n=20. Only the frozen primary contrast is extended. After this top-up the honest shape is kappa=0 and kappa=2 at n=20 with the interior at n=5, and no display may print the ladder without a per-rung n.",
+  "oracle_scope": "Closing the magnitude channel does NOT remove the oracle. Mode S still reads adversary identity to pin c_adv=1, at n=20 exactly as at n=5. This arm licenses no statement about oracle-free behaviour in either direction.",
+  "trajectory_not_closed": "Which client is selected still changes across rungs, so the model trajectory still diverges. 35788d9's clause stands: the claim is about magnitude, not trajectory. n=20 does not widen it.",
+  "selectors_only": "generic_compose raises for non-selectors, so the coord_median arms -- including the cell carrying the paper's headline reversal -- are NOT controlled for magnitude by this arm. See experiments/pre_registration_score_only_coordmedian.md; no result here transfers to it.",
+  "verdict_labels_frozen": {
+    "flat": "THE NEGATIVE SURVIVES WITH THE MAGNITUDE CHANNEL CLOSED (n=20). Substantial statistic and decision disturbance does not produce a corresponding change in suppression even when the aggregated update's magnitude and direction are held exactly fixed, at the same seed count as the headline reversal.",
+    "refuted": "THE PUBLISHED FLAT RESULT WAS PARTLY AN ARTIFACT OF THE MAGNITUDE CHANNEL, and n=5 concealed it. The paper's central claim narrows to 'with benign magnitudes free to move', stated in the body beside the result and in the abstract, not in a limitation.",
+    "indeterminate": "A fall with attenuation already closed and magnitude also closed. INDETERMINATE, reported as such and NOT scored in our favour."
+  },
+  "published_n5_contrast": {
+    "n": 5,
+    "mean": -0.02322222222222222,
+    "sd": 0.06816465178585174,
+    "half_width_t19": 0.06380334481034403,
+    "ci95": [
+      -0.08702556703256625,
+      0.040581122588121805
+    ],
+    "per_seed": [
+      -0.11444444444444445,
+      0.042333333333333334,
+      0.04022222222222222,
+      -0.017333333333333333,
+      -0.06688888888888889
+    ],
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "margin": 0.15,
+    "verdict": "THE NEGATIVE SURVIVES WITH THE MAGNITUDE CHANNEL CLOSED",
+    "note": "Reported unchanged alongside the n=20 result whatever the latter is.",
+    "half_width_is_t19_not_t4": "The half_width field uses t19 for comparability with the n=20 row; the published n=5 interval is [-0.1078, +0.0614] at t4=2.776 and is what the paper quotes."
+  },
+  "cells": {
+    "doseS_kappa2.0_then_krum|committed_scaling|score_only": {
+      "mode": "S",
+      "d2": "krum",
+      "attack": "committed_scaling",
+      "rung": 2.0,
+      "dial": 54.598150033144236,
+      "ladder": "score_only",
+      "per_seed": [
+        {
+          "seed": 47,
+          "accuracy": 0.659,
+          "asr": 0.08555555555555555,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.631,
+          "asr": 0.023666666666666666,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.6045,
+          "asr": 0.04122222222222222,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.6899,
+          "asr": 0.03266666666666666,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.5567,
+          "asr": 0.043333333333333335,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.6102,
+          "asr": 0.04677777777777778,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.6844,
+          "asr": 0.027333333333333334,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.6367,
+          "asr": 0.0036666666666666666,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.5232,
+          "asr": 0.028333333333333332,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.5748,
+          "asr": 0.042555555555555555,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.691,
+          "asr": 0.04766666666666667,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.7496,
+          "asr": 0.024555555555555556,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.6809,
+          "asr": 0.052444444444444446,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.5952,
+          "asr": 0.008777777777777778,
+          "source": "<computed here>"
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.4933,
+          "asr": 0.0024444444444444444,
+          "source": "<computed here>"
+        }
+      ]
+    }
+  }
+}

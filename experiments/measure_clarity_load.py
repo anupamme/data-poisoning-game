@@ -26,7 +26,7 @@ and cross-references as the mechanism, which is what the last three measures add
                               and that is true of only two of them. The abstract
                               and Figure 1 sit above \\section{Introduction} and
                               are outside that script's window; the scope box
-                              does NOT -- it is a \\fbox inside the body, and
+                              does NOT -- it is a framed box inside the body, and
                               adding 84 chars to it raised body chars by 84.
                               Which of the three is inside the window is now
                               measured rather than asserted (`in_body` below),
@@ -180,10 +180,12 @@ C_RE = re.compile(r"\(?\bC([0-3])\)?\b")
 BLOCKS = {
     "abstract": ("\\begin{abstract}", "\\end{abstract}"),
 }
-# The scope box: \fbox{\parbox{...}} inside a center environment. Measured from
-# the \fbox line to the closing }} line.
-BOX_OPEN = "\\fbox{\\parbox{"
-BOX_CLOSE = "}}"
+# The scope box. It was \fbox{\parbox{...}} inside a center environment until Round 78
+# made it a `framed` environment, so that it breaks across a page instead of jumping
+# whole to the next one and leaving 17 rendered lines empty. Both openings are matched,
+# paired with their own close: with only the \fbox form listed, this counter read 0 for
+# a box that was still on the page, and a 0 here reads as "the box was deleted".
+BOX_FORMS = (("\\fbox{\\parbox{", "}}"), ("\\begin{framed}", "\\end{framed}"))
 
 # pdftotext renders theorem headers as "Proposition 1" with the number attached.
 PROP_RE = re.compile(r"Proposition\s+1\b")
@@ -353,14 +355,23 @@ BODY_HOMES = (
 # the float inside Section 1 pulled its caption into the causal_sec1 window and the count went
 # 6 -> 7 against a hard ceiling, so the caption is now also load-bearing for that gate. Every
 # scope clause it carried is still in it; nothing here prices a disclosure as slack.
-TARGETS = {"p_tokens": 7, "c_tokens": 8, "abstract": 1600, "prop_page": 3,
+#
+# Round 78 re-baselines it DOWNWARD again, 979 -> 735. The cut is two bookkeeping sentences:
+# the one that told the reader its three numbers were three scopes rather than one experiment,
+# and the one that reconciled the stale coord_median/scaling row label against the six-cell
+# table. Neither described the drawing. The first is redundant with panel (b)'s own per-row n,
+# which the caption still names; the second MOVED to the appendix story section and is quoted
+# in the caption by pointer ("the n frozen here, App. J for the one row since topped up"), so
+# the staleness is still disclosed on the figure's own page. A disclosure may move and may not
+# lose its last home, and re-baselining is what keeps a cut from being spent twice.
+TARGETS ={"p_tokens": 7, "c_tokens": 8, "abstract": 1600, "prop_page": 3,
            "q5_pages": 3,
            "bold_runs": 39, "emph_runs": 60, "max_xrefs": 5,
            "long_bold": 0, "joined": 0,
            "abs_sentence": 200, "causal_sec1": 6, "long_para": 850,
            "jargon_front": 0, "design_vocab": 5,
            "spine_span": 2, "body_questions": 0, "provenance": 0,
-           "fig1_caption": 979}
+           "fig1_caption": 735}
 
 # The phrase the twenty-second review quoted as the paper's least readable, matched on
 # the two words that carry it so a rewording that keeps the jargon still trips.
@@ -424,13 +435,15 @@ def caption_chars(text, label):
 
 def box_chars(text):
     lines = text.split("\n")
-    a = next((i for i, l in enumerate(lines) if l.startswith(BOX_OPEN)), None)
-    if a is None:
-        return 0
-    b = next((i for i, l in enumerate(lines[a:], a) if l.strip() == BOX_CLOSE), None)
-    if b is None:
-        return 0
-    return len("".join(uncomment(l) for l in lines[a:b + 1]))
+    for opener, closer in BOX_FORMS:
+        a = next((i for i, l in enumerate(lines) if l.startswith(opener)), None)
+        if a is None:
+            continue
+        b = next((i for i, l in enumerate(lines[a:], a) if l.strip() == closer), None)
+        if b is None:
+            continue
+        return len("".join(uncomment(l) for l in lines[a:b + 1]))
+    return 0
 
 
 def sentences(s):
@@ -876,7 +889,7 @@ def measure(text, pdf=None, tex_path=None):
     # Which front-matter blocks are actually outside measure_body_chars' window, so
     # the "front matter funds the body" claim is measured and not recited.
     lines, a, _ = body_window(text)
-    out["box_in_body"] = any(l.startswith(BOX_OPEN) for l in lines[a:])
+    out["box_in_body"] = any(l.startswith(o) for o, _ in BOX_FORMS for l in lines[a:])
     n, tot, _ = density(text)
     out["negation"] = (n, tot, 100.0 * n / tot if tot else 0.0)
     if tex_path is not None:

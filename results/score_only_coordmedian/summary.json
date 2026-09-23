@@ -1,0 +1,169 @@
+{
+  "description": "Score-only coordinate median: the magnitude control on the sign-reversal cell. Per coordinate, argmedian of the TRANSFORMED stack, emitting the UNTRANSFORMED value. kappa=0 is IMPORTED from the published Mode S leg under an exact identity verified at 0.00e+00 by --harness-check; only kappa=2 runs here.",
+  "prereg": "experiments/pre_registration_score_only_coordmedian.md",
+  "prereg_commit": "16a17b2",
+  "dataset": "cifar10",
+  "model": "cifar_cnn",
+  "d2": "coord_median",
+  "attack": "committed_pixel",
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 50,
+    "kappa": 2.0,
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61
+    ],
+    "acc_floor": 0.35
+  },
+  "rung_provenance": "kappa=2.0 is COMPUTED here for seeds 42-61. kappa=0 is NOT here: at the identity the transform returns the stack unwrapped, so this control IS coord_median and the published Mode S kappa=0 rung is its value. Asserted bit-identical by --harness-check.",
+  "estimands": {
+    "primary": "paired mean of ASR(kappa=2, score-only) - ASR(kappa=0), two-sided 95% t interval, t_19 = 2.093",
+    "secondary": "paired mean of ASR(kappa=2, uncontrolled Mode S) - ASR(kappa=2, score-only): the magnitude channel's contribution, the kappa=0 term cancelling exactly"
+  },
+  "published_comparison": {
+    "controlled_n20_delta": 0.125061,
+    "controlled_n20_ci95": [
+      0.0954,
+      0.1547
+    ],
+    "confounded_n20_delta": -0.273278,
+    "confounded_n20_ci95": [
+      -0.3337,
+      -0.2128
+    ]
+  },
+  "cells": {
+    "doseS_kappa2.0_then_coord_median|committed_pixel|score_only": {
+      "d2": "coord_median",
+      "attack": "committed_pixel",
+      "rung": 2.0,
+      "control": "score_only_coord_median",
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.7673,
+          "asr": 0.2587777777777778
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.7596,
+          "asr": 0.22066666666666668
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.7865,
+          "asr": 0.1928888888888889
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.7416,
+          "asr": 0.4617777777777778
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.7658,
+          "asr": 0.29933333333333334
+        },
+        {
+          "seed": 47,
+          "accuracy": 0.7451,
+          "asr": 0.224
+        },
+        {
+          "seed": 48,
+          "accuracy": 0.753,
+          "asr": 0.6138888888888889
+        },
+        {
+          "seed": 49,
+          "accuracy": 0.7216,
+          "asr": 0.33244444444444443
+        },
+        {
+          "seed": 50,
+          "accuracy": 0.6937,
+          "asr": 0.17222222222222222
+        },
+        {
+          "seed": 51,
+          "accuracy": 0.7302,
+          "asr": 0.24333333333333335
+        },
+        {
+          "seed": 52,
+          "accuracy": 0.7427,
+          "asr": 0.09266666666666666
+        },
+        {
+          "seed": 53,
+          "accuracy": 0.7677,
+          "asr": 0.5182222222222223
+        },
+        {
+          "seed": 54,
+          "accuracy": 0.7552,
+          "asr": 0.22411111111111112
+        },
+        {
+          "seed": 55,
+          "accuracy": 0.7233,
+          "asr": 0.21855555555555556
+        },
+        {
+          "seed": 56,
+          "accuracy": 0.7622,
+          "asr": 0.2871111111111111
+        },
+        {
+          "seed": 57,
+          "accuracy": 0.7771,
+          "asr": 0.38455555555555554
+        },
+        {
+          "seed": 58,
+          "accuracy": 0.778,
+          "asr": 0.4593333333333333
+        },
+        {
+          "seed": 59,
+          "accuracy": 0.7602,
+          "asr": 0.26866666666666666
+        },
+        {
+          "seed": 60,
+          "accuracy": 0.7356,
+          "asr": 0.24055555555555555
+        },
+        {
+          "seed": 61,
+          "accuracy": 0.7327,
+          "asr": 0.4093333333333333
+        }
+      ],
+      "mean_acc": 0.749955,
+      "mean_asr": 0.30612222222222224
+    }
+  }
+}
