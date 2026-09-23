@@ -31,7 +31,9 @@
 \renewcommand{\thetable}{S\arabic{table}}
 \renewcommand{\thefigure}{S\arabic{figure}}
 
-\title{Supplementary Material\\Beyond Statistic Preservation:\\Causal Evaluation of Composed\\Federated-Learning Defenses}
+% Tracks main.tex's title verbatim. A stale supplement title passes a clean build in both documents,
+% which is how the previous one survived a retitle undetected.
+\title{Supplementary Material\\Statistic Preservation Does Not Identify\\Mechanism Preservation in Composed\\Federated-Learning Defenses}
 
 \author{Anonymous authors\\
 Paper under double-blind review}
@@ -39,12 +41,28 @@ Paper under double-blind review}
 \begin{document}
 \maketitle
 
+% The count and the skippability clause below are BOTH self-counting claims about this document's own
+% shape, and nothing in either build, either gate or any hash can see them go stale: the clarity and
+% negation instruments read main.tex's body window only, and measure_self_containment checks main's
+% appendix index rather than this paragraph. The sentence said "two" while five blocks had been moved,
+% because it was written after the first two and not re-derived after the last three. It is now
+% enumerated one pointer per block, so a sixth relocation contradicts a list rather than a numeral.
+% It also said "Nothing here is required to follow the main paper's results", which the equivalence
+% testing falsified the moment it arrived: main.tex's own reader's map calls that block NOT skippable.
+% Keep this paragraph and that map in agreement; they are the only two statements of what moved.
 \noindent This supplement holds per-cell measurement detail for the composability
-screen. It records numbers, not arguments: every claim these cells support is
-stated and qualified in the main paper, and section, table and theorem numbers
-without an \textbf{S} prefix refer to it, as do citations, whose full entries are
-in its reference list. Nothing here is required to follow the main paper's
-results.
+screen, together with five self-contained blocks relocated from the main paper's
+appendix: the composition audit's rubric, retrieval frame and coded rows
+(§\ref{app:audit}); one pre-registered question about whether randomization is itself
+costly (§\ref{app:randomization}); the equivalence testing at the existing seed counts
+(§\ref{app:tost}); the composition and adaptive-attack construction details
+(§\ref{app:composition_adaptive}); and the scale and architecture checks
+(§\ref{app:scale_external}). Every claim any of it supports is stated and qualified in
+the main paper, and section, table and theorem numbers without an \textbf{S} prefix
+refer to it, as do citations, whose full entries are in its reference list. What decided
+what was moved is that no claim in the main paper is stated only here. Four of the five
+are then skippable; \textbf{the equivalence testing is not}, since it is where each arm's
+binding $m^\ast$ and the one-sided bound behind every non-increase are computed.
 
 \small
 \setlength{\tabcolsep}{4pt}
@@ -92,7 +110,7 @@ The NormClip row is the sharpest form of the point: NC$\to$Krum is bit-identical
 
 \textbf{The mechanism is verified in code before it is claimed.} An outcome alone would leave open whether the mirrors are invariant at all, so we check the statistic itself rather than only the ASR (\texttt{experiments/verify\_cos\_invariance.py}, \texttt{results/cos\_invariance\_check.json}), comparing each $d_2$'s internal state on $\{u_i\}$ against $\{c_iu_i\}$ for the $c_i$ that NormClip and RFA actually produce on live rounds. Over 18 rounds (3 seeds $\times$ 2 upstream defenses $\times$ 3 rounds), \texttt{cos\_reputation}'s weight vector agrees to $\le 2.5\times10^{-7}$ and its weight \emph{ordering} never changes ($0/18$), and \texttt{cos\_krum} selects the same client in $18/18$. The Euclidean originals do not: Reputation's weights move by up to $0.222$ and its ordering changes in $12/18$ rounds; Krum's selection changes in $6/18$. The size of the disturbance tracks the realized weight ratio $\rho$, as Proposition~\ref{prop:invariance} predicts: under NormClip ($\rho \in [1.00,4.90]$) Reputation's ordering changes in $3/9$ rounds and Krum's selection in $0/9$; under RFA ($\rho \in [2.11,17.38]$) they change in $9/9$ and $6/9$. On 1000 synthetic draws with larger rescalings the separation is cleaner: ordering changes in $0/1000$ trials for \texttt{cos\_reputation} against $992/1000$ for Reputation, and $0/1000$ against $618/1000$ for the two Krums. The mirrors are additionally checked against the shipped implementations they stand in for (selected index identical, aggregate relative error ${\approx}10^{-8}$, below the ${\approx}7\times10^{-5}$ MPS-versus-CPU nondeterminism of the same computation), so the invariance is a property of the statistic and not of a divergent reimplementation.
 
-One prediction in the suite was genuinely two-sided, and it is the round's only prospective positive result. \texttt{cos\_krum}'s C1 verdict on model-scaling turns entirely on whether the accuracy gate is applied: $0.078$ passes the numeric threshold, $0.146$ accuracy fails the gate. Rather than choose a reading after the fact we froze \emph{both}, with a resolution rule fixed in advance. Primary (accuracy-gated) $\Rightarrow$ C1 fails $\Rightarrow$ HIGH; secondary (numeric C1 only) $\Rightarrow$ the pair is certified $\Rightarrow$ LOW; and if the outcome had been LOW at accuracy $\ge 0.35$, the gate would have been wrong and our two primary labels for those cells would have been recorded as misses. Both pairs came out \textbf{HIGH} (NormClip$\to$\texttt{cos\_krum} $0.508$, RFA$\to$\texttt{cos\_krum} $0.566$), refuting the secondary reading and vindicating the accuracy gate against a pre-registered alternative that would have overturned it. This is a small result but a real one: the gate is usually defended by argument, and here it beat a competing specification of itself on data neither of us had seen. We flag the weaker half honestly: NormClip$\to$\texttt{cos\_krum}'s $0.508$ sits barely above threshold on per-seed values $0.084 / 0.676 / 0.766$, so that cell is threshold-noise even though its label is correct, and the RFA arm at $0.566$ (per-seed $1.000 / 0.121 / 0.576$) is what carries the conclusion.
+One prediction in the suite was genuinely two-sided, and it is the only prospective positive result either screening suite produced. \texttt{cos\_krum}'s C1 verdict on model-scaling turns entirely on whether the accuracy gate is applied: $0.078$ passes the numeric threshold, $0.146$ accuracy fails the gate. Rather than choose a reading after the fact we froze \emph{both}, with a resolution rule fixed in advance. Primary (accuracy-gated) $\Rightarrow$ C1 fails $\Rightarrow$ HIGH; secondary (numeric C1 only) $\Rightarrow$ the pair is certified $\Rightarrow$ LOW; and if the outcome had been LOW at accuracy $\ge 0.35$, the gate would have been wrong and our two primary labels for those cells would have been recorded as misses. Both pairs came out \textbf{HIGH} (NormClip$\to$\texttt{cos\_krum} $0.508$, RFA$\to$\texttt{cos\_krum} $0.566$), refuting the secondary reading and vindicating the accuracy gate against a pre-registered alternative that would have overturned it. This is a small result but a real one: the gate is usually defended by argument, and here it beat a competing specification of itself on data neither of us had seen. We flag the weaker half honestly: NormClip$\to$\texttt{cos\_krum}'s $0.508$ sits barely above threshold on per-seed values $0.084 / 0.676 / 0.766$, so that cell is threshold-noise even though its label is correct, and the RFA arm at $0.566$ (per-seed $1.000 / 0.121 / 0.576$) is what carries the conclusion.
 
 The pattern holds across the suite once cells without power are excluded. $\Delta$ is only observable where the standalone $d_2$ genuinely suppresses the attack, since a baseline already above $0.5$ has no suppression left to lose and will show $\Delta \approx 0$ whatever the transform did: a ceiling effect, not preservation. Restricting to standalone ASR $< 0.5$ at accuracy $\ge 0.35$ leaves six cells, and measured disturbance splits them perfectly at both seed counts. At the frozen $n{=}3$: undisturbed ($0/9$) $\Delta \in [-0.027, +0.001]$, disturbed ($>0/9$) $\Delta \in [+0.630, +0.865]$, a separation of $+0.629$. At $n{=}5$ after the post-hoc top-up, with each standalone recomputed at the same five seeds from the dose ladder's $\kappa{=}0$ rung (\texttt{results/dose\_response/summary.json}, that $d_2$ alone under the identical configuration, bit-identical to the published standalone baselines on every seed they share, largest deviation $0.00\mathrm{e}{+}00$): $[-0.044, +0.001]$ versus $[+0.717, +0.878]$, a separation of $+0.716$. Neither has any overlap, and the extra seeds widen the split rather than narrow it. At both seed counts the two extremes are the two Krum cells, which share a standalone, so the width of the split is algebraically the Krum contrast's own gap and not independent evidence beyond it; the other four cells extend the halves outward, not the distance between them. Two of the three undisturbed cells are \texttt{cos\_krum} on the pixel backdoor, where the mirror suppresses standalone ($0.300$ at $0.598$ accuracy on the frozen three seeds, $0.490$ at $0.607$ on all five) and carries that suppression through under \emph{both} upstreams: at $n{=}3$ intact ($0.300$, $\Delta = +0.000$ under NormClip; $0.273$, $\Delta = -0.027$ under RFA), at $n{=}5$ still intact ($0.490$, $\Delta = +0.000$; $0.447$, $\Delta = -0.044$; both at $0.61$ accuracy, on new per-seed values $0.864 / 0.686$ and $0.849 / 0.565$ against a baseline that moves to $0.490$ on those same seeds). The NormClip arm is intact \emph{exactly}: NormClip never binds on this attack ($0/9$ rounds; max client norm $3.04$ against $\tau = 5$), so its composition is the same five runs as the \texttt{cos\_krum} baseline, bit-identical per seed, and $\Delta = +0.000$ is an identity rather than a measurement. Had the frozen three-seed baseline been kept under the five-seed compositions, the same two rows would have read $\Delta = +0.190$ and $+0.147$, and the natural reading of that, the magnitude channel of Lemma~\ref{lem:annihilation} moving $\Delta$ where the selection is exactly invariant, would have credited an effect to a transform that provably did nothing: the movement is entirely the baseline's seed set, which is why the subtrahend has to move with the composition. So the confirming half of the split is contributed by the invariant construction behaving as C2 predicts (which is the one thing the metric-swap arm does deliver, even though C1's failure on model-scaling denied it a frozen LOW label), and this contrast has no power on the magnitude channel in either direction: its only exactly-invariant downstream sits under an upstream that never rescales. That is a limitation of this post-hoc contrast and a direct motivation for arm 3 of the ladder, which moves that dial on purpose.
 
@@ -130,7 +148,7 @@ fedavg (no defense) & sanity & $0.236 \pm 0.190$ & $0.386 \pm 0.192$ \\
 inferred.} The sanity baseline never clears $0.5$, so a FAIL control that also sits below $0.5$
 carries no information: at $f{=}0.4$ it is $0.236 \pm 0.190$ and bimodal (4/5 seeds $<0.22$, one
 $>0.6$), because all four adversarial sub-triggers must be sampled in the same round, probability
-$\tbinom{6}{1}/\tbinom{10}{5} = 2.4\%$ at $K{=}5$; at $f{=}0.6$ it rises only to $0.386$ (Appendix~\ref{app:dba_f06}
+$\tbinom{6}{1}/\tbinom{10}{5} = 2.4\%$ at $K{=}5$; at $f{=}0.6$ it rises only to $0.386$ (§\ref{app:dba_f06}
 shows the residual bimodality is a per-seed admissibility latent in the distributed trigger, not
 purely a co-participation effect). The distributions still separate at the tails, max per-seed ASR
 $0.202$ across the PASS pairs against $0.761$ across the FAIL pairs, which is what shows DBA embeds
@@ -189,9 +207,15 @@ instability the pixel anchor avoids, and this is independence from the survivor 
 than full data-independence, since fg$\to$cm also appears in the development set at $0.107$
 (Table~\ref{tab:composability}).
 
-\section{3-Way Compositions: Criterion Scales Where Exhaustive Search Cannot}
+% Round 80, the twenty-first review's concern #6 (a more restrained screening claim). The title
+% claimed the criterion SCALES and the caption called the exercise VALIDATION, while the base-rate
+% paragraph below the table says in the paper's own words that it is "still ordered rather than
+% validated". The title and caption now say what the exercise is -- the criterion applied and
+% scored where exhaustive search cannot run -- and the counts, the labels and the freeze are
+% untouched. No row is re-coded and no number changes.
+\section{3-Way Compositions: The Criterion Applied Where Exhaustive Search Cannot Run}
 \label{sec:three_way}\begin{table}[h]
-\caption{3-way composition criterion validation (pre-registered). Max ASR = max(mean\_scaling, mean\_pixel) across seeds.}
+\caption{3-way composition predictions, pre-registered and then scored (base rates below the table, not in it). Max ASR = max(mean\_scaling, mean\_pixel) across seeds.}
 \label{tab:three_way}
 \centering\small
 \begin{tabular}{llcc}
@@ -216,6 +240,17 @@ nc$\to$fg$\to$tm   & HIGH & $0.267$ & \textbf{MISS} \\
 \end{table}
 
 \textbf{Selection-bias note.} All 6 LOW triples in Table~\ref{tab:three_way} use FoolsGold or reputation as $d_1$: the same successful weighting defenses from the 2-way analysis. This reflects the structural fact that these are the only defenses satisfying C1 for both attacks in our menu. The criterion's 3-way value is not discovering new $d_1$ choices but correctly \emph{filtering} from the $2{\times}6{\times}5{=}60$ triples starting with FG/rep: it predicts LOW for only 6--8 of these 60 (those where the $d_2{\to}d_3$ chain preserves signals), correctly rejecting the majority. A random 6-of-10 draw from our measured set matches the criterion's mean ASR ($0.078$) only $0.3\%$ of the time ($p = 0.003$, resampling test; §\ref{sec:composability_validation}).
+
+% Round 79, E3, the twentieth review's §10: no accuracy figure of the criterion's may stand without the
+% base rate a constant predictor would already score. The 2-way figure has carried its constant-HIGH
+% baseline since Round 58 ($38/42 = 90.5\%$ against $37/42 = 88.1\%$, stated where it is computed); this
+% table's $9/10$ had no such companion, and its section title reads as a capability claim. The numbers
+% here are read off Table~\ref{tab:three_way} as frozen and no code or count is re-run.
+\noindent \textbf{And the $90\%$ against what a constant predictor scores.} Six of these ten triples are
+LOW, so always-LOW already scores $6/10$ and always-HIGH $4/10$: unlike the 2-way suite, whose $38/42$
+sits one pair above a constant-HIGH $37/42$, this figure is above both trivial policies. It is still ten
+triples, still ordered rather than validated, and it certifies nothing about security, which is what
+limitation (L2) of the main text states in full.
 
 \section{Dose--response design: the full pre-registered protocol}
 \label{app:dose_protocol}
@@ -319,6 +354,69 @@ Instrument (Mode~S) & \texttt{cos\_krum} & $0$ & $0.000$ & $\mathbf{0.000}$ & $0
 
 \noindent \textbf{What it says, and what it does not.} Mode~S into Krum at $\kappa{=}2$: the published $0.892$ is $0.986$ of re-selection and $0.973$ of rescaling, so the dose moves \emph{which} benign client is aggregated and \emph{how large} it arrives, in comparable measure: the instrument is not quietly a magnitude-only perturbation, nor quietly a decision-only one. Of the $11/15$ rounds whose selection changes there, \textbf{none} lands on an adversary; that is the quantitative form of the claim that Krum's decision changes are benign-to-benign, and the reason the support of the admitted adversarial mass changes in \textbf{none of the $60$ measured rounds} while the decision channel moves by $0.733$: on this arm no adversary is admitted at \emph{any} rung, so that count is a floor, and the arms carrying adversarial mass at baseline are reputation and \texttt{coord\_median} ($48$ of $60$ rounds each; Table~\ref{tab:channels_full}). \texttt{cos\_krum} is the informative contrast: its statistic is exactly invariant to positive rescaling, so $0/15$ selections change at every rung of \emph{both} designs and its entire displacement ($1.297$ under the instrument, $0.834$ under the confounded ladder) is rescaling. Its fall therefore cannot travel through the decision channel at all, which corroborates §\ref{app:targeted_full}'s attribution of that fall to the magnitude channel from a quantity measured independently of any ASR. \textbf{This is a decomposition of a displacement, not of an ASR effect}: it says what the dose moves in the update entering training, makes no claim about suppression, and is an analysis of runs already reported rather than a new experiment.
 
+\section{The two magnitude-channel arms: per-seed detail}
+\label{app:magnitude_perseed}
+
+Every value below is emitted by \texttt{experiments/\allowbreak emit\_perseed\_magnitude\_arms.py},
+which reads the two arms' frozen artifacts through the same readers their analyzers use rather than
+re-implementing a leg, and refuses to print a short row if any seed is missing from any leg. Seeds are
+$42$--$61$ in order, $n{=}20$ on every column, and both arms are paired on the same seed set.
+Arm~A is \texttt{krum} under committed scaling with score-only Krum as the control
+(\S\ref{app:score_only_n20} of the paper); Arm~B is \texttt{coord\_median} under the committed pixel
+backdoor with the coordinate-wise control (\S\ref{app:magnitude_coordmedian} of the paper). The
+$\kappa{=}0$ column of each arm is the imported identity leg, which is the downstream defense alone.
+The last column is the \emph{uncontrolled} Mode~S leg at $\kappa{=}2$ on Arm~B's cell, the published
+$+0.125$ rise's own numerator, shown so that the magnitude channel's contribution is readable per seed
+rather than only as a mean.
+
+\begin{table}[h]
+\caption{Per-seed trigger ASR on the two arms that close the aggregate-magnitude channel. $\Delta$ is
+that seed's paired difference, the quantity each arm's primary estimand averages; the \emph{mean} row
+reproduces the two analyzers' printed primaries ($-0.0088$ and $-0.1722$) and the two Arm~B columns'
+difference reproduces $\Delta_{\mathrm{mag}}{=}{+}0.2973$. \textbf{Arm~B's sign is not carried by a few
+seeds}: its $\Delta$ is negative on $19$ of $20$, the single exception being seed $57$ at $+0.012$.
+Arm~A's is negative on $8$ of $20$, which is what an effect inside the margin looks like per seed and
+is why its interval does not exclude zero.}
+\label{tab:magnitude_perseed}
+\centering\scriptsize
+\begin{tabular}{lccccccc}
+\toprule
+ & \multicolumn{3}{c}{Arm~A: \texttt{krum} / scaling} & \multicolumn{3}{c}{Arm~B: \texttt{coord\_median} / pixel} & Arm~B \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+seed & $\kappa{=}0$ & $\kappa{=}2$ ctrl & $\Delta$ & $\kappa{=}0$ & $\kappa{=}2$ ctrl & $\Delta$ & $\kappa{=}2$ uncontr. \\
+\midrule
+$42$ & $0.115$ & $0.000$ & $-0.114$ & $0.395$ & $0.259$ & $-0.136$ & $0.597$ \\
+$43$ & $0.021$ & $0.063$ & $+0.042$ & $0.287$ & $0.221$ & $-0.066$ & $0.319$ \\
+$44$ & $0.047$ & $0.087$ & $+0.040$ & $0.449$ & $0.193$ & $-0.256$ & $0.516$ \\
+$45$ & $0.057$ & $0.039$ & $-0.017$ & $0.677$ & $0.462$ & $-0.216$ & $0.756$ \\
+$46$ & $0.069$ & $0.003$ & $-0.067$ & $0.405$ & $0.299$ & $-0.106$ & $0.514$ \\
+$47$ & $0.062$ & $0.086$ & $+0.024$ & $0.291$ & $0.224$ & $-0.067$ & $0.484$ \\
+$48$ & $0.054$ & $0.024$ & $-0.031$ & $0.708$ & $0.614$ & $-0.094$ & $0.813$ \\
+$49$ & $0.065$ & $0.041$ & $-0.024$ & $0.495$ & $0.332$ & $-0.162$ & $0.744$ \\
+$50$ & $0.033$ & $0.033$ & $-0.000$ & $0.500$ & $0.172$ & $-0.328$ & $0.622$ \\
+$51$ & $0.009$ & $0.043$ & $+0.034$ & $0.489$ & $0.243$ & $-0.245$ & $0.667$ \\
+$52$ & $0.024$ & $0.047$ & $+0.023$ & $0.285$ & $0.093$ & $-0.193$ & $0.483$ \\
+$53$ & $0.024$ & $0.027$ & $+0.003$ & $0.674$ & $0.518$ & $-0.156$ & $0.763$ \\
+$54$ & $0.035$ & $0.004$ & $-0.032$ & $0.398$ & $0.224$ & $-0.174$ & $0.565$ \\
+$55$ & $0.188$ & $0.028$ & $-0.159$ & $0.397$ & $0.219$ & $-0.178$ & $0.500$ \\
+$56$ & $0.002$ & $0.043$ & $+0.040$ & $0.458$ & $0.287$ & $-0.170$ & $0.586$ \\
+$57$ & $0.010$ & $0.048$ & $+0.038$ & $0.372$ & $0.385$ & $+0.012$ & $0.478$ \\
+$58$ & $0.014$ & $0.025$ & $+0.011$ & $0.708$ & $0.459$ & $-0.249$ & $0.744$ \\
+$59$ & $0.044$ & $0.052$ & $+0.008$ & $0.424$ & $0.269$ & $-0.156$ & $0.577$ \\
+$60$ & $0.006$ & $0.009$ & $+0.003$ & $0.422$ & $0.241$ & $-0.181$ & $0.595$ \\
+$61$ & $0.000$ & $0.002$ & $+0.002$ & $0.734$ & $0.409$ & $-0.324$ & $0.746$ \\
+\midrule
+mean & $0.044$ & $0.035$ & $-0.0088$ & $0.478$ & $0.306$ & $-0.1722$ & $0.603$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent \textbf{One thing Table~\ref{tab:magnitude_perseed} shows that neither mean does.} On Arm~B every seed's
+uncontrolled $\kappa{=}2$ value exceeds its controlled one, so the magnitude channel raises ASR on
+$20$ of $20$ seeds on that cell, while the controlled contrast against the identity falls on $19$ of
+$20$. The two facts together are why the arm is reported as reversing the controlled leg's own sign
+rather than as attenuating it: the control does not shrink a rise towards zero here, it crosses it.
+
 \section{Adversary-correlated dispersion $\Delta_c$, measured}
 \label{app:delta_c}
 \label{sec:rho_vs_deltac}
@@ -361,7 +459,7 @@ argument. Nothing here is a new claim; each answer is a pointer plus the scope i
 \paragraph{1. This is small-scale federated learning: five clients, one architecture, mostly one
 dataset.} Agreed, and every empirical magnitude is scoped accordingly, per arm, never pooled across
 arms, and enumerated in Table~\ref{tab:scope_levels} with the scale and architecture evidence in
-Appendix~\ref{app:scale_external}. What does \emph{not} depend on scale is the
+§\ref{app:scale_external}. What does \emph{not} depend on scale is the
 identification argument: any criterion whose eligibility gate is defined on the same outcome it predicts
 conditions on a descendant of both mechanism and effectiveness
 (Proposition~\ref{prop:identification_full}), and that holds at any client count, model size or sample size.
@@ -370,9 +468,10 @@ The boundary results forbid an inference; they do not measure a system.
 \paragraph{2. The interventions are oracles: no deployed system can pin an adversary's coefficient or
 read adversary identity.} Correct, and that is why Mode~S is an \textbf{instrument, not a screen}. Mode~S
 measures level~(P4) only by reading adversary identity, which no deployable defense can, so these
-experiments \textbf{identify the causal channel and are not a (P4) screen}. Pinning $c{=}1.0$ has one
-purpose, to cut the confounded path of Figure~\ref{fig:modeS}(a) by construction, exactly as an
-oracle-labelled control isolates a channel in an ablation. The one control that \emph{removes} an oracle
+experiments \textbf{identify the intervention's effect at a fixed adversarial coefficient share and are
+not a (P4) screen}. Pinning $c{=}1.0$ has one purpose, to cut the confounded path of
+Figure~\ref{fig:modeS}(a) by construction, exactly as an oracle-labelled control closes one path in an
+ablation: one path, not every path, the magnitude of the emitted aggregate still moving with the dose. The one control that \emph{removes} an oracle
 component (score-only, which scores the transformed stack but aggregates the untransformed selected
 update) does not change the verdict (§\ref{app:targeted_full}, Appendix~\ref{app:decomposition}).
 
@@ -383,7 +482,7 @@ $\pm0.15$ equivalence margin}, a margin frozen before the runs (Table~\ref{tab:s
 claim that suppression is unchanged. On the arms where we report it, that margin is one-sided in a way the
 phrase does not say on its own: identity-rung mean ASR is below $0.15$ there, so $\Delta > -0.15$ holds by
 arithmetic before any seed runs and the only leg that tests anything is the upper one, which bounds a
-\emph{rise}. Main~§\ref{par:reach} scores every arm on both legs and prints the one-sided bound
+\emph{rise}. Section~\ref{par:reach} scores every arm on both legs and prints the one-sided bound
 beside each two-sided interval. Two design choices do more for precision than seeds would: the
 identity rungs are imported \textbf{bit-identical per seed} (largest deviation $0.00\mathrm{e}{+}00$),
 so the contrast is within-seed rather than across noise, and the central claim is a \textbf{sign
@@ -445,7 +544,7 @@ moved, and the binding equivalence arm named below is unchanged.
 \texttt{krum} / scaling rows below are the ones that carry an equivalence reading, CIFAR-10's and
 EMNIST-byclass's, and their identity-rung mean ASR is $0.044$ and $0.024$, so on both of them $\Delta > -m$
 is satisfied by arithmetic at every rung of the ladder and what the sweep varies is the upper leg alone.
-Main~§\ref{par:reach} gives the one-sided bound for each, $+0.012$ and $+0.009$. No $m^{\ast}$ printed here changes and no
+Section~\ref{par:reach} gives the one-sided bound for each, $+0.012$ and $+0.009$. No $m^{\ast}$ printed here changes and no
 verdict below is revised; what changes is only which of the two legs a reader should credit the pass to.
 
 \textbf{The $\pm0.15$ practical-equivalence margin is not load-bearing.} A reading of no evidence of a practically meaningful change requires the paired $95\%$ interval to lie inside
@@ -570,6 +669,718 @@ pre-registration is spent. \texttt{fltrust} is excluded by argument rather than 
 the main text records it as bit-identical per seed under positive
 per-client rescaling, which is exactly the Mode~S dose, so a ladder on it would observe an
 algebraic identity.
+
+% Moved here from main §D.8 (app:channel_separation) because the twentieth review asked for the
+% experimental archaeology to be compressed out of the main paper. Nothing is deleted: the two paragraphs
+% below are the provenance machinery of the boundary-blend instrument, and main §D.8 keeps what was
+% pre-registered, that the first freeze failed its own gate, the corrected instrument's result, the
+% one-sentence general lesson, and a pointer to this section for each moved fact. So every disclosure
+% changes documents rather than losing its last home.
+\section{The oracle-free boundary instrument: the freeze we superseded, and the corrected instrument's machinery}
+\label{app:blend_provenance}
+
+\noindent This section holds the provenance of the boundary-blend instrument of main
+§\ref{app:channel_separation}: the measurements behind our first freeze of it failing its own share gate,
+the correction that freeze's own sentence needed, and the machinery of the corrected instrument. The gate
+in question is \texttt{SHARE\_TOL} $=10^{-6}$, imported from the admission measurement and the tolerance
+Mode~S itself meets; the \emph{flip} gate is that the shipped selections differ across the arm pair. The
+verdicts of main §\ref{app:channel_separation} rest on the corrected instrument alone, and nothing here
+revises any of them.
+
+\textbf{What the first freeze measured, and the sentence in it that needs correcting.} It bisected the
+crossing of the float64 Gram statistic; the shipped \texttt{krum\_selection} runs in float32 and crosses at
+a slightly different $t$, so the converged bracket is tight around the wrong predicate. Measured on live
+stacks before any arm was run, that instrument's supremum share gap exceeds \texttt{SHARE\_TOL} in $13$ of
+$13$ flip rounds, up to $1.059{\times}10^{-4}$, and its realized gap exceeds it in $11$ of the $12$ rounds
+that carry an adversary; it also fails its own flip gate, the shipped selections differing across the pair
+in only $10$ of $13$. One sentence in that document needs correcting rather than defending: the
+$5.109{\times}10^{-7}$ it offered as an existence proof of a within-tolerance pair is the \emph{minimum}
+over those same $12$ rounds and the only one inside tolerance, and the supremum on that same round is
+$8.368{\times}10^{-5}$. The repair its own linearity argument implies, shrink the bracket and bisect the
+same float64 predicate to convergence, is measured too: it is share-neutral to $3.3{\times}10^{-16}$ and
+the shipped selections differ in $0$ of $13$, so it is perfectly neutral and informative on nothing.
+
+\textbf{The cost bound, and the cost.} The step cap of $40$ is a \emph{cost} bound, so exhausting it is a
+gate failure and never a relaxed tolerance. One shipped evaluation costs $66.0$ ms at
+$D = 1{,}117{,}354$, and the corrected bisection needs $2$ to $26$ shipped Krum evaluations per round. The
+realized cost, re-derived from the finished artifact rather than carried over as the arithmetic we froze,
+is $40$ runs in $8.7$ h, of which the search is $29{,}925$ shipped Krum evaluations, or $0.55$ h and $6\%$
+of the total; we had projected $0.95$ h of search on an $11.5$ h ladder from main
+§\ref{app:oracle_free}'s measured per-run cost, so this arm came in under its own estimate rather than
+over it.
+
+\textbf{How the supersession is enforced, and the four harness checks that ran before the ladder.} The
+first freeze, \texttt{experiments/\allowbreak pre\_registration\_\allowbreak oracle\_free\_\allowbreak
+decomposition.md} at commit \texttt{bed6562}, is left byte-untouched and superseded by
+\texttt{experiments/\allowbreak pre\_registration\_\allowbreak oracle\_free\_\allowbreak
+decomposition\_refined.md} at \texttt{947c000}, which cites it, records the failure with the numbers above,
+pins the premise artifact by md5, and corrects that sentence; the runner refuses to start unless the
+superseded document is present, last committed at its recorded hash, and clean, so the append-only claim is
+enforced mechanically rather than promised. Four harness checks ran before the ladder and their verdict
+dict is persisted into the artifact rather than left in a terminal. The one keyword this arm adds to shared
+code is bit-neutral on a frozen Mode~S cell at $\Delta=(0,0)$; the blend at $t{=}0$ reproduces main
+§\ref{app:oracle_free}'s identity arm at a shared seed, also at $\Delta=(0,0)$, \emph{and} reports that the
+hook was invoked $50$ times over $50$ rounds, which is the assertion that matters, because the standing
+failure mode in this codebase is a manipulation hook that is never called while the run passes silently;
+the Gram proposal equals the shipped selection at both endpoints on live stacks; and both gates pass on the
+ladder's own pair in all $12$ flip rounds that carry an adversary, re-measured live in the same process
+rather than read back from a file.
+
+% ---- Relocated from the main paper's appendix (Round 80). Both blocks were its most
+% self-contained: the audit is the artifact behind \S\ref{sec:related}'s one rate and one
+% withdrawal, and the randomization test is one pre-registered question nothing else rests on.
+% Nothing is deleted or rewritten in the move except the audit's \subsection promotion, which its
+% new position forces. Both keep their labels, so every pointer in the main paper resolves through
+% xr in the other direction -- and every one of those pointers is rewritten to say `the supplement',
+% because a bare App.~\ref would render as `App. S14' and read as a main-paper appendix.
+
+\section{The pre-registered composition audit: rubric, frame and the 59 coded papers}
+\label{app:audit}
+
+\noindent §\ref{sec:related} reports one rate out of this audit and withdraws one claim because of it. This subsection is the artifact behind both. The rubric is \texttt{experiments/\allowbreak pre\_registration\_literature\_audit.md}, the coder's records are one JSON file per paper under \texttt{results/\allowbreak literature\_audit/\allowbreak coding/}, and every count in this subsection is emitted by \texttt{experiments/\allowbreak analyze\_literature\_audit.py} into \texttt{results/\allowbreak literature\_audit/\allowbreak summary.json}. \textbf{The body of Tables~\ref{tab:audit_rows_a} and~\ref{tab:audit_rows_b} is a file that script writes}, \texttt{results/\allowbreak literature\_audit/\allowbreak table\_rows.tex}, so no code and no count in them is transcribed by hand.
+
+\textbf{Not all of the rubric predates the coding, and that is the first thing to report rather than the last.} Table~\ref{tab:audit_timeline} is the chronology. Pre-registered without qualification, and unchanged from the freeze to now: the primary quantity, the five criteria's text, the four ambiguity rules, the frame and its screening procedure, the ten-paper floor, and the three admissible outcomes. Amendment 1 re-pointed the retrieval endpoint before any paper had been retrieved, and changed no query string, no criterion and no threshold. Amendments 2 through 5 are adjudication rules for questions the frozen criteria underdetermine, and they were written with rows already in hand. \textbf{Exactly one of them moves a reported number.} Under Amendment 4a's mechanism-distinctness rule the primary is $6/59$; without it, $5/59$. The single row that turns on it is \texttt{2601.06466}, whose three-way threshold decision over a Mahalanobis score and a trajectory score is three components under 4a and one under the coarser reading, and both rates are reported everywhere either is.
+
+\textbf{The frame is a procedure, not a reading list.} Three routes in: every \texttt{references.bib} entry that proposes or evaluates an FL poisoning or backdoor defense; five frozen query strings issued against the arXiv search interface, paginated to exhaustion, over 2019--2026; and the complete title listings of USENIX Security, NDSS, IEEE S\&P and PMLR screened by the frozen regex \texttt{federated} AND (\texttt{backdoor} OR \texttt{poison} OR \texttt{byzantine} OR \texttt{robust}). A one-hop snowball through the defense-comparison tables of \citet{nguyen2022flame}, \citet{rieger2022deepsight} and \citet{fenaux2025hammer} closes it, and no second hop is taken. \textbf{Adding a query after seeing results is forbidden by the rubric and none was added.} The bias this realizes is stated in the same breath as the rate: coding requires quotable full text, so the frame is \emph{arXiv-reachable} FL poisoning-defense work, ACM CCS is a coverage gap rather than a sample because its proceedings pages return HTTP 403, \textbf{and CCS is not the only gap}: OpenReview is unscreened, so ICLR and NeurIPS proceedings enter only by the \texttt{references.bib} and snowball routes, as do IEEE venues other than S\&P on IEEE Xplore. A paper whose title carries none of the regex's tokens enters only by those same two routes. \textbf{We do not close these gaps by hand}: the rubric forbids adding a retrieval route after seeing results, and a hand-added paper would void the pre-registration it is supposed to be evidence under, so the gaps are named and left open.
+
+\textbf{The funnel.} $622$ records retrieved, $593$ after deduplication, all $593$ screened on title and abstract, $59$ full texts sought and $59$ obtained, $59$ included, $534$ excluded. Of the exclusions, $362$ are single-mechanism or non-pipeline on their own title and abstract, $71$ are a retrieval artifact in which a bibliography line was captured as a record, $38$ were adjudicated individually on other stated grounds, $24$ name two mechanism families with no joint application, $18$ are retrieval-stage losses with neither an abstract nor a resolvable identifier, $15$ are surveys, reviews or position papers, and $6$ are outside federated learning. Of the $593$ screening decisions, $495$ are mechanical and every one of those is an exclusion; the remaining $98$ were adjudicated by hand, the $59$ inclusions and $39$ further exclusions, because the mechanical rule can only exclude and \emph{no} paper enters the audit without a hand decision. Every exclusion carries its reason string in \texttt{results/\allowbreak literature\_audit/\allowbreak screening.json}, and the analyzer refuses to print any rate if one does not.
+
+\textbf{The criteria, and why the primary is a conjunction with a negated term.} C-a: two or more mechanisms applied jointly to the same round. C-b: the pairing is selected or motivated by the constituents' standalone effectiveness or their complementary threat coverage, and by nothing else. C-c: the composed system's own adversarial outcome, its ASR, backdoor accuracy or robust accuracy, is what validates it. C-d: an identifying contrast, meaning an experiment or derivation that varies the \emph{upstream} stage with the downstream mechanism and the attack held fixed. C-e: a mechanism-attribution claim is actually made. \textbf{The primary is C-a$\wedge$C-b$\wedge$C-c$\wedge$C-e$\wedge\neg$C-d}, and the C-e term is what stops it from measuring ``nobody runs the contrast we invented'', which would be near total and worth nothing. Any UNCLEAR criterion sends the paper's verdict to UNCLEAR, and UNCLEAR papers leave both the numerator and the denominator, so the measured prevalence can only be smaller than a guessing coder's. No row resolved to UNCLEAR.
+
+\textbf{The result, with the secondaries it must be read against.} Primary $6/59 = 10.2\%$, or $5/59$ without Amendment 4a. The outcome-gated \emph{design}, C-a$\wedge$C-b$\wedge$C-c, holds for $33/59 = 55.9\%$. An identifying contrast is \emph{present} in $46/59 = 78.0\%$, and among the $33$ design papers, $27$ run one. \textbf{So the six are papers that had the design and did not run the contrast, not papers for which it was unavailable}, and any sentence implying the contrast is rare in this literature is false against our own audit. The pre-registered secondary that would count against the sharp reading, a design paper making no attributional claim at all, is $0/33$; the one C-e $=$ NO row in the frame, \texttt{1909.05125}, has no design either, and a paper with neither is evidence in neither direction. The six are \texttt{2307.00356}, \texttt{2310.13403}, \texttt{2502.07011}, \texttt{2507.16134}, \texttt{2601.01053} and \texttt{2601.06466}.
+
+\textbf{What the $21$ C-a $=$ NO rows are made of, in three kinds.} First, Amendment 3's purpose test excises constituents whose own stated purpose is privacy, communication efficiency or server verifiability rather than resisting corrupted updates, which is what leaves \texttt{2607.06612} and \texttt{2609.03420} with exactly one defense-purposed mechanism per round. Second, several papers decompose a \emph{single} mechanism into stages that exist to serve it: \texttt{2505.17226}'s median filter repairs an estimate the Krum-derived rule needs, and \texttt{2311.15894}'s four steps are four steps of one rule. Third, \texttt{2302.07173} evaluates its schemes as alternatives to one another, which C-a's own exclusion list names as a menu rather than a composition. The per-row basis is in each record's C-a locator, and the reader who disagrees with a call can see the sentence it rests on.
+
+\textbf{C-b fails on five of the $38$ C-a $=$ YES rows, for four distinct reasons, and the reasons matter more than the count.} \texttt{2508.12978} composes for \emph{guarantee preservation}, proving that adding its compression does not destroy what the aggregator already provides, which is a reason about the composition rather than about the constituents' effectiveness. \texttt{2601.04930} and \texttt{2602.22269} give a real constituent-property reason of the residual-coverage kind, but the surface being closed is one an Amendment-3-excluded constituent creates, so the pairing reason does not connect two counted mechanisms. \texttt{2503.18284} names the deficiencies of \emph{prior} schemes as motivation for its framework and states the integration of its own two stages as a fact and an optimization convenience. \texttt{1909.05125}'s only stated reason is computational and communication efficiency. \textbf{We record these rather than fold them in}: three of the four are pairing reasons of kinds the rubric could plausibly have admitted, and it does not, so C-b is stricter than it might have been in a direction that shrinks the primary.
+
+\textbf{The C-d route field stratifies the $46$ contrasts and decides nothing.} Of them, $21$ are hyperparameter sweeps of an upstream defense parameter with an adversarial outcome read at each setting, $21$ are component contrasts in which an upstream stage is removed, substituted or cumulatively built up, and $4$ are analytic. Precedence when a row satisfies more than one is sweep, then contrast, then analytic, fixed in advance of the backward pass rather than deferred to which finding a paper calls central. \textbf{Amendment 5's backward pass was run across all $46$ rows and relabelled four}, \texttt{2409.01435}, \texttt{2502.00587}, \texttt{2505.10297} and \texttt{2604.03862}, moving the stratification from $25/17/4$ to $21/21/4$; no rate moved, because the field enters none. \textbf{It is a floor and not a census}, since it records only routes a record actually quotes. LASA is the proof: its appendix sweep of the upstream sparsification level, with accuracy under three attacks at every rung and the downstream filter fixed, was in the paper and merely pointed at in the record until the backward pass quoted it.
+
+\textbf{One contrast in the frame is confounded by its own design, and it is coded YES anyway.} \texttt{2609.03420} varies its upstream privacy budget as a graded dose with the downstream median and the attacks fixed, and states the reason: ``This selection isolates privacy-fairness interactions from aggregation-induced variance.'' But the client learning rate is a declared function of that budget, so two things move together along the ladder, and the paper demonstrates that this matters by reporting collapse rather than a graded decline under a static rate. The rubric's fourth ambiguity rule gives C-d the benefit of the doubt, and the code follows the rule rather than our preference: a rule that resolves toward finding the contrast present is a rule that shrinks our own primary.
+
+\textbf{Quotation integrity, and the substitutions this table cannot avoid.} Every quotation in every record is asserted verbatim against the paper's own extracted full text by \texttt{experiments/\allowbreak verify\_quotes\_literature\_audit.py}, which exits non-zero on any failure: $59$ records, $295$ quotations, $334$ spans, all verbatim, with four spans under $40$ characters and two pairs out of source order reported rather than failed, the locator saying in each case that the spans are not one passage. \textbf{The first run of that check over the whole set failed $28$ quotations in $15$ records, and the repair log is committed} at \texttt{results/\allowbreak literature\_audit/\allowbreak quote\_repair\_log.md} with the pre-repair records beside it. \textbf{No code changed in any repair}, and two repairs produced \emph{stronger} evidence for the code already recorded, which is the uncomfortable part: the defective quotations were faithful paraphrases, so a reader checking the argument would not have caught them and only the machine check did. One consequence lands in this subsection. Verbatim spans contain a true minus, an en dash inside a citation range, typographic apostrophes, \texttt{ff} and \texttt{fi} ligatures, Greek and math-italic letters and a set-membership sign, none of which this paper's source may carry, so quoted spans are rendered with a LaTeX equivalent, for instance \texttt{CSFT's} for the typographic apostrophe and $\delta$ for math-italic delta. \textbf{The JSON records, not this section, are the authority for what each paper says.}
+
+\textbf{Extraction hazards, named because they are what a re-adjudication will hit first.} \texttt{pdftotext} interleaves the columns of a two-column layout, which spliced a word from the adjacent column into a sentence in \texttt{2503.18284} and produced adjacent-but-unrelated spans in \texttt{2602.16480} and \texttt{2607.06612}; three papers, \texttt{2606.31066}, \texttt{2608.08574} and \texttt{2608.21172}, emit table bodies in column-major order, so a number's row label is not the label above it in the stream; and displayed fractions and page numbers appear mid-sentence. Every affected locator says so. Separately, \texttt{2609.03064} carries a journal line dated 2024 against a 2609 arXiv identifier; we code it under the arXiv year and record the inconsistency rather than choose silently.
+
+\textbf{What this audit does not establish, recorded before the numbers existed and unchanged by them.} It is one coder with no inter-rater statistic, and the mitigation is the quotation rather than a claim of reliability. Four rows were known to us before the freeze and are marked in the tables: coding them is not blind. The rate is about this frame, which is arXiv-reachable, preprint-heavy and 2026-heavy, and it is not an estimate of ``the FL literature''. And the rate carries no claim that the six papers' conclusions are wrong: the audit measures whether an evaluation design can identify the mechanism it attributes to, which is a question about what the evidence licenses and not about whether the defense works.
+
+\begin{table}[t]
+\centering
+\caption{What was frozen when. The rubric is part pre-registration and part post-hoc adjudication record, and this is the only honest way to report that. Rows in hand is the number of papers already coded at the moment the text was written.}
+\label{tab:audit_timeline}
+\footnotesize
+\begin{tabular}{lll}
+\toprule
+what & state & coded rows in hand \\
+\midrule
+Base rubric: five criteria, four ambiguity rules, the floor & committed \texttt{9b8a395} & $0$ \\
+Amendment 1: retrieval endpoint re-pointed & committed \texttt{3c61301} & $0$ \\
+Amendment 2: blind-coding disclosure widened by one paper & written during coding & $5$ \\
+Amendment 3: purpose test for what counts as a defense & written during coding & $5$ \\
+Amendment 4: distinctness, distributive test, ordering & written after coding & $59$ \\
+Amendment 5: \texttt{c\_d\_route} routes and precedence & written after coding & $59$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[p]
+\centering
+\caption{The pre-registered composition audit, rows 1--30 of 59, ordered by arXiv identifier. \checkmark\ is YES and $\times$ is NO; the C-d route cell carries an absent-value dash exactly when C-d is NO, since a paper that runs no contrast has no route. \emph{primary} is the outcome-gated verdict C-a$\wedge$C-b$\wedge$C-c$\wedge$C-e$\wedge\neg$C-d. Every cell is emitted by \texttt{experiments/\allowbreak analyze\_literature\_audit.py} from the per-paper records, and each YES or NO in those records carries a machine-checked verbatim quotation and a locator. \emph{short name} is that script's handle, an acronym where the paper has one and otherwise the head of the title before any colon, kept whole up to $24$ characters and cut at $21$ with an ellipsis beyond that, which is why four rows here read as a stem: \texttt{2207.01982} is ``Defending against the Label-flipping Attack in Federated Learning'', \texttt{2302.07173} is ``An Experimental Study of Byzantine-Robust Aggregation Schemes in Federated Learning'', \texttt{2409.17754} is ``Byzantine-Robust Aggregation for Securing Decentralized Federated Learning'' and \texttt{2409.19302} is ``Leveraging MTD to Mitigate Poisoning Attacks in Decentralized FL with Non-IID Data''. We extend them here rather than in the table, whose body is machine-written; every full title is in \texttt{results/\allowbreak literature\_audit/\allowbreak screen\_pool.json} under the identifier in the first column.}
+\label{tab:audit_rows_a}
+\footnotesize
+\begin{tabular}{llcccccclc}
+\toprule
+arXiv id & short name & yr & C-a & C-b & C-c & C-d & C-e & C-d route & primary \\
+\midrule
+\texttt{1909.05125} & Adaptive FedAvg & 2019 & \checkmark & $\times$ & \checkmark & $\times$ & $\times$ & --- & no \\
+\texttt{2012.13995}$^{\dagger}$ & FLTrust & 2021 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2101.02281}$^{\dagger}$ & FLAME & 2022 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2104.06685} & BROADCAST & 2021 & $\times$ & $\times$ & \checkmark & \checkmark & \checkmark & analytic & no \\
+\texttt{2110.02940} & SHARE & 2021 & $\times$ & $\times$ & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2201.00763}$^{\dagger}$ & DeepSight & 2022 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2206.12100} & zPROBE & 2022 & $\times$ & $\times$ & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2207.01982} & Defending against the\ldots & 2022 & $\times$ & $\times$ & \checkmark & $\times$ & \checkmark & --- & no \\
+\texttt{2208.10161} & MUDGUARD & 2022 & $\times$ & $\times$ & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2210.01437} & Robust-FL & 2022 & $\times$ & $\times$ & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2210.07714} & CrowdGuard & 2024 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2302.07173} & An Experimental Study\ldots & 2023 & $\times$ & $\times$ & $\times$ & $\times$ & \checkmark & --- & no \\
+\texttt{2306.04984} & G$^2$uardFL & 2023 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2306.12608} & DP-BREM & 2023 & $\times$ & $\times$ & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2307.00356} & Fedward & 2023 & \checkmark & \checkmark & \checkmark & $\times$ & \checkmark & --- & yes \\
+\texttt{2309.10607} & SPFL & 2023 & $\times$ & $\times$ & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2310.13403} & BRFL & 2023 & \checkmark & \checkmark & \checkmark & $\times$ & \checkmark & --- & yes \\
+\texttt{2311.15894} & refined-Krum & 2023 & $\times$ & $\times$ & \checkmark & $\times$ & \checkmark & --- & no \\
+\texttt{2402.04409} & FRECA & 2024 & $\times$ & $\times$ & \checkmark & $\times$ & \checkmark & --- & no \\
+\texttt{2404.04139} & FedZZ & 2024 & $\times$ & $\times$ & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2409.01435} & LASA & 2024 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2409.17754} & Byzantine-Robust Aggr\ldots & 2024 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2409.19302} & Leveraging MTD to Mit\ldots & 2024 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2411.01040} & MASA & 2024 & $\times$ & $\times$ & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2502.00587} & RKD & 2025 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2502.05547} & DDFed & 2025 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2502.07011} & DROP & 2025 & \checkmark & \checkmark & \checkmark & $\times$ & \checkmark & --- & yes \\
+\texttt{2503.18284} & FedSAC & 2025 & \checkmark & $\times$ & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2505.01454} & SafeSparse & 2025 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2505.10297} & FeRA & 2025 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & sweep & no \\
+\midrule
+\multicolumn{10}{l}{\footnotesize $\dagger$ known to us before the rubric was frozen; coding is not blind.} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[p]
+\centering
+\caption{The pre-registered composition audit, rows 31--59 of 59. Columns and conventions as in Table~\ref{tab:audit_rows_a}. Rows are identified by arXiv identifier and short name rather than by citation: citing all 59 would add 55 entries to the bibliography, most of them preprints no resolver carries, and the identifier is what a re-adjudication needs.}
+\label{tab:audit_rows_b}
+\footnotesize
+\begin{tabular}{llcccccclc}
+\toprule
+arXiv id & short name & yr & C-a & C-b & C-c & C-d & C-e & C-d route & primary \\
+\midrule
+\texttt{2505.12851} & FLTG & 2025 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2505.17226} & ArKrum & 2025 & $\times$ & $\times$ & \checkmark & $\times$ & \checkmark & --- & no \\
+\texttt{2507.14588} & FORTA & 2025 & $\times$ & $\times$ & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2507.16134} & DP2Guard & 2025 & \checkmark & \checkmark & \checkmark & $\times$ & \checkmark & --- & yes \\
+\texttt{2508.10315} & CLIP-Fed & 2025 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2508.12978} & Fed-DPRoC & 2025 & \checkmark & $\times$ & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2509.08089}$^{\dagger}$ & Hammer and Anvil & 2025 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2509.08449} & DSFL & 2025 & $\times$ & $\times$ & \checkmark & $\times$ & \checkmark & --- & no \\
+\texttt{2509.18044} & HRA & 2025 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2511.09294} & GuardFed & 2025 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2512.11760} & SpectralKrum & 2025 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2601.01053} & PQ-BRFL & 2026 & \checkmark & \checkmark & \checkmark & $\times$ & \checkmark & --- & yes \\
+\texttt{2601.04930} & PPFA-BA & 2026 & \checkmark & $\times$ & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2601.06466} & SecureDyn-FL & 2026 & \checkmark & \checkmark & \checkmark & $\times$ & \checkmark & --- & yes \\
+\texttt{2602.16480} & SRFed & 2026 & $\times$ & $\times$ & \checkmark & \checkmark & \checkmark & analytic & no \\
+\texttt{2602.22269} & CQSA & 2026 & \checkmark & $\times$ & $\times$ & \checkmark & \checkmark & analytic & no \\
+\texttt{2603.04422} & FedEMA-Distill & 2026 & $\times$ & $\times$ & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2603.23472} & Byz-Clip21-SGD2M & 2026 & $\times$ & $\times$ & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2603.28652} & FedBBA & 2026 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2604.03862} & SecureAFL & 2026 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2605.11122} & FedSurrogate & 2026 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2605.22506} & EnCAgg & 2026 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2606.31066} & Secure-CHG & 2026 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2607.06612} & PRoVeFL & 2026 & $\times$ & $\times$ & \checkmark & \checkmark & \checkmark & analytic & no \\
+\texttt{2608.08574} & R2CFL & 2026 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2608.14861} & STAR-FL & 2026 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2608.21172} & Thermo-FL / TERRA & 2026 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & contrast & no \\
+\texttt{2609.03064} & DP-BR-FedAvg & 2026 & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & sweep & no \\
+\texttt{2609.03420} & GeoIndist-FL-NIDS & 2026 & $\times$ & $\times$ & \checkmark & \checkmark & \checkmark & sweep & no \\
+\midrule
+\multicolumn{10}{l}{\footnotesize $\dagger$ known to us before the rubric was frozen; coding is not blind.} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Is randomization itself costly? A compute-matched, pre-registered test}
+\label{app:randomization}
+
+% Round 79 anonymity pass: this paragraph's last clause read "the claim we were asked to substantiate",
+% which names the review process. The pre-specified direction still has its reason -- it matches the claim
+% the withdrawn comparison made, which is the first half of the same sentence and is untouched.
+\textbf{What this is, and what it is not.} This is a new experiment, pre-registered in
+\texttt{experiments/}\allowbreak\texttt{pre\_registration\_randomized\_composition.md} and committed at
+\texttt{e3fb038} before the first run. It is \emph{not} a reinstatement of the randomized-menu comparison
+§\ref{sec:related} withdraws: that artifact stays withdrawn, because it is unpaired and
+compute-confounded, and nothing below is scored against it. The question here is narrower and answerable:
+holding defense computation fixed, does randomizing \emph{which} composition is applied each round cost
+suppression relative to committing to the best member of the same set? The direction was fixed in advance
+as $H_1: \bar{\Delta} > 0$, randomization \emph{hurts}, because that is the claim the withdrawn
+comparison made and the claim this test is built to substantiate.
+
+\textbf{Three defects in the predecessor, and what each fix costs.} (a) \emph{The arms were not
+seed-matched.} The old runner tested \texttt{randomize\_order and rng.random() < 0.5}, which
+short-circuits, so the fixed arm never drew that number and the randomized arm consumed one extra draw
+per round from the same generator that selects participants. The arms therefore ran on divergent
+participant streams and no paired test was licensed. Fixed with a separate \texttt{policy\_rng}, leaving
+\texttt{rng} for participants only, which is why every arm here was re-run rather than partly reused.
+(b) \emph{A defense-count confound.} Every \texttt{CM}$\to$\texttt{FG} round reduces to FoolsGold alone,
+so the old gap conflated randomization with dropping a stage. Every member of every randomized set here
+keeps FoolsGold as a genuine per-client upstream, so no round degenerates. (c) \emph{A mixed-$n$ trap.}
+Every leg of every contrast below is recomputed per seed from
+\texttt{results/}\allowbreak\texttt{randomized\_composition/}\allowbreak\texttt{summary.json} at seeds
+42--46; the analyzer prints both legs' $n$ on every row and marks any mismatch.
+
+\begin{center}\small
+\begin{tabular}{llcccc}
+\toprule
+arm & condition & def./rd & scaling ASR & pixel ASR & acc.\ (sc./px.) \\
+\midrule
+1 & \texttt{fixed\_fg\_cm} & 2 & $0.1068 \pm 0.0306$ & $0.0988 \pm 0.0201$ & $0.682/0.664$ \\
+1 & \texttt{fixed\_fg\_rfa} & 2 & $0.0510 \pm 0.0096$ & $0.0452 \pm 0.0118$ & $0.499/0.495$ \\
+1 & \texttt{fixed\_fg\_tm} & 2 & $0.3843 \pm 0.2594$ & $0.2495 \pm 0.1026$ & $0.694/0.705$ \\
+2 & \texttt{rand\_comp\_strong} & 2 & $\mathbf{0.1522 \pm 0.1091}$ & $\mathbf{0.1115 \pm 0.0440}$ & $0.607/0.598$ \\
+2 & \texttt{rand\_comp\_all3} & 2 & $0.2317 \pm 0.2780$ & $0.0879 \pm 0.0301$ & $0.623/0.635$ \\
+3$^{\dagger}$ & \texttt{temporal\_mix} & 1 & $0.5712 \pm 0.3737$ & $0.6600 \pm 0.1543$ & $\mathbf{0.307}/0.765$ \\
+4$^{\dagger}$ & \texttt{pure\_coord\_median} & 1 & $0.5186 \pm 0.1413$ & $0.4425 \pm 0.1290$ & $0.764/0.767$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent All seven conditions, $n=5$ seeds 42--46, population sd. $^{\dagger}$\,\textbf{Compute matching
+is claimed for arms 1--2 only}: arms 3 and 4 apply one defense per round and use roughly half the defense
+computation, so they are reference points and not comparators. Arm 2's primary set is the \emph{smaller}
+one, $\{$FG$\to$CM, FG$\to$RFA$\}$, whose members each suppress both committed attacks alone; FG$\to$TM
+is a criterion-FAIL pair whose canonical scaling arm is $0.508 \pm 0.269$, above threshold, so a set
+containing it could degrade merely because a non-suppressing member was drawn. That $0.508$ is the frozen
+$n{=}3$ reading (seeds 42--44) and is \emph{not} the table's $0.3843$, which is the same arm at $n{=}5$;
+the two agree exactly on the three shared seeds by control 3, and the difference is seeds 45--46 alone. Both sets were fixed by
+rule in the pre-registration, not by any outcome measured here.
+
+\textbf{Four positive controls, because this project has twice shipped a hook that silently never
+fired.} (1) \emph{The hook fired}: every member of every randomized set appears in the stored per-round
+policy log across all 15 streams. (2) \emph{The arms differ}: neither randomized arm is bit-identical to
+any fixed arm at any seed, the closest approach being max per-seed $|d| = 0.2207$
+(\texttt{rand\_comp\_strong}/scaling against \texttt{fixed\_fg\_cm}) and $0.0489$
+(\texttt{rand\_comp\_all3}/pixel). (3) \emph{The harness did not change the run}: all eight per-seed
+identity checks of the fixed arms against the canonical artifacts return $\max|d| = 0.000\mathrm{e}{+}00$
+on their shared seeds, against \texttt{all\_compositions} (seeds 42--44) and \texttt{fg\_cm\_survivor}'s
+\texttt{composed} (42--46). (4) \emph{The end-to-end path reproduces a published standalone}:
+\texttt{pure\_coord\_median} returns $0.5186$ and $0.4425$ against
+\texttt{wave2\_held\_out}'s \texttt{fedavg\_then\_coord\_median} at
+$\max|d| = 0.000\mathrm{e}{+}00$, the same $n=5$ seeds. Controls 3 and 4 are what license comparing any
+arm here to a number already in print.
+
+\textbf{Control 1 fails as literally pre-registered, and we report it rather than restate it.} The
+frozen assertion was a per-stream two-sided $99\%$ binomial interval with no family-wise correction. Three
+of the 15 streams carry an excursion (four member-level flags):
+\texttt{rand\_comp\_strong} seed 46 draws $36/14$ against $[16,34]$ (tail $P=0.00130$), and
+\texttt{rand\_comp\_all3} draws $26$ at seed 45 and $27$ at seed 46 against $[8,25]$
+($P=0.00492$, $P=0.00208$). Family-wise, $P(\text{at least one excursion}) = 1 - 0.99^{15} = 0.140$, so
+excursions at this rate are expected. We do not treat this as invalidating, and say why: the failure mode
+the control targets is a \emph{dead} hook, which yields a member with count $0$ or a $50/0$ log, and every
+stream here draws every member. The pre-registered assertion is nonetheless the stricter one and it did
+not hold on all streams; that is the honest statement. One further correction of the pre-registration's
+own arithmetic: it wrote \texttt{rand\_comp\_all3}'s interval as approximately $8$--$26$, the exact
+interval is $[8,25]$, and the exact one is used above.
+
+\textbf{The primary contrast, paired per seed.} \texttt{rand\_comp\_strong} against the best member of
+its own set, where ``best'' is fixed by rule as the lower full-artifact mean on that same attack, which
+selects \texttt{fixed\_fg\_rfa} on both. On \emph{model scaling} the per-seed gaps are $+0.0352$,
+$+0.2899$, $+0.1564$, $+0.0102$, $+0.0143$, giving $\bar{\Delta} = +0.1012$, $5/5$ concordant signs,
+one-sided Wilcoxon $p=0.0312$ and paired $t=1.866$ ($p=0.0677$). On the \emph{pixel} backdoor they are
+$+0.0816$, $+0.0428$, $+0.1581$, $+0.0133$, $+0.0356$, giving $\bar{\Delta} = +0.0663$, $5/5$ signs,
+Wilcoxon $p=0.0312$ and $t=2.603$ ($p=0.0299$). At $n=5$ the minimum attainable Wilcoxon $p$ is
+$1/32=0.031$, stated in advance, so only $5/5$ signs can reach $p<0.05$. Post hoc: the randomized arm
+exceeds \emph{both} members, not just the better one, in $3$ of $5$ seeds on each attack, so the gap is
+not interpolation between the two fixed arms. The secondary contrast, \texttt{rand\_comp\_all3} against
+the best of all three arm-1 conditions, runs the same way: $\bar{\Delta} = +0.1806$ with $4/5$ signs on
+scaling ($p=0.0625$) and $+0.0427$ with $4/5$ on pixel ($p=0.0625$).
+
+\textbf{The pre-registered outcome: all three admissible outcomes obtained, on three different
+objects.} Materiality required \emph{both} $\bar{\Delta} \geq 0.10$ and at least $4/5$ positive signs.
+\emph{(i) Material, in the pre-registered direction, on model scaling}: $\bar{\Delta}=+0.1012$ with $5/5$
+signs, so we state, scoped to this menu and this attack, that randomizing over non-degenerate
+compositions costs suppression at matched defense computation. \emph{(ii) Not material on the pixel
+backdoor}: $\bar{\Delta}=+0.0663$ clears the sign leg but not the magnitude leg, and the honest phrasing
+at $n=5$ is that no material difference was detected and the smallest effect this design resolves is
+$\approx 0.10$. \emph{(iii) The accuracy floor is breached by one arm}: \texttt{temporal\_mix} under model
+scaling means $0.307$ clean accuracy against a frozen floor of $0.35$, so that cell is reported as
+uninterpretable for ASR rather than compared, and every contrast involving it inherits the exclusion.
+This is why arm 3 is a reference point in the table and carries no verdict.
+
+\textbf{Three caveats, and what survives them.} First, $\bar{\Delta}$ clears the $0.10$ threshold by
+$0.0012$ and is carried by two of five seeds ($+0.2899$ and $+0.1564$); on the three others the gap is
+$\leq 0.036$. A threshold met by $1.2\%$ of itself is met, and it is also the weakest way a threshold can
+be met, so we do not describe the scaling result as large. Second, the two tests disagree in opposite
+directions across the two attacks: Wilcoxon reaches $p=0.0312$ on both while the $t$-test reaches
+$p=0.0299$ on pixel, where materiality \emph{fails}, and only $p=0.0677$ on scaling, where it holds. The
+stable part of the result is the sign structure, $10/10$ across both attacks, and not either magnitude.
+Third, control 1 fails as literally pre-registered, as recorded above. What survives all three is the
+weakest claim consistent with them and the one the design was built to license: at matched defense
+computation and with the degeneracy confound removed, randomizing over a set of compositions did not
+\emph{help} on either attack and was consistently worse on both, materially so on one. Nothing here
+licenses a claim about randomized menus in general, about randomized \emph{internals} such as noise or
+subsampling (L3), or about any menu but this one.
+
+\textbf{And the attack is committed in both arms, which is the scope condition that bites hardest on what
+this test can be read as answering.} Randomization's theoretical case is against an adversary that
+\emph{adapts} to the composition: a menu the adversary cannot predict is a menu it cannot optimize against.
+Both attacks here are fixed in advance, identical in every arm, and blind to the draw. So this arm bounds
+the \emph{cost} of randomizing under a committed threat and measures none of the benefit randomization is
+proposed for, and a favourable outcome would not have shown that benefit either. No adaptive-adversary test
+of a randomized menu is run here or anywhere else in this paper: the criterion-aware adversary of
+§\ref{sec:fg_rfa_flagship} adapts to a composition that is \emph{fixed} and known to it, which is the
+opposite of the setting randomization is meant to deny an adversary, and building an adversary that adapts
+to a distribution over menus is a separate experiment we do not run.
+
+
+% ---- Relocated from the main paper's appendix (Round 80), the second of two moves. App. L, M
+% and N were the main paper's last three appendix sections and its three most self-contained:
+% L is the equivalence-testing arithmetic behind a margin the body states in full, and M and N
+% are per-seed construction and replication detail the body's claims cite but do not rest on.
+% Nothing is deleted or rewritten in the move: all three were already top-level sections, so no
+% promotion was needed and every label crosses unchanged, which is what lets every pointer in the
+% main paper resolve through xr in the other direction. Those pointers are rewritten to name the
+% supplement, and the four pointers in THIS document that used to say `Main~\S' are rewritten to
+% be internal, because their targets are now here.
+
+\section{Equivalence testing at the existing seed counts: where the frozen margin passes and where it only appears to}
+\label{app:tost}
+
+\textbf{Why this is here and what it is not.} The pre-registered rule scores a \emph{point} estimate
+against a margin: $|\mathrm{mean}\,\mathrm{ASR}(\kappa{=}2) - \mathrm{mean}\,\mathrm{ASR}(\kappa{=}0)| <
+0.15$ and every rung $< 0.5$. A point estimate inside a margin is consistent with a negligible effect
+\emph{and} with an effect the sample cannot locate, and those are different claims. Table~\ref{tab:tost}
+scores the same frozen margin as a two-one-sided-$t$ (TOST) equivalence test on the \emph{paired}
+per-seed differences, declaring equivalence only when the $90\%$ interval lies inside $(-0.15,+0.15)$.
+It is \textbf{post-hoc}, reads only frozen artifacts, \textbf{adds no runs and revises no published
+verdict}; the emitter is \texttt{experiments/analyze\_tost\_existing.py}. Pairing is not a modelling
+choice: every rung of an arm runs at the same seeds, so each difference holds one data partition fixed
+and the seed-to-seed spread that dominates this suite drops out of the contrast.
+
+\paragraph{Which leg is a test: on most of these arms ASR's own floor satisfies the lower one before
+any run.}
+\label{par:reach}
+Equivalence at a symmetric margin is two claims at once, that the effect does not rise past $+0.15$ and
+that it does not fall past $-0.15$, and on most of these arms the second one cannot fail. ASR is bounded
+below by $0$, so for \emph{any} dosed outcome whatsoever, a perfect defense included, the paired mean
+obeys $\mathrm{mean}_i(\Delta_i) \ge -\,\mathrm{mean}_i \mathrm{ASR}^{\mathrm{id}}_i$: the largest fall
+arithmetically available on a cell is its identity rung's own mean ASR. \textbf{Where that mean is below
+the margin, the lower leg is satisfied before a single run happens.} It is not a test, and the honest
+form of the claim is a pre-registered \emph{non-increase} reported with its $95\%$ upper bound. Where the
+identity mean exceeds the margin both legs are tests, the two-sided reading is earned, and those arms
+keep it. Table~\ref{tab:reach} scores every arm of Table~\ref{tab:tost} on this, and §\ref{app:targeted_full}
+already states the same arithmetic for one arm's ladder branch, in the same words (\emph{arithmetically
+unreachable}, at an identity rung of $0.062$); what is added here is that it holds on nearly every arm
+this paper reads an equivalence off, which we had not said. \textbf{The one Mode~S arm on which the
+lower leg \emph{is} a test reports a fall that leaves the margin} (§\ref{app:pixel_headroom}, identity
+mean $0.3232$, $\Delta = -0.286$): the two-sided reading fails there in the direction of more
+suppression while the one-sided bound on a rise holds at $-0.087$, which is why the distinction drawn
+here is substantive rather than a change of wording.
+
+\noindent \textbf{Which leg sets the published $p$, and the answer is the wrong one.} TOST reports
+$\max(p_{\mathrm{lower}},p_{\mathrm{upper}})$, so exactly one leg sets the number each row prints, and on
+$5$ of the $6$ arms this table marks equivalent that maximum is attained by the leg ASR's floor has
+already settled. The flagship's printed $p{=}0.0014$ is its \emph{lower} leg's; the $p$ for the claim
+actually being made, that suppression does not meaningfully \emph{rise}, is $0.0004$. The same holds for
+the score-only control ($0.0071$ printed, $0.0024$ one-sided), the EMNIST-byclass row ($0.0004$,
+$0.0003$) and ResNet18 ($0.0404$, $0.0143$). \textbf{So the relabelling reports a stronger number than
+the one already published on each of those arms, not a weaker one}, and no published $p$ is revised
+anywhere: $p_{\mathrm{tost}}$ stays exactly as printed and the upper-leg $p$ is reported beside it as the
+separate quantity it is. The one equivalent arm whose $p$ is set by the leg that \emph{is} a test is the
+CIFAR-100 row, at an identity mean of $0.703$.
+
+\noindent \textbf{Beyond this table, and the count that may be quoted.} Three further arms carry an
+equivalence reading and are scored by the same emitter. The body's $n{=}20$ top-up of row~1 has identity
+mean $0.044$ and upper bound $+0.012$; Mode~M, the coordinate-masking class of §\ref{app:factorial}, has
+$0.053$ and $+0.019$; the $200$-round ResNet18 replication has $0.045$ and $+0.138$. All three have an
+arithmetic lower leg. Counted over \emph{distinct arms} rather than rows, because the flagship and its
+EMNIST replication are each scored in more than one place at more than one seed block, the paper makes
+equivalence readings about $5$ arms and \textbf{$4$ of the $5$ have an arithmetically satisfied lower
+leg}. The fifth, \texttt{coord\_median} / scaling under the outcome-gated design (identity mean $0.557$,
+$95\%$ CI $[+0.023,+0.102]$, $n{=}20$), keeps a genuinely two-sided reading and is reported as one;
+after its seed top-up that interval is inside the margin \emph{and} excludes zero, which separates the
+margin reading from a reading of no effect on this arm. So
+\emph{every} equivalence claim is not the right quantifier and is not used. \textbf{The frozen
+point-estimate rule has the same arithmetic on its lower side}: $\Delta > -0.15$ is free whenever the
+identity mean is below $0.15$, so a sentence reading $|\Delta| < 0.15$ off one of these arms inherits the
+same one-sidedness. \textbf{Nothing here re-margins, re-tests or withdraws a published interval}; the
+emitter is \texttt{experiments/\allowbreak measure\_\allowbreak margin\_\allowbreak reachability.py},
+which reads frozen artifacts only, recomputes every interval with the estimator its own table used, and
+asserts each one equal to the published value before it reports anything about that arm's legs
+(\texttt{results/\allowbreak margin\_\allowbreak reachability.json}).
+\textbf{The fifth arm's $n{=}20$ figures above are the one exception to that provenance, and not to the
+claim}: that artifact predates this arm's top-up and still carries its identity mean at $0.519$ on
+$n{=}5$, so the $0.557$ and the interval quoted beside it are read from
+\texttt{results/\allowbreak coordmedian\_\allowbreak scaling\_\allowbreak topup/\allowbreak summary.json}
+instead, and no frozen value is rewritten to agree with them.
+
+\begin{table}[t]
+\centering\small\setlength{\tabcolsep}{4pt}
+\caption{\textbf{Is the lower TOST leg a test?} For each arm of Table~\ref{tab:tost}: the identity
+rung's mean ASR, which is the largest fall arithmetically available because ASR cannot go below $0$;
+whether that exceeds the frozen $0.15$ and so makes the lower leg a test; the $95\%$ upper bound, which
+is what the one-sided reading is reported with; and the two legs' own $p$ values, whose \emph{maximum} is
+the $p$ Table~\ref{tab:tost} prints. \textbf{A ``no'' in the third column is not a criticism of the
+arm's result; it says that one of the two claims the margin makes was never at risk on that cell}, and
+the row's verdict is therefore reported as a non-increase with its upper bound. Read-only over frozen
+artifacts, no runs added, no published interval or verdict revised. Emitted by
+\texttt{experiments/\allowbreak measure\_\allowbreak margin\_\allowbreak reachability.py}.}
+\label{tab:reach}
+\begin{tabular}{@{}lrrcrrr@{}}
+\toprule
+Arm & $n$ & identity mean & lower leg a test? & $95\%$ upper & $p_{\mathrm{lower}}$ & $p_{\mathrm{upper}}$ \\
+\midrule
+Krum / scaling (flagship) & $5$ & $0.062$ & no & $+0.026$ & $0.0014$ & $0.0004$ \\
+Krum / scaling (score-only) & $5$ & $0.062$ & no & $+0.061$ & $0.0071$ & $0.0024$ \\
+Krum / scaling (EMNIST-byclass) & $3$ & $0.027$ & no & $-0.001$ & $0.0004$ & $0.0003$ \\
+\quad the same arm, pooled & $5$ & $0.024$ & no & $+0.009$ & $0.0000$ & $0.0000$ \\
+% Rows are in Table~\ref{tab:tost}'s presentation order, which groups the replication rows under
+% their parent arm; the emitter prints ARMS order. Every number in every row is the emitted one.
+Krum / scaling (ResNet18) & $3$ & $0.071$ & no & $+0.101$ & $0.0404$ & $0.0143$ \\
+Reputation / scaling & $5$ & $0.017$ & no & $+0.469$ & $0.0175$ & $0.6002$ \\
+\texttt{cos\_krum} / pixel & $8$ & $0.584$ & \textbf{yes} & $-0.118$ & $0.9639$ & $0.0015$ \\
+\texttt{coord\_median} / pixel & $5$ & $0.443$ & \textbf{yes} & $+0.178$ & $0.0005$ & $0.0734$ \\
+\texttt{coord\_median} / pixel (CIFAR-100) & $5$ & $0.703$ & \textbf{yes} & $+0.110$ & $0.0001$ & $0.0025$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{What it shows, including against us.} \textbf{The flagship passes}, and passes at $n{=}5$:
+$p{=}0.0014$, the pairing holding $\mathrm{sd}$ to $0.042$, so \emph{the equivalence claim on the
+adjudicating arm does not depend on a larger seed count}. On this arm that $p$ is set by the margin's
+\emph{lower} leg, which ASR's own floor satisfies before any run: the one-sided $p$ for the claim actually
+made, that suppression does not weaken, is the smaller $0.0004$. Table~\ref{tab:reach} prints both legs for
+every row of this table and revises no published $p$. So do the score-only control ($p{=}0.0071$)
+and the EMNIST-byclass replication ($p{=}0.0004$, $n{=}3$, $\mathrm{sd}{=}0.007$, and $p<0.0001$ at
+the pooled $n{=}5$ of §\ref{app:targeted_full}, where the interval widens across zero but stays well
+inside the margin). \textbf{The ResNet18 replication passes as well, and it is the closest call in the
+table}: $p{=}0.040$ at $n{=}3$ on two endpoint rungs, its $90\%$ interval reaching $-0.137$ against the
+$-0.15$ boundary. \textbf{Its $95\%$ interval, $[-0.183,+0.101]$, is wider than the margin}, so that arm's
+equivalence is established at the frozen $\pm0.15$ and at no margin below $0.137$; §\ref{app:resnet18_dose}
+discloses this beside its pre-registered point-estimate verdict, and §\ref{app:sensitivity}'s ladder
+statement is scoped to the comparability arms for exactly this reason. The two arms whose
+suppression genuinely moves correctly \textbf{fail} it, which is the positive control working:
+reputation ($+0.178$) and \texttt{cos\_krum} ($-0.425$). \textbf{And one arm passes the frozen rule
+while failing the test}: \texttt{coord\_median}'s $+0.098$ ($n{=}5$) sits inside $\pm0.15$, but its $90\%$
+interval reaches $+0.160$ and TOST gives $p{=}0.073$. We therefore report that arm's equivalence as
+\textbf{not established} rather than as inherited from the point estimate. \textbf{This is the one place
+the paper's frozen scoring rule was more permissive than the evidence warrants, and we say so rather
+than leave the width implicit.} \texttt{cos\_krum} additionally sits above the $0.5$ ceiling the frozen
+rule conjoins with the margin ($0.584$ at the identity), which the body already states as its never
+suppressing.
+
+\noindent \textbf{Two arms are equivalent and detected at once, and the table marks them.} The
+EMNIST-byclass row at the frozen $n{=}3$ and the CIFAR-100 row of §\ref{app:sixcell} both have $90\%$
+intervals inside the margin \emph{and} $95\%$ intervals excluding zero: a real effect, smaller than the
+margin. Nothing is inconsistent here, but a bare ``equivalent'' on such a row would be read as ``no
+effect'', so both carry $^{\dagger}$. The two rows differ in one further way, which Table~\ref{tab:reach} scores: the
+EMNIST-byclass row's identity-rung mean ASR is $0.027$, so its lower leg is satisfied by arithmetic and its
+only test is the upper one, which bounds a rise at $-0.001$; the CIFAR-100 row's identity mean is $0.703$, so
+both of its legs are genuine tests and it is the one row \emph{marked equivalent} here whose two-sided
+reading is earned.
+\textbf{The CIFAR-100 row is the sharper case}: §\ref{app:sixcell}
+reports it as a \emph{rise} of $+0.071$ against the confounded design's fall of $-0.213$, and that
+reading stands. What this row adds is its size, under half the frozen margin, which is why the
+sign reversal there is reported as a reversal of \emph{direction} and never as a large controlled
+effect. \textbf{This arm is scored here and excluded from the binding-arm search of §\ref{app:sensitivity}},
+on the separate ground that a margin-sensitivity analysis may only rest on arms about which the paper
+makes an equivalence claim, and it makes none about this one.
+
+\begin{table}[t]
+\centering\small\setlength{\tabcolsep}{4pt}
+\caption{\textbf{TOST against the frozen $\pm0.15$ margin at the seed counts already on disk}, on the
+paired per-seed difference (top rung minus identity). Equivalence requires the $90\%$ interval inside
+the margin, which at $\alpha{=}0.05$ is $\max(p_{\mathrm{lower}},p_{\mathrm{upper}}) < 0.05$.
+$^{\dagger}$ \textbf{equivalent \emph{and} detected}: the $95\%$ interval also excludes zero, so the
+verdict means ``no effect larger than $0.15$'', \textbf{never} ``no effect''. Those two readings are not
+exclusive and the marker exists so a checkmark cannot be read as the stronger one; on the CIFAR-100 row
+the paper reports a \emph{measured rise} (§\ref{app:sixcell}) and this row does not retract it.
+\textbf{One row's $95\%$ interval is itself wider than the margin}: ResNet18's $[-0.183,+0.101]$. TOST at
+$\alpha{=}0.05$ reads the $90\%$ interval, so that row passes the test defined here while failing the
+$95\%$-interval criterion §\ref{app:sensitivity}'s margin ladder uses; both readings are disclosed at
+§\ref{app:resnet18_dose}, and the two conventions are not interchangeable.
+Post-hoc; no runs added. Emitted by \texttt{experiments/analyze\_tost\_existing.py}.}
+\label{tab:tost}
+\begin{tabular}{@{}lrrrrl@{}}
+\toprule
+Arm & $n$ & paired $\Delta$ & $95\%$ CI & $90\%$ CI (TOST) & verdict \\
+\midrule
+Krum / scaling (flagship) & $5$ & $-0.026$ & $[-0.078,\,+0.026]$ & $[-0.066,\,+0.014]$ & equivalent \\
+Krum / scaling (score-only) & $5$ & $-0.023$ & $[-0.108,\,+0.061]$ & $[-0.088,\,+0.042]$ & equivalent \\
+Krum / scaling (EMNIST-byclass) & $3$ & $-0.017$ & $[-0.033,\,-0.001]$ & $[-0.028,\,-0.006]$ & equivalent$^{\dagger}$ \\
+\quad the same arm, pooled & $5$ & $-0.013$ & $[-0.034,\,+0.009]$ & $[-0.029,\,+0.004]$ & equivalent \\
+% The emitter prints ARMS order and lists ResNet18 fourth, before reputation; this table groups the
+% three replication rows under their parent arm instead, which is a presentation choice and the only
+% place the table's row order departs from the script's. Every number in the row is the emitted one.
+Krum / scaling (ResNet18) & $3$ & $-0.041$ & $[-0.183,\,+0.101]$ & $[-0.137,\,+0.055]$ & equivalent \\
+Reputation / scaling & $5$ & $+0.178$ & $[-0.112,\,+0.469]$ & $[-0.045,\,+0.402]$ & not est. \\
+\texttt{cos\_krum} / pixel & $8$ & $-0.425$ & $[-0.732,\,-0.118]$ & $[-0.671,\,-0.179]$ & not est. \\
+\texttt{coord\_median} / pixel & $5$ & $+0.098$ & $[+0.018,\,+0.178]$ & $[+0.036,\,+0.160]$ & not est. \\
+\texttt{coord\_median} / pixel (CIFAR-100) & $5$ & $+0.071$ & $[+0.031,\,+0.110]$ & $[+0.040,\,+0.101]$ & equivalent$^{\dagger}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+\textbf{Where $\pm0.15$ came from, reconstructed and not pre-registered.} The margin was frozen at \texttt{5130cec} with \emph{no written rationale}, which we state plainly rather than supply a derivation after the fact. What the pre-freeze record does support: the effect the design was built against was the pre-registered ladder's own $+0.762$ rise at $\rho{=}54.6$, five times the margin, and the margin never stands alone, the frozen rule conjoining it with \emph{every rung} $<0.5$. So the margin is deliberately generous and \textbf{the conjunction is what stops a generous margin from certifying a high-ASR arm}; on the flagship cell every rung's \emph{mean} in fact sits below $0.07$, the quantity the frozen rule scores.
+\textbf{And on five of the six rows above that this table marks equivalent, one side of that margin was
+never at risk}: the lower leg is
+satisfied by ASR's own floor before any run, so the verdict column on those rows is read as a non-increase
+with the $95\%$ upper bound that Table~\ref{tab:reach} prints beside it. The exception is the
+\texttt{coord\_median} / pixel (CIFAR-100) row, whose identity-rung mean ASR is $0.703$ and whose two-sided
+verdict is earned.
+
+% Round 61, review §21.3, which asks for pass/fail at exactly these four margins. Emitted by part (D) of
+% analyze_margin_sensitivity.py, read-only over results/comparability_six_cells.json (md5 6e25ef3a
+% after the reversal-cell top-up, was 2e8cced3; the script writes no frozen artifact). The top-up moved
+% exactly one cell of this table: coord_median/pixel's m* went 0.178 -> 0.155 with its controlled
+% interval, and the JSON diff is that row and nothing else -- the BINDING arm did not move (krum /
+% scaling, EMNIST at 0.0343, headroom +0.1157, which the supplement quotes), and all seven verdicts
+% still reproduce the published column. The caption has one job beyond describing the table: the intervals here are the
+% COMPARABILITY design's controlled 95% intervals, not Table~\ref{tab:tost}'s paired 90% TOST intervals
+% one float above, and the two genuinely differ -- Krum/scaling is $n{=}20$ here against $n{=}5$ there,
+% $[-0.032,+0.012]$ against $[-0.078,+0.026]$. A reader who compared the two columns without being told
+% would find a contradiction that is not there, which is the number_collision_two_referents failure mode.
+\begin{table}[h]
+\centering\small\setlength{\tabcolsep}{5pt}
+\caption{\textbf{The frozen $\pm0.15$ is not load-bearing: every equivalence reading in the comparability
+table survives the whole ladder.} \checkmark\ if the arm's \emph{controlled} $95\%$ interval lies inside
+$[-m,+m]$; $m^\ast$ is the smallest margin at which it does. An arm is scored only where the paper makes
+an equivalence reading, that is where its interval contains zero, and the others are marked absent
+(---) because their verdict is a detected effect and reads no margin at all. The one row marked
+$\times$ at every rung, reputation / scaling, is scored because its interval contains zero, but that
+interval is too wide ($[-0.112,+0.469]$) for any margin here and the paper makes no equivalence claim
+about that arm, so the headline above is not contradicted by it. \textbf{These are the
+controlled intervals of the comparability design} (§\ref{app:sixcell}), \emph{not}
+Table~\ref{tab:tost}'s paired $90\%$ TOST intervals: the two differ by design and by seed count, so
+Krum / scaling is $n{=}20$ here against $n{=}5$ there, and \texttt{coord\_median} / pixel is $n{=}20$
+here (both legs, after the pre-registered endpoint top-up, seeds $47$--$61$) against the frozen $n{=}5$ there. \textbf{\texttt{coord\_median} / scaling is the one row this artifact still reads at $n{=}5$ while §\ref{app:sixcell} now reports it at $n{=}20$}: \texttt{results/\allowbreak margin\_\allowbreak sensitivity.json} predates that arm's top-up and is left byte-untouched, so the $m^\ast$ printed for it is the $n{=}5$ bound $0.280$ and the $n{=}20$ bound is $0.247$, given here so the frozen figure cannot be read as the current one. Two absent arms
+have $m^\ast$ inside the ladder's
+own span ($0.155$ and $0.110$), named here so the absence cannot be mistaken for a hidden flip.
+\textbf{One arm of the paper is not in this artifact at all}: the \texttt{resnet18} replication
+(§\ref{app:resnet18_dose}) has only the controlled leg and so no comparability cell, and its own
+$m^\ast$ is $0.183$, \emph{wider} than the frozen margin. The emitter derives and prints that number
+beside this table, so the ladder cannot be read as covering it. \textbf{On both rows this ladder marks \checkmark, and on that
+\texttt{resnet18} arm, $m^{\ast}$ is $|\mathrm{lo}|$ and not $|\mathrm{hi}|$}: identity-rung mean ASR is
+$0.044$, $0.024$ and $0.071$ there, so a fall of $0.15$ is arithmetically unavailable and the lower leg is
+satisfied before any seed runs, which means those three $m^{\ast}$ values measure the side of the margin that
+was never at risk. Read on the leg that is a test, the $95\%$ bound on a rise is $+0.012$ for krum / scaling,
+$+0.009$ for its EMNIST replication and $+0.101$ for \texttt{resnet18}, all three inside the frozen margin
+(Table~\ref{tab:reach}). Emitted
+by \texttt{experiments/analyze\_margin\_sensitivity.py} part (D); the fuller sweep, including the
+$\pm0.05$ AGREE tolerance over all of $[0,1]$, is supplement §\ref{app:sensitivity}.}
+\label{tab:margin_ladder}
+\begin{tabular}{@{}lccccr@{}}
+\toprule
+Arm & $m{=}0.05$ & $0.10$ & $0.15$ & $0.20$ & $m^\ast$ \\
+\midrule
+krum / scaling & \checkmark & \checkmark & \checkmark & \checkmark & $0.032$ \\
+\texttt{cos\_krum} / pixel & --- & --- & --- & --- & $0.732$ \\
+reputation / scaling & $\times$ & $\times$ & $\times$ & $\times$ & $0.469$ \\
+\texttt{coord\_median} / pixel & --- & --- & --- & --- & $0.155$ \\
+\texttt{coord\_median} / scaling & --- & --- & --- & --- & $0.280$ \\
+krum / scaling, EMNIST & \checkmark & \checkmark & \checkmark & \checkmark & $0.034$ \\
+\texttt{coord\_median} / pixel, CIFAR-100 & --- & --- & --- & --- & $0.110$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent \textbf{What the ladder shows, and the one arm it marks $\times$.} Three arms carry an
+equivalence reading and none of their verdicts changes anywhere on the ladder, so the reading the body
+rests on would be identical at $\pm0.05$. \textbf{What the ladder does not show is that the lower side of any
+of those margins was ever at risk}: on the two krum rows the identity-rung mean ASR is $0.044$ and $0.024$, so
+$\Delta > -m$ holds by arithmetic at every rung of the ladder and what varies down the column is the upper leg
+alone (Table~\ref{tab:reach}). The exception is reputation / scaling, which fails at every
+rung: its controlled interval contains zero but is wide, $[-0.112,+0.469]$, so no margin in this range
+licenses an equivalence claim there, and the paper makes none. \emph{The sign reversal turns on neither
+threshold}: it is defined by opposite signs with both intervals excluding zero.
+
+
+\section{Composition and Adaptive-Attack Details}
+\label{app:composition_adaptive}
+\label{app:secondary}
+
+\subsection{Composition Baseline Details}
+\label{app:composition}
+
+Simultaneous composition (NormClip $\tau{=}5$ then reputation every round), $N{=}10$, $K{=}5$, $f{=}0.2$, 50 rounds, cifar\_cnn, 5 seeds. Per-seed results:
+\begin{center}\small
+\begin{tabular}{l|cc|cc}
+\toprule
+ & \multicolumn{2}{c|}{model\_scaling} & \multicolumn{2}{c}{backdoor\_pixel} \\
+Seed & Accuracy & ASR & Accuracy & ASR \\
+\midrule
+42 & $0.783$ & $0.766$ & $0.774$ & $0.837$ \\
+43 & $0.788$ & $0.783$ & $0.774$ & $0.792$ \\
+44 & $0.794$ & $0.835$ & $0.784$ & $0.828$ \\
+45 & $0.762$ & $0.889$ & $0.771$ & $0.931$ \\
+46 & $0.780$ & $0.763$ & $0.766$ & $0.823$ \\
+\midrule
+Mean $\pm$ std & $0.781 \pm 0.011$ & $\mathbf{0.807 \pm 0.048}$ & $0.774 \pm 0.006$ & $\mathbf{0.842 \pm 0.047}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Composition partially suppresses scaling (ASR $0.807$ vs.\ pure NormClip $\sim 0.95$, and $0.961$ under the NE3 temporal-mixing policy defined in §\ref{app:dba_f04}) but does not approach pure reputation ($0.017$). Norm clipping preserves the attack direction while reducing magnitude; the clipped update then passes reputation's consensus-distance filter. Pixel attacks are similarly persistent under composition (ASR $0.842$). Both attack families remain effective despite simultaneous application of both defenses.
+
+\subsection{DBA at $f{=}0.4$: per-seed details}
+\label{app:dba_f04}
+
+\textbf{Three run labels are carried over from an earlier framing and used here only to identify runs}, not to make any equilibrium claim: \emph{NE3} is the mixed server policy that framing computed, which randomizes over defenses across rounds; \emph{reputation eq} is the pure-reputation policy; and \emph{BR} is the adversary's best response to the policy it faces. NE3 BR on CIFAR-10 with DBA in place of model scaling at $f{=}0.4$ (raising adversarial co-participation to $K \cdot f = 2.0$ from the $f{=}0.2$ value of $1.0$). $N{=}10$, $K{=}5$, 5 seeds 42--46, 50 rounds. Per-seed realized ASRs:
+
+\begin{center}\small
+\begin{tabular}{c|cc}
+\toprule
+seed & DBA realized ASR & backdoor\_pixel realized ASR \\
+\midrule
+42 & 0.222 & 0.972 \\
+43 & 0.103 & 0.945 \\
+44 & 0.176 & 0.913 \\
+45 & 0.603 & 0.993 \\
+46 & 0.077 & 0.934 \\
+\midrule
+mean ± std & $0.236 \pm 0.190$ & $0.952 \pm 0.028$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The DBA per-seed spread is $7.8\times$ between min and max; only seed 45 clearly persists, three (0.08, 0.10, 0.18) are below the threshold ($\geq 0.20$) we would call active persistence, and one (0.22) is borderline. Pixel persists cleanly at $f{=}0.4$ ($0.952 \pm 0.028$), so the persistence mechanism survives an adversarial-fraction shift on the original attack. DBA's seed-variability reflects per-round co-participation alignment (whether $\geq 2$ of the 4 adversarial clients land in the same round to coordinate the distributed trigger) rather than the structural argmax-collapse mechanism we describe for scaling. The cleanest evidence for the headline persistence claim therefore remains model scaling; DBA at $f{=}0.4$ is suggestive but not a robust second-attack demonstration.
+
+\subsection{DBA at $f{=}0.6$: per-seed details and bimodality reproduction}
+\label{app:dba_f06}
+
+Follow-up to Appendix~\ref{app:dba_f04}, designed to test whether the DBA bimodality at $f{=}0.4$ is purely a per-round co-participation effect or whether it persists as a per-seed admissibility latent at higher $f$. At $f{=}0.6$, expected adversarial co-participation per round is $K \cdot f = 3.0$, making $\geq 2$ adversarial co-participation per round near-certain. NE3-style BR with committed adversary playing DBA; 5 seeds (42--46), 50 rounds, $N{=}10$, $K{=}5$, \texttt{cifar\_cnn}. Two deployed policies: \emph{NE3 mix} (FedAvg $26\%$ + NormClip $74\%$) and the \emph{reputation equilibrium} (NormClip $83\%$ + reputation $17\%$).
+
+\begin{center}\small
+\begin{tabular}{c|cc}
+\toprule
+seed & DBA ASR (NE3 mix) & DBA ASR (reputation eq) \\
+\midrule
+42 & 0.360 & 0.339 \\
+43 & 0.295 & 0.278 \\
+44 & 0.386 & 0.415 \\
+45 & \textbf{0.734} & \textbf{0.705} \\
+46 & 0.154 & 0.130 \\
+\midrule
+mean $\pm$ std & $0.386 \pm 0.192$ & $0.373 \pm 0.190$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Observations.} (i) Mean DBA ASR improves over $f{=}0.4$ ($0.236$) to $\sim 0.38$ on both policies, but does not reach the $\geq 0.85$ persistence band scaling achieves. (ii) Per-seed bimodality persists at $f{=}0.6$: seed 45 alone reaches $> 0.7$ in both policies; the remaining four seeds cluster in $[0.13, 0.42]$. (iii) Crucially, \emph{the same seed is the strong-persistence seed under both policies} (NE3 mix: 0.734; reputation eq: 0.705), and \emph{the same four seeds are the weak-persistence seeds under both}: the per-seed cross-policy correlation rules out per-round co-sampling alignment as the dominant source of bimodality. The bimodality is a per-seed training-initialization latent in DBA itself: whether the distributed trigger embeds at all in the early rounds. This is the DBA analogue of the model-scaling binding-cell Bernoulli, but at a much lower mean (admissibility prevalence $\approx 1/5$ for DBA at $f{=}0.6$ vs.\ $\approx 4/5$ for scaling at $f{=}0.2$).
+
+\textbf{Pre-specified verdict: INTERMEDIATE.} The four-way rule that emits it, STRONG then PARTIAL then NEGATIVE then INTERMEDIATE with its thresholds, is in \texttt{experiments/\allowbreak run\_dba\_f06.py}, so the label is decided by the runner rather than chosen after reading the table. Overall mean $0.380$ falls between PARTIAL ($> 0.5$) and NEGATIVE ($< 0.3$). Reading: DBA at $f{=}0.6$ does \emph{not} replicate the persistence collapse with the cleanness scaling achieves; the trigger-alignment mechanism has its own admissibility constraint we do not control by raising $f$. The cleanest headline-persistence evidence remains model scaling under norm-based menus, as acknowledged in L3.
+
+\section{Scale, Architecture, and External Validity}
+\label{app:scale_external}
+
+\subsection{Scale Validation ($N=100$) and Defense-Inference Check}
+\label{app:scale}
+\label{app:inference}
+
+\textbf{Scale check at $N=100$ ($4{\times}5$ game, 5 seeds).} \textbf{Residual material from an earlier framing, recorded rather than dropped.} Nothing in the screen, the identification result or the dose--response evidence depends on it. Write VoPD (value of policy diversity) for the gain the server's equilibrium strategy achieves over its best \emph{pure} defense, so VoPD~$=0$ exactly when the equilibrium is pure. \textbf{This is not the quantity an earlier draft called ``realized VoPD'', and that draft described its own quantity with the bound direction inverted, which is worth recording rather than quietly dropping.} There the reported difference was oracle-minus-committed, and it was said to \emph{lower}-bound the gap an adversary with no information about the server's draw could realize. It does the opposite: the committed policies are a \emph{subset} of that adversary's available policies, so its best policy is at least as good as the best committed one, and subtracting the larger quantity makes oracle-minus-committed an \emph{upper} bound on the gap. That quantity is withdrawn with its framing, nothing in this paper uses it, and the VoPD defined above is a different object, non-negative by construction and sharing only the name. The equilibrium is pure on seeds 43 to 46 (model scaling vs.\ RFA, VoPD~$=0$) and mixed on seed 42 (pixel + scaling vs.\ FedAvg + RFA, VoPD~$= 0.012$); per-seed values in Table~\ref{tab:scale100}.
+
+\begin{table}[h]
+\caption{Per-seed NE, CIFAR-10 $N=100$ ($4{\times}5$ game). Seeds 43--46 identical.}
+\label{tab:scale100}
+\centering\small
+\begin{tabular}{c|c|l|l|c}
+\toprule
+Seed & Type & Adversary & Server & VoPD \\
+\midrule
+42      & Mixed & Pixel + Scaling & FedAvg + RFA & 0.012 \\
+43--46  & Pure  & Model scaling   & RFA          & 0.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{ResNet18 architecture-replication mini-sweep: per-seed details}
+\label{app:resnet18_replication_details}
+
+Per-seed details for the ResNet18 architecture-replication mini-sweep behind the architecture-conditional collapse boundary in §\ref{sec:limitations}. \texttt{resnet18} with BatchNorm replaced by GroupNorm (8 groups), conv1 adapted to $32\times 32$ (kernel $3$, stride $1$, maxpool $\to$ Identity); 11.2M parameters. Identical FL parameters to cifar\_cnn: $N{=}10$, $K{=}5$, $f{=}0.2$, $50$ rounds, $\tau=5$. Committed-scaling BR, 3 mix points $\times$ 5 seeds = 15 runs at $\sim 100$ min/run on MPS. \textbf{Reading the table.} \emph{mix (NC/rep)} is the server's per-round mixture over the two upstream defenses, \texttt{norm\_clip} (NC) and \texttt{reputation} (rep), so the $90/10$ row draws \texttt{norm\_clip} in $90\%$ of rounds and \texttt{reputation} in the other $10\%$; every cell is trigger ASR under the committed scaling attack; the two \emph{mean} columns are over the same five seeds, the second on \texttt{cifar\_cnn} from \texttt{results/}\allowbreak\texttt{cifar10\_mix\_ratio\_sweep/}\allowbreak\texttt{summary.json}, whose sweep carries five mix points of which the three run here are shown. Both spreads are population standard deviations over the five seeds, recomputed here from the per-seed values and not the Student-$t$ intervals the rest of the paper reports.
+
+\begin{center}\small
+\begin{tabular}{l|ccccc|c|c}
+\toprule
+mix (NC/rep) & s42 & s43 & s44 & s45 & s46 & ResNet18 mean & cifar\_cnn mean \\
+\midrule
+90/10 & 0.926 & 0.929 & 0.965 & 0.974 & 0.962 & $\mathbf{0.951 \pm 0.020}$ & $0.945 \pm 0.021$ \\
+50/50 & 0.924 & 0.971 & 0.813 & 0.920 & 0.903 & $\mathbf{0.906 \pm 0.052}$ & $0.815 \pm 0.104$ \\
+10/90 & 0.917 & 0.733 & 0.783 & 0.975 & 0.915 & $\mathbf{0.865 \pm 0.091}$ & $\mathbf{0.097 \pm 0.090}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+NC-dominant endpoint replicates within $0.01$; mid-mix is $\sim 9\%$ higher on ResNet18; the reputation-dominant endpoint shows an order-of-magnitude gap (no CI overlap). Seed 45's accuracy collapses to $0.153$ at NC10/rep90 (the persistent attack effectively breaks the model) while trigger ASR remains $0.975$. \textbf{Verdict: MEDIUM} (monotonic ordering preserved, endpoint criterion fails), on the scale stated in \texttt{experiments/\allowbreak run\_mix\_ratio\_sweep\_resnet18.py}; that label name is reused with different meanings by other runners in this repository, which is why its criterion is restated here rather than referenced. The cifar\_cnn collapse boundary at $\sim 70$--$90\%$ reputation is therefore a property of the smaller-architecture regime. This sweep bounds the architecture-conditional claim of §\ref{sec:limitations} and establishes no boundary of its own; we draw no conclusion here about which mixture of the two defenses survives, since mixture policies are outside this paper's scope (§\ref{sec:composability_criterion}).
+
 
 \bibliographystyle{iclr2027_conference}
 \bibliography{references}
