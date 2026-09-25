@@ -1,0 +1,227 @@
+{
+  "description": "Gate 0 of experiments/pre_registration_cifar100_composition_suite.md: reputation and foolsgold standalone on CIFAR-100, both committed attacks, seeds 42-46, 20 runs. These two aggregators are ABSENT from results/cifar100/per_seed_results.json, they are d1 in 12 of the 42 pairs and d2 in 12 more, and foolsgold_then_rfa is the lowest CIFAR-10 LOW pair at 0.0454 with rfa as d2, so the suppression there comes from foolsgold itself. The question whether any CIFAR-100 pair can be LOW turns on exactly these two.",
+  "prereg_commit": "f559b85",
+  "prereg_md5": "a7de61ad34ea2e04236261f0e69abd92",
+  "prereg": "experiments/pre_registration_cifar100_composition_suite.md",
+  "standalone_convention": "d1=fedavg is a pass-through in apply_d1_transform, so 'fedavg then X' IS X standalone. The probe and the suite share one code path rather than having two implementations of 'standalone'.",
+  "dataset": "cifar100",
+  "model": "cifar_cnn",
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "attacks": [
+    "committed_scaling",
+    "committed_pixel"
+  ],
+  "decision_rule_frozen": "If EITHER aggregator is admitted by the power rule on EITHER attack -- mean ASR < 0.5 at mean accuracy >= 0.35 -- a LOW composed pair is reachable on CIFAR-100 and the full 420-run suite runs. If neither is admitted, the suite does not run and the probe IS the finding: on CIFAR-100 at this architecture and round budget no defense in the menu suppresses either committed attack, the screen's LOW class is empty, and the screen cannot be evaluated on this dataset at all. Either way the 20 runs are reported with both aggregators' accuracy and ASR and the admitted count as a fraction. A null probe is not silently dropped.",
+  "two_thresholds_not_interchangeable": "The power rule's SUPPRESS_ASR is 0.5 and decides whether a cell can be informative; the screen's C1 SUPPRESSION_THRESHOLD is 0.3 and decides what the screen predicts. Both are imported from their own homes, both are reported below, and neither substitutes for the other.",
+  "also_supplies_missing_baselines": "Beyond feasibility, these 20 runs are the two standalone baselines the screen needs on CIFAR-100. One or both is a member of 22 of the 42 pairs, and without them the screen's label on those 22 does not rest on evidence: the 2 reciprocal reputation<->foolsgold pairs come back LOW from a collapsed UNKNOWN, and 20 come back HIGH from an absent baseline read as non-suppression.",
+  "verdict": {
+    "n_cells": 4,
+    "n_cells_expected": 4,
+    "complete": true,
+    "n_admitted": 1,
+    "admitted_fraction": "1/4",
+    "suppress_asr": 0.5,
+    "acc_floor": 0.35,
+    "screen_c1_threshold": 0.3,
+    "go": true,
+    "decision": "GO: a LOW composed pair is reachable on CIFAR-100, so the 420-run suite runs (1 of 4 probe cells admitted).",
+    "cells": [
+      {
+        "aggregator": "reputation",
+        "attack": "committed_scaling",
+        "n": 5,
+        "mean_asr": 0.004686868686868686,
+        "mean_accuracy": 0.37764,
+        "min_accuracy": 0.3722,
+        "sd_asr": 0.0028530660202216304,
+        "admitted_by_power_rule": true,
+        "suppresses_at_screen_c1_threshold": true,
+        "accuracy_clears_floor": true
+      },
+      {
+        "aggregator": "reputation",
+        "attack": "committed_pixel",
+        "n": 5,
+        "mean_asr": 0.88810101010101,
+        "mean_accuracy": 0.39058,
+        "min_accuracy": 0.3844,
+        "sd_asr": 0.050988264152824765,
+        "admitted_by_power_rule": false,
+        "suppresses_at_screen_c1_threshold": false,
+        "accuracy_clears_floor": true
+      },
+      {
+        "aggregator": "foolsgold",
+        "attack": "committed_scaling",
+        "n": 5,
+        "mean_asr": 0.8,
+        "mean_accuracy": 0.01,
+        "min_accuracy": 0.01,
+        "sd_asr": 0.4472135954999579,
+        "admitted_by_power_rule": false,
+        "suppresses_at_screen_c1_threshold": false,
+        "accuracy_clears_floor": false
+      },
+      {
+        "aggregator": "foolsgold",
+        "attack": "committed_pixel",
+        "n": 5,
+        "mean_asr": 0.8527272727272728,
+        "mean_accuracy": 0.3682,
+        "min_accuracy": 0.3637,
+        "sd_asr": 0.08209620427555361,
+        "admitted_by_power_rule": false,
+        "suppresses_at_screen_c1_threshold": false,
+        "accuracy_clears_floor": true
+      }
+    ]
+  },
+  "cells": {
+    "fedavg_then_reputation|committed_scaling": {
+      "d1": "fedavg",
+      "d2": "reputation",
+      "attack": "committed_scaling",
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "is_standalone_d2": true,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.3765,
+          "asr": 0.0048484848484848485
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.3824,
+          "asr": 0.0023232323232323234
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.3722,
+          "asr": 0.004949494949494949
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.3777,
+          "asr": 0.0021212121212121214
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.3794,
+          "asr": 0.009191919191919192
+        }
+      ]
+    },
+    "fedavg_then_reputation|committed_pixel": {
+      "d1": "fedavg",
+      "d2": "reputation",
+      "attack": "committed_pixel",
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "is_standalone_d2": true,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.3844,
+          "asr": 0.8657575757575757
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.3981,
+          "asr": 0.8709090909090909
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.3862,
+          "asr": 0.9114141414141415
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.393,
+          "asr": 0.963030303030303
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.3912,
+          "asr": 0.8293939393939394
+        }
+      ]
+    },
+    "fedavg_then_foolsgold|committed_scaling": {
+      "d1": "fedavg",
+      "d2": "foolsgold",
+      "attack": "committed_scaling",
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "is_standalone_d2": true,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.01,
+          "asr": 1.0
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.01,
+          "asr": 1.0
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.01,
+          "asr": 1.0
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.01,
+          "asr": 0.0
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.01,
+          "asr": 1.0
+        }
+      ]
+    },
+    "fedavg_then_foolsgold|committed_pixel": {
+      "d1": "fedavg",
+      "d2": "foolsgold",
+      "attack": "committed_pixel",
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "is_standalone_d2": true,
+      "per_seed": [
+        {
+          "seed": 42,
+          "accuracy": 0.3675,
+          "asr": 0.7711111111111111
+        },
+        {
+          "seed": 43,
+          "accuracy": 0.3637,
+          "asr": 0.79
+        },
+        {
+          "seed": 44,
+          "accuracy": 0.3644,
+          "asr": 0.9391919191919192
+        },
+        {
+          "seed": 45,
+          "accuracy": 0.3759,
+          "asr": 0.9417171717171717
+        },
+        {
+          "seed": 46,
+          "accuracy": 0.3695,
+          "asr": 0.8216161616161616
+        }
+      ]
+    }
+  }
+}

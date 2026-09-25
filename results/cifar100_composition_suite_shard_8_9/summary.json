@@ -1,0 +1,140 @@
+{
+  "description": "SHARD 8-9 of Arm D's wave-1 menu on cifar100/cifar_cnn: wave-1 positions 8 to 9 inclusive in the frozen order, against both committed attacks at seeds 42-46. This is a SLICE, not a suite.",
+  "run_scope": "NOT A SUITE AND NOT SCOREABLE ALONE. This file holds 12 runs over 2 of the 18 wave-1 pairs. It must be merged with the canonical artifact by experiments/merge_cifar100_suite_shards.py and scored only by the frozen runner's own --report. No fraction, base rate or baseline may be computed from this file.",
+  "deviation_from_the_frozen_run_order": "The freeze fixes wave 1's pairs in the imported list order so that any partial completion is a pre-specified prefix. ONE thing here departs from that order, for the submission deadline: the slices are taken LOW-PAIRS-FIRST rather than in list order. Obeying the list order would have stopped at about pair 16 of 18 and dropped wave-1 position 18, foolsgold_then_rfa, whose CIFAR-10 max_committed_asr of 0.0454 is the lowest in the menu and which is one of the five LOW pairs (positions 8, 9, 12, 13, 18) the estimand is computed over. Execution is SERIAL, one worker, one run at a time: a first attempt ran two concurrent workers and the box killed both in their first run under memory pressure, banking nothing, so concurrency is not part of this deviation. No rule, threshold, seed, attack, gate or menu entry is changed; only the order is. The deviation is reported against the freeze and the freeze is not edited.",
+  "shard": {
+    "from": 8,
+    "to": 9,
+    "pairs": [
+      "reputation_then_coord_median",
+      "norm_clip_then_coord_median"
+    ],
+    "positions_are": "1-indexed, inclusive, in the frozen wave-1 order"
+  },
+  "prereg": "experiments/pre_registration_cifar100_composition_suite.md",
+  "prereg_commit": "f559b85",
+  "prereg_md5": "a7de61ad34ea2e04236261f0e69abd92",
+  "gates_inherited_not_rerun": "Gate 0's probe verdict and the CIFAR-10 cross-check are READ from results/cifar100_composition_suite/summary.json and this shard refuses to start unless both are recorded as passing. Gate 1 (adversary_hook verify=True) and gate 2 (the accuracy floor) are inside the imported run_one and apply unchanged.",
+  "determinism_check": {
+    "pair": "reputation_then_coord_median",
+    "attack": "committed_scaling",
+    "seed": 42,
+    "canonical": {
+      "accuracy": 0.3749,
+      "asr": 0.0044444444444444444
+    },
+    "recomputed": {
+      "accuracy": 0.3749,
+      "asr": 0.0044444444444444444
+    },
+    "delta": {
+      "accuracy": 0.0,
+      "asr": 0.0
+    },
+    "bit_identical": true,
+    "what_it_licenses": "Execution order does not change a number, so the union of disjoint shards is bit-identical to the serial run. Exact equality was the pass criterion; 1e-09 was not."
+  },
+  "dataset": "cifar100",
+  "model": "cifar_cnn",
+  "acc_floor": 0.35,
+  "attacks": [
+    "committed_scaling",
+    "committed_pixel"
+  ],
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "n_runs_here": 12,
+  "pairs": {
+    "reputation_then_coord_median": {
+      "d1": "reputation",
+      "d2": "coord_median",
+      "wave": 1,
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 45,
+            "accuracy": 0.3926,
+            "asr": 0.8158585858585858
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3833,
+            "asr": 0.6734343434343434
+          }
+        ]
+      }
+    },
+    "norm_clip_then_coord_median": {
+      "d1": "norm_clip",
+      "d2": "coord_median",
+      "wave": 1,
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3953,
+            "asr": 0.7376767676767677
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3964,
+            "asr": 0.5852525252525252
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3814,
+            "asr": 0.7724242424242425
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.382,
+            "asr": 0.9028282828282829
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3886,
+            "asr": 0.6474747474747474
+          }
+        ]
+      },
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.389,
+            "asr": 0.7143434343434344
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.4,
+            "asr": 0.5526262626262626
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3936,
+            "asr": 0.7482828282828283
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3912,
+            "asr": 0.8282828282828283
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3871,
+            "asr": 0.6511111111111111
+          }
+        ]
+      }
+    }
+  }
+}

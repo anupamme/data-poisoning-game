@@ -1,0 +1,993 @@
+{
+  "description": "The full 42-pair composition menu on cifar100/cifar_cnn: the union of run_all_compositions.PAIRS (18, development) and run_wave2_held_out.PAIRS (24, held out), both IMPORTED and not re-listed, against both committed attacks at seeds 42-46. Wave 1 runs first because all 5 CIFAR-10 LOW pairs are in wave 1.",
+  "prereg_commit": "f559b85",
+  "prereg_md5": "a7de61ad34ea2e04236261f0e69abd92",
+  "prereg": "experiments/pre_registration_cifar100_composition_suite.md",
+  "run_scope": "CAPPED TO WAVE 1: 18 of the 42 menu pairs x 2 attacks x 5 seeds = 180 of 420 runs were ATTEMPTED. The other 24 pairs are DELIBERATELY UNRUN -- a compute decision taken before the loop started, not a failure and not a loss -- which is why the freeze fixed the pair order in advance. What the cap keeps: wave 1 is where the replication question is decidable, since all 5 CIFAR-10 LOW pairs are in wave 1. What the cap gives up, stated rather than glossed: the held-out wave is unrun, so no held-out generalization claim rests on this arm, and this is NOT the full 42-pair menu and is never described as one. n_incomplete counts these deliberately unrun pairs together with any that merely did not finish; THIS field is what separates them.",
+  "dataset": "cifar100",
+  "model": "cifar_cnn",
+  "config": {
+    "N": 10,
+    "K": 5,
+    "f": 0.2,
+    "alpha": 0.5,
+    "rounds": 50,
+    "local_epochs": 2,
+    "lr": 0.01,
+    "lr_decay": 1.0,
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "attacks": [
+      "committed_scaling",
+      "committed_pixel"
+    ],
+    "n_pairs": 42,
+    "n_runs_planned": 420,
+    "acc_floor": 0.35,
+    "suppress_asr": 0.5,
+    "screen_c1_threshold": 0.3
+  },
+  "loop_provenance": "run_one here MIRRORS run_all_compositions.run_one with exactly two differences: the dataset is a parameter (that file hardcodes \"cifar10\" at :602 and is not editable), and the adversary step is hoisted out of the participant loop into adversary_hook.apply_adversary(..., verify=True), the freeze's gate 1. The hoist is numerically neutral for both committed attacks -- backdoor_pixel inherits the identity manipulate_update and model_scaling is an elementwise multiply, so neither consumes RNG nor reads another client's update -- and the CIFAR-10 cross-check tests that against published rows rather than resting on the argument.",
+  "gates": {
+    "gate_0_probe": "results/cifar100_composition_suite/probe.json. 20 runs, decided by the frozen power rule BEFORE the suite starts.",
+    "gate_1_adversary_hook": "adversary_hook.apply_adversary(..., verify=True) on every round of every run, including the probe and the cross-check. It pins the expected behaviour PER ATTACK -- the update must change iff the attack overrides manipulate_update -- so it catches both a dead hook and a mis-typed attack object. Never caught and downgraded to a warning.",
+    "gate_2_accuracy_floor": "ACC_FLOOR = 0.35, imported. Cells below it are reported uninterpretable and COUNTED with their accuracy printed; they are not dropped and not scored HIGH because a collapsed model has a high ASR."
+  },
+  "cross_check": {
+    "label": "STRENGTHENING, not one of the freeze's three gates",
+    "freezes_gates": [
+      "gate 0: the 20-run probe",
+      "gate 1: adversary_hook.apply_adversary",
+      "gate 2: the ACC_FLOOR floor"
+    ],
+    "pair": [
+      "norm_clip",
+      "reputation"
+    ],
+    "seed": 42,
+    "dataset": "cifar10",
+    "model": "cifar_cnn",
+    "accuracy_comparison": "to 4 decimals; the published artifacts store accuracy rounded to 4 dp, so bit-identity on accuracy is not available and is not claimed",
+    "asr_comparison": "exact",
+    "checks": [
+      {
+        "attack": "committed_scaling",
+        "passed": true,
+        "source": "results/all_compositions/summary.json",
+        "attack_overrides_manipulate_update": true,
+        "published": [
+          0.7827,
+          0.7663333333333333
+        ],
+        "recomputed": [
+          0.7827,
+          0.7663333333333333
+        ],
+        "asr_exact": true,
+        "asr_delta": 0.0,
+        "accuracy_equal_to_4dp": true,
+        "accuracy_delta": 0.0
+      },
+      {
+        "attack": "committed_pixel",
+        "passed": true,
+        "source": "results/all_compositions/summary.json",
+        "attack_overrides_manipulate_update": false,
+        "published": [
+          0.7744,
+          0.8371111111111111
+        ],
+        "recomputed": [
+          0.7744,
+          0.8371111111111111
+        ],
+        "asr_exact": true,
+        "asr_delta": 0.0,
+        "accuracy_equal_to_4dp": true,
+        "accuracy_delta": 0.0
+      }
+    ],
+    "all_passed": true
+  },
+  "two_thresholds_not_interchangeable": "SUPPRESS_ASR = 0.5 (run_dose_resnet18.py:133) is the power rule and decides whether a cell can be informative and what counts as an observed LOW. SUPPRESSION_THRESHOLD = 0.3 (analyze_composability.py) is the screen's own C1 and decides what the screen PREDICTS. Two numbers, two jobs, both imported, neither substituted for the other.",
+  "imported_predictor_failure_modes": "Two, neither a defect on the dataset the screen was built for. (1) predict_composition returns UNKNOWN only when BOTH members' baselines are missing, and predict_pair returns HIGH-if-any-HIGH else LOW, so UNKNOWN on both attacks comes back LOW -- measured before the probe: exactly the 2 reciprocal pairs reputation<->foolsgold, both LOW, which is the scarce class the screen is scored on. (2) With ONE member missing nothing is signalled: that member's `suppresses` is False and the pair comes back HIGH on a baseline that does not exist, since C1 needs only one suppressor -- measured before the probe: 20 of 42 pairs, all HIGH, with no UNKNOWN anywhere. analyze_composability.py is not edited; screen_pair applies the stricter rule that a pair is UNPREDICTABLE if EITHER member lacks a baseline for EITHER attack, whatever label came back, and such pairs are excluded with their count stated.",
+  "screen_baselines": "The screen is a function of STANDALONE per-dataset ASR, so its CIFAR-100 predictions need seven aggregators and results/cifar100/per_seed_results.json has five. reputation and foolsgold come from gate 0's probe, which is therefore a baseline fix as well as a feasibility test. Its per-seed ASR key there is \"attack_success_rate\", a third naming convention after dose's \"asr\" and the payoff matrix's own; every read is subscripted, never defaulted.",
+  "scope": "One dataset, one architecture, one round budget, 42 pairs, n=5. No sentence produced from this arm generalizes past that.",
+  "screen": {
+    "n_menu": 42,
+    "n_incomplete": 35,
+    "n_complete": 7,
+    "n_below_floor": 2,
+    "n_unpredictable": 0,
+    "n_scored": 5,
+    "acc_floor": 0.35,
+    "observed_low_threshold": 0.5,
+    "screen_c1_threshold": 0.3,
+    "below_floor_pairs": [
+      {
+        "pair": "fedavg_then_trimmed_mean",
+        "min_mean_accuracy": 0.33882
+      },
+      {
+        "pair": "norm_clip_then_foolsgold",
+        "min_mean_accuracy": 0.3481
+      }
+    ],
+    "unpredictable_pairs": [],
+    "n_observed_low": 1,
+    "n_observed_high": 4,
+    "base_rate_high": 0.8,
+    "constant_high_baseline": "4/5",
+    "agreement": "4/5",
+    "agreement_fraction": 0.8,
+    "precision_low": null,
+    "recall_low": 0.0,
+    "low_class_empty": false,
+    "reporting_rule": "Any accuracy figure from this arm is reported in the same sentence as the base rate and the constant-HIGH baseline, in every position including captions and section titles, and any fraction names its exclusion counts: 2 below the floor and 0 unpredictable of 7 complete, out of a 42-pair menu.",
+    "degeneracy_clause": null,
+    "rows": [
+      {
+        "d1": "fedavg",
+        "d2": "norm_clip",
+        "pair": "fedavg_then_norm_clip",
+        "wave": 1,
+        "max_committed_asr": 0.8914747474747475,
+        "min_mean_accuracy_over_attacks": 0.36943999999999994,
+        "clears_floor": true,
+        "observed": "HIGH",
+        "observed_threshold": 0.5,
+        "predicted": "HIGH",
+        "screen": {
+          "prediction": "HIGH",
+          "predict_pair_overall": "HIGH",
+          "unknown_attacks": [],
+          "missing_baselines": [],
+          "per_attack": {
+            "committed_scaling": {
+              "prediction": "HIGH",
+              "reason": "C1 fails: neither defense suppresses (d1=0.658, d2=0.893)"
+            },
+            "committed_pixel": {
+              "prediction": "HIGH",
+              "reason": "C1 fails: neither defense suppresses (d1=0.851, d2=0.849)"
+            }
+          },
+          "c1_threshold": 0.3,
+          "note": ""
+        },
+        "per_attack": {
+          "committed_scaling": {
+            "n": 5,
+            "mean_asr": 0.8914747474747475,
+            "mean_accuracy": 0.36943999999999994,
+            "min_accuracy": 0.3394,
+            "sd_asr": 0.07076046324651455
+          },
+          "committed_pixel": {
+            "n": 5,
+            "mean_asr": 0.8584646464646465,
+            "mean_accuracy": 0.38996,
+            "min_accuracy": 0.3837,
+            "sd_asr": 0.04656852682930753
+          }
+        }
+      },
+      {
+        "d1": "fedavg",
+        "d2": "trimmed_mean",
+        "pair": "fedavg_then_trimmed_mean",
+        "wave": 1,
+        "max_committed_asr": 0.8448282828282828,
+        "min_mean_accuracy_over_attacks": 0.33882,
+        "clears_floor": false,
+        "observed": "HIGH",
+        "observed_threshold": 0.5,
+        "predicted": "HIGH",
+        "screen": {
+          "prediction": "HIGH",
+          "predict_pair_overall": "HIGH",
+          "unknown_attacks": [],
+          "missing_baselines": [],
+          "per_attack": {
+            "committed_scaling": {
+              "prediction": "HIGH",
+              "reason": "C1 fails: neither defense suppresses (d1=0.658, d2=0.893)"
+            },
+            "committed_pixel": {
+              "prediction": "HIGH",
+              "reason": "C1 fails: neither defense suppresses (d1=0.851, d2=0.733)"
+            }
+          },
+          "c1_threshold": 0.3,
+          "note": ""
+        },
+        "per_attack": {
+          "committed_scaling": {
+            "n": 5,
+            "mean_asr": 0.8448282828282828,
+            "mean_accuracy": 0.33882,
+            "min_accuracy": 0.2504,
+            "sd_asr": 0.139197442385031
+          },
+          "committed_pixel": {
+            "n": 5,
+            "mean_asr": 0.7671515151515151,
+            "mean_accuracy": 0.39404,
+            "min_accuracy": 0.3898,
+            "sd_asr": 0.09010416378047416
+          }
+        }
+      },
+      {
+        "d1": "norm_clip",
+        "d2": "reputation",
+        "pair": "norm_clip_then_reputation",
+        "wave": 1,
+        "max_committed_asr": 0.9121212121212121,
+        "min_mean_accuracy_over_attacks": 0.3799199999999999,
+        "clears_floor": true,
+        "observed": "HIGH",
+        "observed_threshold": 0.5,
+        "predicted": "HIGH",
+        "screen": {
+          "prediction": "HIGH",
+          "predict_pair_overall": "HIGH",
+          "unknown_attacks": [],
+          "missing_baselines": [],
+          "per_attack": {
+            "committed_scaling": {
+              "prediction": "HIGH",
+              "reason": "C2 fails: weighting destroys clipping's signal"
+            },
+            "committed_pixel": {
+              "prediction": "HIGH",
+              "reason": "C1 fails: neither defense suppresses (d1=0.849, d2=0.888)"
+            }
+          },
+          "c1_threshold": 0.3,
+          "note": ""
+        },
+        "per_attack": {
+          "committed_scaling": {
+            "n": 5,
+            "mean_asr": 0.9121212121212121,
+            "mean_accuracy": 0.3799199999999999,
+            "min_accuracy": 0.3702,
+            "sd_asr": 0.04724250091241948
+          },
+          "committed_pixel": {
+            "n": 5,
+            "mean_asr": 0.8872929292929292,
+            "mean_accuracy": 0.38982,
+            "min_accuracy": 0.3821,
+            "sd_asr": 0.052612320997876466
+          }
+        }
+      },
+      {
+        "d1": "norm_clip",
+        "d2": "foolsgold",
+        "pair": "norm_clip_then_foolsgold",
+        "wave": 1,
+        "max_committed_asr": 0.8416363636363636,
+        "min_mean_accuracy_over_attacks": 0.3481,
+        "clears_floor": false,
+        "observed": "HIGH",
+        "observed_threshold": 0.5,
+        "predicted": "HIGH",
+        "screen": {
+          "prediction": "HIGH",
+          "predict_pair_overall": "HIGH",
+          "unknown_attacks": [],
+          "missing_baselines": [],
+          "per_attack": {
+            "committed_scaling": {
+              "prediction": "HIGH",
+              "reason": "C1 fails: neither defense suppresses (d1=0.893, d2=0.800)"
+            },
+            "committed_pixel": {
+              "prediction": "HIGH",
+              "reason": "C1 fails: neither defense suppresses (d1=0.849, d2=0.853)"
+            }
+          },
+          "c1_threshold": 0.3,
+          "note": ""
+        },
+        "per_attack": {
+          "committed_scaling": {
+            "n": 5,
+            "mean_asr": 0.8416363636363636,
+            "mean_accuracy": 0.3481,
+            "min_accuracy": 0.3136,
+            "sd_asr": 0.1232710528641551
+          },
+          "committed_pixel": {
+            "n": 5,
+            "mean_asr": 0.8219191919191919,
+            "mean_accuracy": 0.36726000000000003,
+            "min_accuracy": 0.3619,
+            "sd_asr": 0.07067874613047449
+          }
+        }
+      },
+      {
+        "d1": "rfa",
+        "d2": "reputation",
+        "pair": "rfa_then_reputation",
+        "wave": 1,
+        "max_committed_asr": 0.9175353535353535,
+        "min_mean_accuracy_over_attacks": 0.37594000000000005,
+        "clears_floor": true,
+        "observed": "HIGH",
+        "observed_threshold": 0.5,
+        "predicted": "HIGH",
+        "screen": {
+          "prediction": "HIGH",
+          "predict_pair_overall": "HIGH",
+          "unknown_attacks": [],
+          "missing_baselines": [],
+          "per_attack": {
+            "committed_scaling": {
+              "prediction": "LOW",
+              "reason": "C1+C2 both hold: composition preserves suppression signal"
+            },
+            "committed_pixel": {
+              "prediction": "HIGH",
+              "reason": "C1 fails: neither defense suppresses (d1=0.886, d2=0.888)"
+            }
+          },
+          "c1_threshold": 0.3,
+          "note": ""
+        },
+        "per_attack": {
+          "committed_scaling": {
+            "n": 5,
+            "mean_asr": 0.9175353535353535,
+            "mean_accuracy": 0.37594000000000005,
+            "min_accuracy": 0.3474,
+            "sd_asr": 0.034267339941624134
+          },
+          "committed_pixel": {
+            "n": 5,
+            "mean_asr": 0.8911313131313131,
+            "mean_accuracy": 0.39015999999999995,
+            "min_accuracy": 0.3857,
+            "sd_asr": 0.05186479680120104
+          }
+        }
+      },
+      {
+        "d1": "foolsgold",
+        "d2": "trimmed_mean",
+        "pair": "foolsgold_then_trimmed_mean",
+        "wave": 1,
+        "max_committed_asr": 0.493979797979798,
+        "min_mean_accuracy_over_attacks": 0.38133999999999996,
+        "clears_floor": true,
+        "observed": "LOW",
+        "observed_threshold": 0.5,
+        "predicted": "HIGH",
+        "screen": {
+          "prediction": "HIGH",
+          "predict_pair_overall": "HIGH",
+          "unknown_attacks": [],
+          "missing_baselines": [],
+          "per_attack": {
+            "committed_scaling": {
+              "prediction": "HIGH",
+              "reason": "C1 fails: neither defense suppresses (d1=0.800, d2=0.893)"
+            },
+            "committed_pixel": {
+              "prediction": "HIGH",
+              "reason": "C1 fails: neither defense suppresses (d1=0.853, d2=0.733)"
+            }
+          },
+          "c1_threshold": 0.3,
+          "note": ""
+        },
+        "per_attack": {
+          "committed_scaling": {
+            "n": 5,
+            "mean_asr": 0.493979797979798,
+            "mean_accuracy": 0.38133999999999996,
+            "min_accuracy": 0.3675,
+            "sd_asr": 0.08479557633715555
+          },
+          "committed_pixel": {
+            "n": 5,
+            "mean_asr": 0.42298989898989897,
+            "mean_accuracy": 0.38704,
+            "min_accuracy": 0.3779,
+            "sd_asr": 0.03842266776027596
+          }
+        }
+      },
+      {
+        "d1": "norm_clip",
+        "d2": "trimmed_mean",
+        "pair": "norm_clip_then_trimmed_mean",
+        "wave": 1,
+        "max_committed_asr": 0.8354343434343434,
+        "min_mean_accuracy_over_attacks": 0.38108,
+        "clears_floor": true,
+        "observed": "HIGH",
+        "observed_threshold": 0.5,
+        "predicted": "HIGH",
+        "screen": {
+          "prediction": "HIGH",
+          "predict_pair_overall": "HIGH",
+          "unknown_attacks": [],
+          "missing_baselines": [],
+          "per_attack": {
+            "committed_scaling": {
+              "prediction": "HIGH",
+              "reason": "C1 fails: neither defense suppresses (d1=0.893, d2=0.893)"
+            },
+            "committed_pixel": {
+              "prediction": "HIGH",
+              "reason": "C1 fails: neither defense suppresses (d1=0.849, d2=0.733)"
+            }
+          },
+          "c1_threshold": 0.3,
+          "note": ""
+        },
+        "per_attack": {
+          "committed_scaling": {
+            "n": 5,
+            "mean_asr": 0.8354343434343434,
+            "mean_accuracy": 0.38108,
+            "min_accuracy": 0.3624,
+            "sd_asr": 0.09405525059383422
+          },
+          "committed_pixel": {
+            "n": 5,
+            "mean_asr": 0.7683636363636364,
+            "mean_accuracy": 0.39327999999999996,
+            "min_accuracy": 0.3863,
+            "sd_asr": 0.0869200987163564
+          }
+        }
+      }
+    ]
+  },
+  "pairs": {
+    "fedavg_then_norm_clip": {
+      "d1": "fedavg",
+      "d2": "norm_clip",
+      "wave": 1,
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3801,
+            "asr": 0.9026262626262627
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3863,
+            "asr": 0.9480808080808081
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3394,
+            "asr": 0.8271717171717172
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3598,
+            "asr": 0.968989898989899
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3816,
+            "asr": 0.8105050505050505
+          }
+        ],
+        "mean_asr": 0.8914747474747475
+      },
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3837,
+            "asr": 0.8461616161616161
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3961,
+            "asr": 0.8219191919191919
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3883,
+            "asr": 0.877979797979798
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3908,
+            "asr": 0.9295959595959596
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3909,
+            "asr": 0.8166666666666667
+          }
+        ],
+        "mean_asr": 0.8584646464646465
+      },
+      "max_committed_asr": 0.8914747474747475
+    },
+    "fedavg_then_trimmed_mean": {
+      "d1": "fedavg",
+      "d2": "trimmed_mean",
+      "wave": 1,
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3847,
+            "asr": 0.9557575757575758
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3653,
+            "asr": 0.8819191919191919
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3401,
+            "asr": 0.8414141414141414
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.2504,
+            "asr": 0.6091919191919192
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3536,
+            "asr": 0.9358585858585858
+          }
+        ],
+        "mean_asr": 0.8448282828282828
+      },
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3898,
+            "asr": 0.7643434343434343
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.4019,
+            "asr": 0.6372727272727273
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3943,
+            "asr": 0.7973737373737374
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3931,
+            "asr": 0.8870707070707071
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3911,
+            "asr": 0.7496969696969698
+          }
+        ],
+        "mean_asr": 0.7671515151515151
+      },
+      "max_committed_asr": 0.8448282828282828
+    },
+    "norm_clip_then_reputation": {
+      "d1": "norm_clip",
+      "d2": "reputation",
+      "wave": 1,
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3824,
+            "asr": 0.8784848484848485
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3894,
+            "asr": 0.9345454545454546
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3702,
+            "asr": 0.9003030303030303
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3722,
+            "asr": 0.9823232323232324
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3854,
+            "asr": 0.8649494949494949
+          }
+        ],
+        "mean_asr": 0.9121212121212121
+      },
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3853,
+            "asr": 0.8547474747474747
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.4008,
+            "asr": 0.8725252525252525
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3821,
+            "asr": 0.9182828282828283
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3882,
+            "asr": 0.9614141414141414
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3927,
+            "asr": 0.8294949494949495
+          }
+        ],
+        "mean_asr": 0.8872929292929292
+      },
+      "max_committed_asr": 0.9121212121212121
+    },
+    "norm_clip_then_foolsgold": {
+      "d1": "norm_clip",
+      "d2": "foolsgold",
+      "wave": 1,
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3618,
+            "asr": 0.8311111111111111
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3874,
+            "asr": 0.6609090909090909
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3203,
+            "asr": 0.9007070707070707
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3136,
+            "asr": 0.9965656565656565
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3574,
+            "asr": 0.8188888888888889
+          }
+        ],
+        "mean_asr": 0.8416363636363636
+      },
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3657,
+            "asr": 0.7731313131313131
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3697,
+            "asr": 0.7784848484848484
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3697,
+            "asr": 0.9255555555555556
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3693,
+            "asr": 0.8657575757575757
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3619,
+            "asr": 0.7666666666666667
+          }
+        ],
+        "mean_asr": 0.8219191919191919
+      },
+      "max_committed_asr": 0.8416363636363636
+    },
+    "rfa_then_reputation": {
+      "d1": "rfa",
+      "d2": "reputation",
+      "wave": 1,
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3809,
+            "asr": 0.8908080808080808
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3888,
+            "asr": 0.9413131313131313
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3474,
+            "asr": 0.8775757575757576
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3781,
+            "asr": 0.9602020202020202
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3845,
+            "asr": 0.9177777777777778
+          }
+        ],
+        "mean_asr": 0.9175353535353535
+      },
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3857,
+            "asr": 0.8358585858585859
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3993,
+            "asr": 0.9001010101010101
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3877,
+            "asr": 0.9305050505050505
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.391,
+            "asr": 0.9495959595959595
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3871,
+            "asr": 0.8395959595959596
+          }
+        ],
+        "mean_asr": 0.8911313131313131
+      },
+      "max_committed_asr": 0.9175353535353535
+    },
+    "foolsgold_then_trimmed_mean": {
+      "d1": "foolsgold",
+      "d2": "trimmed_mean",
+      "wave": 1,
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3758,
+            "asr": 0.5775757575757576
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.4041,
+            "asr": 0.3982828282828283
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3675,
+            "asr": 0.5667676767676768
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3742,
+            "asr": 0.515959595959596
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3851,
+            "asr": 0.4113131313131313
+          }
+        ],
+        "mean_asr": 0.493979797979798
+      },
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3844,
+            "asr": 0.4027272727272727
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.4045,
+            "asr": 0.42777777777777776
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3787,
+            "asr": 0.4674747474747475
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3779,
+            "asr": 0.4476767676767677
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3897,
+            "asr": 0.3692929292929293
+          }
+        ],
+        "mean_asr": 0.42298989898989897
+      },
+      "max_committed_asr": 0.493979797979798
+    },
+    "norm_clip_then_trimmed_mean": {
+      "d1": "norm_clip",
+      "d2": "trimmed_mean",
+      "wave": 1,
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3869,
+            "asr": 0.7956565656565656
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3879,
+            "asr": 0.7241414141414141
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3624,
+            "asr": 0.862020202020202
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.379,
+            "asr": 0.9781818181818182
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3892,
+            "asr": 0.8171717171717172
+          }
+        ],
+        "mean_asr": 0.8354343434343434
+      },
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3863,
+            "asr": 0.7691919191919192
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.4025,
+            "asr": 0.6486868686868686
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3936,
+            "asr": 0.797979797979798
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3943,
+            "asr": 0.8872727272727273
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3897,
+            "asr": 0.7386868686868687
+          }
+        ],
+        "mean_asr": 0.7683636363636364
+      },
+      "max_committed_asr": 0.8354343434343434
+    },
+    "reputation_then_coord_median": {
+      "d1": "reputation",
+      "d2": "coord_median",
+      "wave": 1,
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3749,
+            "asr": 0.0044444444444444444
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3933,
+            "asr": 0.0025252525252525255
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3741,
+            "asr": 0.004141414141414141
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3815,
+            "asr": 0.0023232323232323234
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.376,
+            "asr": 0.009797979797979799
+          }
+        ],
+        "mean_asr": 0.004646464646464647
+      },
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.396,
+            "asr": 0.6891919191919192
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3976,
+            "asr": 0.5987878787878788
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3938,
+            "asr": 0.738989898989899
+          }
+        ],
+        "mean_asr": 0.6756565656565656
+      }
+    }
+  }
+}

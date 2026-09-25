@@ -1,0 +1,166 @@
+{
+  "description": "SHARD 12-13 of Arm D's wave-1 menu on cifar100/cifar_cnn: wave-1 positions 12 to 13 inclusive in the frozen order, against both committed attacks at seeds 42-46. This is a SLICE, not a suite.",
+  "run_scope": "NOT A SUITE AND NOT SCOREABLE ALONE. This file holds 20 runs over 2 of the 18 wave-1 pairs. It must be merged with the canonical artifact by experiments/merge_cifar100_suite_shards.py and scored only by the frozen runner's own --report. No fraction, base rate or baseline may be computed from this file.",
+  "deviation_from_the_frozen_run_order": "The freeze fixes wave 1's pairs in the imported list order so that any partial completion is a pre-specified prefix. ONE thing here departs from that order, for the submission deadline: the slices are taken LOW-PAIRS-FIRST rather than in list order. Obeying the list order would have stopped at about pair 16 of 18 and dropped wave-1 position 18, foolsgold_then_rfa, whose CIFAR-10 max_committed_asr of 0.0454 is the lowest in the menu and which is one of the five LOW pairs (positions 8, 9, 12, 13, 18) the estimand is computed over. Execution is SERIAL, one worker, one run at a time: a first attempt ran two concurrent workers and the box killed both in their first run under memory pressure, banking nothing, so concurrency is not part of this deviation. No rule, threshold, seed, attack, gate or menu entry is changed; only the order is. The deviation is reported against the freeze and the freeze is not edited.",
+  "shard": {
+    "from": 12,
+    "to": 13,
+    "pairs": [
+      "rfa_then_coord_median",
+      "foolsgold_then_coord_median"
+    ],
+    "positions_are": "1-indexed, inclusive, in the frozen wave-1 order"
+  },
+  "prereg": "experiments/pre_registration_cifar100_composition_suite.md",
+  "prereg_commit": "f559b85",
+  "prereg_md5": "a7de61ad34ea2e04236261f0e69abd92",
+  "gates_inherited_not_rerun": "Gate 0's probe verdict and the CIFAR-10 cross-check are READ from results/cifar100_composition_suite/summary.json and this shard refuses to start unless both are recorded as passing. Gate 1 (adversary_hook verify=True) and gate 2 (the accuracy floor) are inside the imported run_one and apply unchanged.",
+  "determinism_check": null,
+  "dataset": "cifar100",
+  "model": "cifar_cnn",
+  "acc_floor": 0.35,
+  "attacks": [
+    "committed_scaling",
+    "committed_pixel"
+  ],
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "n_runs_here": 20,
+  "pairs": {
+    "rfa_then_coord_median": {
+      "d1": "rfa",
+      "d2": "coord_median",
+      "wave": 1,
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3928,
+            "asr": 0.7762626262626262
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3853,
+            "asr": 0.6866666666666666
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3685,
+            "asr": 0.7958585858585858
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3829,
+            "asr": 0.9315151515151515
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3912,
+            "asr": 0.7528282828282828
+          }
+        ]
+      },
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3952,
+            "asr": 0.6946464646464646
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.4034,
+            "asr": 0.5798989898989899
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3946,
+            "asr": 0.7435353535353535
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3969,
+            "asr": 0.7875757575757576
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3853,
+            "asr": 0.6748484848484848
+          }
+        ]
+      }
+    },
+    "foolsgold_then_coord_median": {
+      "d1": "foolsgold",
+      "d2": "coord_median",
+      "wave": 1,
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3894,
+            "asr": 0.3807070707070707
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3987,
+            "asr": 0.22757575757575757
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3796,
+            "asr": 0.44383838383838387
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3805,
+            "asr": 0.32232323232323234
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.382,
+            "asr": 0.25424242424242427
+          }
+        ]
+      },
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3912,
+            "asr": 0.3988888888888889
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.4044,
+            "asr": 0.27080808080808083
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3968,
+            "asr": 0.4809090909090909
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3816,
+            "asr": 0.3434343434343434
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3829,
+            "asr": 0.2862626262626263
+          }
+        ]
+      }
+    }
+  }
+}

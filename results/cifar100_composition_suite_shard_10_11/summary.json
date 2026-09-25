@@ -1,0 +1,166 @@
+{
+  "description": "SHARD 10-11 of Arm D's wave-1 menu on cifar100/cifar_cnn: wave-1 positions 10 to 11 inclusive in the frozen order, against both committed attacks at seeds 42-46. This is a SLICE, not a suite.",
+  "run_scope": "NOT A SUITE AND NOT SCOREABLE ALONE. This file holds 20 runs over 2 of the 18 wave-1 pairs. It must be merged with the canonical artifact by experiments/merge_cifar100_suite_shards.py and scored only by the frozen runner's own --report. No fraction, base rate or baseline may be computed from this file.",
+  "deviation_from_the_frozen_run_order": "The freeze fixes wave 1's pairs in the imported list order so that any partial completion is a pre-specified prefix. ONE thing here departs from that order, for the submission deadline: the slices are taken LOW-PAIRS-FIRST rather than in list order. Obeying the list order would have stopped at about pair 16 of 18 and dropped wave-1 position 18, foolsgold_then_rfa, whose CIFAR-10 max_committed_asr of 0.0454 is the lowest in the menu and which is one of the five LOW pairs (positions 8, 9, 12, 13, 18) the estimand is computed over. Execution is SERIAL, one worker, one run at a time: a first attempt ran two concurrent workers and the box killed both in their first run under memory pressure, banking nothing, so concurrency is not part of this deviation. No rule, threshold, seed, attack, gate or menu entry is changed; only the order is. The deviation is reported against the freeze and the freeze is not edited.",
+  "shard": {
+    "from": 10,
+    "to": 11,
+    "pairs": [
+      "norm_clip_then_rfa",
+      "rfa_then_trimmed_mean"
+    ],
+    "positions_are": "1-indexed, inclusive, in the frozen wave-1 order"
+  },
+  "prereg": "experiments/pre_registration_cifar100_composition_suite.md",
+  "prereg_commit": "f559b85",
+  "prereg_md5": "a7de61ad34ea2e04236261f0e69abd92",
+  "gates_inherited_not_rerun": "Gate 0's probe verdict and the CIFAR-10 cross-check are READ from results/cifar100_composition_suite/summary.json and this shard refuses to start unless both are recorded as passing. Gate 1 (adversary_hook verify=True) and gate 2 (the accuracy floor) are inside the imported run_one and apply unchanged.",
+  "determinism_check": null,
+  "dataset": "cifar100",
+  "model": "cifar_cnn",
+  "acc_floor": 0.35,
+  "attacks": [
+    "committed_scaling",
+    "committed_pixel"
+  ],
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "n_runs_here": 20,
+  "pairs": {
+    "norm_clip_then_rfa": {
+      "d1": "norm_clip",
+      "d2": "rfa",
+      "wave": 1,
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3826,
+            "asr": 0.876969696969697
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3937,
+            "asr": 0.9038383838383839
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3614,
+            "asr": 0.9248484848484848
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3861,
+            "asr": 0.9793939393939394
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3862,
+            "asr": 0.8514141414141414
+          }
+        ]
+      },
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3868,
+            "asr": 0.8514141414141414
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3977,
+            "asr": 0.8916161616161616
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3807,
+            "asr": 0.9135353535353535
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3948,
+            "asr": 0.9494949494949495
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3893,
+            "asr": 0.8288888888888889
+          }
+        ]
+      }
+    },
+    "rfa_then_trimmed_mean": {
+      "d1": "rfa",
+      "d2": "trimmed_mean",
+      "wave": 1,
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3869,
+            "asr": 0.8297979797979798
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3843,
+            "asr": 0.7873737373737374
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3648,
+            "asr": 0.8653535353535353
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3741,
+            "asr": 0.9697979797979798
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3926,
+            "asr": 0.8218181818181818
+          }
+        ]
+      },
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.387,
+            "asr": 0.761010101010101
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.4037,
+            "asr": 0.6797979797979798
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3918,
+            "asr": 0.8272727272727273
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3883,
+            "asr": 0.8947474747474747
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3872,
+            "asr": 0.7419191919191919
+          }
+        ]
+      }
+    }
+  }
+}

@@ -726,6 +726,44 @@ the Gram proposal equals the shipped selection at both endpoints on live stacks;
 ladder's own pair in all $12$ flip rounds that carry an adversary, re-measured live in the same process
 rather than read back from a file.
 
+\textbf{The same instrument on a second dataset: pre-registered, gated on three of its six gates, and
+its contrast is not reported here.} \texttt{experiments/\allowbreak pre\_registration\_\allowbreak
+oracle\_free\_\allowbreak femnist.md}, committed alone at \texttt{9cbe359}, applies this instrument
+unchanged to EMNIST-byclass with \texttt{simple\_cnn}, $d_2$ Krum and the committed scaling attack,
+importing \texttt{make\_hook} and \texttt{identity\_hook} rather than copying them, so the share gate
+and the flip gate are the same code at the same tolerance. As elsewhere in this paper the prose reads
+EMNIST-byclass while the artifact path, the pre-registration filename and the JSON dataset key retain
+the \texttt{femnist} spelling, for the provenance reason main §\ref{app:targeted_full} gives. Its harness
+check passed all five of its checks, with the verdict dict persisted into
+\texttt{results/\allowbreak oracle\_free\_\allowbreak femnist/\allowbreak summary.json} rather than
+left in a terminal, and those five cover three of that freeze's six numbered gates. Gate~1,
+bit-identity, recomputes the published EMNIST-byclass identity rung at seed $42$ two independent ways,
+through the ladder's call shape and through the hook path, and lands on
+accuracy $0.7645951359576352$ and ASR $0.023899769324709396$ with a difference of $(0,0)$ both times,
+the hook path also reporting $50$ invocations over $50$ rounds. Gates~2 and~3, the bisection invariant
+(this codebase's flip gate) and the
+share gate, are measured live on EMNIST-byclass update stacks, where all $3$ of $3$ crossing rounds
+differ in the shipped selection and the mask-free supremum share gap over every nonempty proper subset of the
+$K{=}5$ participants reaches $8.727{\times}10^{-8}$ against the same \texttt{SHARE\_TOL} of $10^{-6}$.
+The self check that witnesses the instrument is the frozen one is \texttt{cifar10}-only by
+construction, its dataset being hardcoded in the module, so it says nothing about this dataset and is
+not counted here as though it did.
+
+\textbf{What that freeze fixes, and why no contrast from it appears anywhere in this paper.} It sets
+$n=20$ per arm with both arms new, no imported leg and no mixed $n$, and it contains no stop-early
+provision, so there is no pre-specified form in which a partial version of it could be scored. The
+ladder delivered $11$ of arm~A's $20$ runs and $0$ of arm~B's before the compute for this submission
+ran out, at a mean of $23.1$ flip rounds per run of $50$, between $16$ and $27$, and a supremum share
+gap of at most $9.997{\times}10^{-8}$ across all $11$: the dose is delivered oracle-free on a second
+dataset, which is the one thing this arm does establish. The artifact's \texttt{Delta\_decision}
+accordingly records $n=0$ and the literal \texttt{NOT COMPUTED} for each of its four verdict labels,
+and gates~5 and~6, the accuracy gate and the ceiling/floor gate, are gates on the scored contrast and
+carry that same literal. \textbf{We compute no $\Delta$ at any $n$ from this arm and report no single
+leg of it as a finding}, because a one-legged report is the mixed-$n$ comparison the freeze exists to
+prevent. What exists is an instrument with a passing harness check and an unrun contrast, and main
+§\ref{app:oracle_free}'s scope sentence, which licenses no general statement in either direction about
+what an oracle buys, is unchanged by an arm that produced no verdict.
+
 % ---- Relocated from the main paper's appendix (Round 80). Both blocks were its most
 % self-contained: the audit is the artifact behind \S\ref{sec:related}'s one rate and one
 % withdrawal, and the randomization test is one pre-registered question nothing else rests on.
