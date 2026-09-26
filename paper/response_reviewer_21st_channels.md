@@ -168,7 +168,7 @@ the screen harder than the CIFAR-10 arm did.** The 42-pair menu was re-run on CI
 its own freeze to wave 1 before the first run. The result is not a lower agreement figure; it is that
 the screen never reaches a LOW prediction for any pair at all. "on CIFAR-100 \textbf{no single defense suppresses the committed pixel backdoor alone}, and a pair is predicted LOW only when C1 is met for \emph{every} committed attack" `:2779`, so "the screen returns HIGH on every scored pair and is therefore the constant-HIGH predictor on this menu cell for cell rather than merely equal to it in aggregate" `:2779`.
 
-The figures, with the base rate in the same sentence as the freeze requires: "The screen agrees with the observed class on $7$ of the $9$ scored pairs, $77.8\%$, against a constant-HIGH predictor's $7$ of $9$ on the same pairs, $77.8\%$, which is also the base rate, with $2$ of the $11$ complete pairs excluded below the floor and $0$ excluded for a missing baseline." `:2785` Those two figures are equal by
+The figures, with the base rate in the same sentence as the freeze requires: "The screen agrees with the observed class on $13$ of the $15$ scored pairs, $86.7\%$, against a constant-HIGH predictor's $13$ of $15$ on the same pairs, $86.7\%$, which is also the base rate, with $3$ of the $18$ complete pairs excluded below the floor and $0$ excluded for a missing baseline." `:2785` Those two figures are equal by
 construction rather than by coincidence, and we say so rather than letting a reader treat the
 coincidence as informative. "Precision on the LOW class is undefined because the screen predicts LOW for no pair at all, and recall on the LOW class is $0$" `:2785`.
 
@@ -176,14 +176,14 @@ coincidence as informative. "Precision on the LOW class is undefined because the
 seven aggregators the screen reads "give fourteen standalone readings, and \textbf{exactly one falls below the screen's own C1 threshold of $0.3$}" `:2787`: `reputation` against committed scaling. The
 attack with no standalone suppressor at all is the pixel backdoor, "its seven readings run from \texttt{coord\_median}'s $0.673$ to $0.888$" `:2787`, and because a pair is predicted LOW only when C1
 is met for every committed attack, that one scaling suppressor cannot yield a LOW pair. **We report the
-part of the precondition that held rather than absorbing it into the headline:** "\texttt{reputation} does suppress committed scaling alone, at ASR $0.005$" `:2779`, and on two scored pairs C1 and C2 both
-hold for that attack, so "the screen reaches a LOW per-attack prediction twice and still predicts no LOW pair" `:2779`.
+part of the precondition that held rather than absorbing it into the headline:** "\texttt{reputation} does suppress committed scaling alone, at ASR $0.005$" `:2779`, and on five scored pairs C1 and C2 both
+hold for that attack, so "the screen reaches a LOW per-attack prediction five times and still predicts no LOW pair" `:2779`.
 This is the same shape as EMNIST-byclass, where the minimum single-defense pixel ASR is $0.609$. Both
 datasets that leave CIFAR-10 at the composition level fail C1's precondition **on the same attack**, so
 this is a scope condition on the criterion rather than an artifact of one menu, and §6.3's negative
 recommendation now rests on two datasets rather than one.
 
-**What this arm is not.** It is not the full 42-pair menu and the paper never calls it one: "the freeze capped the arm to wave~1's $18$ pairs before the first run, so wave~2's $24$ held-out pairs are deliberately unrun and no held-out generalization claim rests on this arm" `:2781`. Two complete pairs
+**What this arm is not.** It is not the full 42-pair menu and the paper never calls it one: "the freeze capped the arm to wave~1's $18$ pairs before the first run, so wave~2's $24$ held-out pairs are deliberately unrun and no held-out generalization claim rests on this arm" `:2781`. Three complete pairs
 sit below the frozen clean-accuracy floor and are counted rather than dropped, with their accuracies
 printed `:2783`. One thing departed from the frozen run order (the pairs were taken in LOW-first
 slices rather than list order, so that the menu's lowest-ASR composition was reached before the

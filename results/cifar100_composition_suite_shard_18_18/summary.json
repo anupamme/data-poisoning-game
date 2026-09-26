@@ -1,6 +1,6 @@
 {
   "description": "SHARD 18-18 of Arm D's wave-1 menu on cifar100/cifar_cnn: wave-1 positions 18 to 18 inclusive in the frozen order, against both committed attacks at seeds 42-46. This is a SLICE, not a suite.",
-  "run_scope": "NOT A SUITE AND NOT SCOREABLE ALONE. This file holds 2 runs over 1 of the 18 wave-1 pairs. It must be merged with the canonical artifact by experiments/merge_cifar100_suite_shards.py and scored only by the frozen runner's own --report. No fraction, base rate or baseline may be computed from this file.",
+  "run_scope": "NOT A SUITE AND NOT SCOREABLE ALONE. This file holds 10 runs over 1 of the 18 wave-1 pairs. It must be merged with the canonical artifact by experiments/merge_cifar100_suite_shards.py and scored only by the frozen runner's own --report. No fraction, base rate or baseline may be computed from this file.",
   "deviation_from_the_frozen_run_order": "The freeze fixes wave 1's pairs in the imported list order so that any partial completion is a pre-specified prefix. ONE thing here departs from that order, for the submission deadline: the slices are taken LOW-PAIRS-FIRST rather than in list order. Obeying the list order would have stopped at about pair 16 of 18 and dropped wave-1 position 18, foolsgold_then_rfa, whose CIFAR-10 max_committed_asr of 0.0454 is the lowest in the menu and which is one of the five LOW pairs (positions 8, 9, 12, 13, 18) the estimand is computed over. Execution is SERIAL, one worker, one run at a time: a first attempt ran two concurrent workers and the box killed both in their first run under memory pressure, banking nothing, so concurrency is not part of this deviation. No rule, threshold, seed, attack, gate or menu entry is changed; only the order is. The deviation is reported against the freeze and the freeze is not edited.",
   "shard": {
     "from": 18,
@@ -29,7 +29,7 @@
     45,
     46
   ],
-  "n_runs_here": 2,
+  "n_runs_here": 10,
   "pairs": {
     "foolsgold_then_rfa": {
       "d1": "foolsgold",
@@ -40,6 +40,21 @@
       "committed_pixel": {
         "per_seed": [
           {
+            "seed": 42,
+            "accuracy": 0.2371,
+            "asr": 0.03838383838383838
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.2231,
+            "asr": 0.05929292929292929
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.2223,
+            "asr": 0.03464646464646465
+          },
+          {
             "seed": 45,
             "accuracy": 0.2406,
             "asr": 0.00808080808080808
@@ -48,6 +63,35 @@
             "seed": 46,
             "accuracy": 0.2349,
             "asr": 0.013838383838383839
+          }
+        ]
+      },
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.2491,
+            "asr": 0.054343434343434346
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.2289,
+            "asr": 0.09080808080808081
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.2256,
+            "asr": 0.05595959595959596
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.2416,
+            "asr": 0.019797979797979797
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.2354,
+            "asr": 0.012323232323232323
           }
         ]
       }

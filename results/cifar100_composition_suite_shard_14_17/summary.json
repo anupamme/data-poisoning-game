@@ -1,0 +1,298 @@
+{
+  "description": "SHARD 14-17 of Arm D's wave-1 menu on cifar100/cifar_cnn: wave-1 positions 14 to 17 inclusive in the frozen order, against both committed attacks at seeds 42-46. This is a SLICE, not a suite.",
+  "run_scope": "NOT A SUITE AND NOT SCOREABLE ALONE. This file holds 40 runs over 4 of the 18 wave-1 pairs. It must be merged with the canonical artifact by experiments/merge_cifar100_suite_shards.py and scored only by the frozen runner's own --report. No fraction, base rate or baseline may be computed from this file.",
+  "deviation_from_the_frozen_run_order": "The freeze fixes wave 1's pairs in the imported list order so that any partial completion is a pre-specified prefix. ONE thing here departs from that order, for the submission deadline: the slices are taken LOW-PAIRS-FIRST rather than in list order. Obeying the list order would have stopped at about pair 16 of 18 and dropped wave-1 position 18, foolsgold_then_rfa, whose CIFAR-10 max_committed_asr of 0.0454 is the lowest in the menu and which is one of the five LOW pairs (positions 8, 9, 12, 13, 18) the estimand is computed over. Execution is SERIAL, one worker, one run at a time: a first attempt ran two concurrent workers and the box killed both in their first run under memory pressure, banking nothing, so concurrency is not part of this deviation. No rule, threshold, seed, attack, gate or menu entry is changed; only the order is. The deviation is reported against the freeze and the freeze is not edited.",
+  "shard": {
+    "from": 14,
+    "to": 17,
+    "pairs": [
+      "reputation_then_rfa",
+      "reputation_then_foolsgold",
+      "reputation_then_norm_clip",
+      "reputation_then_trimmed_mean"
+    ],
+    "positions_are": "1-indexed, inclusive, in the frozen wave-1 order"
+  },
+  "prereg": "experiments/pre_registration_cifar100_composition_suite.md",
+  "prereg_commit": "f559b85",
+  "prereg_md5": "a7de61ad34ea2e04236261f0e69abd92",
+  "gates_inherited_not_rerun": "Gate 0's probe verdict and the CIFAR-10 cross-check are READ from results/cifar100_composition_suite/summary.json and this shard refuses to start unless both are recorded as passing. Gate 1 (adversary_hook verify=True) and gate 2 (the accuracy floor) are inside the imported run_one and apply unchanged.",
+  "determinism_check": null,
+  "dataset": "cifar100",
+  "model": "cifar_cnn",
+  "acc_floor": 0.35,
+  "attacks": [
+    "committed_scaling",
+    "committed_pixel"
+  ],
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "n_runs_here": 40,
+  "pairs": {
+    "reputation_then_rfa": {
+      "d1": "reputation",
+      "d2": "rfa",
+      "wave": 1,
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3815,
+            "asr": 0.006363636363636364
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3891,
+            "asr": 0.0056565656565656566
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3685,
+            "asr": 0.004141414141414141
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3809,
+            "asr": 0.0023232323232323234
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3718,
+            "asr": 0.017474747474747476
+          }
+        ]
+      },
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3816,
+            "asr": 0.8563636363636363
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.396,
+            "asr": 0.8951515151515151
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3836,
+            "asr": 0.926060606060606
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3911,
+            "asr": 0.946060606060606
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3848,
+            "asr": 0.8289898989898989
+          }
+        ]
+      }
+    },
+    "reputation_then_foolsgold": {
+      "d1": "reputation",
+      "d2": "foolsgold",
+      "wave": 1,
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3588,
+            "asr": 0.0030303030303030303
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3485,
+            "asr": 0.0015151515151515152
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3454,
+            "asr": 0.00787878787878788
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3341,
+            "asr": 0.007070707070707071
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3728,
+            "asr": 0.005757575757575757
+          }
+        ]
+      },
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3755,
+            "asr": 0.8387878787878787
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3803,
+            "asr": 0.6272727272727273
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3509,
+            "asr": 0.9632323232323232
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3524,
+            "asr": 0.8331313131313132
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3649,
+            "asr": 0.8147474747474748
+          }
+        ]
+      }
+    },
+    "reputation_then_norm_clip": {
+      "d1": "reputation",
+      "d2": "norm_clip",
+      "wave": 1,
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3739,
+            "asr": 0.005757575757575757
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3781,
+            "asr": 0.0032323232323232323
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3708,
+            "asr": 0.0056565656565656566
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3693,
+            "asr": 0.0030303030303030303
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3782,
+            "asr": 0.011212121212121211
+          }
+        ]
+      },
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3835,
+            "asr": 0.8570707070707071
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3968,
+            "asr": 0.8677777777777778
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3844,
+            "asr": 0.9166666666666666
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3922,
+            "asr": 0.955050505050505
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3828,
+            "asr": 0.8302020202020202
+          }
+        ]
+      }
+    },
+    "reputation_then_trimmed_mean": {
+      "d1": "reputation",
+      "d2": "trimmed_mean",
+      "wave": 1,
+      "dataset": "cifar100",
+      "model": "cifar_cnn",
+      "committed_scaling": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3797,
+            "asr": 0.004747474747474748
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.3939,
+            "asr": 0.0024242424242424242
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.37,
+            "asr": 0.004646464646464647
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.3741,
+            "asr": 0.0023232323232323234
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3833,
+            "asr": 0.01292929292929293
+          }
+        ]
+      },
+      "committed_pixel": {
+        "per_seed": [
+          {
+            "seed": 42,
+            "accuracy": 0.3876,
+            "asr": 0.7472727272727273
+          },
+          {
+            "seed": 43,
+            "accuracy": 0.4038,
+            "asr": 0.6807070707070707
+          },
+          {
+            "seed": 44,
+            "accuracy": 0.3902,
+            "asr": 0.8534343434343434
+          },
+          {
+            "seed": 45,
+            "accuracy": 0.396,
+            "asr": 0.8964646464646465
+          },
+          {
+            "seed": 46,
+            "accuracy": 0.3847,
+            "asr": 0.7634343434343435
+          }
+        ]
+      }
+    }
+  }
+}
