@@ -46,23 +46,32 @@ Paper under double-blind review}
 % negation instruments read main.tex's body window only, and measure_self_containment checks main's
 % appendix index rather than this paragraph. The sentence said "two" while five blocks had been moved,
 % because it was written after the first two and not re-derived after the last three. It is now
-% enumerated one pointer per block, so a sixth relocation contradicts a list rather than a numeral.
+% enumerated one pointer per block, so a ninth relocation contradicts a list rather than a numeral.
+% Round 81 moved the last three and re-derived both halves: the numeral AND the skippability clause,
+% since two of the three are NOT skippable and the old clause named only one exception.
 % It also said "Nothing here is required to follow the main paper's results", which the equivalence
 % testing falsified the moment it arrived: main.tex's own reader's map calls that block NOT skippable.
 % Keep this paragraph and that map in agreement; they are the only two statements of what moved.
 \noindent This supplement holds per-cell measurement detail for the composability
-screen, together with five self-contained blocks relocated from the main paper's
+screen, together with eight self-contained blocks relocated from the main paper's
 appendix: the composition audit's rubric, retrieval frame and coded rows
 (§\ref{app:audit}); one pre-registered question about whether randomization is itself
 costly (§\ref{app:randomization}); the equivalence testing at the existing seed counts
 (§\ref{app:tost}); the composition and adaptive-attack construction details
 (§\ref{app:composition_adaptive}); and the scale and architecture checks
-(§\ref{app:scale_external}). Every claim any of it supports is stated and qualified in
+(§\ref{app:scale_external}); the one use we claim for the screen, evaluation
+prioritization, and the designs an evaluator after discovery should run instead
+(§\ref{app:prioritization}); that use priced over the nine variants an evaluator could
+run, precision against recall against evaluation cost (§\ref{app:frontier}); and the
+closed census of the region Prop.~\ref{prop:invariance}(a) settles algebraically, which
+holds the one falsifiable prospective positive (§\ref{app:census}). Every claim any of it supports is stated and qualified in
 the main paper, and section, table and theorem numbers without an \textbf{S} prefix
 refer to it, as do citations, whose full entries are in its reference list. What decided
-what was moved is that no claim in the main paper is stated only here. Four of the five
-are then skippable; \textbf{the equivalence testing is not}, since it is where each arm's
-binding $m^\ast$ and the one-sided bound behind every non-increase are computed.
+what was moved is that no claim in the main paper is stated only here. Five of the eight
+are then skippable; \textbf{the equivalence testing, the frontier and the census are not}: the
+first is where each arm's binding $m^\ast$ and the one-sided bound behind every non-increase
+are computed, and the other two carry what the screen costs and the one falsifiable
+prospective positive.
 
 \small
 \setlength{\tabcolsep}{4pt}
@@ -1418,6 +1427,316 @@ mix (NC/rep) & s42 & s43 & s44 & s45 & s46 & ResNet18 mean & cifar\_cnn mean \\
 \end{center}
 
 NC-dominant endpoint replicates within $0.01$; mid-mix is $\sim 9\%$ higher on ResNet18; the reputation-dominant endpoint shows an order-of-magnitude gap (no CI overlap). Seed 45's accuracy collapses to $0.153$ at NC10/rep90 (the persistent attack effectively breaks the model) while trigger ASR remains $0.975$. \textbf{Verdict: MEDIUM} (monotonic ordering preserved, endpoint criterion fails), on the scale stated in \texttt{experiments/\allowbreak run\_mix\_ratio\_sweep\_resnet18.py}; that label name is reused with different meanings by other runners in this repository, which is why its criterion is restated here rather than referenced. The cifar\_cnn collapse boundary at $\sim 70$--$90\%$ reputation is therefore a property of the smaller-architecture regime. This sweep bounds the architecture-conditional claim of §\ref{sec:limitations} and establishes no boundary of its own; we draw no conclusion here about which mixture of the two defenses survives, since mixture policies are outside this paper's scope (§\ref{sec:composability_criterion}).
+
+
+% ---- Relocated from the main paper's appendix (Round 81, the twenty-second review's item 5,
+% which asks for a 15--20% cut of the main document). These were App. E's three most
+% self-contained subsections: one prices the screen as an evaluation-prioritization heuristic,
+% one draws its precision/recall/cost frontier, and one closes the algebraically settled census.
+% Moved VERBATIM apart from \subsection -> \section, which the supplement's top level forces.
+% Every label travels, so each pointer in the main paper resolves through xr; those pointers are
+% rewritten to name the supplement, and the main appendix index's relocation paragraph is
+% re-enumerated, because that paragraph is prose about the document's own shape and no build,
+% hash or gate can see it go stale.
+\section{An application: screening as evaluation prioritization}
+\label{sec:condition_scoring}
+\label{app:prioritization}
+
+\begin{table}[h]
+\caption{\textbf{What this design can and cannot conclude.} The middle column is about
+\emph{identifiability}, not statistical power: a ``no'' marked \emph{structural} cannot be repaired by
+more seeds, defenses or attacks (Proposition~\ref{prop:identification_full}). Every entry is scoped to the
+measured setting of §\ref{sec:composability_validation}--§\ref{app:targeted_full}.}
+\label{tab:can_cannot}
+\centering\small\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}p{0.40\linewidth}p{0.16\linewidth}p{0.38\linewidth}@{}}
+\toprule
+\textbf{question} & \textbf{identifiable?} & \textbf{answer, and its evidence} \\
+\midrule
+Does disturbing $d_2$'s statistic change its \emph{decision}? & measured & \textbf{Yes}: Krum's selection flips in up to $0.80$ of rounds \\
+Does it change the \emph{admitted adversarial mass}? & by construction & \textbf{No}: unchanged in every one of the $60$ measured rounds \\
+Does it change \emph{suppression}? & instrumented & \textbf{No}: $|\Delta|{=}0.026$, inside the frozen margin (Prop.~\ref{prop:nonidentifiability_full}(a)) \\
+Does \emph{adversary-correlated} reweighting change suppression? & instrumented & \textbf{Yes}, non-monotonically: single-peaked (Mode~A) \\
+% Round 63: the n is printed here because the frozen refutation stays at its own n=5 while the
+% comparability cell's controlled leg moves to n=20 (pre_registration_reversal_seed_topup.md,
+% Amendment 2, Class B item 2; the site list is fixed in Amendment 3). Same estimand, two reporting
+% roles, so a site that quotes it without an n can be read as the topped-up one.
+Does admitted mass \emph{order} outcomes across defenses? & pre-registered & \textbf{No, refuted}: $+0.098$ ($n{=}5$) against a frozen ${+}0.150$ \\
+Is (P4) \emph{sufficient} for (P5)? & control arm & \textbf{No}: \texttt{cos\_krum} admits $0.000$ while ASR falls \\
+Can (P4) be screened \emph{without} adversary identity? & \textbf{no, open} & Both instruments are oracles: the stated open problem \\
+Does C1 identify C2's contribution? & \textbf{no, structural} & Empty cell by the gate, for every menu (Prop.~\ref{prop:identification_full}) \\
+Does any of this certify \emph{deployed} security? & \textbf{no, scope} & Committed attack only; one adaptive test breaks it \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{What follows is a consequence of the identification boundary, not a claim the paper argues for.} Proposition~\ref{prop:identification_full} says a criterion gated on the outcome it predicts cannot be validated by cross-defense contrast; what such a criterion can still do is \emph{order an evaluation budget}, and that is the only use we claim for it. Proposition~\ref{prop:emergent_full} bounds what it can find. Read the numbers below as a measurement of a prioritization heuristic's cost, not as validation of the framework.
+
+\textbf{Does every condition earn its place? C3 does not: reported as a finding.} Scoring all 42 pairs on C1, C2 and C3 \emph{independently} rather than recording only the first failure: against a $12\%$ base rate of low-ASR pairs, C1 alone selects 4 at $50\%$ precision, C2 alone 14 at $36\%$, and C1$\wedge$C2 selects 2 at $100\%$. \textbf{The surviving C2 failures are exactly the non-invariant signal class}: after the Proposition~\ref{prop:invariance} reclassification every one of them is a $\cdot{\to}$reputation pair (nc$\to$rep $0.819$, rfa$\to$rep $0.882$, fg$\to$rep $0.798$), consensus distance being the signal a positive rescaling does not preserve, while all three non-degenerate $\cdot{\to}$FoolsGold pairs are C1 failures instead. \textbf{C3 has no demonstrated incremental predictive value in this study}: alone it selects 35 pairs at $9\%$ precision, below the base rate, and it never binds on a pair C1$\wedge$C2 already admits. So \textbf{we demote C3 from a gate to a margin diagnostic and recommend C1$\wedge$C2 as the criterion}, retaining C3 on theoretical grounds only: Theorem~\ref{thm:bounded_reweight} shows margin compression is a real failure mode, and the $\alpha{=}0.1$ regime below is precisely a margin collapse. \textbf{The demotion changes no number}, C1$\wedge$C2 selects the same two pairs at the same precision (recomputed by \texttt{analyze\_screening\_cost.py}), which is why we report it as a finding about the criterion rather than a revision of results. \emph{The pre-registered PASS/FAIL labels and the $16/18$ and $22/24$ tallies were frozen with C3 in the gate and are not relabelled}; this ablation is post-hoc and labelled as such, and the recommendation is for use going forward.
+
+
+\paragraph{If the goal is to \emph{find} emergent compositions, drop C1: a recommendation we price but do not validate.} Proposition~\ref{prop:emergent_full} says an inherited-suppression gate cannot certify a composition whose suppression neither constituent possesses, so an evaluator whose object is discovery rather than prioritization should not run C1 at all, and this is a consequence of the proposition rather than a finding of ours. Two designs follow, and §\ref{app:frontier} prices both on our own menu. \textbf{Sample the ungated menu} when the budget allows: $42$ pairs at $12\%$ precision reaches every low-ASR pair by construction, and it is the only design with no structural blind spot. \textbf{Otherwise gate on the mechanism condition alone}, C2 without C1: it admits $14$ of the $42$ at $36\%$ precision, a third of the ungated cost, and it reaches FoolsGold$\to$RFA where every C1-bearing variant misses it. \textbf{The caveat is ours and it is not small}: C2-alone's recall on this menu is $100\%$, but $11$ of those $14$ admissions rest on a per-pair call made in sample rather than on algebra, and all $5$ low-ASR pairs are among the $11$ (§\ref{app:frontier}), so that recall is a development-set number and we offer the design as a recommendation rather than as a validated procedure. Finding emergence efficiently is a search problem, and nothing here solves it: what the propositions establish is which designs cannot solve it.
+
+\section{The screening frontier: precision, recall and evaluation cost}
+\label{app:frontier}
+
+\noindent \emph{What does the screen cost, and what does it cost to find out?}
+\textbf{$40\%$ recall is an operating point, not a verdict on the conditions.} Scoring C1, C2 and C3
+independently over the $42$ pairs traces a frontier, and the criterion the paper reports is its
+high-precision end. Emitted by \texttt{experiments/build\_screening\_frontier.py}, which joins the two
+existing generators and introduces no number of its own.
+
+\noindent \textbf{Neither screen is noise, and neither is a predictor.} Both C2 alone and C1$\wedge$C2 beat a size-matched random draw from the same $42$ pairs ($P \le 0.005$ at $10^5$ resamples against the menu's $12\%$ base rate, seeded \texttt{rng(42)}; emitted by \texttt{experiments/blind\_selection\_analysis.py}). Beating a random draw is the whole of what that establishes: it separates the screens from chance and not from each other, and it says nothing about either one's ability to predict suppression.
+
+\begin{center}\small\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrrrc@{}}
+\toprule
+Variant & selected & precision & recall & mean ASR & runs & reaches FG$\to$RFA \\
+\midrule
+no screen (all pairs) & 42 & 12\% & 100\% & $0.743$ & 420 & \checkmark \\
+C3 alone & 35 & 9\% & 60\% & $0.760$ & 350 & \checkmark \\
+C2 alone & 14 & 36\% & 100\% & $0.588$ & 140 & \checkmark \\
+C2 algebraic only$^\ddagger$ & 3 & 0\% & 0\% & $0.869$ & 30 & --- \\
+C2 $\wedge$ C3 & 8 & 38\% & 60\% & $0.562$ & 80 & \checkmark \\
+C1 alone$^\dagger$ & 4 & 50\% & 40\% & $0.514$ & 40 & --- \\
+C1 $\wedge$ C3$^\dagger$ & 4 & 50\% & 40\% & $0.514$ & 40 & --- \\
+C1 $\wedge$ C2$^\dagger$ (the criterion) & 2 & 100\% & 40\% & $0.242$ & 20 & --- \\
+C1 $\wedge$ C2 $\wedge$ C3$^\dagger$ & 2 & 100\% & 40\% & $0.242$ & 20 & --- \\
+\bottomrule
+\multicolumn{7}{@{}l}{\footnotesize $\dagger$ additionally requires $60$ standalone runs before the
+condition can be evaluated at all, so this row's} \\
+% Round 58: this used to end "that $80$ is the figure §\ref{sec:strategies} quotes." Reviewer item #9
+% demoted the rates out of §\ref{sec:strategies}, so the clause went false in the same edit that made
+% this table their only home. The replacement clause is the LAST footnote row below rather than this
+% one: appended here it made the row $15.92$pt overfull, and a \multicolumn footnote row never wraps,
+% so the source newline is a space and the overflow is silent in the PDF's right margin.
+\multicolumn{7}{@{}l}{\footnotesize evaluation budget is $20{+}60 = 80$ runs, not the composition runs
+alone.} \\
+\multicolumn{7}{@{}l}{\footnotesize $\ddagger$ the same screen restricted to the pairs whose C2
+verdict Prop.~\ref{prop:invariance} settles algebraically.} \\
+\multicolumn{7}{@{}l}{\footnotesize percentages are over small denominators: $5$ of the $42$ pairs are
+low-ASR, so the C1-bearing rows'} \\
+\multicolumn{7}{@{}l}{\footnotesize precision is $2/2$ and their recall $2/5$. \emph{mean ASR} averages
+max-committed ASR over the admitted pairs;} \\
+\multicolumn{7}{@{}l}{\footnotesize a lower mean is not a better screen, since the C1 end reaches it by
+discarding the menu's lowest-ASR pair.} \\
+% Round 60: the pixel sweep found that a reader who averages the two admitted pairs' own published
+% figures gets $0.285$, not $0.242$, because the frontier scores every pair at the menu's uniform
+% $n{=}3$ while Table~\ref{tab:composability} marks per-row top-ups. Nothing on the page said so.
+\multicolumn{7}{@{}l}{\footnotesize \emph{mean ASR} scores every pair at the menu's uniform $n{=}3$,
+not at the marked} \\
+\multicolumn{7}{@{}l}{\footnotesize seed counts of Table~\ref{tab:composability}, where the two
+admitted pairs read $0.107$ and $0.463$.} \\
+\multicolumn{7}{@{}l}{\footnotesize This table is the only home of these rates.} \\
+\end{tabular}
+\end{center}
+
+\noindent \textbf{The blind spot is attributable to exactly one condition, and the theory named it
+before the ablation was run.} Every C1-bearing variant misses FoolsGold$\to$RFA and every C1-free
+variant reaches it: its row is C1 \emph{false}, C2 \emph{true}, C3 \emph{true}, max-committed ASR
+$0.045$. C1 is the inherited-suppression gate, and Prop.~\ref{prop:emergent_full} proves no gate of that
+form can certify an emergent composition, so the miss is a \emph{predicted} property of one condition
+rather than an unexplained failure, and it is tradeable: C2 alone recovers every low-ASR pair in the
+menu at $36\%$ precision. \textbf{We report the high-precision end because false positives deploy an
+insecure stack}, not because the conditions cannot be operated at higher recall.
+
+\noindent \textbf{The C2 column is not all one kind of evidence, and the high-recall claim depends on
+the weaker kind.} We describe C2 as read off the two defenses' definitions, and for two of its four
+branches that is literally what happens: a $d_2$ reading a cosine is exactly invariant under any
+positive per-client rescaling (Prop.~\ref{prop:invariance}(a)) and a $d_2$ reading a consensus
+distance, a residual magnitude or a norm is not (Prop.~\ref{prop:invariance}(c)). The remaining branch
+is \emph{conditional}: \texttt{coord\_median} and \texttt{trimmed\_mean} preserve a coordinate ordering
+only under a separation condition, and Thm.~\ref{thm:bounded_reweight}(2) gives \texttt{rfa} an
+analogous one, so \texttt{analyze\_condition\_ablation.py} marks all three \texttt{None} and
+\texttt{c2\_holds} defers to a \emph{per-pair call}, the stored category. Nothing in the C2 column
+distinguishes a verdict reached by algebra from one reached
+by that call, so we census it (\texttt{c2\_provenance}, same generator): of the $14$ pairs C2 admits,
+\textbf{$3$ rest on algebra and $11$ on the per-pair call}, the $11$ being every
+\texttt{coord\_median}, \texttt{trimmed\_mean} and \texttt{rfa} row. \textbf{And all $5$ low-ASR pairs
+are in the $11$}: $0$ of $5$ are algebraically settled. Hence the $\ddagger$ row above. \textbf{Worse
+for us, all $11$ are development-set pairs}, so those calls were made \emph{in sample}, while the
+criterion was being written; they are not pre-registered, and the generator derives the split from
+which results artifact holds each pair rather than taking our word for it. \textbf{Two
+consequences we accept rather than repair.} First, C2 alone as we score it \emph{is not a pure
+statistic-preservation screen} for those three $d_2$ classes, so the body's contrast between it and
+C1$\wedge$C2 is a contrast between two screens that both borrow from the same in-sample call, not
+between algebra and measurement. Second, \emph{within this menu} the region where our own invariance
+result decides the question contains no low-ASR pair at all, so the algebraically settled sub-region
+cannot discriminate any strategy from any other \emph{here}, and the $100\%$ recall of C2 alone is
+carried entirely by in-sample judgement. \textbf{The second consequence is the one we then removed},
+by enlarging the algebraic region until it closed rather than by relabelling this one: the $3$ pairs
+of the $\ddagger$ row are all three upstream defenses against the single downstream defense
+\texttt{foolsgold}, which is one column of a $3\times3$ census over
+$d_1 \times d_2$, and completing that census prospectively puts a
+low-ASR pair inside the algebraic region and separates the two strategies more sharply there than
+anywhere in this table (§\ref{app:census}). The \emph{first} consequence stands and needs an
+invariance theorem for the conditional classes, which we do not have; what neither needs is a
+relabelling, and no number in this appendix or the body changes. This is (L5) in concrete form: the
+conditions are not always readable off a $(d_1,d_2)$ pair.
+
+\noindent \textbf{What the screen saves, in runs rather than in pairs.}
+\texttt{experiments/analyze\_screening\_cost.py}: unscreened, the $42$ pairs under $2$ committed
+attacks at $5$ seeds are $420$ runs; the reported criterion evaluates $16$ cells, $80$ runs, of which
+$60$ are the standalone measurements C1 needs. That is $340$ runs avoided, \textbf{$81\%$ of runs}. We
+give the run-level figure rather than the pair-level $95.2\%$, which overstates the saving by ignoring
+C1's own standalone cost. \textbf{The unit is runs, and the hours behind them are now measured
+rather than assumed}: the runners print per-run seconds into their logs, and the six the script reads ship with the code,
+so the figure is checkable; over the $228$ logged
+CIFAR-10 pair-evaluation runs the median is $11.1$ min (mean $13.1$, IQR $10.7$--$12.5$), so the
+$340$ avoided runs are $63$ GPU-hours on the one machine, or $74$ at the mean. \emph{Correcting our
+own caveat:} through the previous version this paragraph said no per-run timing existed anywhere in
+the results and the artifact assumed $11.0$ min/run. The runner logs did carry it; the assumption
+happens to have been accurate to $0.14$ min, and we report the measurement in its place because a
+figure that can be measured should not be assumed. EMNIST-byclass arms run $52$ min/run and are
+excluded, so this accounting is CIFAR-10 only.
+
+\section{A closed census of the algebraically settled region, pre-registered}
+\label{app:census}
+
+\noindent \emph{What happens where the algebra settles preservation exactly, with no cells unspent?}
+\textbf{The $\ddagger$ row above is the \texttt{foolsgold} column of a $3\times3$ box over $d_1$ and
+$d_2$, and the two cells of that box which had never been run are what this wave measured.} The region where mechanism preservation is
+settled on \emph{both} sides is small and enumerable: $d_1$ emitting strictly positive per-client
+coefficients $T(u_i) = c_iu_i$, so Prop.~\ref{prop:invariance}(a) applies, against a $d_2$ reading an
+exactly scale-invariant statistic. Over this project's defenses and the metric-swap mirrors that
+region is $\{\texttt{norm\_clip},\texttt{rfa},\texttt{reputation}\} \times
+\{\texttt{foolsgold},\texttt{cos\_krum},\texttt{cos\_reputation}\}$, exactly $9$ ordered pairs, of
+which $7$ were already measured at the identical protocol and $2$ were unspent. Enumeration is what
+turned a planned $20$-pair sample into a census: \textbf{$118$ ordered pairs of this project are
+already spent}, and once the admissibility constraints (a non-degenerate $d_1$, and C0) are imposed
+only $6$ candidates remain anywhere. \textbf{A census needs no sampling argument, and an all-negative
+census is as informative as a positive one}, which is why this design was worth $24$ runs and
+$4.87$ h. Pre-registered at \texttt{96f8856} with per-pair C0--C3 verdicts, a frozen
+scoring rule and a two-sided resolution table
+(\texttt{experiments/pre\_registration\_wave3\_emergent.md}); scored by
+\texttt{experiments/analyze\_wave3\_emergent.py}, which refuses to run against an uncommitted prereg.
+
+\begin{center}\small\setlength{\tabcolsep}{6pt}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+$d_1 \downarrow$ \quad $d_2 \rightarrow$ & \texttt{foolsgold} & \texttt{cos\_krum} & \texttt{cos\_reputation} \\
+\midrule
+\texttt{norm\_clip}  & $0.887$ HIGH & $0.508$ HIGH$^\dagger$ & $0.935$ HIGH$^\dagger$ \\
+\texttt{rfa}         & $0.914$ HIGH & $0.566$ HIGH           & $0.861$ HIGH \\
+\texttt{reputation}  & $0.807$ HIGH & $\mathbf{0.263}$ \textbf{LOW}$^\ast$ & $0.787$ HIGH$^\ast$ \\
+\bottomrule
+\multicolumn{4}{@{}l}{\footnotesize Max-committed mean ASR over seeds $42,43,44$; LOW iff $< 0.5$.} \\
+\multicolumn{4}{@{}l}{\footnotesize $\ast$ the two unspent cells, labels frozen at \texttt{96f8856}
+before the output directory existed.} \\
+\multicolumn{4}{@{}l}{\footnotesize $\dagger$ \texttt{norm\_clip}'s clip is inactive on the pixel arm
+(max update norm $3.043 < \tau{=}5$), so those} \\
+\multicolumn{4}{@{}l}{\footnotesize \emph{pixel} cells are bit-identical to $d_2$ alone; both verdicts
+are carried by the scaling arm, where it is not.} \\
+\end{tabular}
+\end{center}
+
+\noindent \textbf{\texttt{foolsgold} is excluded from the $d_1$ column by measurement, and that
+measurement changed the design before any prediction was frozen.} It was going to supply two more
+C1-fail $\wedge$ C2-true pairs. But \texttt{foolsgold} normalizes with
+\texttt{weights - weights.min()}, forcing at least one coefficient to \emph{exactly} zero every
+round, which puts it outside Prop.~\ref{prop:invariance}(a)'s strict $c_i > 0$ hypothesis and under
+Lemma~\ref{lem:annihilation} instead. Measured through the shipped transform over $3$ seeds
+$\times\ 3$ rounds: $2/5$ exact zeros every round, and both downstream cosine statistics moved in
+$9$ of $9$ rounds. Synthetically at $1000$ trials the effect is entirely due to the zero: strictly
+positive coefficients change \texttt{cos\_krum}'s selection $0/1000$ times, one exact zero changes it
+$471/1000$. \texttt{reputation} by contrast emits $0/5$ zeros every round at a positive-part ratio up
+to $18\,839.8$, and under that same extreme rescaling in the same rounds the two cosine statistics
+moved $0/9$ while non-invariant \texttt{krum}'s selection moved $8/9$ and \texttt{reputation}'s own
+ordering $9/9$: \textbf{a contrast between statistics on identical inputs, not between conditions.}
+So the two \texttt{foolsgold}$\to\texttt{cos\_}\ast$ pairs were entered as \emph{measured-C2-fail
+controls} rather than as members of the census. \textbf{Had C2 been assumed from the definitions
+instead of measured, this wave would have reported two mislabelled pairs}
+(\texttt{experiments/verify\_wave3\_invariance.py}, \texttt{results/wave3\_invariance\_check.json}).
+
+\begin{center}\small\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llccl@{}}
+\toprule
+\# & pair & cell & pred. & measured \\
+\midrule
+1 & \texttt{reputation}$\to$\texttt{cos\_krum} & certified (C1$\wedge$C2) & LOW & $\mathbf{0.263}$ \textbf{LOW} \checkmark \\
+2 & \texttt{reputation}$\to$\texttt{cos\_reputation} & C1-fail $\wedge$ C2-true & HIGH & $0.787$ HIGH \checkmark \\
+3 & \texttt{foolsgold}$\to$\texttt{cos\_krum} & measured-C2-fail control & HIGH & HIGH$^\S$ (raw $0.086$) \checkmark \\
+4 & \texttt{foolsgold}$\to$\texttt{cos\_reputation} & measured-C2-fail control & HIGH & $0.824$ HIGH \checkmark \\
+\bottomrule
+\multicolumn{5}{@{}l}{\footnotesize $\S$ scored HIGH \emph{only} by the frozen \texttt{DEGENERATE-ACC}
+rule: mean clean accuracy $0.255 < 0.35$ on} \\
+\multicolumn{5}{@{}l}{\footnotesize the arm supplying the max, so its raw $0.086$ is a collapsed model
+and not a suppressed one.} \\
+\end{tabular}
+\end{center}
+
+\noindent \textbf{$4/4$ as registered, including the pair we flagged \texttt{uncertain}, and the
+near-identity check came back clean on every arm} ($0$ of $3$ seeds identical to $d_2$ alone on all
+$8$ arms; max per-seed differences $0.073$ to $1.000$), so these are compositions and not $d_2$ in
+disguise. Pair 1 was the live risk and the prereg said so: its LOW rests on two \emph{different}
+attacks being suppressed by two \emph{different} constituents, \texttt{reputation} holding
+model-scaling ($0.017$ at accuracy $0.777$) and \texttt{cos\_krum} the pixel backdoor ($0.300$ at
+$0.598$), and on the scaling arm the certification and the two nearest measured analogues
+($\texttt{norm\_clip}\to\texttt{cos\_krum}$ $0.508$, $\texttt{rfa}\to\texttt{cos\_krum}$ $0.566$)
+pointed \emph{opposite} ways. It came out LOW on both arms ($0.064$ scaling, $0.263$ pixel).
+\textbf{So the one low-ASR pair in the closed census is a pair neither constituent suppresses alone},
+and it is the pair C1$\wedge$C2 selects.
+
+\noindent \textbf{Both strategies priced over the same closed census, which costs no further runs
+because C1 is defined on standalone numbers that already exist.}
+
+\begin{center}\small\setlength{\tabcolsep}{6pt}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+strategy over the $9$-cell census & selected & precision & recall & runs \\
+\midrule
+A: statistic preservation (C2 alone) & 9 & $11\%$ & $100\%$ & 90 \\
+B: the criterion (C1 $\wedge$ C2)    & 1 & $\mathbf{100\%}$ & $\mathbf{100\%}$ & \textbf{10} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent In this region C2 alone is not a screen at all: it admits everything, because everything
+here satisfies it by construction. \textbf{That inverts the body's trade}, where B bought precision
+by giving up recall; here, at the frozen seed count, B dominates A on precision, recall and cost at
+once, and disclosure \emph{(v)} below is the qualification that phrase needs. It is also the
+answer to the objection of §\ref{app:frontier} that the algebraically settled sub-region cannot
+discriminate strategies: it could not, at $3$ pairs; at $9$ it discriminates them completely.
+
+\noindent \textbf{Five disclosures, none of which the numbers above carry on their face.}
+\emph{(i) B's $1/1$ is a gated reading.} C1 requires suppression at mean clean accuracy
+$\ge 0.35$, the gate applied throughout §\ref{sec:metric_swap}, and it flips exactly two census cells:
+\texttt{cos\_krum} alone reaches ASR $0.078$ on model-scaling but at accuracy $0.146$, barely above
+CIFAR-10's $0.10$ chance, so it is a destroyed model rather than a defended one. Read at the bare
+$0.5$ threshold, C1 additionally admits $\texttt{norm\_clip}\to\texttt{cos\_krum}$ and
+$\texttt{rfa}\to\texttt{cos\_krum}$, both HIGH, and B selects $3$ for $33\%$ precision. The gate is
+the paper's pre-existing convention rather than a knob turned for this table, and
+\texttt{analyze\_wave3\_emergent.py} emits both readings. \emph{(ii) The one positive is $n{=}3$ and
+wide}: pair 1's pixel arm is $0.000/0.107/0.681$ per seed, so one of three seeds sits above the
+threshold and the LOW verdict is the frozen mean rule applied to a spread that a fourth seed could
+move. We do not add seeds after seeing this. \emph{(iii) The controls are weaker evidence than
+intended.} Every \texttt{foolsgold}-as-$d_1$ scaling arm sits at chance accuracy ($0.100$), and pair
+3 is HIGH only through the accuracy gate, its raw ASR being $0.086$, and its scaling arm tripped the
+frozen ``ASR identically $0.0$ across all $3$ seeds'' flag, which on a model at $0.100$ accuracy means
+the attack had nothing left to succeed against; so pairs 3 and 4 establish that
+the C2 probe is not inert, which is their stated role, but they are not independent confirmations of
+a HIGH prediction. \emph{(iv) $7$ of the $9$ cells are retrospective.} Only the two \texttt{reputation}
+cells were blind; the other seven were read from frozen artifacts, with each transcription in the
+prereg checked against its source by the analyzer. So the census's \emph{closure} is prospective at
+the margin, not throughout, and pair 2's scaling arm tripped the second of the wave's two frozen sanity
+flags (clean accuracy $0.790$ against the FedAvg reference $0.667$). Both flags are reported, neither adjusted.
+\emph{(v) The C1 input that certifies pair 1 is the lowest-seed reading of a high-variance cell.} C1
+holds for pair 1 on the pixel arm because \texttt{cos\_krum} alone measures $0.300$ there, and that is
+the mean over the three frozen seeds $42$--$44$ ($0.003/0.269/0.630$). The identical cell, same
+protocol and identity upstream, is measured twice more in this paper at larger seed counts, and the
+cell's mean climbs monotonically with the count: $0.490$ at $n{=}5$ (Table~\ref{tab:dose_outcome},
+arm 3's $\kappa{=}0$ rung, which adds $0.864/0.686$) and $0.584$ at $n{=}8$
+(Table~\ref{tab:targeted}, which adds $0.578/0.845/0.795$), the last being the reading
+§\ref{app:targeted_full} states as \texttt{cos\_krum} never suppressing. Six of the eight seeds are
+above $0.5$ and the frozen three are the two lowest plus the fourth-lowest. So B's precision $1/1$
+and recall $1/1$ here are contingent on the frozen seed count as well as on the accuracy gate of
+\emph{(i)}, and we state the contingency at the resolution the numbers support rather than rounding
+it against ourselves: $0.490$ is still \emph{below} the threshold, by $0.010$, so C1 survives at
+$n{=}5$; at $n{=}8$ C1 fails for pair 1, B certifies nothing in this census, and its one low-ASR
+pair becomes another false negative of the criterion rather than its one hit. We report this instead of rescoring,
+because the pre-registration fixes the seed set at three and forbids adding seeds afterwards
+(\texttt{pre\_registration\_wave3\_emergent.md}, §5). What the disclosure costs is the claim that B
+\emph{dominates} A on this region, which holds at the frozen seeds and is not established beyond them.
 
 
 \bibliographystyle{iclr2027_conference}

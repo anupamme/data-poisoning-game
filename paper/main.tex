@@ -178,7 +178,7 @@ CIFAR-100, $n{=}5$ & $-0.213\ [-0.284,-0.141]$ & $+0.071\ [+0.031,+0.110]$ \\
 \bottomrule
 \end{tabular}\vspace{-3pt}
 \end{center}
-\noindent Both paired $95\%$ intervals exclude zero on each row and are disjoint on the first; the rows hold \texttt{coord\_median}, attack and rung grid fixed and differ in dataset at the $n$ shown (§\ref{sec:targeted}, App.~\ref{app:sixcell}). Both columns are measured with the aggregated update's magnitude free to move, and a pre-registered control that holds it fixed on the first row's cell turns the within-defense $+0.125$ into $-0.172$: the two designs then agree in sign there, so the disagreement above is licensed with that channel open and not with it closed (App.~\ref{app:magnitude_coordmedian}).
+\noindent Both paired $95\%$ intervals exclude zero on each row and are disjoint on the first; the rows hold \texttt{coord\_median}, attack and rung grid fixed and differ in dataset at the $n$ shown (§\ref{sec:targeted}, App.~\ref{app:sixcell}). Both columns are measured with the aggregated update's magnitude free to move, and a pre-registered control that closes it reverses the within-defense leg's own sign (App.~\ref{app:magnitude_coordmedian}). Our two channel instruments also read adversary identity, which no server has; pre-registered oracle-free versions of both refuted us at $n{=}20$ (App.~\ref{app:oracle_free}, App.~\ref{app:channel_separation}).
 
 % Round 70, the tenth review's items (1)/(5): the four-step story (question -> problem -> repair ->
 % evidence) inside the first pages. This paragraph was :133, ABOVE the problem, where it spent five
@@ -283,7 +283,7 @@ CIFAR-100, $n{=}5$ & $-0.213\ [-0.284,-0.141]$ & $+0.071\ [+0.031,+0.110]$ \\
 % cutting. No PROTECTED anchor is in the cut text; the nearest, "identify attack-suppression
 % preservation", is §5's and untouched. The scientific/operational denial stays, since box:scope's
 % "not for choosing a defense to deploy" is a different denial from "not detecting malicious clients".
-\noindent\textbf{Contributions.} The question is scientific rather than operational: whether an evaluation can identify that a mechanism \emph{caused} an observed suppression, not whether a deployment can detect malicious clients. The screen that result implies is priced rather than validated, and we do not claim it certifies security. Table~\ref{tab:claims} states each claim with the level it holds at and its status.
+\noindent\textbf{Contributions.} The question is scientific rather than operational. \emph{Our claim is not that preservation is uninformative, nor that admission predicts attack success}: it is the narrower one that no outcome-gated cross-defense comparison can attribute a composition's suppression to the downstream mechanism, because the gate removes the contrast such an attribution needs. The screen that result implies is priced rather than validated, and we do not claim it certifies security. Table~\ref{tab:claims} states each claim with the level it holds at and its status.
 
 % Round 61, reviewer item #7. The list was already THREE items; what was wrong is that each item was a
 % four-sentence paragraph doing the narrative's job, so the two dissociations a reader should remember
@@ -1116,7 +1116,7 @@ The regime: CIFAR-10, a 4-layer CNN, $N{=}10$ clients, $f{=}0.2$ adversarial, wi
 % what makes paragraphs() discard it, so deleting the heading alone would expose three paragraphs
 % to the emphasis ratchets and take bold_runs 39->42 against a cap of 39.
 \label{sec:dose_response}
-\emph{The inadmissible design still told us something.} Our earlier suites tried to validate ordering preservation by choosing a different downstream defense, the move Prop.~\ref{prop:identification} rules out. Varying only the \emph{dose} at fixed $d_2$ and attack refutes that suite's pooled prediction that disturbance predicts each arm's rise, and in three of four arms ASR \emph{falls} as the dose rises ($p{=}0.091$ against a frozen $p<0.05$; Table~\ref{tab:dose_outcome}). \textbf{The fault is ours and is now measured}: fixing $\mathrm{mean}(c){=}1$ leaves relative weights free, so a large spread mostly \emph{dilutes} whichever client carries the poison: attenuation, not statistic disturbance (§\ref{app:dose_caveats}, §\ref{app:delta_c}).
+\emph{The inadmissible design still told us something.} Our earlier suites tried to validate ordering preservation by choosing a different downstream defense, the move Prop.~\ref{prop:identification} rules out. Varying only the \emph{dose} at fixed $d_2$ and attack refutes that suite's pooled prediction that disturbance predicts each arm's rise (§\ref{sec:dose_outcome}). \textbf{The fault is ours and is now measured}: fixing $\mathrm{mean}(c){=}1$ leaves relative weights free, so a large spread mostly \emph{dilutes} the poisoned client: attenuation, not statistic disturbance (§\ref{app:dose_caveats}).
 
 \label{sec:targeted_rest}
 % Round 61, page gate: the two numbers that used to stand here are a recital, not a home. App.
@@ -1184,7 +1184,7 @@ The regime: CIFAR-10, a 4-layer CNN, $N{=}10$ clients, $f{=}0.2$ adversarial, wi
 % own body and footnotes, which is where a reader who wants the rates now goes. The footnote there
 % that used to say "that 80 is the figure §strategies quotes" was corrected in the same edit, because
 % §strategies no longer quotes it.
-\textbf{The screen fails exactly where Prop.~\ref{prop:emergent} says it must}: what it discards is FG$\to$RFA, the menu's lowest-ASR composition, so to find a menu's strongest composition, do not screen on inherited suppression at all. Across the nine variants an evaluator could run, the criterion sits at the high-precision, low-recall end (App.~\ref{app:frontier}). \textbf{Its own label does not survive more seeds}, where C1 fails and it certifies nothing (§\ref{sec:prospective}, App.~\ref{app:census}).
+\textbf{The screen fails exactly where Prop.~\ref{prop:emergent} says it must}: what it discards is FG$\to$RFA, the menu's lowest-ASR composition, so to find a menu's strongest composition, do not screen on inherited suppression at all. Across the nine variants an evaluator could run, the criterion sits at the high-precision, low-recall end (supplement §\ref{app:frontier}). \textbf{Its own label does not survive more seeds}, where C1 fails and it certifies nothing (§\ref{sec:prospective}, supplement §\ref{app:census}).
 
 % This paragraph said, at the end of §6, exactly what sec:validation's own tier paragraph already
 % says (§2/§3 were swapped in Round 53, so name the label, not the number): same two
@@ -1217,7 +1217,7 @@ The regime: CIFAR-10, a 4-layer CNN, $N{=}10$ clients, $f{=}0.2$ adversarial, wi
 % evidences it; the numbered form is §\ref{sec:intro}'s two measured facts, which carry both directions
 % with their magnitudes. That is also the right order for the twentieth review's point: the formal
 % result leads, and the dissociation is no longer the paragraph's closing generality.
-\noindent \emph{Neither a preserved decision nor a disturbed one determines suppression.} Whether a decision change costs suppression is a property of the intervention: on the Krum cell an intervention reading no adversary identity, at coefficient share $10^{-7}$, changes the decision and raises ASR $+0.322$ (App.~\ref{app:channel_separation}), where the masked reading of the same channel changes it and stays inside the pre-registered margin.
+\noindent \emph{Neither a preserved decision nor a disturbed one determines suppression}: whether a decision change costs suppression is a property of the intervention and not of the aggregator (App.~\ref{app:channel_separation}).
 
 \textbf{What changes for an evaluator}, criterion aside: \emph{do not} read a preserved statistic or unchanged decision as evidence suppression survived (Table~\ref{tab:channels}); \emph{do not} select compared pairs on the outcome you mean to attribute, the design that reversed our sign; \emph{do} run §\ref{sec:protocol}'s four clauses and report where the chain broke. Both instruments read adversary identity, leaving open (App.~\ref{app:conclusion}): \textbf{can admission (P4) be estimated without knowing which clients are malicious?}
 
@@ -1359,7 +1359,8 @@ out of document order, or if a body sentence hands its content to the appendix i
 is kept.} Four groups, in the order a sceptical reader would want them. \textbf{(1) What licenses a
 claim}: the evidence tiers, the levels in full, the proofs, and the identification argument term by
 term (App.~\ref{app:tiers}--\ref{app:proofs}). \textbf{(2) What the screen buys, priced}: prospective
-test, metric-swap ablation, frontier, closed census (App.~\ref{app:prioritization}). \textbf{(3) The
+test and metric-swap ablation (App.~\ref{sec:prospective}, \ref{sec:metric_swap}); the frontier and the
+closed census are in the supplement (§\ref{app:frontier}, §\ref{app:census}). \textbf{(3) The
 intervention evidence}: the confounded ladder, the instrument that replaced it, seven cells, and the
 composition the screen cannot certify (App.~\ref{app:targeted_full}, \ref{app:sixcell},
 \ref{sec:fg_rfa_flagship}). \textbf{(4) What we do not claim}: limitations, the evidence-status ledger
@@ -1427,7 +1428,7 @@ each, in document order; \emph{skippable} means no claim in the body rests on it
 \item \textbf{App.~\ref{app:notation}}: notation. Reference, skippable.
 \end{itemize}
 
-\noindent \textbf{Five blocks are in the supplement rather than here, and this is where a reader looking for them finds them.} The supplement §\ref{app:audit} carries the composition audit's frozen rubric, its retrieval frame and its $59$ coded rows; §\ref{app:randomization} answers one self-contained pre-registered question, whether randomizing \emph{which} composition is applied each round is itself costly; §\ref{app:tost} is the equivalence testing at the existing seed counts, that is, where the frozen $\pm0.15$ margin binds and where it does not; §\ref{app:composition_adaptive} holds the composition and adaptive-attack construction details; and §\ref{app:scale_external} holds the scale and architecture checks, which bound an external-validity statement and establish no boundary of their own. \textbf{What moved them is that no claim in the body is stated only there, not that any of them is unimportant}, and all five keep every number they had. Four are \emph{skippable} in the sense above. \textbf{The equivalence testing is not}: read it if you doubt the margin, since it is where each arm's binding $m^\ast$ and the one-sided bound behind every non-increase are computed.
+\noindent \textbf{Eight blocks are in the supplement rather than here, and this is where a reader looking for them finds them.} The supplement §\ref{app:audit} carries the composition audit's frozen rubric, its retrieval frame and its $59$ coded rows; §\ref{app:randomization} answers one self-contained pre-registered question, whether randomizing \emph{which} composition is applied each round is itself costly; §\ref{app:tost} is the equivalence testing at the existing seed counts, that is, where the frozen $\pm0.15$ margin binds and where it does not; §\ref{app:composition_adaptive} holds the composition and adaptive-attack construction details; §\ref{app:scale_external} holds the scale and architecture checks, which bound an external-validity statement and establish no boundary of their own; §\ref{app:prioritization} states the one use we claim for the screen, evaluation prioritization, together with the two designs an evaluator whose object is discovery should run instead; §\ref{app:frontier} prices that use over the nine variants an evaluator could run, precision against recall against evaluation cost; and §\ref{app:census} closes the region Prop.~\ref{prop:invariance}(a) settles algebraically, which is where the one falsifiable prospective positive sits. \textbf{What moved them is that no claim in the body is stated only there, not that any of them is unimportant}, and all eight keep every number they had. Five are \emph{skippable} in the sense above. \textbf{The equivalence testing, the frontier and the census are not}: read the first if you doubt the margin, since it is where each arm's binding $m^\ast$ and the one-sided bound behind every non-increase are computed, and the other two for what the screen costs and for the single prospective positive the paper claims.
 
 \section{The three tiers of evidence}
 \label{app:tiers}
@@ -1478,7 +1479,7 @@ each, in document order; \emph{skippable} means no claim in the body rests on it
 \label{sec:composability_criterion}
 \label{app:conditions}
 
-The paper's central practical question is \emph{which} defense pairs compose well under deterministic joint application. Specifically, the criterion screens for \emph{mechanism-preserving composition}: when one constituent defense is already individually effective (C1), can the other defense be added without breaking that suppression? This is the operationally relevant question (the criterion is not a general characterization of all composable pairs, but a sufficient condition for \emph{mechanism preservation} among pairs where at least one component has known effectiveness), never a sufficient condition for low ASR. We answer it first, with a checkable criterion, and treat the alternative, temporal mixing, as outside the scope of this paper. \textbf{But the practical question is not what the paper establishes}: what it establishes is that preservation of the statistic the screen checks is not causally tied to the security the screen predicts, so the criterion below should be read as the application §\ref{sec:condition_scoring} scopes it to (an ordering over an evaluation budget) and not as a deployment recommendation.
+The paper's central practical question is \emph{which} defense pairs compose well under deterministic joint application. Specifically, the criterion screens for \emph{mechanism-preserving composition}: when one constituent defense is already individually effective (C1), can the other defense be added without breaking that suppression? This is the operationally relevant question (the criterion is not a general characterization of all composable pairs, but a sufficient condition for \emph{mechanism preservation} among pairs where at least one component has known effectiveness), never a sufficient condition for low ASR. We answer it first, with a checkable criterion, and treat the alternative, temporal mixing, as outside the scope of this paper. \textbf{But the practical question is not what the paper establishes}: what it establishes is that preservation of the statistic the screen checks is not causally tied to the security the screen predicts, so the criterion below should be read as the application the supplement's §\ref{sec:condition_scoring} scopes it to (an ordering over an evaluation budget) and not as a deployment recommendation.
 
 Observe that each robust aggregation defense $d$ operates through an \emph{admission signal} $\sigma(u)$ applied to client update $u$: it accepts, clips, or down-weights $u$ based on whether $\sigma(u)$ exceeds a threshold. Crucially, the admission signal varies by defense family:
 \begin{itemize}[noitemsep,topsep=2pt]
@@ -1511,7 +1512,7 @@ C1 $\wedge$ C2 $\wedge$ C3 $\;\nRightarrow\;$ low composition ASR.
 \end{description}
 
 \smallskip
-\noindent\textbf{Mechanism-preservation conditions.} These are what Theorem~\ref{thm:bounded_reweight} proves for the weighting$\to$aggregator class, and they are determined by $d_1$'s and $d_2$'s definitions alone, no experiment required. \textbf{What we recommend is an \emph{evaluation-prioritization criterion}, C1$\wedge$C2, because that is the whole of what our evidence supports.} We do call it a \emph{screen} throughout, in the ordinary sense of a cheap test run before an expensive one. \textbf{We disclaim predictive validity explicitly, here at first use}: the criterion orders candidate compositions for evaluation, and it does \emph{not} predict whether a composition is secure. The pooled two-channel model over $26$ cells is unconfirmed ($R^2{=}0.239$), and our own pre-registered replication \textbf{refuted} the cross-arm admission ordering the criterion would need in order to predict (§\ref{app:targeted_full}); recall is $40\%$ (Proposition~\ref{prop:emergent_full}), so the negative direction carries no information either. \textbf{It is never a security screen, and a PASS is an evaluation ordering rather than a deployment decision} (Table~\ref{tab:scope_levels}). C3 is retained as a \textbf{margin diagnostic} rather than a gate, because on our data it never binds on a pair C1$\wedge$C2 already admits and shows no incremental predictive value (§\ref{sec:condition_scoring}). \emph{The pre-registered labels of §\ref{sec:composability_validation} were frozen with C3 in the gate and are not relabelled}; the demotion is a recommendation going forward, supported by a post-hoc factorial ablation, and it changes no reported number: C1$\wedge$C2 selects exactly the same two in-distribution pairs.
+\noindent\textbf{Mechanism-preservation conditions.} These are what Theorem~\ref{thm:bounded_reweight} proves for the weighting$\to$aggregator class, and they are determined by $d_1$'s and $d_2$'s definitions alone, no experiment required. \textbf{What we recommend is an \emph{evaluation-prioritization criterion}, C1$\wedge$C2, because that is the whole of what our evidence supports.} We do call it a \emph{screen} throughout, in the ordinary sense of a cheap test run before an expensive one. \textbf{We disclaim predictive validity explicitly, here at first use}: the criterion orders candidate compositions for evaluation, and it does \emph{not} predict whether a composition is secure. The pooled two-channel model over $26$ cells is unconfirmed ($R^2{=}0.239$), and our own pre-registered replication \textbf{refuted} the cross-arm admission ordering the criterion would need in order to predict (§\ref{app:targeted_full}); recall is $40\%$ (Proposition~\ref{prop:emergent_full}), so the negative direction carries no information either. \textbf{It is never a security screen, and a PASS is an evaluation ordering rather than a deployment decision} (Table~\ref{tab:scope_levels}). C3 is retained as a \textbf{margin diagnostic} rather than a gate, because on our data it never binds on a pair C1$\wedge$C2 already admits and shows no incremental predictive value (supplement §\ref{sec:condition_scoring}). \emph{The pre-registered labels of §\ref{sec:composability_validation} were frozen with C3 in the gate and are not relabelled}; the demotion is a recommendation going forward, supported by a post-hoc factorial ablation, and it changes no reported number: C1$\wedge$C2 selects exactly the same two in-distribution pairs.
 \begin{description}[noitemsep,topsep=2pt]
 \item[(C2) Signal preservation.] $d_1$'s per-client transformation $T_1$ does not destroy $d_2$'s admission signal: $\sigma_2(T_1(u_a)) \approx \sigma_2(u_a)$ for malicious updates $u_a$.
 \item[(C3) Boundary preservation.] $d_1$'s transformation does not compress the adversarial--benign separation below $d_2$'s discrimination threshold. Formally: if $d_2$ suppresses $a$ by detecting $\tau_{d_2}(u_a) > \theta$ (triggering trimming/rejection), then $\tau_{d_2}(T_1(u_a)) > \theta$ must hold, i.e., $d_1$ must not map adversarial updates from above to below $d_2$'s rejection boundary.
@@ -1675,13 +1676,13 @@ If $\mathcal{E} = \mathcal{S}$, every screen carrying that eligibility gate has 
 Every member of $\mathcal{S}$ is then emergent, hence rejected by Proposition~\ref{prop:emergent_full}, so the certified set meets $\mathcal{S}$ in $\emptyset$ and recall is $0$; recall is also non-negative, so the bound is attained. For the second claim, deciding membership in $\mathcal{E}$ requires $M(d_1 \to d_2, a)$ for a pair with $\min_{d}M(d,a) \ge \theta$, and that is a pair the gate rejects.
 \end{proof}
 
-\noindent Our own menu witnesses $\mathcal{E} \neq \emptyset$: FoolsGold$\to$RFA reaches $0.093$ where FoolsGold alone reaches $0.732$ and RFA alone $0.845$ (§\ref{sec:fg_rfa_flagship}). One emergent pair among five low-ASR pairs puts the cap here at $80\%$ against a measured $40\%$, so emergence explains part of the gap; had this menu's low-ASR set been emergent throughout, the same criterion would have certified nothing. That is why we report recall as an operating point rather than as a residual (§\ref{app:frontier}).
+\noindent Our own menu witnesses $\mathcal{E} \neq \emptyset$: FoolsGold$\to$RFA reaches $0.093$ where FoolsGold alone reaches $0.732$ and RFA alone $0.845$ (§\ref{sec:fg_rfa_flagship}). One emergent pair among five low-ASR pairs puts the cap here at $80\%$ against a measured $40\%$, so emergence explains part of the gap; had this menu's low-ASR set been emergent throughout, the same criterion would have certified nothing. That is why we report recall as an operating point rather than as a residual (supplement §\ref{app:frontier}).
 
 \paragraph{Mechanism--effectiveness confounding: Proposition~\ref{prop:identification_full} in our instance.} The boundary has an uncomfortable consequence for validation, and it is worth spelling out concretely. In \emph{every} in-scope pair the criterion certifies, $d_2$ already suppresses the attack that $d_1$ fails. A certified composition's low ASR can therefore always be attributed to $d_2$'s standalone strength (C1) rather than to $d_1$ having preserved $d_2$'s mechanism (C2, C3): the two are confounded \textbf{by the conditions themselves}, not by an unlucky choice of defense menu. We name this \textbf{mechanism--effectiveness confounding} and offer it as a methodological observation about validating composition criteria of this shape, applicable beyond our own experiments.
 
 In particular it rules out the experiment we previously named as decisive: a $d_2$ whose admission signal is invariant under positive rescaling but which is \emph{weak in isolation} cannot satisfy C1 in scope, so no such certified pair exists to test. The achievable substitute is \textbf{per-attack complementarity}: a $d_2$ that suppresses the attack $d_1$ fails while remaining weak on a \emph{different} committed attack, so its max-committed ASR stays high and it cannot suppress the composition single-handedly. Reputation is such a defense ($0.017$ on model-scaling, $0.842$ on the pixel backdoor), and §\ref{sec:metric_swap} builds the test on that observation.
 \begin{proof}[Argument sketch]
-(C1 sufficient) If at least one of $d_1$, $d_2$ individually suppresses $a$, composition inherits that suppression provided C2$\wedge$C3 preserve the signal chain. \textbf{That covers two routes and only one of them is this paper's subject.} If the suppressing constituent is $d_2$, the inheritance is exactly what C2$\wedge$C3 are for. If it is $d_1$, the suppression is inherited \emph{provided $d_2$ is not invariant to the transformation class $d_1$ suppresses through}; subject to that proviso $d_1$ sits upstream and nothing downstream undoes it, so C2$\wedge$C3 are not required on that attack and the preservation argument contributes nothing to it. \textbf{We had stated this route without the proviso, and it is not vacuous} (below). Both routes count toward a max-committed label, which is why the label can be right on an attack the mechanism has no purchase on (§\ref{app:validation_full}). C1 is sufficient, not necessary: two individually-weak defenses may suppress synergistically through complementary mechanisms (e.g., partial downweighting + geometric rejection), but predicting such synergy requires the quantitative margins below. The criterion is therefore \emph{conservative} in the direction this sketch argues for: it may reject working compositions. \textbf{It is not a guarantee in the other direction, and nothing here establishes one.} That no clean C1$\wedge$C2$\wedge$C3 PASS is a false positive is a \emph{measured} property of $42$ pairs (§\ref{sec:condition_scoring}), not a consequence of the argument above; the criterion has no established predictive validity ((L2), §\ref{sec:limitations}), and against an adversary that solves both constituents' constraints at once a certified pair's ASR rises $2.4\times$ (§\ref{sec:fg_rfa_flagship}).
+(C1 sufficient) If at least one of $d_1$, $d_2$ individually suppresses $a$, composition inherits that suppression provided C2$\wedge$C3 preserve the signal chain. \textbf{That covers two routes and only one of them is this paper's subject.} If the suppressing constituent is $d_2$, the inheritance is exactly what C2$\wedge$C3 are for. If it is $d_1$, the suppression is inherited \emph{provided $d_2$ is not invariant to the transformation class $d_1$ suppresses through}; subject to that proviso $d_1$ sits upstream and nothing downstream undoes it, so C2$\wedge$C3 are not required on that attack and the preservation argument contributes nothing to it. \textbf{We had stated this route without the proviso, and it is not vacuous} (below). Both routes count toward a max-committed label, which is why the label can be right on an attack the mechanism has no purchase on (§\ref{app:validation_full}). C1 is sufficient, not necessary: two individually-weak defenses may suppress synergistically through complementary mechanisms (e.g., partial downweighting + geometric rejection), but predicting such synergy requires the quantitative margins below. The criterion is therefore \emph{conservative} in the direction this sketch argues for: it may reject working compositions. \textbf{It is not a guarantee in the other direction, and nothing here establishes one.} That no clean C1$\wedge$C2$\wedge$C3 PASS is a false positive is a \emph{measured} property of $42$ pairs (supplement §\ref{sec:condition_scoring}), not a consequence of the argument above; the criterion has no established predictive validity ((L2), §\ref{sec:limitations}), and against an adversary that solves both constituents' constraints at once a certified pair's ASR rises $2.4\times$ (§\ref{sec:fg_rfa_flagship}).
 
 (C2 role) Suppose $d_2$ individually suppresses $a$ via signal $\sigma_2(u_a) > \theta$. If $d_1$'s transformation $T_1$ destroys this signal ($\sigma_2(T_1(u_a)) \not\approx \sigma_2(u_a)$), $d_2$ cannot detect the attack. Example: NormClip as $d_1$ maps every client norm above $\tau$ to $\tau$. A $\sigma_2$ keyed on the update norm is then client-independent, and C2 fails outright. Reputation's consensus distance $\sigma_2(u) = \|u - \hat\mu\|$ does not collapse that way: at $\|u_i\| = \tau$ for every $i$, $\|u_i - \hat\mu\|^2 = \tau^2 + \|\hat\mu\|^2 - 2\langle u_i, \hat\mu\rangle$, so client dependence survives through the inner product. Clipping removes the radial part of the separation and no more. For a purely radial attack that is the whole of it, and model-scaling is one, since it multiplies the update by a constant that clipping undoes exactly; where the adversarial direction also differs, the angular part survives and C2 fails by margin compression rather than by annihilation. This is measured, not hypothetical: NormClip$\to$reputation leaves model-scaling ASR at $0.807 \pm 0.048$ and the pixel backdoor at $0.842 \pm 0.047$ over 5 seeds, against reputation alone at $0.017$ (per-seed values in the supplement §\ref{app:composition}). Quantitatively: C2 holds when relative signal distortion $\Delta_{\mathrm{signal}} := |\sigma_2(T_1(u_a)) - \sigma_2(u_a)|/\sigma_2(u_a) < \delta_2$ for a defense-specific tolerance $\delta_2$.
 
@@ -2520,7 +2521,7 @@ fedavg $\to$ trimmed\_mean$^\ast$ & DEGEN & HIGH & 0.846 & \checkmark \\
 
 \paragraph{Two boundary conditions, stated alongside the primary result.} Both are developed in full later, but neither should be met late. \textbf{(i) Extreme heterogeneity breaks the PASS pairs: two of three on the raw reading, one of three once our own accuracy floor is applied.} At $\alpha{=}0.1$, fg$\to$rfa reaches $0.569$ and rep$\to$cm $0.548$; only fg$\to$cm survives, at $0.433$. fg$\to$rfa's cell sits at clean accuracy $0.20$, below our $0.35$ floor, so it is \emph{uninterpretable} rather than a crossing and the gated count is $1/3$; both counts are carried, because the floor softens a limitation we state against ourselves and rep$\to$cm's crossing ($0.548$ at $0.48$) survives it either way. What makes this more than a negative datapoint is that the failure appears in the theorem's own quantity: RFA's separation margin $m := \Delta'_{\mathrm{sep}}/[2(R'_B+\delta')]$, measured on the transformed points, collapses from an all-round mean of $3.24$ to $1.01$ (exactly the $m \to 1$ boundary at which Corollary~\ref{cor:aggregate_mass}'s bound degrades to $40\%$ adversarial mass), so a practitioner running the 5--10 round pilot would measure $m \approx 1$ and decline to deploy. We emphasise that this is a post-hoc measurement of a known failure, not a pre-registered prediction of it; full sweep and caveats (bimodality at $n{=}3$, accuracy collapse to $0.20$--$0.48$) in §\ref{sec:oos_pass}(E). \textbf{(ii) Mechanism preservation is not adaptive-attack robustness.} A criterion-aware adversary solving FoolsGold's and RFA's constraints jointly (decorrelated coordinate blocks to evade the similarity test, $\epsilon$-ball projection to stay inside the geometric median's radius) raises fg$\to$rfa from $0.064$ (seed-matched at $n{=}30$, and on the pixel arm the attack is built from) to $0.157$ within our evaluated composition-aware attack family (§\ref{sec:fg_rfa_flagship}). Theorem~\ref{thm:bounded_reweight} bounds what the preserved mechanism admits, not what an adversary reshaping its update to satisfy both constraints at once can do, and the $2.4\times$ increase is the size of that gap on our flagship pair.
 
-\textbf{Held-out validation (pre-registered): 22/24 = 92\%} (\emph{Screening}: an evaluation ordering, and by Proposition~\ref{prop:identification_full} not an identification of the mechanism's contribution)\textbf{.} Table~\ref{tab:composability_heldout} reports the 24 pre-registered pairs. Combined across both waves: \textbf{38/42 = 90.5\%}. \textbf{Read against its base rate that figure is nearly uninformative, which is why it appears here, where it is computed, and in no summarizing position.} Only 5 of the 42 pairs are low-ASR (the $12\%$ base rate of §\ref{sec:condition_scoring}), so the constant predictor that calls every pair HIGH already scores $37/42 = 88.1\%$; $90.5\%$ is one pair better than that, and the tally is carried by correct negatives. The informative quantities are precision $2/2$ and recall $40\%$ (§\ref{sec:condition_scoring}). The two held-out misses are both LOW-predicted pairs that were flagged as \emph{speculative} in the pre-registration (neither is a clean C1$\wedge$C2$\wedge$C3 PASS):
+\textbf{Held-out validation (pre-registered): 22/24 = 92\%} (\emph{Screening}: an evaluation ordering, and by Proposition~\ref{prop:identification_full} not an identification of the mechanism's contribution)\textbf{.} Table~\ref{tab:composability_heldout} reports the 24 pre-registered pairs. Combined across both waves: \textbf{38/42 = 90.5\%}. \textbf{Read against its base rate that figure is nearly uninformative, which is why it appears here, where it is computed, and in no summarizing position.} Only 5 of the 42 pairs are low-ASR (the $12\%$ base rate of supplement §\ref{sec:condition_scoring}), so the constant predictor that calls every pair HIGH already scores $37/42 = 88.1\%$; $90.5\%$ is one pair better than that, and the tally is carried by correct negatives. The informative quantities are precision $2/2$ and recall $40\%$ (supplement §\ref{sec:condition_scoring}). The two held-out misses are both LOW-predicted pairs that were flagged as \emph{speculative} in the pre-registration (neither is a clean C1$\wedge$C2$\wedge$C3 PASS):
 \begin{table}[h]
 \caption{Held-out pre-registered validation (24 pairs, $n{=}5$ seeds; max across committed\_scaling and committed\_pixel). All predictions committed to version control (commit \texttt{7e4d9b1}) before experiments. Threshold: LOW $< 0.5$, HIGH $\geq 0.5$. Only the two LOW predictions are shown individually; the 22 HIGH predictions (all correct) are summarized.}
 \label{tab:composability_heldout}
@@ -2619,159 +2620,7 @@ The pattern holds across the suite once cells without power are excluded: $\Delt
 
 The suite contains a second such contrast, on Reputation under model-scaling (standalone $0.017$ at $0.777$ accuracy), and the two are informative in opposite ways. NormClip disturbs Reputation's weight ordering in $3/9$ rounds and the composition reaches $0.806$; RFA disturbs it in $9/9$ and the composition reaches $0.895$. The gap is only $+0.089$ (both arms are far above threshold, because Reputation's ordering is disturbed under \emph{both} upstreams) but within-arm variance is small, all five seeds move in the predicted direction (per-seed deltas $+0.149 / +0.089 / +0.030 / +0.061 / +0.115$), and it is resolved at both $n{=}3$ and $n{=}5$ (Welch $t = 3.06$, two-sided $p = 0.018$; paired $t = 4.31$, $p = 0.013$). So the two contrasts trade off exactly as the disturbance measurements imply: Krum has the large effect because one of its upstreams leaves it untouched, and Reputation was resolvable even at $n{=}3$ because neither upstream does.
 
-\textbf{This is post-hoc, and we do not present it otherwise.} It was not pre-registered, it re-uses a suite frozen for a different purpose, the two extra seeds per cell were added \emph{after} seeing the $n{=}3$ result, and the six-cell split is a description of that suite rather than a test on new data. The top-up could have cut in either direction and we report what it did: it resolved the Krum gap (Welch $p = 0.16$ at $n{=}3$, where per-seed paired deltas $+0.854 / +0.097 / +0.935$ left one seed not separating, to $p = 0.012$ at $n{=}5$) and left the invariant control at $\Delta \approx 0$ ($+0.000$ under NormClip, $-0.044$ under RFA), the added seeds raising its baseline and its compositions together. What the analysis does have, which neither the FLTrust contrasts of §\ref{sec:prospective} nor the cross-pair scoring has, is C1 held exactly fixed and a disturbance measurement taken on the statistic rather than read back from the outcome. We offer it as the cleanest available piece of C2 evidence and as the shape a properly prospective version of this test would take: fix a downstream defense that suppresses the attack, then vary the upstream along measured disturbance rather than along defense identity. Table~\ref{tab:can_cannot} sets out, claim by claim, what this design can and cannot conclude.
-
-\subsection{An application: screening as evaluation prioritization}
-\label{sec:condition_scoring}
-\label{app:prioritization}
-
-\begin{table}[h]
-\caption{\textbf{What this design can and cannot conclude.} The middle column is about
-\emph{identifiability}, not statistical power: a ``no'' marked \emph{structural} cannot be repaired by
-more seeds, defenses or attacks (Proposition~\ref{prop:identification_full}). Every entry is scoped to the
-measured setting of §\ref{sec:composability_validation}--§\ref{app:targeted_full}.}
-\label{tab:can_cannot}
-\centering\small\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}p{0.40\linewidth}p{0.16\linewidth}p{0.38\linewidth}@{}}
-\toprule
-\textbf{question} & \textbf{identifiable?} & \textbf{answer, and its evidence} \\
-\midrule
-Does disturbing $d_2$'s statistic change its \emph{decision}? & measured & \textbf{Yes}: Krum's selection flips in up to $0.80$ of rounds \\
-Does it change the \emph{admitted adversarial mass}? & by construction & \textbf{No}: unchanged in every one of the $60$ measured rounds \\
-Does it change \emph{suppression}? & instrumented & \textbf{No}: $|\Delta|{=}0.026$, inside the frozen margin (Prop.~\ref{prop:nonidentifiability_full}(a)) \\
-Does \emph{adversary-correlated} reweighting change suppression? & instrumented & \textbf{Yes}, non-monotonically: single-peaked (Mode~A) \\
-% Round 63: the n is printed here because the frozen refutation stays at its own n=5 while the
-% comparability cell's controlled leg moves to n=20 (pre_registration_reversal_seed_topup.md,
-% Amendment 2, Class B item 2; the site list is fixed in Amendment 3). Same estimand, two reporting
-% roles, so a site that quotes it without an n can be read as the topped-up one.
-Does admitted mass \emph{order} outcomes across defenses? & pre-registered & \textbf{No, refuted}: $+0.098$ ($n{=}5$) against a frozen ${+}0.150$ \\
-Is (P4) \emph{sufficient} for (P5)? & control arm & \textbf{No}: \texttt{cos\_krum} admits $0.000$ while ASR falls \\
-Can (P4) be screened \emph{without} adversary identity? & \textbf{no, open} & Both instruments are oracles: the stated open problem \\
-Does C1 identify C2's contribution? & \textbf{no, structural} & Empty cell by the gate, for every menu (Prop.~\ref{prop:identification_full}) \\
-Does any of this certify \emph{deployed} security? & \textbf{no, scope} & Committed attack only; one adaptive test breaks it \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\textbf{What follows is a consequence of the identification boundary, not a claim the paper argues for.} Proposition~\ref{prop:identification_full} says a criterion gated on the outcome it predicts cannot be validated by cross-defense contrast; what such a criterion can still do is \emph{order an evaluation budget}, and that is the only use we claim for it. Proposition~\ref{prop:emergent_full} bounds what it can find. Read the numbers below as a measurement of a prioritization heuristic's cost, not as validation of the framework.
-
-\textbf{Does every condition earn its place? C3 does not: reported as a finding.} Scoring all 42 pairs on C1, C2 and C3 \emph{independently} rather than recording only the first failure: against a $12\%$ base rate of low-ASR pairs, C1 alone selects 4 at $50\%$ precision, C2 alone 14 at $36\%$, and C1$\wedge$C2 selects 2 at $100\%$. \textbf{The surviving C2 failures are exactly the non-invariant signal class}: after the Proposition~\ref{prop:invariance} reclassification every one of them is a $\cdot{\to}$reputation pair (nc$\to$rep $0.819$, rfa$\to$rep $0.882$, fg$\to$rep $0.798$), consensus distance being the signal a positive rescaling does not preserve, while all three non-degenerate $\cdot{\to}$FoolsGold pairs are C1 failures instead. \textbf{C3 has no demonstrated incremental predictive value in this study}: alone it selects 35 pairs at $9\%$ precision, below the base rate, and it never binds on a pair C1$\wedge$C2 already admits. So \textbf{we demote C3 from a gate to a margin diagnostic and recommend C1$\wedge$C2 as the criterion}, retaining C3 on theoretical grounds only: Theorem~\ref{thm:bounded_reweight} shows margin compression is a real failure mode, and the $\alpha{=}0.1$ regime below is precisely a margin collapse. \textbf{The demotion changes no number}, C1$\wedge$C2 selects the same two pairs at the same precision (recomputed by \texttt{analyze\_screening\_cost.py}), which is why we report it as a finding about the criterion rather than a revision of results. \emph{The pre-registered PASS/FAIL labels and the $16/18$ and $22/24$ tallies were frozen with C3 in the gate and are not relabelled}; this ablation is post-hoc and labelled as such, and the recommendation is for use going forward.
-
-
-\paragraph{If the goal is to \emph{find} emergent compositions, drop C1: a recommendation we price but do not validate.} Proposition~\ref{prop:emergent_full} says an inherited-suppression gate cannot certify a composition whose suppression neither constituent possesses, so an evaluator whose object is discovery rather than prioritization should not run C1 at all, and this is a consequence of the proposition rather than a finding of ours. Two designs follow, and §\ref{app:frontier} prices both on our own menu. \textbf{Sample the ungated menu} when the budget allows: $42$ pairs at $12\%$ precision reaches every low-ASR pair by construction, and it is the only design with no structural blind spot. \textbf{Otherwise gate on the mechanism condition alone}, C2 without C1: it admits $14$ of the $42$ at $36\%$ precision, a third of the ungated cost, and it reaches FoolsGold$\to$RFA where every C1-bearing variant misses it. \textbf{The caveat is ours and it is not small}: C2-alone's recall on this menu is $100\%$, but $11$ of those $14$ admissions rest on a per-pair call made in sample rather than on algebra, and all $5$ low-ASR pairs are among the $11$ (§\ref{app:frontier}), so that recall is a development-set number and we offer the design as a recommendation rather than as a validated procedure. Finding emergence efficiently is a search problem, and nothing here solves it: what the propositions establish is which designs cannot solve it.
-
-\subsection{The screening frontier: precision, recall and evaluation cost}
-\label{app:frontier}
-
-\noindent \emph{What does the screen cost, and what does it cost to find out?}
-\textbf{$40\%$ recall is an operating point, not a verdict on the conditions.} Scoring C1, C2 and C3
-independently over the $42$ pairs traces a frontier, and the criterion the paper reports is its
-high-precision end. Emitted by \texttt{experiments/build\_screening\_frontier.py}, which joins the two
-existing generators and introduces no number of its own.
-
-\noindent \textbf{Neither screen is noise, and neither is a predictor.} Both C2 alone and C1$\wedge$C2 beat a size-matched random draw from the same $42$ pairs ($P \le 0.005$ at $10^5$ resamples against the menu's $12\%$ base rate, seeded \texttt{rng(42)}; emitted by \texttt{experiments/blind\_selection\_analysis.py}). Beating a random draw is the whole of what that establishes: it separates the screens from chance and not from each other, and it says nothing about either one's ability to predict suppression.
-
-\begin{center}\small\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}lrrrrrc@{}}
-\toprule
-Variant & selected & precision & recall & mean ASR & runs & reaches FG$\to$RFA \\
-\midrule
-no screen (all pairs) & 42 & 12\% & 100\% & $0.743$ & 420 & \checkmark \\
-C3 alone & 35 & 9\% & 60\% & $0.760$ & 350 & \checkmark \\
-C2 alone & 14 & 36\% & 100\% & $0.588$ & 140 & \checkmark \\
-C2 algebraic only$^\ddagger$ & 3 & 0\% & 0\% & $0.869$ & 30 & --- \\
-C2 $\wedge$ C3 & 8 & 38\% & 60\% & $0.562$ & 80 & \checkmark \\
-C1 alone$^\dagger$ & 4 & 50\% & 40\% & $0.514$ & 40 & --- \\
-C1 $\wedge$ C3$^\dagger$ & 4 & 50\% & 40\% & $0.514$ & 40 & --- \\
-C1 $\wedge$ C2$^\dagger$ (the criterion) & 2 & 100\% & 40\% & $0.242$ & 20 & --- \\
-C1 $\wedge$ C2 $\wedge$ C3$^\dagger$ & 2 & 100\% & 40\% & $0.242$ & 20 & --- \\
-\bottomrule
-\multicolumn{7}{@{}l}{\footnotesize $\dagger$ additionally requires $60$ standalone runs before the
-condition can be evaluated at all, so this row's} \\
-% Round 58: this used to end "that $80$ is the figure §\ref{sec:strategies} quotes." Reviewer item #9
-% demoted the rates out of §\ref{sec:strategies}, so the clause went false in the same edit that made
-% this table their only home. The replacement clause is the LAST footnote row below rather than this
-% one: appended here it made the row $15.92$pt overfull, and a \multicolumn footnote row never wraps,
-% so the source newline is a space and the overflow is silent in the PDF's right margin.
-\multicolumn{7}{@{}l}{\footnotesize evaluation budget is $20{+}60 = 80$ runs, not the composition runs
-alone.} \\
-\multicolumn{7}{@{}l}{\footnotesize $\ddagger$ the same screen restricted to the pairs whose C2
-verdict Prop.~\ref{prop:invariance} settles algebraically.} \\
-\multicolumn{7}{@{}l}{\footnotesize percentages are over small denominators: $5$ of the $42$ pairs are
-low-ASR, so the C1-bearing rows'} \\
-\multicolumn{7}{@{}l}{\footnotesize precision is $2/2$ and their recall $2/5$. \emph{mean ASR} averages
-max-committed ASR over the admitted pairs;} \\
-\multicolumn{7}{@{}l}{\footnotesize a lower mean is not a better screen, since the C1 end reaches it by
-discarding the menu's lowest-ASR pair.} \\
-% Round 60: the pixel sweep found that a reader who averages the two admitted pairs' own published
-% figures gets $0.285$, not $0.242$, because the frontier scores every pair at the menu's uniform
-% $n{=}3$ while Table~\ref{tab:composability} marks per-row top-ups. Nothing on the page said so.
-\multicolumn{7}{@{}l}{\footnotesize \emph{mean ASR} scores every pair at the menu's uniform $n{=}3$,
-not at the marked} \\
-\multicolumn{7}{@{}l}{\footnotesize seed counts of Table~\ref{tab:composability}, where the two
-admitted pairs read $0.107$ and $0.463$.} \\
-\multicolumn{7}{@{}l}{\footnotesize This table is the only home of these rates.} \\
-\end{tabular}
-\end{center}
-
-\noindent \textbf{The blind spot is attributable to exactly one condition, and the theory named it
-before the ablation was run.} Every C1-bearing variant misses FoolsGold$\to$RFA and every C1-free
-variant reaches it: its row is C1 \emph{false}, C2 \emph{true}, C3 \emph{true}, max-committed ASR
-$0.045$. C1 is the inherited-suppression gate, and Prop.~\ref{prop:emergent_full} proves no gate of that
-form can certify an emergent composition, so the miss is a \emph{predicted} property of one condition
-rather than an unexplained failure, and it is tradeable: C2 alone recovers every low-ASR pair in the
-menu at $36\%$ precision. \textbf{We report the high-precision end because false positives deploy an
-insecure stack}, not because the conditions cannot be operated at higher recall.
-
-\noindent \textbf{The C2 column is not all one kind of evidence, and the high-recall claim depends on
-the weaker kind.} We describe C2 as read off the two defenses' definitions, and for two of its four
-branches that is literally what happens: a $d_2$ reading a cosine is exactly invariant under any
-positive per-client rescaling (Prop.~\ref{prop:invariance}(a)) and a $d_2$ reading a consensus
-distance, a residual magnitude or a norm is not (Prop.~\ref{prop:invariance}(c)). The remaining branch
-is \emph{conditional}: \texttt{coord\_median} and \texttt{trimmed\_mean} preserve a coordinate ordering
-only under a separation condition, and Thm.~\ref{thm:bounded_reweight}(2) gives \texttt{rfa} an
-analogous one, so \texttt{analyze\_condition\_ablation.py} marks all three \texttt{None} and
-\texttt{c2\_holds} defers to a \emph{per-pair call}, the stored category. Nothing in the C2 column
-distinguishes a verdict reached by algebra from one reached
-by that call, so we census it (\texttt{c2\_provenance}, same generator): of the $14$ pairs C2 admits,
-\textbf{$3$ rest on algebra and $11$ on the per-pair call}, the $11$ being every
-\texttt{coord\_median}, \texttt{trimmed\_mean} and \texttt{rfa} row. \textbf{And all $5$ low-ASR pairs
-are in the $11$}: $0$ of $5$ are algebraically settled. Hence the $\ddagger$ row above. \textbf{Worse
-for us, all $11$ are development-set pairs}, so those calls were made \emph{in sample}, while the
-criterion was being written; they are not pre-registered, and the generator derives the split from
-which results artifact holds each pair rather than taking our word for it. \textbf{Two
-consequences we accept rather than repair.} First, C2 alone as we score it \emph{is not a pure
-statistic-preservation screen} for those three $d_2$ classes, so the body's contrast between it and
-C1$\wedge$C2 is a contrast between two screens that both borrow from the same in-sample call, not
-between algebra and measurement. Second, \emph{within this menu} the region where our own invariance
-result decides the question contains no low-ASR pair at all, so the algebraically settled sub-region
-cannot discriminate any strategy from any other \emph{here}, and the $100\%$ recall of C2 alone is
-carried entirely by in-sample judgement. \textbf{The second consequence is the one we then removed},
-by enlarging the algebraic region until it closed rather than by relabelling this one: the $3$ pairs
-of the $\ddagger$ row are all three upstream defenses against the single downstream defense
-\texttt{foolsgold}, which is one column of a $3\times3$ census over
-$d_1 \times d_2$, and completing that census prospectively puts a
-low-ASR pair inside the algebraic region and separates the two strategies more sharply there than
-anywhere in this table (§\ref{app:census}). The \emph{first} consequence stands and needs an
-invariance theorem for the conditional classes, which we do not have; what neither needs is a
-relabelling, and no number in this appendix or the body changes. This is (L5) in concrete form: the
-conditions are not always readable off a $(d_1,d_2)$ pair.
-
-\noindent \textbf{What the screen saves, in runs rather than in pairs.}
-\texttt{experiments/analyze\_screening\_cost.py}: unscreened, the $42$ pairs under $2$ committed
-attacks at $5$ seeds are $420$ runs; the reported criterion evaluates $16$ cells, $80$ runs, of which
-$60$ are the standalone measurements C1 needs. That is $340$ runs avoided, \textbf{$81\%$ of runs}. We
-give the run-level figure rather than the pair-level $95.2\%$, which overstates the saving by ignoring
-C1's own standalone cost. \textbf{The unit is runs, and the hours behind them are now measured
-rather than assumed}: the runners print per-run seconds into their logs, and the six the script reads ship with the code,
-so the figure is checkable; over the $228$ logged
-CIFAR-10 pair-evaluation runs the median is $11.1$ min (mean $13.1$, IQR $10.7$--$12.5$), so the
-$340$ avoided runs are $63$ GPU-hours on the one machine, or $74$ at the mean. \emph{Correcting our
-own caveat:} through the previous version this paragraph said no per-run timing existed anywhere in
-the results and the artifact assumed $11.0$ min/run. The runner logs did carry it; the assumption
-happens to have been accurate to $0.14$ min, and we report the measurement in its place because a
-figure that can be measured should not be assumed. EMNIST-byclass arms run $52$ min/run and are
-excluded, so this accounting is CIFAR-10 only.
+\textbf{This is post-hoc, and we do not present it otherwise.} It was not pre-registered, it re-uses a suite frozen for a different purpose, the two extra seeds per cell were added \emph{after} seeing the $n{=}3$ result, and the six-cell split is a description of that suite rather than a test on new data. The top-up could have cut in either direction and we report what it did: it resolved the Krum gap (Welch $p = 0.16$ at $n{=}3$, where per-seed paired deltas $+0.854 / +0.097 / +0.935$ left one seed not separating, to $p = 0.012$ at $n{=}5$) and left the invariant control at $\Delta \approx 0$ ($+0.000$ under NormClip, $-0.044$ under RFA), the added seeds raising its baseline and its compositions together. What the analysis does have, which neither the FLTrust contrasts of §\ref{sec:prospective} nor the cross-pair scoring has, is C1 held exactly fixed and a disturbance measurement taken on the statistic rather than read back from the outcome. We offer it as the cleanest available piece of C2 evidence and as the shape a properly prospective version of this test would take: fix a downstream defense that suppresses the attack, then vary the upstream along measured disturbance rather than along defense identity. Supplement Table~\ref{tab:can_cannot} sets out, claim by claim, what this design can and cannot conclude.
 
 \subsection{The screen on a second dataset at the composition level: it predicts LOW for no pair, so it coincides with the constant-HIGH baseline cell for cell and its recall on the LOW class is $0$}
 \label{app:cifar100_menu}
@@ -2808,154 +2657,6 @@ mean & $0.386$ & $0.326$ & $0.391$ & $0.356$ \\
 \end{center}
 
 \noindent The pair's \texttt{max\_committed\_asr} is the larger of the two mean ASRs, $0.3561$, which is below the $0.5$ mark and so observed LOW; per-attack ASR standard deviations are $0.089$ and $0.086$ at $n{=}5$, so a single pair's class at this seed count is not a precise quantity and no interval is claimed for it. The screen predicted HIGH here, its reason being that C1 fails because neither constituent suppresses alone.
-
-\subsection{A closed census of the algebraically settled region, pre-registered}
-\label{app:census}
-
-\noindent \emph{What happens where the algebra settles preservation exactly, with no cells unspent?}
-\textbf{The $\ddagger$ row above is the \texttt{foolsgold} column of a $3\times3$ box over $d_1$ and
-$d_2$, and the two cells of that box which had never been run are what this wave measured.} The region where mechanism preservation is
-settled on \emph{both} sides is small and enumerable: $d_1$ emitting strictly positive per-client
-coefficients $T(u_i) = c_iu_i$, so Prop.~\ref{prop:invariance}(a) applies, against a $d_2$ reading an
-exactly scale-invariant statistic. Over this project's defenses and the metric-swap mirrors that
-region is $\{\texttt{norm\_clip},\texttt{rfa},\texttt{reputation}\} \times
-\{\texttt{foolsgold},\texttt{cos\_krum},\texttt{cos\_reputation}\}$, exactly $9$ ordered pairs, of
-which $7$ were already measured at the identical protocol and $2$ were unspent. Enumeration is what
-turned a planned $20$-pair sample into a census: \textbf{$118$ ordered pairs of this project are
-already spent}, and once the admissibility constraints (a non-degenerate $d_1$, and C0) are imposed
-only $6$ candidates remain anywhere. \textbf{A census needs no sampling argument, and an all-negative
-census is as informative as a positive one}, which is why this design was worth $24$ runs and
-$4.87$ h. Pre-registered at \texttt{96f8856} with per-pair C0--C3 verdicts, a frozen
-scoring rule and a two-sided resolution table
-(\texttt{experiments/pre\_registration\_wave3\_emergent.md}); scored by
-\texttt{experiments/analyze\_wave3\_emergent.py}, which refuses to run against an uncommitted prereg.
-
-\begin{center}\small\setlength{\tabcolsep}{6pt}
-\begin{tabular}{@{}lccc@{}}
-\toprule
-$d_1 \downarrow$ \quad $d_2 \rightarrow$ & \texttt{foolsgold} & \texttt{cos\_krum} & \texttt{cos\_reputation} \\
-\midrule
-\texttt{norm\_clip}  & $0.887$ HIGH & $0.508$ HIGH$^\dagger$ & $0.935$ HIGH$^\dagger$ \\
-\texttt{rfa}         & $0.914$ HIGH & $0.566$ HIGH           & $0.861$ HIGH \\
-\texttt{reputation}  & $0.807$ HIGH & $\mathbf{0.263}$ \textbf{LOW}$^\ast$ & $0.787$ HIGH$^\ast$ \\
-\bottomrule
-\multicolumn{4}{@{}l}{\footnotesize Max-committed mean ASR over seeds $42,43,44$; LOW iff $< 0.5$.} \\
-\multicolumn{4}{@{}l}{\footnotesize $\ast$ the two unspent cells, labels frozen at \texttt{96f8856}
-before the output directory existed.} \\
-\multicolumn{4}{@{}l}{\footnotesize $\dagger$ \texttt{norm\_clip}'s clip is inactive on the pixel arm
-(max update norm $3.043 < \tau{=}5$), so those} \\
-\multicolumn{4}{@{}l}{\footnotesize \emph{pixel} cells are bit-identical to $d_2$ alone; both verdicts
-are carried by the scaling arm, where it is not.} \\
-\end{tabular}
-\end{center}
-
-\noindent \textbf{\texttt{foolsgold} is excluded from the $d_1$ column by measurement, and that
-measurement changed the design before any prediction was frozen.} It was going to supply two more
-C1-fail $\wedge$ C2-true pairs. But \texttt{foolsgold} normalizes with
-\texttt{weights - weights.min()}, forcing at least one coefficient to \emph{exactly} zero every
-round, which puts it outside Prop.~\ref{prop:invariance}(a)'s strict $c_i > 0$ hypothesis and under
-Lemma~\ref{lem:annihilation} instead. Measured through the shipped transform over $3$ seeds
-$\times\ 3$ rounds: $2/5$ exact zeros every round, and both downstream cosine statistics moved in
-$9$ of $9$ rounds. Synthetically at $1000$ trials the effect is entirely due to the zero: strictly
-positive coefficients change \texttt{cos\_krum}'s selection $0/1000$ times, one exact zero changes it
-$471/1000$. \texttt{reputation} by contrast emits $0/5$ zeros every round at a positive-part ratio up
-to $18\,839.8$, and under that same extreme rescaling in the same rounds the two cosine statistics
-moved $0/9$ while non-invariant \texttt{krum}'s selection moved $8/9$ and \texttt{reputation}'s own
-ordering $9/9$: \textbf{a contrast between statistics on identical inputs, not between conditions.}
-So the two \texttt{foolsgold}$\to\texttt{cos\_}\ast$ pairs were entered as \emph{measured-C2-fail
-controls} rather than as members of the census. \textbf{Had C2 been assumed from the definitions
-instead of measured, this wave would have reported two mislabelled pairs}
-(\texttt{experiments/verify\_wave3\_invariance.py}, \texttt{results/wave3\_invariance\_check.json}).
-
-\begin{center}\small\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}llccl@{}}
-\toprule
-\# & pair & cell & pred. & measured \\
-\midrule
-1 & \texttt{reputation}$\to$\texttt{cos\_krum} & certified (C1$\wedge$C2) & LOW & $\mathbf{0.263}$ \textbf{LOW} \checkmark \\
-2 & \texttt{reputation}$\to$\texttt{cos\_reputation} & C1-fail $\wedge$ C2-true & HIGH & $0.787$ HIGH \checkmark \\
-3 & \texttt{foolsgold}$\to$\texttt{cos\_krum} & measured-C2-fail control & HIGH & HIGH$^\S$ (raw $0.086$) \checkmark \\
-4 & \texttt{foolsgold}$\to$\texttt{cos\_reputation} & measured-C2-fail control & HIGH & $0.824$ HIGH \checkmark \\
-\bottomrule
-\multicolumn{5}{@{}l}{\footnotesize $\S$ scored HIGH \emph{only} by the frozen \texttt{DEGENERATE-ACC}
-rule: mean clean accuracy $0.255 < 0.35$ on} \\
-\multicolumn{5}{@{}l}{\footnotesize the arm supplying the max, so its raw $0.086$ is a collapsed model
-and not a suppressed one.} \\
-\end{tabular}
-\end{center}
-
-\noindent \textbf{$4/4$ as registered, including the pair we flagged \texttt{uncertain}, and the
-near-identity check came back clean on every arm} ($0$ of $3$ seeds identical to $d_2$ alone on all
-$8$ arms; max per-seed differences $0.073$ to $1.000$), so these are compositions and not $d_2$ in
-disguise. Pair 1 was the live risk and the prereg said so: its LOW rests on two \emph{different}
-attacks being suppressed by two \emph{different} constituents, \texttt{reputation} holding
-model-scaling ($0.017$ at accuracy $0.777$) and \texttt{cos\_krum} the pixel backdoor ($0.300$ at
-$0.598$), and on the scaling arm the certification and the two nearest measured analogues
-($\texttt{norm\_clip}\to\texttt{cos\_krum}$ $0.508$, $\texttt{rfa}\to\texttt{cos\_krum}$ $0.566$)
-pointed \emph{opposite} ways. It came out LOW on both arms ($0.064$ scaling, $0.263$ pixel).
-\textbf{So the one low-ASR pair in the closed census is a pair neither constituent suppresses alone},
-and it is the pair C1$\wedge$C2 selects.
-
-\noindent \textbf{Both strategies priced over the same closed census, which costs no further runs
-because C1 is defined on standalone numbers that already exist.}
-
-\begin{center}\small\setlength{\tabcolsep}{6pt}
-\begin{tabular}{@{}lrrrr@{}}
-\toprule
-strategy over the $9$-cell census & selected & precision & recall & runs \\
-\midrule
-A: statistic preservation (C2 alone) & 9 & $11\%$ & $100\%$ & 90 \\
-B: the criterion (C1 $\wedge$ C2)    & 1 & $\mathbf{100\%}$ & $\mathbf{100\%}$ & \textbf{10} \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-\noindent In this region C2 alone is not a screen at all: it admits everything, because everything
-here satisfies it by construction. \textbf{That inverts the body's trade}, where B bought precision
-by giving up recall; here, at the frozen seed count, B dominates A on precision, recall and cost at
-once, and disclosure \emph{(v)} below is the qualification that phrase needs. It is also the
-answer to the objection of §\ref{app:frontier} that the algebraically settled sub-region cannot
-discriminate strategies: it could not, at $3$ pairs; at $9$ it discriminates them completely.
-
-\noindent \textbf{Five disclosures, none of which the numbers above carry on their face.}
-\emph{(i) B's $1/1$ is a gated reading.} C1 requires suppression at mean clean accuracy
-$\ge 0.35$, the gate applied throughout §\ref{sec:metric_swap}, and it flips exactly two census cells:
-\texttt{cos\_krum} alone reaches ASR $0.078$ on model-scaling but at accuracy $0.146$, barely above
-CIFAR-10's $0.10$ chance, so it is a destroyed model rather than a defended one. Read at the bare
-$0.5$ threshold, C1 additionally admits $\texttt{norm\_clip}\to\texttt{cos\_krum}$ and
-$\texttt{rfa}\to\texttt{cos\_krum}$, both HIGH, and B selects $3$ for $33\%$ precision. The gate is
-the paper's pre-existing convention rather than a knob turned for this table, and
-\texttt{analyze\_wave3\_emergent.py} emits both readings. \emph{(ii) The one positive is $n{=}3$ and
-wide}: pair 1's pixel arm is $0.000/0.107/0.681$ per seed, so one of three seeds sits above the
-threshold and the LOW verdict is the frozen mean rule applied to a spread that a fourth seed could
-move. We do not add seeds after seeing this. \emph{(iii) The controls are weaker evidence than
-intended.} Every \texttt{foolsgold}-as-$d_1$ scaling arm sits at chance accuracy ($0.100$), and pair
-3 is HIGH only through the accuracy gate, its raw ASR being $0.086$, and its scaling arm tripped the
-frozen ``ASR identically $0.0$ across all $3$ seeds'' flag, which on a model at $0.100$ accuracy means
-the attack had nothing left to succeed against; so pairs 3 and 4 establish that
-the C2 probe is not inert, which is their stated role, but they are not independent confirmations of
-a HIGH prediction. \emph{(iv) $7$ of the $9$ cells are retrospective.} Only the two \texttt{reputation}
-cells were blind; the other seven were read from frozen artifacts, with each transcription in the
-prereg checked against its source by the analyzer. So the census's \emph{closure} is prospective at
-the margin, not throughout, and pair 2's scaling arm tripped the second of the wave's two frozen sanity
-flags (clean accuracy $0.790$ against the FedAvg reference $0.667$). Both flags are reported, neither adjusted.
-\emph{(v) The C1 input that certifies pair 1 is the lowest-seed reading of a high-variance cell.} C1
-holds for pair 1 on the pixel arm because \texttt{cos\_krum} alone measures $0.300$ there, and that is
-the mean over the three frozen seeds $42$--$44$ ($0.003/0.269/0.630$). The identical cell, same
-protocol and identity upstream, is measured twice more in this paper at larger seed counts, and the
-cell's mean climbs monotonically with the count: $0.490$ at $n{=}5$ (Table~\ref{tab:dose_outcome},
-arm 3's $\kappa{=}0$ rung, which adds $0.864/0.686$) and $0.584$ at $n{=}8$
-(Table~\ref{tab:targeted}, which adds $0.578/0.845/0.795$), the last being the reading
-§\ref{app:targeted_full} states as \texttt{cos\_krum} never suppressing. Six of the eight seeds are
-above $0.5$ and the frozen three are the two lowest plus the fourth-lowest. So B's precision $1/1$
-and recall $1/1$ here are contingent on the frozen seed count as well as on the accuracy gate of
-\emph{(i)}, and we state the contingency at the resolution the numbers support rather than rounding
-it against ourselves: $0.490$ is still \emph{below} the threshold, by $0.010$, so C1 survives at
-$n{=}5$; at $n{=}8$ C1 fails for pair 1, B certifies nothing in this census, and its one low-ASR
-pair becomes another false negative of the criterion rather than its one hit. We report this instead of rescoring,
-because the pre-registration fixes the seed set at three and forbids adding seeds afterwards
-(\texttt{pre\_registration\_wave3\_emergent.md}, §5). What the disclosure costs is the claim that B
-\emph{dominates} A on this region, which holds at the frozen seeds and is not established beyond them.
 
 \subsection{Out-of-Sample PASS Validation}
 \label{sec:oos_pass}
@@ -3152,13 +2853,13 @@ Consensus-shift is ineffective against FG$\to$RFA, as measured &
 
 \textbf{(L3) Per-round aggregator switching only.} We test per-round defense selection. Randomized \emph{internals} (DP noise, subsampling smoothing à la CRFL, random participation masks) modify the embedding mechanism directly and may retain value even under persistence. Three adaptive attacks are tested against composition: projection-based against rep$+$tm (ASR saturating at $0.639$ for $\epsilon \geq 2$, $0.597$ at $\epsilon{=}1$; the same attack against fg$\to$rfa reaches only $0.079$, Table~\ref{tab:fg_rfa_flagship}), Neurotoxin-style~\citep{zhang2022neurotoxin} top-$k$ gradient projection, and a two-phase consensus-shifting attack against rep$+$tm that biases updates toward the target at rate $r$ for 25 rounds before injecting full backdoor updates (the supplement §\ref{app:secondary}). At shift\_rate $\in \{0.01,0.05\}$: mean ASR $0.684 \pm 0.138$ ($n{=}10$) and $0.667 \pm 0.137$ ($n{=}8$), comparable to committed\_pixel ($0.679$) and \emph{below} the rep30/tm70 temporal mix's $0.915$. \textbf{Those last two are not the same metric, and the comparison is the weaker one because of it:} $0.679$ and the two shift-rate means are single committed attacks against the composition, whereas $0.915$ is the mix's full-information reading over both attacks, which no single attack can be expected to match. What the row supports is that the two-phase attack does not exceed the mix, not a calibrated gap between them. At $f{=}0.2$ the honest $80\%$ anchor the coordinate-wise median, limiting Phase-1 drift to ${\sim}r/(1{-}f)$ per round, so Phase 2 degenerates to standard committed\_pixel: a mechanism that weakens monotonically with $f$, and at $r \leq 0.05$ over $T \geq 200$ rounds cumulative drift may eventually overcome it. The robustness claim is therefore specific to the tested regime ($f{=}0.2$, $T{=}50$).
 
-\textbf{(L4) The falsifiable prospective positive evidence is one cell, and C0 was added retrospectively.} This is the sharpest limitation we can state about our own design, and we state it rather than let a reader find it. Until §\ref{app:census} there was none at all, and one cell is what changed. Of the prospective suite's 8 predicted-LOW pairs (§\ref{sec:prospective}), 6 are $\cdot{\to}$FLTrust near-\emph{identities}: FLTrust gates on a scale-invariant cosine and renormalizes every update to the server-gradient norm, discarding exactly the magnitude information an upstream positive rescaling modifies (verified bit-identical per seed for pass-through and non-clipping $d_1$), so Proposition~\ref{prop:invariance}(a) permits no other outcome and these confirmations cannot falsify it; the other 2 have FLTrust as $d_1$, where suppression is inherited and C0 puts them out of scope. C0 was itself formulated \emph{after} seeing this suite, so its 7 exclusions are retrospective. The three matched contrasts that appeared to probe Proposition~\ref{prop:invariance} most directly (a $19$--$20\times$ ASR gap at fixed $d_1$) are \textbf{withdrawn}: two ran against MultiKrum, which at $K{=}5$ selects all five participants and is bit-identical to FedAvg, and the genuine selector leaves a gap that measures C1 failure rather than disturbed invariance (§\ref{app:mkrum}).
+\textbf{(L4) The falsifiable prospective positive evidence is one cell, and C0 was added retrospectively.} This is the sharpest limitation we can state about our own design, and we state it rather than let a reader find it. Until supplement §\ref{app:census} there was none at all, and one cell is what changed. Of the prospective suite's 8 predicted-LOW pairs (§\ref{sec:prospective}), 6 are $\cdot{\to}$FLTrust near-\emph{identities}: FLTrust gates on a scale-invariant cosine and renormalizes every update to the server-gradient norm, discarding exactly the magnitude information an upstream positive rescaling modifies (verified bit-identical per seed for pass-through and non-clipping $d_1$), so Proposition~\ref{prop:invariance}(a) permits no other outcome and these confirmations cannot falsify it; the other 2 have FLTrust as $d_1$, where suppression is inherited and C0 puts them out of scope. C0 was itself formulated \emph{after} seeing this suite, so its 7 exclusions are retrospective. The three matched contrasts that appeared to probe Proposition~\ref{prop:invariance} most directly (a $19$--$20\times$ ASR gap at fixed $d_1$) are \textbf{withdrawn}: two ran against MultiKrum, which at $K{=}5$ selects all five participants and is bit-identical to FedAvg, and the genuine selector leaves a gap that measures C1 failure rather than disturbed invariance (§\ref{app:mkrum}).
 
 \noindent \textbf{The decisive experiment does not exist, and that is structural.} We had named it as a downstream defense with a rescaling-invariant admission signal that is \emph{weak in isolation}; Lemma~\ref{lem:testability} shows no such pair can be certified in scope. §\ref{sec:metric_swap} runs the achievable substitute, holding the suppression \emph{principle} fixed while varying only the invariance class, and it did not deliver a positive test either, standalone effectiveness being unholdable here because the magnitude information the mirrors discard is what the originals use to suppress a magnitude attack ($8/8$ frozen labels, TP${}=0$). So the strongest C2-specific evidence is the \emph{post-hoc} within-defense contrast of §\ref{sec:metric_swap}, which holds C1 exactly fixed but was not pre-registered and is resolved on only one of its two cells at $n{=}3$.
 
 \noindent \textbf{Three pre-registered attempts followed, and each refuted something of ours.} §\ref{app:ladder} delivers exactly one falsifiable prospective positive (arm 2, reputation under model-scaling, $0.017 \to 0.779$ at $p = 1.7\times10^{-6}$ with clean accuracy nearly unchanged) while refuting two of its own four predictions and its pooled prediction, leaving the \emph{destruction} half of C2's mechanism confirmed and the preservation half's control indeterminate (§\ref{sec:dose_outcome}). The targeted intervention of §\ref{app:targeted_full} closes the attenuation channel by construction and contrasts C2 within a single defense at a fixed adversarial coefficient share: substantial disturbance of the statistic does not change suppression \emph{on the adjudicating Krum arm under Mode~S}, with admission the channel the evidence points to there, and it \emph{refutes} the preservation-half reading, the exactly-invariant \texttt{cos\_krum} neither suppressing nor holding ASR fixed. The third was designed to be the falsifiable prospective \emph{positive}: a replication arm chosen because the statistic and admission readings order its rise \emph{oppositely}, frozen in git before the arm ran. It replicated the negative in a different invariance class and \textbf{refuted the positive ordering}, the arm with the largest measured admission change rising \emph{less} ($+0.098$ at $n{=}5$) than one whose admission change was smaller.
 
-\noindent \textbf{The census of §\ref{app:census} is the one place this changed, and it changed by exactly one cell.} We closed the $3\times3$ region where Prop.~\ref{prop:invariance}(a) settles C2 algebraically, registering its two unspent cells at \texttt{96f8856}; the single certified pair was registered LOW with \emph{low} confidence and an explicit \texttt{uncertain} flag, and measured LOW at $0.263$. Unlike every predicted-LOW pair above it is neither a near-identity ($0$ of $3$ seeds identical to $d_2$ alone, on both arms) nor an inherited suppression, since \texttt{reputation} holds only model-scaling and \texttt{cos\_krum} only the pixel backdoor. \textbf{That is a falsifiable prospective positive, and it is one cell at $n{=}3$ with a per-seed spread of $0.000$ to $0.681$}: it establishes that the criterion's precision survives a blind test in the one region our invariance result decides exactly, and nothing quantitative. A validated \emph{positive} predictor therefore remains absent: the pooled two-channel model is unconfirmed over $26$ cells ($R^2 = 0.239$) and its cross-arm ordering refuted outright, so admission is \emph{more causally proximal} than the statistic without being a quantitative predictor.
+\noindent \textbf{The census of supplement §\ref{app:census} is the one place this changed, and it changed by exactly one cell.} We closed the $3\times3$ region where Prop.~\ref{prop:invariance}(a) settles C2 algebraically, registering its two unspent cells at \texttt{96f8856}; the single certified pair was registered LOW with \emph{low} confidence and an explicit \texttt{uncertain} flag, and measured LOW at $0.263$. Unlike every predicted-LOW pair above it is neither a near-identity ($0$ of $3$ seeds identical to $d_2$ alone, on both arms) nor an inherited suppression, since \texttt{reputation} holds only model-scaling and \texttt{cos\_krum} only the pixel backdoor. \textbf{That is a falsifiable prospective positive, and it is one cell at $n{=}3$ with a per-seed spread of $0.000$ to $0.681$}: it establishes that the criterion's precision survives a blind test in the one region our invariance result decides exactly, and nothing quantitative. A validated \emph{positive} predictor therefore remains absent: the pooled two-channel model is unconfirmed over $26$ cells ($R^2 = 0.239$) and its cross-arm ordering refuted outright, so admission is \emph{more causally proximal} than the statistic without being a quantitative predictor.
 
 \textbf{(L5) Theorem~\ref{thm:bounded_reweight}'s conditions need a pilot, and (1)'s is not operationally checkable as stated.} Neither $\rho < r^\star$ nor $\Delta'_{\mathrm{sep}} > 2(R'_B + \delta')$ is readable off a $(d_1,d_2)$ definition pair: both need a pilot measurement. \textbf{So two kinds of cheapness have to be kept apart, and the paper has previously run them together.} Prop.~\ref{prop:invariance}'s classes are \emph{algebraically} checkable: (a) and (c) are decided from the definitions of $d_1$ and $d_2$ alone, with no data, no runtime cost and no per-deployment work. Theorem~\ref{thm:bounded_reweight}'s conditions are closed-form inequalities and are \emph{still} none of those things, because their terms have to be instantiated by measurement on the deployment they are being checked for. \textbf{Algebraically checkable does not imply deployment-time cheap}, and only the first of the two is something this paper delivers. Regime~A is worse than that. Its ordering-survival condition is $\rho < r^\star$ with $r^\star$ the attack's coordinate extremeness against the benign scale. Building the dose--response ladder (§\ref{app:ladder}) required us to \emph{measure} $r^\star$ rather than stipulate it, and it is not a stable per-attack constant: on model-scaling it ranges $0.00$--$12.59$ across the 12 measured rounds that sampled an adversary (median $0.57$), on the pixel backdoor $0.61$--$1.63$ (median $0.92$). An illustrative $r^\star{=}10$ is a stipulation, not a measurement, and §\ref{sec:restricted_theorem} stipulates no value for $r^\star$ at all: the theorem states the condition symbolically. Two consequences we state rather than work around. First, a practitioner cannot check $\rho < r^\star$ from a single round: the quantity swings by orders of magnitude round to round, and on both committed attacks its median is below $1$, so Regime~A's condition fails even at the identity rung under this estimator. Second, we therefore built \emph{no} prediction in §\ref{app:ladder} on $r^\star$, resting the ladder on directly measured disturbance of $d_2$'s statistic instead. The margin form of the theorem remains valid as a statement about $\rho$ and $r^\star$; what is not established is that $r^\star$ admits a stable estimator at the round granularity a deployment would have to check it at, and a usable Regime~A needs an $r^\star$ estimator with characterized variance, which we do not provide. \textbf{And where the geometric condition \emph{is} measurable it stops being informative in the regime that matters most}: the margin it rests on is exactly what heterogeneity closes, RFA's all-round mean falling from $3.24$ to $1.01$ at Dirichlet $\alpha{=}0.1$, the limit at which Corollary~\ref{cor:aggregate_mass} degrades to $n_a/(n_b{+}n_a)$ and certifies nothing (§\ref{sec:restricted_theorem}, §\ref{sec:oos_pass}(E)). So under extreme heterogeneity the conditions are not merely awkward to check but empty, which is the sense in which §\ref{sec:framework} calls the bound vacuous there.
 
@@ -3240,7 +2941,7 @@ Estimating admitted adversarial contribution without adversary identity & every 
 
 \noindent Table~\ref{tab:evidence} is the ledger; the rest of this section is each row's provenance.
 
-\textbf{Proved:} the invariance classes of Proposition~\ref{prop:invariance}; sufficient conditions for mechanism preservation on the weighting$\to$aggregator class (Theorem~\ref{thm:bounded_reweight}, Lemma~\ref{lem:annihilation}, Corollary~\ref{cor:aggregate_mass}); the identification boundary for outcome-gated screening (Proposition~\ref{prop:identification_full}, with Lemma~\ref{lem:testability} its FL instance and Corollary~\ref{cor:within_design} the within-defense design it licenses); the recall bound on inherited-suppression screens (Proposition~\ref{prop:emergent_full}, whose cap reaches $0$ on a menu whose suppression is emergent throughout, Corollary~\ref{cor:zero_recall}); and, formalizing the interventions, statistic-level non-identifiability (Proposition~\ref{prop:nonidentifiability_full}) and the independent controllability of $\rho$ and $\Delta_c$ (Proposition~\ref{prop:rho_deltac}). \textbf{The two boundary results are general} (they are statements about the shape of a screen, not about FL), so what carries beyond this paper is the design they license, not the screen. \textbf{Empirically supported:} \textbf{that choosing between the two admissible designs sets the inferred direction and not merely its precision}: on \texttt{coord\_median} under the pixel backdoor at $n{=}20$ the outcome-gated design moves $-0.273$ $[-0.334,-0.213]$ where the within-defense design moves $+0.125$ $[+0.095,+0.155]$, disjoint and both excluding zero, and the reversal replicates on CIFAR-100 at $n{=}5$, with $\Lambda_a$ moving in both designs so that no $p$-value attaches to the difference between them (§\ref{app:targeted_full}, Table~\ref{tab:sixcell}), which holds with the aggregate-magnitude channel open and is refuted with it closed, below; that substantial disturbance of the downstream statistic need not produce a corresponding change in suppression when the adversarial coefficient share is held fixed, with adversarial admission the channel the evidence favours, \emph{on the adjudicating Krum arm under Mode~S} and, by pre-registered replication, on a downstream defense in a \emph{different} invariance class, on a \emph{second dataset and a differently configured CNN}, and on a \emph{second architecture family} with architecture varying alone (§\ref{app:targeted_full}); that the \emph{size} of that effect is not constant across cells, $-0.010$ on the adjudicating arm against $-0.2857$ on a second Krum cell, one where both margin legs bind and baseline admission sits off its floor rather than on it, an arm measuring ASR alone, so that neither cell generalizes to the other and no statement of the form \emph{the dissociation holds generally} is licensed by it (App.~\ref{app:pixel_headroom}); that closing the aggregate-magnitude channel on that same adjudicating arm leaves the effect flat at the headline seed count, $-0.0088$ $[-0.0335,+0.0160]$ at $n{=}20$, inside the frozen $\pm0.15$ margin with an interval that does not exclude zero, so the reading there does not rest on benign magnitudes being free to move (App.~\ref{app:score_only_n20}); that the screen behaves as a conservative prioritizer across 42 pairs; and that in the one region where Prop.~\ref{prop:invariance}(a) settles preservation \emph{exactly}, a closed $9$-cell census whose two unspent cells were registered blind contains a single low-ASR composition and it is the one the criterion certifies, at precision $1/1$ and recall $1/1$ for a tenth of the runs against statistic preservation's $11\%$ (§\ref{app:census}, one cell at $n{=}3$, gated reading). Those two $100\%$s are contingent on the frozen seed count twice over, and disclosure \emph{(v)} of §\ref{app:census} states the second contingency: the C1 input that certifies the pair reads $0.300$ over seeds $42$--$44$ and climbs with the seed count, to $0.490$ at $n{=}5$ (still below the threshold, by $0.010$) and to $0.584$ at $n{=}8$, where C1 fails and the criterion certifies nothing in that census. \textbf{Not established:} the positive predictive direction of the criterion, since the pooled two-channel model is unconfirmed over $26$ cells ($R^2{=}0.239$) and the replication refutes its cross-arm admission ordering, so admission is a direction and not a quantitative predictor; any ability to discover emergent synergy; and generalization beyond star-topology FL, or beyond CIFAR-10 for anything but the two replicated arms, EMNIST-byclass and CIFAR-100, neither of which carries a composition suite, and wave~1 of the 42-pair menu re-run on CIFAR-100 with wave~2 deliberately unrun (§\ref{app:cifar100_menu}); on the EMNIST arm no single defense measured suppresses the committed pixel backdoor alone, so C1's per-attack precondition fails over the menu measured there and the strategy comparison is out of scope there rather than merely untested ((L1), which also states what the seven do \emph{not} cover). \textbf{Refuted by us, on the cell the reversal headlines:} the same magnitude control in coordinate-wise form, on \texttt{coord\_median} under the committed pixel backdoor, takes the within-defense leg from $+0.125$ to $-0.1722$ $[-0.2119,-0.1325]$ at $n{=}20$, so with that channel closed both designs move the same way and the design disagreement on that cell does not reproduce under the control; the two aggregators disagree about the channel itself, inert on the selector and decisive on the order statistic, and neither freeze licenses the transfer in either direction (App.~\ref{app:magnitude_coordmedian}). \textbf{The open problem}, which the sections above refer to by pointing here: every reading of (P4) in this paper comes from an instrument that knows which clients are adversarial, and no deployed defense knows that, so whether the adversarial contribution a downstream mechanism admits can be estimated \emph{without} adversary identity is open. Nothing here bounds it, and the design we license identifies that channel rather than screening on it.
+\textbf{Proved:} the invariance classes of Proposition~\ref{prop:invariance}; sufficient conditions for mechanism preservation on the weighting$\to$aggregator class (Theorem~\ref{thm:bounded_reweight}, Lemma~\ref{lem:annihilation}, Corollary~\ref{cor:aggregate_mass}); the identification boundary for outcome-gated screening (Proposition~\ref{prop:identification_full}, with Lemma~\ref{lem:testability} its FL instance and Corollary~\ref{cor:within_design} the within-defense design it licenses); the recall bound on inherited-suppression screens (Proposition~\ref{prop:emergent_full}, whose cap reaches $0$ on a menu whose suppression is emergent throughout, Corollary~\ref{cor:zero_recall}); and, formalizing the interventions, statistic-level non-identifiability (Proposition~\ref{prop:nonidentifiability_full}) and the independent controllability of $\rho$ and $\Delta_c$ (Proposition~\ref{prop:rho_deltac}). \textbf{The two boundary results are general} (they are statements about the shape of a screen, not about FL), so what carries beyond this paper is the design they license, not the screen. \textbf{Empirically supported:} \textbf{that choosing between the two admissible designs sets the inferred direction and not merely its precision}: on \texttt{coord\_median} under the pixel backdoor at $n{=}20$ the outcome-gated design moves $-0.273$ $[-0.334,-0.213]$ where the within-defense design moves $+0.125$ $[+0.095,+0.155]$, disjoint and both excluding zero, and the reversal replicates on CIFAR-100 at $n{=}5$, with $\Lambda_a$ moving in both designs so that no $p$-value attaches to the difference between them (§\ref{app:targeted_full}, Table~\ref{tab:sixcell}), which holds with the aggregate-magnitude channel open and is refuted with it closed, below; that substantial disturbance of the downstream statistic need not produce a corresponding change in suppression when the adversarial coefficient share is held fixed, with adversarial admission the channel the evidence favours, \emph{on the adjudicating Krum arm under Mode~S} and, by pre-registered replication, on a downstream defense in a \emph{different} invariance class, on a \emph{second dataset and a differently configured CNN}, and on a \emph{second architecture family} with architecture varying alone (§\ref{app:targeted_full}); that the \emph{size} of that effect is not constant across cells, $-0.010$ on the adjudicating arm against $-0.2857$ on a second Krum cell, one where both margin legs bind and baseline admission sits off its floor rather than on it, an arm measuring ASR alone, so that neither cell generalizes to the other and no statement of the form \emph{the dissociation holds generally} is licensed by it (App.~\ref{app:pixel_headroom}); that closing the aggregate-magnitude channel on that same adjudicating arm leaves the effect flat at the headline seed count, $-0.0088$ $[-0.0335,+0.0160]$ at $n{=}20$, inside the frozen $\pm0.15$ margin with an interval that does not exclude zero, so the reading there does not rest on benign magnitudes being free to move (App.~\ref{app:score_only_n20}); that the screen behaves as a conservative prioritizer across 42 pairs; and that in the one region where Prop.~\ref{prop:invariance}(a) settles preservation \emph{exactly}, a closed $9$-cell census whose two unspent cells were registered blind contains a single low-ASR composition and it is the one the criterion certifies, at precision $1/1$ and recall $1/1$ for a tenth of the runs against statistic preservation's $11\%$ (supplement §\ref{app:census}, one cell at $n{=}3$, gated reading). Those two $100\%$s are contingent on the frozen seed count twice over, and disclosure \emph{(v)} of supplement §\ref{app:census} states the second contingency: the C1 input that certifies the pair reads $0.300$ over seeds $42$--$44$ and climbs with the seed count, to $0.490$ at $n{=}5$ (still below the threshold, by $0.010$) and to $0.584$ at $n{=}8$, where C1 fails and the criterion certifies nothing in that census. \textbf{Not established:} the positive predictive direction of the criterion, since the pooled two-channel model is unconfirmed over $26$ cells ($R^2{=}0.239$) and the replication refutes its cross-arm admission ordering, so admission is a direction and not a quantitative predictor; any ability to discover emergent synergy; and generalization beyond star-topology FL, or beyond CIFAR-10 for anything but the two replicated arms, EMNIST-byclass and CIFAR-100, neither of which carries a composition suite, and wave~1 of the 42-pair menu re-run on CIFAR-100 with wave~2 deliberately unrun (§\ref{app:cifar100_menu}); on the EMNIST arm no single defense measured suppresses the committed pixel backdoor alone, so C1's per-attack precondition fails over the menu measured there and the strategy comparison is out of scope there rather than merely untested ((L1), which also states what the seven do \emph{not} cover). \textbf{Refuted by us, on the cell the reversal headlines:} the same magnitude control in coordinate-wise form, on \texttt{coord\_median} under the committed pixel backdoor, takes the within-defense leg from $+0.125$ to $-0.1722$ $[-0.2119,-0.1325]$ at $n{=}20$, so with that channel closed both designs move the same way and the design disagreement on that cell does not reproduce under the control; the two aggregators disagree about the channel itself, inert on the selector and decisive on the order statistic, and neither freeze licenses the transfer in either direction (App.~\ref{app:magnitude_coordmedian}). \textbf{The open problem}, which the sections above refer to by pointing here: every reading of (P4) in this paper comes from an instrument that knows which clients are adversarial, and no deployed defense knows that, so whether the adversarial contribution a downstream mechanism admits can be estimated \emph{without} adversary identity is open. Nothing here bounds it, and the design we license identifies that channel rather than screening on it.
 
 \section{The preservation chain in one figure}
 \label{app:story}
