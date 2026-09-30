@@ -1,4 +1,4 @@
-"""Check every number Arm D's appendix prose states against the FROZEN scorer, verbatim in main.tex.
+"""Check every number Arm D's appendix prose states against the FROZEN scorer, verbatim in the paper.
 
 WHY THIS EXISTS. Arm D's coverage changes as slices land, so its subsection has to be re-substituted
 more than once, against a deadline. Twelve of its figures are counts and fractions that no build, gate
@@ -10,11 +10,12 @@ lands, and a wrong denominator here would misreport the arm's headline.
 WHAT IT DOES NOT DO. It computes no estimand. Every fraction, base rate, precision and recall comes
 from the frozen runner's own score() over the merged rows, called here exactly as --report calls it.
 What this file adds is the display rounding, the number words, and the assertion that the resulting
-string appears in paper/main.tex. It writes nothing, and it never calls save() -- which would delete
+string appears in the paper -- either document, since Round 83 moved the section into the supplement.
+It writes nothing, and it never calls save() -- which would delete
 the merge's provenance fields.
 
 WHAT IT READS. results/cifar100_composition_suite/summary.json and the probe artifact, both through the
-frozen runner's own loaders, plus paper/main.tex and -- where the response letter PARAPHRASES one of
+frozen runner's own loaders, plus paper/main.tex, paper/supplementary.tex and -- where the response letter PARAPHRASES one of
 these counts instead of quoting it, so that audit_letter_cites.py cannot verify it --
 paper/response_reviewer_21st_channels.md, matched whitespace-collapsed because one such paraphrase wraps
 across a markdown line break.
@@ -44,7 +45,18 @@ from experiments.run_cifar100_composition_suite import (  # noqa: E402
     SUPPRESSION_THRESHOLD,
     cifar100_standalone_baselines, load, load_probe, probe_verdict, score)
 
-MAIN = os.path.join(BASE, "paper", "main.tex")
+# The paper is two xr-linked documents, and Round 83 relocated Arm D's section from the main paper's
+# appendix into the supplement. PAPER therefore reads BOTH and a string present in either satisfies its
+# check: absent from both is still a hard failure, so the check is scoped to where the prose lives, not
+# softened. Nothing else about the check changes -- the values still come from the frozen scorer.
+DOCS = (os.path.join(BASE, "paper", "main.tex"),
+        os.path.join(BASE, "paper", "supplementary.tex"))
+
+
+def paper_text():
+    """Both documents, joined. A claim may live in either; it may not live in neither."""
+    return "\n".join(open(p).read() for p in DOCS)
+
 LETTER = os.path.join(BASE, "paper", "response_reviewer_21st_channels.md")
 
 WORD = {0: "No", 1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six", 7: "Seven",
@@ -189,7 +201,7 @@ def checks(s, pure):
 
 def composability_c1_rows():
     """(C1 rows, of which labelled 'C1 (pixel)') in tab:composability, read out of main.tex."""
-    lines = open(MAIN).read().split("\n")
+    lines = paper_text().split("\n")
     try:
         lab = next(i for i, L in enumerate(lines) if "\\label{tab:composability}" in L)
     except StopIteration:
@@ -279,7 +291,7 @@ def main():
     s = score(pairs, load_probe())
     if not s["n_scored"]:
         sys.exit("REFUSING TO CHECK: nothing is scored yet, so the prose has no referent.")
-    text = open(MAIN).read()
+    text = paper_text()
     pure = baseline_table()
     items, claims = checks(s, pure), predicates(s, pure)
 
@@ -312,7 +324,7 @@ def main():
 
     if bad:
         sys.exit(f"\nREFUSING TO PASS: {len(bad)} of {len(items) + len(claims)} checks failed. "
-                 "Substitute the values printed above into paper/main.tex; do not adjust this file "
+                 "Substitute the values printed above into the paper; do not adjust this file "
                  "to match the paper.")
     print(f"\n  [OK] every figure Arm D's prose and the letter state matches the frozen "
           f"scorer at "

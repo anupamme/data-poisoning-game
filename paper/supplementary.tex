@@ -33,7 +33,7 @@
 
 % Tracks main.tex's title verbatim. A stale supplement title passes a clean build in both documents,
 % which is how the previous one survived a retitle undetected.
-\title{Supplementary Material\\Statistic Preservation Does Not Identify\\Mechanism Preservation in Composed\\Federated-Learning Defenses}
+\title{Supplementary Material\\Statistic Preservation Does Not Identify\\Attack-Suppression Preservation in Composed\\Federated-Learning Defenses}
 
 \author{Anonymous authors\\
 Paper under double-blind review}
@@ -53,7 +53,7 @@ Paper under double-blind review}
 % testing falsified the moment it arrived: main.tex's own reader's map calls that block NOT skippable.
 % Keep this paragraph and that map in agreement; they are the only two statements of what moved.
 \noindent This supplement holds per-cell measurement detail for the composability
-screen, together with eight self-contained blocks relocated from the main paper's
+screen, together with nine self-contained blocks relocated from the main paper's
 appendix: the composition audit's rubric, retrieval frame and coded rows
 (§\ref{app:audit}); one pre-registered question about whether randomization is itself
 costly (§\ref{app:randomization}); the equivalence testing at the existing seed counts
@@ -64,13 +64,17 @@ prioritization, and the designs an evaluator after discovery should run instead
 (§\ref{app:prioritization}); that use priced over the nine variants an evaluator could
 run, precision against recall against evaluation cost (§\ref{app:frontier}); and the
 closed census of the region Prop.~\ref{prop:invariance}(a) settles algebraically, which
-holds the one falsifiable prospective positive (§\ref{app:census}). Every claim any of it supports is stated and qualified in
+holds the one falsifiable prospective positive (§\ref{app:census}); and the subordinate
+boundary study that prices the screen itself, with the 42-pair development and held-out
+menus, the prospective suite's $13/20$, the metric-swap ablation, the CIFAR-100
+composition menu and the out-of-sample PASS battery (§\ref{sec:composability_validation}). Every claim any of it supports is stated and qualified in
 the main paper, and section, table and theorem numbers without an \textbf{S} prefix
 refer to it, as do citations, whose full entries are in its reference list. What decided
-what was moved is that no claim in the main paper is stated only here. Five of the eight
-are then skippable; \textbf{the equivalence testing, the frontier and the census are not}: the
-first is where each arm's binding $m^\ast$ and the one-sided bound behind every non-increase
-are computed, and the other two carry what the screen costs and the one falsifiable
+what was moved is that no claim in the main paper is stated only here. Five of the nine
+are then skippable; \textbf{the equivalence testing, the boundary study, the frontier and the
+census are not}: the first is where each arm's binding $m^\ast$ and the one-sided bound behind
+every non-increase are computed, the second is what the screen buys and the two boundary
+conditions on it, and the other two carry what the screen costs and the one falsifiable
 prospective positive.
 
 \small
@@ -462,11 +466,12 @@ Mode~A, $\nu{=}{-}2\ldots{+}2$ & --- & $7.39$--$7.39$ & --- & --- & $-1.138 \ldo
 \section{Anticipated objections}
 \label{app:objections}
 
-Five objections we expect, answered against text that is already in the paper rather than by new
+Eight objections we expect, answered against text that is already in the paper rather than by new
 argument. Nothing here is a new claim; each answer is a pointer plus the scope it turns on.
 
-\paragraph{1. This is small-scale federated learning: five clients, one architecture, mostly one
-dataset.} Agreed, and every empirical magnitude is scoped accordingly, per arm, never pooled across
+\paragraph{1. This is small-scale federated learning: $N \in \{10,100\}$ clients with $K \in \{5,10\}$
+sampled per round, three architectures, mostly one dataset.} Agreed that the scale is small, and every
+empirical magnitude is scoped accordingly, per arm, never pooled across
 arms, and enumerated in Table~\ref{tab:scope_levels} with the scale and architecture evidence in
 §\ref{app:scale_external}. What does \emph{not} depend on scale is the
 identification argument: any criterion whose eligibility gate is defined on the same outcome it predicts
@@ -522,6 +527,50 @@ any transform that changes an update's direction, and the theorem's own margin c
 The negative does not rest on the theory: it is a \emph{measured} counterexample, and a narrower theory
 makes the counterexample sharper rather than weaker, since \textbf{the theorem certifies mechanism
 preservation, not security}; it bounds no ASR.
+
+\paragraph{6. The identification failure is a textbook fact, conditioning on a descendant of the outcome.
+What is the paper for?} The textbook fact is the smallest of the three layers, and we score it as such:
+§\ref{sec:testability} states the violation in one paragraph and Table~\ref{tab:claims} labels it
+\emph{general}, claiming no novelty for it. What is not textbook is what the fact is attached to. First the
+estimand: for a composed FL defense the quantity a preservation check should recover is the effect of an
+intervention on the upstream transform, and Definition~\ref{def:levels_full} is what says which
+\emph{level} of that effect a check verifies (the statistic) against which level the security content sits
+at (the admitted adversarial contribution). Second the instantiation: the screening move examined here,
+which admits a pair for analysis only once its composition already suppresses the attack, gates
+eligibility on a descendant of the very thing it is then read as evidence about, and
+Proposition~\ref{prop:identification_full} formalizes that for this move rather than in general. Third the
+measurement: the two levels are shown to come apart in \emph{sign} on one cell ($-0.273$ against $+0.125$,
+Table~\ref{tab:comparability}), which no causal argument supplies. A reader who already knows the collider
+fact does not know from it that the statistic and suppression disagree in sign on a defense pair anyone
+would compose.
+
+\paragraph{7. The adversary is held fixed while the defense changes. Would an attacker adapting to the
+composition not erase the effect?} It might, and nothing here bounds that. Every number in this paper is
+scoped to a \emph{committed} attack, fixed before the defense and held across the rungs, which is what
+leaves the upstream intervention as the only thing that varies, and it is why §\ref{sec:validation} and the
+abstract deny any claim about adaptive robustness. One arm moves in this direction: regime~A of
+§\ref{app:regime} runs an adversary that solves for the downstream defense, on both ladders of the cell the
+instrument was built for, and the design disagreement survives, the instrument moving \emph{up} while the
+outcome-gated ladder moves down on all three seeds. That arm's own disclosures are why it settles less than
+it appears to. The winning adaptive adversary beats the plain backdoor it replaces by $+0.035$ at one seed,
+a margin rather than a rout, and it adapts to $d_2$ only: it does not anticipate the upstream transform
+$d_1$. The reading we hold is therefore that the disagreement is not an artifact of a non-adaptive
+attacker, and that an adversary adapting to the \emph{composition} is untested.
+
+\paragraph{8. If admission is the level that matters, is it a predictor? Could a practitioner measure
+admission and forecast suppression?} No, and that is reported as a refutation of our own earlier reading
+rather than left open. Two pre-registered tests bear on it and both return negative. The dose--response
+ladder's primary pooled test asked whether the rise in ASR tracks the measured disturbance of the
+downstream statistic and returned $\rho_s = +0.351$ at one-sided $p = 0.091$ over $16$ cells against a
+frozen criterion of $p < 0.05$, so \textbf{the primary prediction is reported as refuted}
+(§\ref{sec:dose_outcome}). The prospective four-cell pattern we registered for \emph{which} cells reverse
+was refuted on its held-out cell and, per its own frozen clause, withdrawn, the pattern demoted to a
+description (§\ref{app:sixcell}). Pooled, the two-channel model is unconfirmed over $26$ cells
+($R^2 = 0.239$) with its cross-arm ordering refuted outright (§\ref{sec:limitations}, (L6)). What the paper
+claims is weaker and directional: admission is \emph{more causally proximal} to suppression than the
+statistic is, in the sense that a preservation check can pass while admission and suppression both move,
+and no ordering or magnitude follows from that. Admission is the quantity our instrument holds fixed, not
+one we can hand a practitioner as a forecast.
 
 \section{Sensitivity of the intervention conclusions to their two frozen thresholds}
 \label{app:sensitivity}
@@ -594,7 +643,7 @@ would be}: no label in the $42$-pair table is computed from it. \texttt{c2\_hold
 invariance \emph{class}, returning True for the exactly invariant statistics and False for the
 non-invariant ones, and for the three conditional classes it defers to the stored per-pair call, so
 there is no numeric $\delta_2$ anywhere in that column whose value could be varied. Its provenance
-is censused in main §\ref{app:frontier} ($3$ of the $14$ admissions rest on algebra and $11$ on
+is censused in §\ref{app:frontier} ($3$ of the $14$ admissions rest on algebra and $11$ on
 that call), and we state that rather than report a stability interval the code does not support.
 
 % This document has exactly one \citep (the DBA attack, §S1). Until now it rendered only because
@@ -876,7 +925,7 @@ arXiv id & short name & yr & C-a & C-b & C-c & C-d & C-e & C-d route & primary \
 
 \begin{table}[p]
 \centering
-\caption{The pre-registered composition audit, rows 31--59 of 59. Columns and conventions as in Table~\ref{tab:audit_rows_a}. Rows are identified by arXiv identifier and short name rather than by citation: citing all 59 would add 55 entries to the bibliography, most of them preprints no resolver carries, and the identifier is what a re-adjudication needs.}
+\caption{The pre-registered composition audit, rows 31--59 of 59. Columns and conventions as in Table~\ref{tab:audit_rows_a}. Rows are identified by arXiv identifier and short name rather than by citation: citing all 59 would add 49 entries to the bibliography, since ten are already cited, and most of the rest are preprints no resolver carries, and the identifier is what a re-adjudication needs.}
 \label{tab:audit_rows_b}
 \footnotesize
 \begin{tabular}{llcccccclc}
@@ -1261,8 +1310,8 @@ verdict is earned.
 \centering\small\setlength{\tabcolsep}{5pt}
 \caption{\textbf{The frozen $\pm0.15$ is not load-bearing: every equivalence reading in the comparability
 table survives the whole ladder.} \checkmark\ if the arm's \emph{controlled} $95\%$ interval lies inside
-$[-m,+m]$; $m^\ast$ is the smallest margin at which it does. An arm is scored only where the paper makes
-an equivalence reading, that is where its interval contains zero, and the others are marked absent
+$[-m,+m]$; $m^\ast$ is the smallest margin at which it does. An arm is scored only where its
+controlled interval contains zero, and the others are marked absent
 (---) because their verdict is a detected effect and reads no margin at all. The one row marked
 $\times$ at every rung, reputation / scaling, is scored because its interval contains zero, but that
 interval is too wide ($[-0.112,+0.469]$) for any margin here and the paper makes no equivalence claim
@@ -1301,9 +1350,9 @@ krum / scaling, EMNIST & \checkmark & \checkmark & \checkmark & \checkmark & $0.
 \end{tabular}
 \end{table}
 
-\noindent \textbf{What the ladder shows, and the one arm it marks $\times$.} Three arms carry an
-equivalence reading and none of their verdicts changes anywhere on the ladder, so the reading the body
-rests on would be identical at $\pm0.05$. \textbf{What the ladder does not show is that the lower side of any
+\noindent \textbf{What the ladder shows, and the one arm it marks $\times$.} Three arms are scored, the
+three whose controlled interval contains zero, and none of their verdicts changes anywhere on the ladder,
+so the reading the body rests on would be identical at $\pm0.05$. \textbf{What the ladder does not show is that the lower side of any
 of those margins was ever at risk}: on the two krum rows the identity-rung mean ASR is $0.044$ and $0.024$, so
 $\Delta > -m$ holds by arithmetic at every rung of the ladder and what varies down the column is the upper leg
 alone (Table~\ref{tab:reach}). The exception is reputation / scaling, which fails at every
@@ -1446,7 +1495,8 @@ NC-dominant endpoint replicates within $0.01$; mid-mix is $\sim 9\%$ higher on R
 \caption{\textbf{What this design can and cannot conclude.} The middle column is about
 \emph{identifiability}, not statistical power: a ``no'' marked \emph{structural} cannot be repaired by
 more seeds, defenses or attacks (Proposition~\ref{prop:identification_full}). Every entry is scoped to the
-measured setting of §\ref{sec:composability_validation}--§\ref{app:targeted_full}.}
+measured setting of §\ref{app:targeted_full}'s interventions and §\ref{sec:composability_validation}'s
+menus.}
 \label{tab:can_cannot}
 \centering\small\setlength{\tabcolsep}{4pt}
 \begin{tabular}{@{}p{0.40\linewidth}p{0.16\linewidth}p{0.38\linewidth}@{}}
@@ -1515,9 +1565,11 @@ alone.} \\
 \multicolumn{7}{@{}l}{\footnotesize $\ddagger$ the same screen restricted to the pairs whose C2
 verdict Prop.~\ref{prop:invariance} settles algebraically.} \\
 \multicolumn{7}{@{}l}{\footnotesize percentages are over small denominators: $5$ of the $42$ pairs are
-low-ASR, so the C1-bearing rows'} \\
-\multicolumn{7}{@{}l}{\footnotesize precision is $2/2$ and their recall $2/5$. \emph{mean ASR} averages
-max-committed ASR over the admitted pairs;} \\
+low-ASR, so the criterion's precision} \\
+\multicolumn{7}{@{}l}{\footnotesize is $2/2$, C1 alone's and C1 $\wedge$ C3's are $2/4$, and every
+C1-bearing recall is $2/5$.} \\
+\multicolumn{7}{@{}l}{\footnotesize \emph{mean ASR} averages max-committed ASR over the admitted
+pairs;} \\
 \multicolumn{7}{@{}l}{\footnotesize a lower mean is not a better screen, since the C1 end reaches it by
 discarding the menu's lowest-ASR pair.} \\
 % Round 60: the pixel sweep found that a reader who averages the two admitted pairs' own published
@@ -1533,7 +1585,8 @@ admitted pairs read $0.107$ and $0.463$.} \\
 
 \noindent \textbf{The blind spot is attributable to exactly one condition, and the theory named it
 before the ablation was run.} Every C1-bearing variant misses FoolsGold$\to$RFA and every C1-free
-variant reaches it: its row is C1 \emph{false}, C2 \emph{true}, C3 \emph{true}, max-committed ASR
+variant reaches it, the algebraically restricted $\ddagger$ row aside, which admits no low-ASR pair at
+all: FoolsGold$\to$RFA's row is C1 \emph{false}, C2 \emph{true}, C3 \emph{true}, max-committed ASR
 $0.045$. C1 is the inherited-suppression gate, and Prop.~\ref{prop:emergent_full} proves no gate of that
 form can certify an emergent composition, so the miss is a \emph{predicted} property of one condition
 rather than an unexplained failure, and it is tradeable: C2 alone recovers every low-ASR pair in the
@@ -1737,6 +1790,242 @@ pair becomes another false negative of the criterion rather than its one hit. We
 because the pre-registration fixes the seed set at three and forbids adding seeds afterwards
 (\texttt{pre\_registration\_wave3\_emergent.md}, §5). What the disclosure costs is the claim that B
 \emph{dominates} A on this region, which holds at the frozen seeds and is not established beyond them.
+
+% ---- Relocated from the main paper's appendix. It was that appendix's fourth top-level section,
+% "A subordinate boundary study: what the screen buys, and what it does not", and it is the largest
+% self-contained block yet moved: the 42-pair development and held-out menus, the prospective suite,
+% the metric-swap ablation, the CIFAR-100 composition menu and the out-of-sample PASS battery. The
+% move answers two review items at once -- demote the screening criterion from the position its page
+% count gave it, and keep experimental archaeology out of the main paper -- and it is a relocation and
+% not a cut: every table, every pre-registration hash, every withdrawal and every disclosure travels
+% whole, and each keeps its label, so every pointer in the main paper resolves through xr in the other
+% direction. Six pointers INSIDE the block used to say "in the supplement (...)"; they now point within
+% this document and the words "the supplement" are dropped from them, which is the mirror of the
+% rewrite the main paper's own pointers needed and is invisible to every build and gate.
+% What did NOT move: the claims this block prices. The evidence-status ledger's row for the criterion,
+% the limitations that bound it (L1, L4) and the body's two mentions of the menu all stay in the main
+% paper, which is the condition under which anything is moved at all.
+
+\section{A subordinate boundary study: what the screen buys, and what it does not}
+\label{sec:composability_validation}
+\label{app:validation_full}
+
+Criterion~\ref{thm:composability} predicts for each two-defense pair whether composition achieves low max-committed ASR. All experiments in this section and §\ref{sec:fg_rfa_flagship} use one deployment regime throughout (CIFAR-10, $N{=}10$ clients, $K{=}5$ per round, adversarial fraction $f{=}0.2$, 50 rounds, 4-layer CNN), with committed attacks model\_scaling and backdoor\_pixel. \textbf{Convention:} unless stated otherwise, \emph{ASR} means \emph{max-committed ASR} (the maximum over the two committed attacks of the per-attack mean across seeds) thresholded at $0.5$: the level at which the trigger fires on the majority of triggered inputs, so that ``suppresses'' means the backdoor is not the model's dominant response. \textbf{That $0.5$ is an operational classification threshold, not a theoretically privileged security boundary}: nothing in the propositions depends on it, and a deployment with a lower tolerance should read the per-cell ASR rather than the label. adaptive-attack, order-sensitivity and per-seed figures are labelled explicitly where they differ. A second gate is needed because a destroyed model has a low ASR for the wrong reason: every cell in this section, §\ref{sec:fg_rfa_flagship} and §\ref{app:ladder}--§\ref{app:targeted_full} must also hold mean clean accuracy $\ge 0.35$ (our \textbf{accuracy floor}), below which we call the cell \emph{uninterpretable} rather than suppressed, in either direction. \textbf{That scope is wider than an earlier version of this sentence stated}: it named §\ref{app:ladder}--§\ref{app:targeted_full} alone, while the paragraph it sits in scopes itself to this section and §\ref{sec:fg_rfa_flagship}, so the floor was announced as a second gate and then withheld from most of the cells it governs. Widening it to what this paragraph already claims reclassifies exactly one cell, fg$\to$rfa at $\alpha{=}0.1$ (§\ref{sec:oos_pass}(E)), and that reclassification \emph{weakens} a limitation we state against ourselves, which is why both readings are printed there rather than only the gate-applied one. \textbf{Sample sizes are small and were fixed before the runs}: $n{=}5$ seeds per cell in the interventional suites ($n{=}8$ for \texttt{cos\_krum}, $n{=}3$ frozen for the second-dataset replication, which also reads at a pooled, post-hoc $n{=}5$, §\ref{app:targeted_full}), $n{=}30$ for the FoolsGold$\to$RFA characterization, so intervals are wide, and no null result is read as flatness unless it clears a pre-registered practical-equivalence margin. \textbf{``Refuted'' means one thing throughout}: a pre-registered \emph{directional} hypothesis was rejected against the rule frozen for it, never that a mathematical claim was disproved. Adversaries are the fixed client identities $\{0,\dots,fN-1\}$ and each round samples $K$ participants uniformly without replacement from all $N$, with no stratification, so the per-round adversary count is \emph{hypergeometric} rather than fixed: for $N{=}10$, $f{=}0.2$, $K{=}5$, $P(n_a{=}0)=P(n_a{=}2)=56/252=0.222$ and $P(n_a{=}1)=140/252=0.556$ (measured over 100 rounds: $0.19/0.54/0.27$). Two consequences the data bear out: CoordMedian's count-majority condition $n_a < K/2 = 2.5$ holds for \emph{every} attainable $n_a\in\{0,1,2\}$, i.e.\ in 100\% of rounds, while TrimmedMean's budget $\lfloor\beta K\rfloor = \lfloor 0.2\cdot 5\rfloor = 1$ is exceeded whenever $n_a{=}2$: $22.2\%$ of rounds, ${\approx}11$ of 50. That is a second, count-based reason FoolsGold$\to$TrimmedMean fails ($0.508$) while FoolsGold$\to$CoordMedian succeeds ($0.107$) under an identical upstream transform; we retain the pre-registered C3-FAIL label, the budget violation being an additional mechanism rather than a relabelling. We validate in two waves. The \textbf{development set} (18 targeted pairs, Table~\ref{tab:composability}) spans all criterion prediction categories and was used to refine the criterion (adding C3). The \textbf{held-out set} (24 pairs, Table~\ref{tab:composability_heldout}) was \emph{pre-registered}: all 24 predictions were committed to version control (commit \texttt{7e4d9b1}) \emph{before} any held-out experiment was run, eliminating post-hoc classification concerns. The criterion predicts LOW ($<$0.5) or HIGH ($\geq$0.5) max-committed ASR. The verdict categories are:
+\begin{table}[h]
+\caption{Composability criterion predictions, scored (max across committed\_scaling and committed\_pixel; $\pm$ is per-seed std where reported). Threshold: LOW $< 0.5$, HIGH $\geq 0.5$. \textbf{Seed counts differ by row and are marked}: unmarked rows are $n{=}3$, $^\ast$ is $n{=}5$, $^\dagger$ is $n{=}30$, $^\S$ is split across arms and noted in the table.}
+\label{tab:composability}
+\centering
+\footnotesize
+\begin{tabular}{lccccl}
+\toprule
+\textbf{Pair} & \textbf{Failure mode} & \textbf{Predicted} & \textbf{Max ASR} & \textbf{Correct?} \\
+\midrule
+\multicolumn{5}{l}{\emph{PASS: C1$\wedge$C2$\wedge$C3 all hold (predicted LOW)}} \\
+foolsgold $\to$ rfa$^\dagger$ & --- & LOW & $0.093 \pm 0.082$ & \checkmark \\
+foolsgold $\to$ coord\_median$^\ast$ & --- & LOW & $0.107 \pm 0.034$ & \checkmark \\
+reputation $\to$ coord\_median$^\S$ & --- & LOW & $0.463 \pm 0.136$ & \checkmark \\
+\midrule
+\multicolumn{5}{l}{\emph{C1-FAIL: neither defense individually suppresses all attacks (predicted HIGH)}} \\
+reputation $\to$ trimmed\_mean$^\dagger$ & C1 (pixel) & HIGH & 0.679 & \checkmark \\
+reputation $\to$ rfa & C1 (pixel) & HIGH & 0.825 & \checkmark \\
+reputation $\to$ foolsgold & C1 (pixel) & HIGH & 0.807 & \checkmark \\
+reputation $\to$ norm\_clip & C1 (pixel) & HIGH & 0.813 & \checkmark \\
+norm\_clip $\to$ foolsgold$^\ddagger$ & C1 & HIGH & 0.887 & \checkmark \\
+\midrule
+\multicolumn{5}{l}{\emph{C2-FAIL: $d_1$ destroys $d_2$'s signal direction (predicted HIGH)}} \\
+norm\_clip $\to$ reputation & C2 & HIGH & 0.819 & \checkmark \\
+rfa $\to$ reputation & C2 & HIGH & 0.882 & \checkmark \\
+\midrule
+\multicolumn{5}{l}{\emph{C3-FAIL: $d_1$ compresses boundary below $d_2$'s threshold (predicted HIGH)}} \\
+norm\_clip $\to$ trimmed\_mean & C3 & HIGH & 0.780 & \checkmark \\
+norm\_clip $\to$ rfa & C3 & HIGH & 0.853 & \checkmark \\
+rfa $\to$ trimmed\_mean & C3 & HIGH & 0.678 & \checkmark \\
+rfa $\to$ coord\_median & C3 & HIGH & 0.485 & $\times$ \\
+foolsgold $\to$ trimmed\_mean & C3 & HIGH & 0.508 & \checkmark \\
+norm\_clip $\to$ coord\_median & C3 & HIGH & 0.433 & $\times$ \\
+\midrule
+\multicolumn{5}{l}{\emph{DEGEN: $d_1$ has no per-client transform (predicted HIGH)}} \\
+fedavg $\to$ norm\_clip$^\ast$ & DEGEN & HIGH & 0.935 & \checkmark \\
+fedavg $\to$ trimmed\_mean$^\ast$ & DEGEN & HIGH & 0.846 & \checkmark \\
+\midrule
+\multicolumn{5}{l}{\small Overall: 16/18 = 89\%. HIGH direction: 13/15 correct (87\%). Under the tightened C1 the} \\
+\multicolumn{5}{l}{\small certified PASS set is 2/2 correct; fg$\to$rfa is reclassified as a synergy false negative.} \\
+\multicolumn{5}{l}{\small $^\ddagger$Reclassified from C2-FAIL: by Proposition~\ref{prop:invariance}(a) clipping preserves FoolsGold's} \\
+\multicolumn{5}{l}{\small \phantom{$^\ddagger$}similarities exactly, so C2 holds and the pair fails C1. Prediction and outcome unchanged.} \\
+\multicolumn{5}{l}{\small $^\S$Pixel arm $n{=}30$ (seeds $47$--$71$ pre-registered at \texttt{de77a7f}), scaling arm $n{=}5$; the pixel} \\
+\multicolumn{5}{l}{\small \phantom{$^\S$}arm sets the max, and its interval $[0.412,\,0.514]$ still crosses $0.5$ at $n{=}30$.} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{PASS precision: $2$ of the $2$ selected pairs are low-ASR.} That is $100\%$ as a descriptive statistic, and the positive class is two cases, so it resolves the direction and not the rate. Under the tightened per-attack C1 (§\ref{sec:composability_criterion}) the certified in-distribution set is 2 pairs, fg$\to$cm ($0.107$) and rep$\to$cm ($0.463$ at $n{=}30$), both correct; fg$\to$rfa ($0.093$) is no longer certified and is reported below as a false negative of our own criterion. This is the practitioner-relevant result: the criterion's positive predictions are reliable, at the cost of 40\% recall. Overall development-set accuracy: \textbf{16/18 = 89\%}. Two misses, both in the HIGH direction:
+
+\textbf{One certified pair is measured to the threshold, and a pre-registered top-up did not resolve it.} Rep$\to$CM's LOW label rests on its pixel arm, whose $n{=}5$ interval $[0.231,\,0.616]$ crossed $0.5$ with one seed at $0.665$, so we pre-registered seeds $47$--$71$ (\texttt{de77a7f}: seed list, unchanged $0.5$ rule and the three admissible outcomes all fixed before any run) and took that cell to $n{=}30$, the same power as the pair the criterion rejects. It is \textbf{still unresolved}: mean $0.463$, $95\%$ interval $[0.412,\,0.514]$, with $10$ of the $30$ seeds above the threshold. Six times the seeds narrowed the half-width $3.8\times$ ($0.192 \to 0.051$) and moved the mean \emph{up} from $0.423$, toward the threshold rather than away, so the cell is near-threshold rather than merely noisy. The LOW label holds by the frozen mean rule, the pre-registration forbids adding seeds once the outcome is seen, and we therefore stop here and report it unresolved: the certified in-distribution set is $2/2$ correct on the mean, and only fg$\to$cm is certified \emph{and} resolved below threshold. The frozen seed reproduced bit-for-bit before the top-up ran ($0.43178$ at seed $42$), so the $25$ new seeds extend the original five rather than replacing them; the scaling arm stays at $n{=}5$ ($0.020$), where it cannot set the max. Clean accuracy is $0.755$ over the $30$ runs, and $0.50$, $0.68$, $0.76$ on the three cells, all well clear of the collapse regime.
+
+\paragraph{Two boundary conditions, stated alongside the primary result.} Both are developed in full later, but neither should be met late. \textbf{(i) Extreme heterogeneity breaks the PASS pairs: two of three on the raw reading, one of three once our own accuracy floor is applied.} At $\alpha{=}0.1$, fg$\to$rfa reaches $0.569$ and rep$\to$cm $0.548$; only fg$\to$cm survives, at $0.433$. fg$\to$rfa's cell sits at clean accuracy $0.20$, below our $0.35$ floor, so it is \emph{uninterpretable} rather than a crossing and the gated count is $1/3$; both counts are carried, because the floor softens a limitation we state against ourselves and rep$\to$cm's crossing ($0.548$ at $0.48$) survives it either way. What makes this more than a negative datapoint is that the failure appears in the theorem's own quantity: RFA's separation margin $m := \Delta'_{\mathrm{sep}}/[2(R'_B+\delta')]$, measured on the transformed points, collapses from an all-round mean of $3.24$ to $1.01$ (exactly the $m \to 1$ boundary at which Corollary~\ref{cor:aggregate_mass}'s bound degrades to $40\%$ adversarial mass at $n_a{=}2$), so a practitioner running the 5--10 round pilot would measure $m \approx 1$ and decline to deploy. We emphasise that this is a post-hoc measurement of a known failure, not a pre-registered prediction of it; full sweep and caveats (bimodality at $n{=}3$, accuracy collapse to $0.20$--$0.48$) in §\ref{sec:oos_pass}(E). \textbf{(ii) Mechanism preservation is not adaptive-attack robustness.} A criterion-aware adversary solving FoolsGold's and RFA's constraints jointly (decorrelated coordinate blocks to evade the similarity test, $\epsilon$-ball projection to stay inside the geometric median's radius) raises fg$\to$rfa from $0.064$ (seed-matched at $n{=}30$, and on the pixel arm the attack is built from) to $0.157$ within our evaluated composition-aware attack family (§\ref{sec:fg_rfa_flagship}). Theorem~\ref{thm:bounded_reweight} bounds what the preserved mechanism admits, not what an adversary reshaping its update to satisfy both constraints at once can do, and the $2.4\times$ increase is the size of that gap on our flagship pair.
+
+\textbf{Held-out validation (pre-registered): 22/24 = 92\%} (\emph{Screening}: an evaluation ordering, and by Proposition~\ref{prop:identification_full} not an identification of the mechanism's contribution)\textbf{.} Table~\ref{tab:composability_heldout} reports the 24 pre-registered pairs. Combined across both waves: \textbf{38/42 = 90.5\%}. \textbf{Read against its base rate that figure is nearly uninformative, which is why it appears here, where it is computed, and in no summarizing position.} Only 5 of the 42 pairs are low-ASR (the $12\%$ base rate of §\ref{sec:condition_scoring}), so the constant predictor that calls every pair HIGH already scores $37/42 = 88.1\%$; $90.5\%$ is one pair better than that, and the tally is carried by correct negatives. The informative quantities are precision $2/2$ and recall $40\%$ (§\ref{sec:condition_scoring}). The two held-out misses are both LOW-predicted pairs that were flagged as \emph{speculative} in the pre-registration (neither is a clean C1$\wedge$C2$\wedge$C3 PASS):
+\begin{table}[h]
+\caption{Held-out pre-registered validation (24 pairs, $n{=}5$ seeds; max across committed\_scaling and committed\_pixel). All predictions committed to version control (commit \texttt{7e4d9b1}) before experiments. Threshold: LOW $< 0.5$, HIGH $\geq 0.5$. Only the two LOW predictions are shown individually; the 22 HIGH predictions (all correct) are summarized.}
+\label{tab:composability_heldout}
+\centering
+\footnotesize
+\begin{tabular}{lccccl}
+\toprule
+\textbf{Pair} & \textbf{Category} & \textbf{Predicted} & \textbf{Max ASR} & \textbf{Correct?} \\
+\midrule
+\multicolumn{5}{l}{\emph{Speculative LOW predictions (not clean C1$\wedge$C2$\wedge$C3 PASS)}} \\
+fedavg $\to$ coord\_median & DEGEN & LOW & 0.519 & $\times$ \\
+foolsgold $\to$ norm\_clip & C1 (uncertain) & LOW & 0.927 & $\times$ \\
+\midrule
+\multicolumn{5}{l}{\emph{HIGH predictions (22 pairs: 6 CM-as-$d_1$, 6 TM-as-$d_1$, 4 fedavg-as-$d_1$,}} \\
+\multicolumn{5}{l}{\emph{\phantom{xx} 3 weighting-$d_1$, 3 RFA-as-$d_1$; range 0.70--0.94)}} & 22/22 \checkmark \\
+\midrule
+\multicolumn{5}{l}{\small Held-out: 22/24 = 92\%. Combined with development set: 38/42 = 90.5\%.} \\
+\multicolumn{5}{l}{\small Constant-HIGH baseline on the same 42 pairs: 37/42 = 88.1\%.} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Rep$\to$tm: composition dominates despite C1-FAIL.} Reputation$\to$TrimmedMean is correctly classified as C1-FAIL (pixel ASR 0.679 $> 0.5$), yet it is the paper's main composition result. The resolution: the criterion predicts \emph{max-committed ASR}, while the deployment-relevant metric is \emph{oracle ASR} (0.316). The oracle cannot exploit the pixel gap because scaling (which reputation \emph{does} suppress) dominates its utility. The criterion thus correctly identifies that rep$\to$tm does not suppress every committed attack, while the game-theoretic analysis shows it is strategically dominant.
+
+\textbf{Tightening C1 costs us our own flagship, and reveals a synergy case.} Under the per-attack quantifier in C1, \textbf{fg$\to$rfa no longer certifies}: neither FoolsGold ($0.732$) nor RFA ($0.845$) suppresses the pixel backdoor individually, and FoolsGold's $0.200$ against model-scaling is hollow because it comes with $10\%$ clean accuracy. The composition nonetheless reaches $0.093$. This is genuine \emph{synergy} (suppression neither constituent possesses) and Proposition~\ref{prop:emergent_full} proves that \emph{no} inherited-suppression screen can certify it, so this is a scope boundary rather than a tuning failure. We therefore report our lowest-ASR composition as a false negative of our own criterion. The certified in-distribution set is fg$\to$cm ($0.107$) and rep$\to$cm ($0.463$), both correct: precision $2/2$, recall $2/5 = 40\%$.
+
+\textbf{A \emph{directional} C1 would empty that certified set, and we report the price rather than pay it.} The natural next tightening is to replace C1's ``some constituent suppresses $a$'' with the directional ``\emph{$d_2$} suppresses $a$'', on the ground that C0 forces $d_2$ anyway. \textbf{C0 does not force it.} C0 is existential over attacks while C1 is universal over them, so Lemma~\ref{lem:testability} pins $d_2$ only on the witnessing attack $a^*$; off $a^*$ the constituent holding that arm may be $d_1$, and the two definitions accordingly disagree on $4$ of the $42$ pairs. On all four the downstream defense is \texttt{coord\_median}, whose standalone model-scaling ASR is $0.519$ and so above threshold, while the upstream \texttt{foolsgold} ($0.200$) or \texttt{reputation} ($0.017$) is what holds that arm; every C1 input here is the $n{=}5$ single-defense baseline on seeds $42$--$46$. \textbf{Both certified pairs are of exactly that kind}, so a directional C1 selects nothing in distribution and leaves precision \emph{undefined} instead of $2/2$. \textbf{What the substitution correctly points at is real, and it is a quantifier and not a direction}: on the model-scaling arm of these two pairs the suppression is inherited from an \emph{upstream} defense, which nothing downstream can undo, so the signal-preservation argument contributes nothing to that arm even though the arm counts toward the max-committed label. The criterion and Theorem~\ref{thm:bounded_reweight} are therefore aligned \emph{per attack} and not per pair. We keep C1 and disclose the asymmetry; the census is emitted by \texttt{experiments/\allowbreak analyze\_condition\_ablation.py}.
+
+\subsection{A prospective test on a never-run defense menu}
+\label{sec:prospective}
+\noindent \emph{Does the criterion predict on a menu it has never seen?}
+\textbf{Result: 13/20, and the shortfall is in our experimental design.} At the same $0.5$ threshold: TP${}=8$, FP${}=0$, TN${}=5$, FN${}=7$ (Table~\ref{tab:prospective}). \textbf{The suite carried the sanity gate our out-of-sample battery lacked}, pre-registered with the labels: a predicted-FAIL pair counts only if the attack clears ASR $0.5$ against FedAvg, which both committed attacks do ($0.667$ scaling, $0.768$ pixel), so a pair cannot be scored correct because the attack failed on its own. Every predicted-LOW pair came out LOW, $8/8$, and that figure is far weaker than it looks, because \textbf{FLTrust suppresses both committed attacks on its own} (max-committed ASR $0.048$ at $0.575$ clean accuracy), the first defense in our menu that does. All 13 pairs containing FLTrust land in $[0.041, 0.078]$, within $0.030$ of FLTrust alone, in either slot. The two slots fail for different reasons, and the distinction matters:
+
+\textbf{The two slots fail differently, and the difference is the finding.} \emph{(i) FLTrust as $d_1$ (7 pairs, 2/7).} $d_1$ alone already suppresses, so the composition inherits that suppression whatever $d_2$ does; all five predicted-HIGH misses have real C2/C3 failures, but destroying $d_2$'s mechanism is costless when $d_2$ was never load-bearing. This is C0, invisible on the original 42 pairs because no defense there suppresses alone (the minimum single-defense max-committed ASR is CoordMedian's $0.519$, and the lowest ASR among all 39 non-PASS pairs is $0.433$), so we count these 7 pairs out of scope \emph{retrospectively}: a weaker claim than a pre-registered exclusion, and C0's own provenance is Remark~\ref{rem:c0}. \emph{(ii) FLTrust as $d_2$ (6 pairs, 6/6), but the prediction is nearly an identity.} FLTrust gates on the scale-invariant $\cos(u_i, g_{\mathrm{srv}})$ and then renormalizes every update to $\|g_{\mathrm{srv}}\|$, discarding magnitude entirely, so a positive per-client rescaling is \emph{exactly} cancelled: five of the six pairs are bit-identical to FLTrust alone or differ only within seed noise. The single genuine deviation is FG$\to$FLTrust ($0.064$), the one $d_1$ producing exact \emph{zeros} rather than positive rescalings and hence a Lemma~\ref{lem:annihilation} interaction. This arm is a consistency check between theory and implementation, \textbf{not} a falsifiable test: every $d_1$ in our menu is a positive rescaling and Proposition~\ref{prop:invariance}(a) permits no other outcome. \emph{(iii) Neither defense is FLTrust (7 pairs, 5/7)}: the only arm that could have surprised us. Five predicted-HIGH pairs are correct ($0.870$--$0.943$), though only $2$ of the arm's $7$ pairs compose two real mechanisms once the pass-through and MultiKrum degeneracies are accounted for (below); both misses are diagnosable and neither is a mechanism error: fg$\to$krum measures $0.078$ at $9.9\%$ clean accuracy (the collapsed-model artifact, not suppression), and krum$\to$cm measures $0.450$ against a $0.5$ threshold as a degenerate pair reducing to CoordMedian alone, whose own baseline is $0.519$. The arm contains \emph{zero} predicted-LOW pairs, so it bears on specificity only. Per-pair numbers for all three arms are in §\ref{app:prospective_arms}.
+
+\textbf{What the suite does and does not establish.} Counting only in-scope pairs gives $11/13$; the arm that carried real risk of falsification gives $5/7$ with both misses explained. But it is not the prospective positive the framework needs, because \textbf{it contains none}: by (i) and (ii) the 8 predicted-LOW pairs are 6 near-identities plus 2 out-of-scope inheritances.
+
+\noindent \textbf{We withdraw the three matched contrasts we previously drew here}, which we had read, $d_1$ fixed while $d_2$ moved from FLTrust to a Euclidean rule, as a $19$--$20\times$ ASR gap turning on exactly the property Proposition~\ref{prop:invariance} identifies. Two ran against MultiKrum, which at $K{=}5$ selects \emph{all five} participants and is bit-identical to FedAvg ($1.9\times10^{-6}$ per aggregation; a genuine selector again at $K{=}10$), so they carried no downstream defense at all. Substituting Krum does not repair them, and that is the finding: all three Krum arms take their max-committed ASR from the pixel backdoor, which Krum \emph{fails to suppress standalone} ($0.583$), so the gap measures C1 failure and not disturbed invariance, and nc$\to$krum is bit-identical to Krum alone on all three seeds because under that attack no client exceeds $\tau{=}5$ and $d_1$ is the exact identity. Counting the pass-through $d_1$ rows too, $8$ of the $20$ rows reduce to a single defense rather than the $5$ labelled DEGEN at freeze, and arm (iii) composes two real mechanisms in $2$ pairs, not $7$ (App.~\ref{app:mkrum}). The frozen labels and the $13/20$ score stand; what we retract is our reading of them. The confound is accordingly worse than we reported: in this menu the invariant-signal $d_2$ is also the only $d_2$ that suppresses alone, so C1 and C2 co-vary. Lemma~\ref{lem:testability} explains why no other choice of defense would have helped: in scope, C0$\wedge$C1 \emph{force} $d_2$ to suppress $a^*$ alone, so the confounding is structural. Breaking it requires holding the suppression principle and standalone effectiveness fixed while varying only the invariance class, which is the design of §\ref{sec:metric_swap}; that section's $\Delta$ analysis is the only contrast in either paper holding C1 exactly fixed, and it is where our C2 evidence now rests.
+
+\begin{table}[t]
+\caption{Prospective suite: 20 pairs, labels frozen at commit \texttt{262cf35} before any run. Max-committed ASR over 2 attacks $\times$ 3 seeds; threshold $0.5$. Categories are verbatim from the pre-registration, including its own uncertainty hedges. \textbf{The two scope headers are not:} C0 was formulated after this suite scored and applied to it retrospectively (Rem.~\ref{rem:c0}), so the in-scope/out-of-scope split is ours and post hoc, and the $11/13$ it produces is a weaker number than the frozen $13/20$.}
+\label{tab:prospective}
+\centering\small
+\begin{tabular}{llccccl}
+\toprule
+\textbf{Pair} & \textbf{Frozen category} & \textbf{Pred.} & \textbf{Max ASR} & \textbf{Acc} & \textbf{Hit} \\
+\midrule
+\multicolumn{6}{l}{\emph{In scope (C0 holds): $d_2$ load-bearing}} \\
+Rep$\to$FLTrust & certified & LOW & $0.046$ & $0.577$ & \checkmark \\
+NC$\to$FLTrust & certified & LOW & $0.046$ & $0.576$ & \checkmark \\
+RFA$\to$FLTrust & certified & LOW & $0.047$ & $0.574$ & \checkmark \\
+Krum$\to$FLTrust & DEGEN & LOW & $0.048$ & $0.574$ & \checkmark \\
+MKrum$\to$FLTrust & DEGEN & LOW & $0.048$ & $0.574$ & \checkmark \\
+FG$\to$FLTrust & certified & LOW & $0.064$ & $0.547$ & \checkmark \\
+FG$\to$Krum & C1-fail & HIGH & $0.078$ & $0.099$ & $\times$ \\
+Krum$\to$CM & DEGEN & HIGH & $0.450$ & $0.770$ & $\times$ \\
+Krum$\to$RFA & DEGEN & HIGH & $0.870$ & $0.780$ & \checkmark \\
+MKrum$\to$RFA & DEGEN & HIGH & $0.870$ & $0.780$ & \checkmark \\
+RFA$\to$MKrum$^\dagger$ & C1-fail & HIGH & $0.875$ & $0.782$ & \checkmark \\
+Rep$\to$Krum & C1-fail & HIGH & $0.880$ & $0.530$ & \checkmark \\
+NC$\to$MKrum$^\dagger$ & C1-fail & HIGH & $0.943$ & $0.761$ & \checkmark \\
+\midrule
+\multicolumn{6}{l}{\emph{Out of scope (C0 violated): FLTrust as $d_1$ suppresses alone at $0.048$}} \\
+FLTrust$\to$CM & certified-uncertain & LOW & $0.041$ & $0.505$ & \checkmark \\
+FLTrust$\to$MKrum$^\dagger$ & C2-fail & HIGH & $0.045$ & $0.576$ & $\times$ \\
+FLTrust$\to$TM & C3-fail-uncertain & HIGH & $0.046$ & $0.529$ & $\times$ \\
+FLTrust$\to$NC & C2-fail & HIGH & $0.047$ & $0.576$ & $\times$ \\
+FLTrust$\to$RFA & certified & LOW & $0.048$ & $0.512$ & \checkmark \\
+FLTrust$\to$Rep & C2-fail & HIGH & $0.048$ & $0.518$ & $\times$ \\
+FLTrust$\to$Krum & C2-fail & HIGH & $0.078$ & $0.361$ & $\times$ \\
+\bottomrule
+\multicolumn{6}{l}{\footnotesize Full suite $13/20$ (TP 8, FP 0, TN 5, FN 7); in scope $11/13$; non-FLTrust arm $5/7$.} \\
+\multicolumn{6}{l}{\footnotesize $^\dagger$MultiKrum at $K{=}5$ keeps all five participants, so it is bit-identical to FedAvg and} \\
+\multicolumn{6}{l}{\footnotesize these rows carry no downstream defense; MKrum$\to$FLTrust and MKrum$\to$RFA repeat their Krum} \\
+\multicolumn{6}{l}{\footnotesize rows exactly. $8$ of $20$ rows reduce to one defense; frozen labels unchanged (App.~\ref{app:mkrum}).} \\
+\end{tabular}
+\end{table}
+
+\subsection{Breaking the confound: a matched metric-swap ablation}
+\label{sec:metric_swap}
+
+\noindent \emph{Can the confound be broken by swapping the metric instead of the defense?}
+Lemma~\ref{lem:testability} says mechanism--effectiveness confounding cannot be escaped by picking a different defense off a menu: in scope, C0$\wedge$C1 force the invariant-signal $d_2$ to be one that suppresses $a^*$ alone. So we break the confound by construction instead, holding the suppression \emph{principle} fixed and varying only the invariance class of the statistic $d_2$ reads.
+
+\textbf{The design's premise was refuted by its own baselines.} Matching failed in both arms, for two independent reasons, and because the C1 inputs are measured before the freeze we learned this before the suite ran: the only reason it can be reported as a finding rather than a post-hoc excuse. \texttt{cos\_reputation} does not merely weaken relative to its Euclidean original, it collapses, from Reputation's $0.017$ on model-scaling to $\mathbf{0.982}$. \texttt{cos\_krum} reaches $0.078$ on model-scaling, which passes C1's numeric threshold, but at $\mathbf{0.146}$ clean accuracy, the hollow-suppression artifact already documented for FoolsGold ($0.200$ at $0.10$) and fg$\to$krum ($0.078$ at $0.099$), so C1 fails under the accuracy gate we apply everywhere else. The mechanism is visible in the baselines rather than asserted: undefended FedAvg under model-scaling is itself at $0.100$ accuracy, so Krum's $0.577$ is \emph{restoring} utility the attack destroyed and \texttt{cos\_krum}'s $0.146$ fails to. \textbf{Magnitude information is what lets this defense family handle a magnitude attack}: a direction-only mirror of a Euclidean scorer cannot see a scaling attack at all, so removing the magnitude dependence removes the suppression with it: exactly the coupling the pre-registered contingency anticipated, stated there as the possibility that ``both mirrors are magnitude-blind and the Euclidean originals may be catching model-scaling via magnitude''. On the magnitude-neutral pixel backdoor the mirror does survive ($0.300$ at $0.598$), but there its control Krum fails C1 ($0.583$), so those arms are unmatched in the opposite direction and the pixel cells cannot carry the test either.
+
+The consequence is that \textbf{the confound re-materialized inside an experiment built specifically to break it}, which we report as this ablation's methodological finding rather than as a failed run. Lemma~\ref{lem:testability} establishes that mechanism--effectiveness confounding is structural in scope; this is what trying to escape it looks like when the mechanism being varied is the mechanism the defense relies on. Two responses were available and we took neither. We did not switch to a pixel-only protocol, which would have made \texttt{cos\_krum} pass C1 and manufactured two predicted-LOW cells: choosing the attack after seeing the C1 inputs is attack-shopping regardless of the resulting labels. We did not adjust the accuracy gate to admit $0.146$, which would have produced a predicted-LOW pair by weakening the very criterion that catches hollow suppression elsewhere. The pre-registration's second non-negotiable (``no switching of committed attack, threshold, seed count, or accuracy gate'') forecloses both, and either would have bought a positive test at the cost of the property that makes the test worth running.
+
+\textbf{Outcome: 8/8 correct, and zero positive tests.} Because C1 binds for all eight pairs (on model-scaling through the two baseline failures above, on the pixel backdoor by design) every frozen label was HIGH, so the suite bears on specificity only, as a consequence of inputs measured before the freeze rather than a choice made afterwards. We ran all 8 pairs $\times$ 2 attacks $\times$ 3 seeds anyway, because a suite whose labels are all one class is still falsifiable in the direction that matters: a single LOW cell would have been a false positive against a criterion claiming $100\%$ precision. All eight came out HIGH ($8/8$ correct, TP $=0$, FP $=0$, TN $=8$, FN $=0$, max-committed ASR spanning $0.508$--$0.935$) with labels frozen in \texttt{pre\_registration\_metric\_swap.md} at commit \texttt{356897b}, timestamped before \texttt{results/metric\_swap/} existed and reproduced verbatim in the runner's \texttt{PAIRS} list so scoring cannot drift. We state the limitation in the same breath as the result: the suite contains \textbf{no falsifiable prospective positive test}, and $8/8$ is not validation of the framework's predictive claim: eight correct negatives on pairs our own conditions could only have called HIGH is weak evidence, and it supports a claim about specificity, not prediction.
+
+One prediction in the suite was genuinely two-sided, and it is the only prospective positive result either screening suite produced. \texttt{cos\_krum}'s C1 verdict on model-scaling turns entirely on whether the accuracy gate is applied ($0.078$ passes the numeric threshold; $0.146$ accuracy fails the gate), so rather than choose a reading afterwards we froze \emph{both}, with the resolution rule fixed in advance: accuracy-gated $\Rightarrow$ HIGH, numeric-only $\Rightarrow$ LOW, and a LOW outcome at accuracy $\ge 0.35$ would have recorded our two primary labels as misses. Both pairs came out \textbf{HIGH} (NormClip$\to$\texttt{cos\_krum} $0.508$, RFA$\to$\texttt{cos\_krum} $0.566$), refuting the secondary reading and vindicating the accuracy gate against a pre-registered alternative specification of itself on data neither of us had seen. The weaker half is flagged in §\ref{app:metric_swap_detail}: the NormClip arm sits barely above threshold and it is the RFA arm that carries the conclusion.
+
+\textbf{A post-hoc contrast that is not confounded.} The cross-pair scoring above is confounded in exactly the way Lemma~\ref{lem:testability} predicts, but the frozen suite happens to contain a comparison that is not, and it is the strongest C2 evidence in either paper. Compare a composition against \emph{the same} $d_2$'s own standalone ASR on the same attack, under two different upstream transforms. C1 is then identical by construction (same downstream defense, same attack, same measured standalone effectiveness on both sides), so the residual $\Delta = \mathrm{ASR}(d_1{\to}d_2, a) - \mathrm{ASR}(d_2, a)$ cannot be attributed to $d_2$ being a stronger or weaker defense. What does vary is how much the upstream transform actually disturbs $d_2$'s statistic, and that quantity was measured on the mechanism itself (\texttt{results/cos\_invariance\_check.json}) rather than inferred from any ASR. The frozen label scoring is fixed at $n{=}3$ and must not move, so we topped the six powered cells up to $n{=}5$ in a separate directory, with the tested direction fixed in the top-up script before the new seeds ran (\texttt{results/metric\_swap\_topup/}). Because $\Delta$ is a difference, the subtrahend moves with it: each topped-up cell's standalone is recomputed at the \emph{same} five seeds, from the dose ladder's $\kappa{=}0$ rung, which is that $d_2$ alone under the identical configuration (§\ref{app:ladder}) and agrees with the published standalone baselines bit-for-bit on every seed they share (largest deviation $0.00\mathrm{e}{+}00$ in ASR and accuracy across 22 seed-level comparisons), so it is the same quantity carried to five seeds and not a second measurement of it. Scoring a five-seed composition against the three-seed baseline would hide a mixed-$n$ comparison inside the subtrahend, where it is invisible, and on one cell below it would invert the conclusion. For Krum under model-scaling (standalone $0.062$ at $0.565$ accuracy over those five seeds; $0.061$ at $0.577$ on the frozen three): NormClip changes Krum's selection in $0/9$ rounds and the composition reaches $0.062$ ($\Delta = +0.001$, per-seed $0.120 / 0.018 / 0.047 / 0.058 / 0.068$); RFA changes it in $6/9$ rounds and the composition reaches $0.779$ ($\Delta = +0.717$, per-seed $0.974 / 0.116 / 0.982 / 0.904 / 0.916$): a gap of $+0.716$ between two compositions sharing a downstream defense, an attack, and a baseline, and at $n{=}5$ it is statistically resolved (Welch $t = 4.28$, two-sided $p = 0.012$; paired $t = 4.60$, $p = 0.010$; Mann--Whitney one-sided $p = 0.008$), which it was not at $n{=}3$.
+
+The pattern holds across the suite once cells without power are excluded: $\Delta$ is observable only where standalone $d_2$ genuinely suppresses, since a baseline already above $0.5$ shows $\Delta \approx 0$ by ceiling effect whatever the transform did. Restricting to standalone ASR $< 0.5$ at accuracy $\ge 0.35$ leaves six cells, and at $n{=}5$ measured disturbance still splits them perfectly: the three undisturbed cells ($0/9$) give $\Delta \in [-0.044, +0.001]$, the three disturbed ones ($>0/9$) give $\Delta \in [+0.717, +0.878]$: a separation of $+0.716$ with no overlap, wider than the $+0.629$ the frozen $n{=}3$ scoring gives. That separation is the \emph{same} $+0.716$ as the Krum contrast above and not independent evidence on top of it: both extremes are those two Krum cells, which share a standalone, so the width of the split is algebraically that contrast's gap. The other four cells extend the two halves outward rather than the distance between them. Two of the three undisturbed cells are \texttt{cos\_krum} on the pixel backdoor, where the mirror suppresses standalone ($0.300$ at $0.598$ accuracy on the frozen three seeds, $0.490$ at $0.607$ on all five, since two of the added seeds are high-ASR) and carries that suppression through under \emph{both} upstreams. Under NormClip it carries through \emph{exactly}: NormClip never binds on this attack (max client norm $3.04$ against $\tau = 5$, $0/9$ rounds), so the composition is bit-identical to the baseline at all five seeds and $\Delta = +0.000$ is an identity rather than a measurement; under RFA the composition is $0.447$ against that $0.490$, i.e.\ $\Delta = -0.044$. Kept against the frozen three-seed baseline these same rows would instead read $+0.190$ and $+0.147$, and the natural reading of \emph{that}, the magnitude channel of Lemma~\ref{lem:annihilation} moving $\Delta$ where the selection is exactly invariant, would credit an effect to a transform that provably did nothing: the movement is entirely the baseline's seed set. So this contrast has no power on the magnitude channel in either direction, because its one exactly-invariant downstream sits under an upstream that never rescales; measuring that channel requires moving the dial on purpose, which is what the ladder's arm 3 (§\ref{app:ladder}) does prospectively. The ten excluded cells are listed rather than dropped silently in §\ref{app:metric_swap_detail}.
+
+The suite contains a second such contrast, on Reputation under model-scaling (standalone $0.017$ at $0.777$ accuracy), and the two are informative in opposite ways. NormClip disturbs Reputation's weight ordering in $3/9$ rounds and the composition reaches $0.806$; RFA disturbs it in $9/9$ and the composition reaches $0.895$. The gap is only $+0.089$ (both arms are far above threshold, because Reputation's ordering is disturbed under \emph{both} upstreams) but within-arm variance is small, all five seeds move in the predicted direction (per-seed deltas $+0.149 / +0.089 / +0.030 / +0.061 / +0.115$), and it is resolved at both $n{=}3$ and $n{=}5$ (Welch $t = 3.06$, two-sided $p = 0.018$; paired $t = 4.31$, $p = 0.013$). So the two contrasts trade off exactly as the disturbance measurements imply: Krum has the large effect because one of its upstreams leaves it untouched, and Reputation was resolvable even at $n{=}3$ because neither upstream does.
+
+\textbf{This is post-hoc, and we do not present it otherwise.} It was not pre-registered, it re-uses a suite frozen for a different purpose, the two extra seeds per cell were added \emph{after} seeing the $n{=}3$ result, and the six-cell split is a description of that suite rather than a test on new data. The top-up could have cut in either direction and we report what it did: it resolved the Krum gap (Welch $p = 0.16$ at $n{=}3$, where per-seed paired deltas $+0.854 / +0.097 / +0.935$ left one seed not separating, to $p = 0.012$ at $n{=}5$) and left the invariant control at $\Delta \approx 0$ ($+0.000$ under NormClip, $-0.044$ under RFA), the added seeds raising its baseline and its compositions together. What the analysis does have, which neither the FLTrust contrasts of §\ref{sec:prospective} nor the cross-pair scoring has, is C1 held exactly fixed and a disturbance measurement taken on the statistic rather than read back from the outcome. We offer it as the cleanest available piece of C2 evidence and as the shape a properly prospective version of this test would take: fix a downstream defense that suppresses the attack, then vary the upstream along measured disturbance rather than along defense identity. Supplement Table~\ref{tab:can_cannot} sets out, claim by claim, what this design can and cannot conclude.
+
+\subsection{The screen on a second dataset at the composition level: it predicts LOW for no pair, so it coincides with the constant-HIGH baseline cell for cell and its recall on the LOW class is $0$}
+\label{app:cifar100_menu}
+
+\noindent \emph{Does the screen's behaviour survive a change of dataset at the composition level, where every other dataset arm in this paper is a single-arm ladder?} It does not, and the way it fails is sharper than a fall in agreement: on CIFAR-100 \textbf{no single defense suppresses the committed pixel backdoor alone}, and a pair is predicted LOW only when C1 is met for \emph{every} committed attack, so the screen returns HIGH on every scored pair and is therefore the constant-HIGH predictor on this menu cell for cell rather than merely equal to it in aggregate. \textbf{The precondition does not fail uniformly, and the part of it that held is reported rather than absorbed into the headline}: \texttt{reputation} does suppress committed scaling alone, at ASR $0.005$, and on five scored pairs C1 and C2 both hold for that attack, so the screen reaches a LOW per-attack prediction five times and still predicts no LOW pair. The failure is attack-specific and belongs to the pixel backdoor, which is how Table~\ref{tab:composability} already records this condition failing on CIFAR-10, four of its five C1 rows reading \emph{C1 (pixel)}, and how §\ref{sec:limitations} reports it for EMNIST-byclass.
+
+\textbf{What was run, reported as coverage and never as a menu.} The 42-pair composition menu of Table~\ref{tab:composability} was re-run on CIFAR-100 with \texttt{cifar\_cnn} against both committed attacks at seeds $42$--$46$, at $N{=}10$, $K{=}5$, $f{=}0.2$, Dirichlet $\alpha{=}0.5$, $50$ rounds and $2$ local epochs, pre-registered in \texttt{experiments/\allowbreak pre\_registration\_\allowbreak cifar100\_\allowbreak composition\_\allowbreak suite.md} and committed alone at \texttt{f559b85}, with the runner refusing to start unless that document is committed at the recorded hash with a clean working tree. \textbf{This is not the full 42-pair menu and is not described as one}: the freeze capped the arm to wave~1's $18$ pairs before the first run, so wave~2's $24$ held-out pairs are deliberately unrun and no held-out generalization claim rests on this arm. Of wave~1's $18$ pairs, $18$ completed all $10$ of their runs and $0$ did not. What the cap keeps is the part where the question is decidable: all five of CIFAR-10's LOW pairs sit in wave~1.
+
+\textbf{Three of the $18$ complete pairs fall below the frozen $0.35$ clean-accuracy floor, and they are counted rather than dropped}: \texttt{fedavg\_then\_trimmed\_mean} at minimum mean accuracy $0.3388$, \texttt{norm\_clip\_then\_foolsgold} at $0.3481$ and \texttt{foolsgold\_then\_rfa} at $0.2316$. A collapsed model can carry a high ASR, so a below-floor cell is \emph{uninterpretable}: it is excluded from scoring and counted in every denominator that describes coverage. The headroom is genuinely thin here and the freeze anticipated it rather than discovering it: every scored pair's minimum mean accuracy lies between $0.3519$ and $0.3887$, so no cell clears the floor by as much as $0.04$.
+
+\textbf{The screen agrees with the observed class on $13$ of the $15$ scored pairs, $86.7\%$, against a constant-HIGH predictor's $13$ of $15$ on the same pairs, $86.7\%$, which is also the base rate, with $3$ of the $18$ complete pairs excluded below the floor and $0$ excluded for a missing baseline.} Those two figures are equal by construction rather than by coincidence, and that is the finding: the screen returns HIGH on all $15$, so its prediction vector \emph{is} the constant predictor's, and no agreement figure computed on this arm can separate them. Precision on the LOW class is undefined because the screen predicts LOW for no pair at all, and recall on the LOW class is $0$: the two observed-LOW pairs, \texttt{foolsgold\_then\_coord\_median} at max committed ASR $0.3561$ and \texttt{foolsgold\_then\_trimmed\_mean} at $0.4940$, are both missed. \textbf{So §\ref{sec:strategies}'s recommendation not to screen on inherited suppression at all now rests on two datasets rather than one}, and it is the stronger of the two failures, since on CIFAR-10 the screen at least made LOW predictions to be wrong about.
+
+\textbf{The precondition fails on one attack rather than on the dataset as a whole, and that is a measurement rather than an inference from the agreement figure.} The seven aggregators the screen reads give fourteen standalone readings, and \textbf{exactly one falls below the screen's own C1 threshold of $0.3$}: \texttt{reputation} against committed scaling, at $0.005$. The other thirteen run from \texttt{fedavg}'s $0.658$ to \texttt{rfa}'s $0.908$, every one of them above the $0.5$ mark at which a composition counts as suppressing. \textbf{The committed pixel backdoor is the attack with no standalone suppressor at all}: its seven readings run from \texttt{coord\_median}'s $0.673$ to $0.888$, so C1 has no pixel input anywhere on this menu, and because a pair is predicted LOW only when C1 is met for every committed attack, the one scaling suppressor cannot yield a LOW pair. \textbf{That is the same shape as §\ref{sec:limitations} reports for EMNIST-byclass}, where the minimum single-defense pixel ASR is $0.609$ and C1's precondition fails over the menu measured there. Both datasets that leave CIFAR-10 at the composition level fail C1's precondition on the same attack, so the screen's scope condition is not a CIFAR-10 artifact of one menu. This is also the hypothesis under which Corollary~\ref{cor:zero_recall}'s cap reaches $0$, the suppression that is observed being emergent rather than inherited from a constituent: neither observed-LOW pair contains a defense that suppresses either committed attack alone, and the measured recall here is $0$; we report that as an instance of the corollary on one menu and not as a confirmation of it.
+
+\textbf{One departure from the frozen run order, and it is the order alone.} The freeze fixes wave~1's pairs in the imported list order so that any partial completion is a pre-specified prefix. Obeying it would have stopped short of wave-1 position $18$, \texttt{foolsgold\_then\_rfa}, whose CIFAR-10 max committed ASR of $0.0454$ is the lowest in the menu and which is one of the five LOW pairs the estimand is computed over, so the remaining pairs were run as disjoint slices with the LOW slices taken first (\texttt{experiments/\allowbreak run\_cifar100\_suite\_shard.py}, merged by \texttt{experiments/\allowbreak merge\_cifar100\_suite\_shards.py}). \textbf{Execution was serial, one run at a time}; no rule, threshold, seed, attack, gate or menu entry was changed, and the freeze is not edited. What licenses recombining the slices was measured and not merely argued: \texttt{run\_one} seeds \texttt{torch} and \texttt{numpy} as its first two statements, so a run is a deterministic function of its pair, attack and seed, and an already-banked cell was deliberately recomputed under the new scheduler and returned accuracy and ASR \emph{bit-identical} to the artifact's, a difference of exactly zero on both rather than a difference within a tolerance. No run appears in more than one slice, the slices being disjoint by construction, so the merge's overlap check is empty and that emptiness is a property of the design and not a second passed check. Every figure above is emitted by the frozen runner's own reporting path over the merged rows; the merge computes no fraction, base rate, precision or recall.
+
+Per seed, for \texttt{foolsgold\_then\_coord\_median}, the more clearly LOW of the two pairs the screen misses. This is the same form §\ref{app:composition} uses for the CIFAR-10 menu, one pair's table in the paper and the artifact for the rest; every run of this arm is in \texttt{results/\allowbreak cifar100\_\allowbreak composition\_\allowbreak suite/\allowbreak summary.json}, in the \texttt{per\_seed} rows. The rows below are emitted from that artifact by \texttt{experiments/\allowbreak emit\_perseed\_\allowbreak cifar100\_\allowbreak menu.py}, whose \texttt{--check} asserts each one appears verbatim here, so the table is checked against the artifact mechanically and not by eye.
+
+\begin{center}\small
+\begin{tabular}{l|cc|cc}
+\toprule
+ & \multicolumn{2}{c|}{committed\_scaling} & \multicolumn{2}{c}{committed\_pixel} \\
+Seed & Accuracy & ASR & Accuracy & ASR \\
+\midrule
+42 & $0.389$ & $0.381$ & $0.391$ & $0.399$ \\
+43 & $0.399$ & $0.228$ & $0.404$ & $0.271$ \\
+44 & $0.380$ & $0.444$ & $0.397$ & $0.481$ \\
+45 & $0.381$ & $0.322$ & $0.382$ & $0.343$ \\
+46 & $0.382$ & $0.254$ & $0.383$ & $0.286$ \\
+\midrule
+mean & $0.386$ & $0.326$ & $0.391$ & $0.356$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent The pair's \texttt{max\_committed\_asr} is the larger of the two mean ASRs, $0.3561$, which is below the $0.5$ mark and so observed LOW; per-attack ASR standard deviations are $0.089$ and $0.086$ at $n{=}5$, so a single pair's class at this seed count is not a precise quantity and no interval is claimed for it. The screen predicted HIGH here, its reason being that C1 fails because neither constituent suppresses alone.
+
+\subsection{Out-of-Sample PASS Validation}
+\label{sec:oos_pass}
+
+The development and held-out validation above tests predictions from the \emph{same} attack families (model\_scaling, backdoor\_pixel) and scale ($N{=}10$, cifar\_cnn) used to design the criterion. To confirm that PASS predictions generalize we pre-registered three out-of-sample tests (commit \texttt{ca627e5}, before any of them ran); all held, the accounting is in the summary below, and per-cell values for every test are in §\ref{app:oos_detail}. We state plainly what this is and is not: it is evidence that the conditions keep identifying compositions which survive a change of attack family, scale and architecture; it is \emph{not} an out-of-sample classification result, because every prediction in it is positive and the matching FAIL controls proved uninformative. Negative-direction evidence rests entirely on the in-distribution tiers.
+
+\textbf{(E) Heterogeneity: where the criterion breaks.} Earlier heterogeneity sweeps in this work covered \emph{single defenses} only; no composition had been run at any $\alpha \neq 0.5$. We ran all three PASS pairs at $\alpha \in \{0.1, 1.0, 10.0\}$ (3 seeds, both committed attacks, 50 rounds); the $\alpha{=}0.5$ column is each pair's headline value at its own seed count ($n{=}30$ for fg$\to$rfa and rep$\to$cm, $n{=}5$ for fg$\to$cm) rather than a 3-seed rerun. Reporting max-committed ASR / clean accuracy:
+
+\begin{center}\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Composition} & $\alpha{=}0.1$ & $\alpha{=}0.5$ & $\alpha{=}1.0$ & $\alpha{=}10.0$ \\
+\midrule
+fg$\to$rfa & \textbf{0.569}$^\S$ / 0.20 & 0.093 / 0.50 & 0.051 / 0.57 & 0.063 / 0.62 \\
+fg$\to$cm & 0.433 / 0.40 & 0.107 / 0.68 & 0.133 / 0.74 & 0.129 / 0.78 \\
+rep$\to$cm & \textbf{0.548} / 0.48 & 0.463 / 0.76 & 0.377 / 0.79 & 0.326 / 0.81 \\
+\bottomrule
+\multicolumn{5}{@{}l}{\footnotesize $\S$ \emph{uninterpretable} under the accuracy floor of §\ref{sec:composability_validation}:} \\
+\multicolumn{5}{@{}l}{\footnotesize clean accuracy $0.20 < 0.35$, so the raw $0.569$ is a collapsed model and} \\
+\multicolumn{5}{@{}l}{\footnotesize is scored as neither a crossing nor a survival. Raw reading kept above.} \\
+\end{tabular}
+\end{center}
+
+\noindent The criterion transfers cleanly across $\alpha \in \{0.5, 1.0, 10.0\}$, including the near-IID regime where FoolsGold might plausibly founder on legitimately similar benign updates; it does not, and $\alpha{=}10$ is indistinguishable from $\alpha{=}0.5$. \textbf{Under extreme heterogeneity ($\alpha{=}0.1$), two of the three PASS compositions cross the threshold on the raw ASR reading} (fg$\to$rfa $0.569$, rep$\to$cm $0.548$); only fg$\to$cm survives, at $0.433$. Rep$\to$cm's $\alpha{=}0.5$ baseline is itself at the threshold ($0.463$ at $n{=}30$), so its crossing is the smaller move of the two. \textbf{Our own accuracy floor changes that count, and it changes it in our favour, which is why both readings stand here.} fg$\to$rfa's $\alpha{=}0.1$ cell sits at clean accuracy $0.20$, below the $0.35$ floor of §\ref{sec:composability_validation}, so by the paper's own rule it is \emph{uninterpretable} and cannot be scored as a crossing. The gate-applied reading is therefore one crossing at interpretable accuracy (rep$\to$cm, $0.548$ at $0.48$), one uninterpretable cell, and one survivor (fg$\to$cm, $0.433$ at $0.40$); the raw reading is $2/3$. \textbf{We print the raw count as well as the gated one because applying our own rule here removes a datapoint from a limitation we report against ourselves}, and a reader should be able to see that softening rather than inherit it. Two things the gate does \emph{not} buy: the cell is uninterpretable in both directions, so it is no evidence that the criterion holds at $\alpha{=}0.1$ either, and rep$\to$cm's crossing is unaffected by the floor, so extreme heterogeneity still breaks a PASS pair at accuracy we are willing to read. Two caveats cut in opposite directions: fg$\to$rfa at $\alpha{=}0.1$ is strongly seed-dependent, the six runs at this $\alpha$ spanning $0.065$--$0.923$ and the max-committed arm itself $0.245$--$0.866$, so at $n{=}3$ the direction is clear but the magnitude is not; and clean accuracy collapses to $0.20$--$0.48$, so this regime stresses utility as much as security. Crucially Theorem~\ref{thm:bounded_reweight} supplies a \textbf{diagnostic quantity that retrospectively explains this boundary} rather than predicting it: re-measuring on the transformed points at $\alpha{=}0.1$, RFA's separation margin $m := \Delta'_{\mathrm{sep}}/[2(R'_B+\delta')]$ collapses from an all-round mean of $3.24$ (met in 68\% of rounds) to $1.01$ (met in 20\%). Over the payload-carrying rounds alone (the ones Figure~\ref{fig:mechanism} plots) the same collapse reads $4.71 \pm 1.51$ ($n{=}17$) to $2.06 \pm 2.35$ ($n{=}12$), with the per-round minimum falling $2.82 \to 0.00$; the all-round means are lower because they average in the Lemma~\ref{lem:annihilation} rounds, where FoolsGold zeroes every adversary and $m$ is recorded as $0$. Either way the collapse is measured, and the all-round figure is the one that reaches the vacuous limit. This sits exactly at the $m \to 1$ boundary where Corollary~\ref{cor:aggregate_mass}'s bound degrades to $40\%$ adversarial mass: extreme heterogeneity inflates the benign radius $R'_B$ until the benign cluster is no longer separated from the adversarial points, which is precisely the precondition the theorem requires. A practitioner running the 5--10 round pilot would measure $m \approx 1$ and decline to deploy, so the criterion is mechanistically diagnostic at this boundary, though we emphasise this is a post-hoc measurement of a known failure, not a pre-registered prediction of it.
+
+The weakest axis is still \emph{dataset}, and it is now validated with composition experiments on one further dataset and no more: §\ref{app:cifar100_menu} re-runs wave~1 of the 42-pair menu on CIFAR-100/\texttt{cifar\_cnn} at the coverage stated there, with wave~2's $24$ held-out pairs deliberately unrun, so the screen's behaviour off CIFAR-10 rests on part of one menu on one dataset and not on a cross-dataset comparison. Every other composition in this paper is CIFAR-10, and the two remaining arms measured on another dataset are single-arm intervention ladders rather than composition suites, EMNIST-byclass/\texttt{simple\_cnn} in §\ref{app:targeted_full} and CIFAR-100/\texttt{cifar\_cnn} (100-class output) in §\ref{app:sixcell}. The conditions are dataset-agnostic in mechanism, but the downstream aggregator's decision boundary may shift with the number of classes, and the CIFAR-100 ladder is direct evidence that it can: the same cell that reverses sign on CIFAR-10 reverses sign there too, at a different magnitude (L1).
 
 
 \bibliographystyle{iclr2027_conference}

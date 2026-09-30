@@ -364,6 +364,45 @@ BODY_HOMES = (
 # in the caption by pointer ("the n frozen here, App. J for the one row since topped up"), so
 # the staleness is still disclosed on the figure's own page. A disclosure may move and may not
 # lose its last home, and re-baselining is what keeps a cut from being spent twice.
+#
+# Round 83 re-baselines it DOWNWARD again, 735 -> 722, under the same rule. The twenty-fourth
+# review's top ask is a pipeline diagram that panel (a) already draws, so the caption is what
+# failed: it opened on "the map of this paper's vocabulary, at the levels of Def. 1" and now
+# opens on the panel's own two bands before naming the chain in plain words. Nothing was
+# deleted -- both disclosures (the per-row n with its topped-up pointer, and the four rows that
+# are training data for a withdrawn rule) are still in it, and the 13 chars are what the shorter
+# framing returned, so they are retightened rather than banked.
+#
+# Round 84 RE-KEYS it, which is a different act from re-baselining and is recorded separately.
+# `fig1_caption` was hard-wired to the label fig:modeS, so it measured "the composite panel
+# figure" and not "whatever is Figure 1". Two reviews in a row have now said Figure 1 tries to
+# do too much (the tenth review's item (6), answered in Round 70 by splitting panel (c) out, and
+# the twenty-fifth's item 13), and the second one sketched a figure the paper already had as an
+# appendix float since Round 69: figures/pipeline_dag.pdf. So the floats were swapped and the
+# metric now reads caption_chars(text, "fig:pipeline"). The cap moves 722 -> 707, still
+# downward, and 707 is the measurement rather than headroom. Three things this cut had to buy
+# that a length ratchet cannot see, all recorded because a later round must not undo them by
+# "restoring" caption content: (1) the caption went 1437 -> 707, and the 730 chars it shed are
+# not deleted -- the three qualifications it carried (that Mode S identifies the effect at a
+# fixed adversarial coefficient share and NOT the statistic path in isolation, that the pinning
+# needs adversary identity so Mode S is an instrument rather than a defense, and the
+# top-path/bottom-path punchline) moved into the appendix paragraph that still cites the figure;
+# (2) all five of its (P#) tokens had to go, because p_tokens is at its cap of 7 and counts the
+# body window, so the caption entering the body would have read 12 -- they are now "Def. 1's
+# first four senses, in order" and plain words, which is what the clarity review asked for; and
+# (3) the bold and italic budgets are 3-for-3 and 1-for-1 against the caption that left, which
+# is why bold_runs stayed at 38 of 39 across a figure swap.
+#
+# And one BLIND SPOT the swap exposed in p_tokens and c_tokens, recorded here rather than fixed,
+# because fixing it means reading a PDF's drawing and these two measures read source text.
+# pipeline_dag.pdf bakes "(P1), (P2)", "(P3)", "(P4)", "(P4), quantitative", "then ASR (P5)" and
+# "so C2 is not the operative channel" into its RENDERED LABELS. So a reader of page 2 now meets
+# five level indices and one condition index that p_tokens=7 and c_tokens=7 do not count, and
+# a 150-dpi pixel read is the only thing that sees them. That is why the caption glosses C2 in
+# words ("that argument is the figure's C2") and maps the level indices to Def. 1's senses in
+# order rather than repeating them: the figure's own labels are the tokens, and the caption's job
+# is to be their glossary. Do not "save" caption chars by cutting either gloss -- the tokens do
+# not leave the page when the caption stops explaining them, they just stop being defined.
 TARGETS ={"p_tokens": 7, "c_tokens": 8, "abstract": 1600, "prop_page": 3,
            "q5_pages": 3,
            "bold_runs": 39, "emph_runs": 60, "max_xrefs": 5,
@@ -371,7 +410,7 @@ TARGETS ={"p_tokens": 7, "c_tokens": 8, "abstract": 1600, "prop_page": 3,
            "abs_sentence": 200, "causal_sec1": 6, "long_para": 850,
            "jargon_front": 0, "design_vocab": 5,
            "spine_span": 2, "body_questions": 0, "provenance": 0,
-           "fig1_caption": 735}
+           "fig1_caption": 707}
 
 # The phrase the twenty-second review quoted as the paper's least readable, matched on
 # the two words that carry it so a rewording that keeps the jargon still trips.
@@ -852,7 +891,7 @@ def measure(text, pdf=None, tex_path=None):
         "c_tokens": sum(per_c.values()),
         "abstract": abs_chars,
         "abstract_lines": abs_lines,
-        "fig1_caption": caption_chars(text, "fig:modeS"),
+        "fig1_caption": caption_chars(text, "fig:pipeline"),
         "box": box_chars(text),
         "prop_page": first_prop_page(pdf) if pdf else None,
     }

@@ -21,7 +21,8 @@ artifact holds four runs is the failure this refuses to print.
     PYTHONPATH=. python3 -m experiments.emit_perseed_cifar100_menu
     PYTHONPATH=. python3 -m experiments.emit_perseed_cifar100_menu --check
 
-`--check` asserts every emitted row appears verbatim in paper/main.tex, so the pasted table is
+`--check` asserts every emitted row appears verbatim in the paper -- either document, since Round 83
+moved this arm's section into the supplement -- so the pasted table is
 verified against the artifact mechanically rather than by eye. Run it after any re-merge: this arm's
 coverage changes as slices land, and the displayed pair's rows must not drift with them.
 """
@@ -42,7 +43,13 @@ from experiments.run_cifar100_composition_suite import (  # noqa: E402
 # (d1, d2) tuple and keyed through the frozen pair_key, not written out as a string.
 PAIR = ("foolsgold", "coord_median")
 
-MAIN = os.path.join(BASE, "paper", "main.tex")
+# The paper a reviewer receives is two xr-linked documents, and Round 83 relocated this arm's section
+# from the main paper's appendix into the supplement. --check therefore reads BOTH and requires the row
+# in one of them: absent from both is still a hard exit, so the check is scoped, not softened. It also
+# prints WHICH document carried the rows, because a silent move between the two is what this would
+# otherwise hide.
+DOCS = (os.path.join(BASE, "paper", "main.tex"),
+        os.path.join(BASE, "paper", "supplementary.tex"))
 
 
 def cells():
@@ -97,19 +104,27 @@ def main():
           + ", ".join(f"{np.std([c[x][s][1] for s in SEEDS], ddof=0):.3f}" for x in (a, b)) + ")")
 
     if "--check" not in sys.argv:
-        print("\n  --check asserts these rows appear verbatim in paper/main.tex.")
+        print("\n  --check asserts these rows appear verbatim in the paper (either document).")
         return 0
 
-    text = open(MAIN).read()
-    bad = [line for line in body if line not in text]
-    print(f"\n=== --check against {os.path.relpath(MAIN, BASE)} ===")
+    texts = {os.path.relpath(p, BASE): open(p).read() for p in DOCS}
+    print(f"\n=== --check against {', '.join(texts)} ===")
+    bad, where = [], {}
+    for line in body:
+        hit = [rel for rel, text in texts.items() if line in text]
+        if hit:
+            where.setdefault(", ".join(hit), 0)
+            where[", ".join(hit)] += 1
+        else:
+            bad.append(line)
     if bad:
         print("  ROWS NOT PRESENT VERBATIM. The pasted table does not match the artifact:")
         for line in bad:
             print("    " + line)
-        sys.exit(f"REFUSING TO PASS: {len(bad)} of {len(body)} emitted rows are not in main.tex. "
+        sys.exit(f"REFUSING TO PASS: {len(bad)} of {len(body)} emitted rows are in neither document. "
                  "Paste this emitter's output over the table; do not edit the numbers by hand.")
-    print(f"  [OK] all {len(body)} emitted rows appear verbatim in main.tex.")
+    for rel, n in sorted(where.items()):
+        print(f"  [OK] {n} of {len(body)} emitted rows appear verbatim in {rel}.")
     return 0
 
 

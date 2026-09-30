@@ -128,6 +128,14 @@ CLASSIFIED = {
         ("iii", "a REPORTED FAILURE of the frozen rule at +0.2969 with the interval excluding zero "
                 "and outside the margin, in the direction of increase; nothing here rests on the "
                 "lower side"),
+    # The boundary study's relocation put a CIFAR-100 block's TOPIC in the same navigation paragraph
+    # as the equivalence-testing block's, which is what the inverse check reads as a one-sided
+    # qualifier standing over a reachable arm. Classified rather than reworded: dropping the dataset
+    # from the clause would hide a scope word to satisfy an instrument.
+    "This supplement holds per-cell measurement detail":
+        ("iii", "the supplement's own preamble index, naming each relocated block's topic in "
+                "document order, the equivalence testing and the CIFAR-100 menu among them; it "
+                "asserts no arm's verdict"),
     # ---- (iv) OTHER SENSE: equivalence between two things, not of an outcome to zero ----
     "equal values induce the same ordering":
         ("iv", "P1-P3: equivalence of a preservation statistic across defenses, an unrelated sense"),
